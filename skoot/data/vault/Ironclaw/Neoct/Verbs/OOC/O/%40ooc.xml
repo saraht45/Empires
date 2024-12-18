@@ -1,0 +1,197 @@
+<object clone="/usr/SkotOS/obj/verb" owner="jominey">
+  <Socials:Verb imp="@ooc" second="say" third="says" evoke="required" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="iob" direct="false" single="false" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="to"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="banlist">
+         (\{ "cptnshmarmy" \})
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] string advspc;
+NRef target;
+
+\$banlist = (\{ \});
+if(\$this.banlist) \$banlist = \$this.banlist;
+
+if(member(\$actor."udat:name", \$banlist)) \{
+    EmitTo(\$actor, "You have been banned from using this channel. You may contact staff for further details.");
+    return FALSE;
+\}
+
+/*
+if(\$actor == \$\{Chatters:AE:mo:morven\} \|\| \$actor == \$\{Chatters:AE:bi:bia\} \|\| \$actor == \$\{Chatters:AE:va:valeria\} \|\| \$actor == \$\{Chatters:AE:tr:trevyn\} \|\| \$actor == \$\{Chatters:AE:sa:savion\} \|\| \$actor == \$\{Chatters:AE:di:dieter\} ) \{
+    EmitTo(\$\{Chatters:AE:ro:roo\}, dump_value(args));
+    EmitTo(\$\{Chatters:AE:kj:kjell\}, dump_value(args));
+    EmitTo(\$\{Chatters:AE:to:topsy\}, dump_value(args));
+\}
+*/
+
+\$tempactor = \$actor;
+
+\$monitorDB = \$\{Allegory:Neoct:Staff:Chats:Verbs:+monitor\};
+if(\$monitorDB.watching \&\& sizeof(\$monitorDB.watching)) \{
+    \$watching = \$monitorDB.watching;
+    if(member(\$actor, \$watching)) \{
+        if(\$iob \&\& sizeof(\$iob)) \{
+            chat::send_msg(\$message: capitalize(Str(\$actor."skotos:charname")) + " says OOCly to " + capitalize(Str(NRefOb(\$iob[0])."skotos:charname")) + ": " + \$evoke, \$line: "monitor", \$system: 1);
+        \} else \{
+            chat::send_msg(\$message: capitalize(Str(\$actor."skotos:charname")) + " says OOCly: " + \$evoke, \$line: "monitor", \$system: 1);
+        \}
+    \}
+\}
+
+\$actor = \$tempactor;
+
+/* (Kalle) Evoke is required; commenting away this useless check.
+if (!\$evoke) \{
+  return TRUE;
+\}
+*/
+
+/* (Kalle) Removed silly OOC usage statistics crap, since it was CM only, and moved this to Neoct for x-game purposes. */
+/* Silly OOC Usage Statistic Code -- Aziel */
+/* \$gamedb = \$\{Marrach:Data:GameDB\};
+\$usage  = \$gamedb."mapping:oocusage";
+\$acct   = \$actor."udat:name";
+
+if (!\$usage[\$acct]) \{
+  \$usage += ([ \$acct:1 ]);
+  \$gamedb."mapping:oocusage" = \$usage;
+\} else \{
+  \$total = \$usage[\$acct];
+  \$total++;
+  \$usage[\$acct] = nil;
+  \$usage += ([ \$acct:\$total ]);
+  \$gamedb."mapping:oocusage" = \$usage;
+\} */
+
+/* All Done */
+
+advspc = "";
+
+if (\$adverb) \{
+  if (\$adverb == "importantly")
+    \$override = TRUE;
+  else
+    advspc = \$adverb + " ";
+\}
+
+if (!sizeof(\$roles)) \{
+  int i, sz;
+  object *inv;
+  string msg;
+
+  inv  = \$actor."base:environment"."base:inventory";
+  inv -= (\{ \$actor \});
+  sz   = sizeof(inv);
+  msg  = "OOC -- " + Describe(\$actor) + " " + advspc + "says, " + \$evoke + "\\n";
+
+  EmitTo(\$actor, "OOC -- You " + advspc + "say, " + \$evoke + "\\n");
+  for (i = 0; i \< sz; i++)
+    /* if (inv[i]."udat:possessed" \&\&
+          (!inv[i]."skotos:ignore-ooc" \|\|
+          \$override) \&\& !member(inv[i]."udat:name", \$banlist)) */
+    if (inv[i]."udat:possessed" \&\&
+          (!inv[i]."skotos:ignore-ooc" \|\|
+          \$override))
+      EmitTo( inv[i], msg );
+  if (\$override)
+    \$actor."audit:last_ooc_override" = (\{ \$actor."base:environment", time(), \$evoke \});
+  return FALSE;
+\}
+
+if (sizeof(\$iob) \> 1) \{
+  EmitTo(\$actor, "Please OOC only to one object at a time.\\n");
+  return FALSE;
+\}
+
+target = \$iob[0];
+/* if(member(NRefOb(target)."udat:name", \$banlist)) \{
+  EmitTo(\$actor, Describe(target) + " is not accepting @ooc messages at this time.");
+  return FALSE;
+\} */
+
+EmitTo(\$actor, "OOC -- You " + advspc + "say to " +
+       Describe(target, \$actor, \$actor) + ", " + \$evoke + "\\n");
+if (\$actor != NRefOb(target)) \{
+  EmitTo(NRefOb(target), "OOC -- " +
+         Describe(\$actor, nil, NRefOb(target)) + " " + advspc +
+         " says to " + Describe(target, \$actor, NRefOb(target)) +
+         ", " + \$evoke + "\\n");
+\}
+ 
+\{
+  int i, sz;
+  object *inv;
+  string msg;
+
+  inv  = \$actor."base:environment"."base:inventory"; 
+  inv -= (\{ \$actor, NRefOb( target ) \});
+  sz   = sizeof(inv);
+  msg  = "OOC -- " + Describe(\$actor) + " " + advspc + "says to " + Describe(target, \$actor, nil, STYLE_PRONOUN) + ", " + \$evoke + "\\n";
+
+  for (i = 0; i \< sz; i++)
+    if (inv[i]."udat:possessed" \&\&
+         (!inv[i]."skotos:ignore-ooc" \|\|
+          \$override) \&\& !member(inv[i]."udat:name", \$banlist))
+      EmitTo( inv[i], msg ); 
+\}
+/* EmitIn(Get(\$actor, "base:environment"), "OOC -- " +
+       Describe(\$actor, nil, nil) + " " + advspc + "says to " +
+       Describe(target, \$actor, nil, STYLE_PRONOUN) + ", " +
+       \$evoke + "\\n", NRefOb(target), \$actor); */
+
+/*
+ * Log override, if set.
+ */
+if (\$override)
+  \$actor."audit:last_ooc_override" = (\{ \$actor."base:environment", time(), \$evoke \});
+      </Core:Property>
+      <Core:Property property="merry:lib:toggle">
+         X[M] /*
+
+  D=Toggle OOC visibility.
+
+*/
+
+\$banlist = (\{ \}); 
+if(\$this.banlist) \$banlist = \$this.banlist; 
+ 
+/*
+if(member(\$actor."udat:name", \$banlist)) \{ 
+    EmitTo(\$actor, "You have been banned from using this channel. You may contact staff for further details."); 
+    return FALSE; 
+\}
+*/
+
+\$ignore_ooc                = !\$actor."skotos:ignore-ooc";
+\$actor."skotos:ignore-ooc" = \$ignore_ooc;
+
+EmitTo(\$actor, PRE("OOC " + (\$ignore_ooc ? "DISABLED" : "ENABLED")));
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1073608699, "sorcha", "E", 1073608950, "sorcha", "E", 1080310591, "tangerine", "E", 1081002085, "kargh", "E", 1081743436, "kargh", "E", 1081743449, "kargh", "X", 1081743942, "kargh", "P", 1081743950, "kargh", "P", 1081744020, "kargh", "P", 1081791248, "kargh", "P", 1081791457, "kargh", "P", 1097538557, "zwoc", "P", 1097538609, "zwoc", "P", 1097539176, "zwoc", "P", 1097539340, "zwoc", "P", 1097539663, "zwoc", "P", 1097539781, "zwoc", "P", 1097539800, "zwoc", "P", 1097551701, "zwoc", "P", 1097564002, "zwoc", "P", 1097564031, "zwoc", "P", 1097564410, "zwoc", "P", 1097564427, "zwoc", "P", 1347815160, "jominey", "E", 1347815254, "jominey", "E", 1347815375, "jominey", "E", 1347815424, "jominey", "E", 1347815442, "jominey", "E", 1347815456, "jominey", "E", 1347815556, "jominey", "E", 1347815632, "jominey", "E", 1347815721, "jominey", "E", 1347815739, "jominey", "E", 1347815926, "jominey", "E", 1347817665, "jominey", "E", 1347818405, "jominey", "E", 1355690167, "jominey", "E", 1355690486, "jominey", "E", 1355690715, "jominey", "E", 1465262611, "tonyd", "E", 1514560243, "jominey", "E", 1514560822, "jominey", "E", 1514560900, "jominey", "E", 1514561029, "jominey", "E", 1517273427, "jominey", "E", 1517455075, "jominey", "E", 1520397066, "jominey", "E", 1522179651, "jominey", "E", 1562858925, "jominey", "E", 1562895653, "jominey", "E", 1562961204, "jominey", "E", 1562961337, "jominey", "E", 1576537974, "sendnoodlez", "E", 1579654070, "sendnoodlez", "E", 1583462832, "sendnoodlez", "E", 1583532369, "sendnoodlez", "E", 1583533072, "sendnoodlez", "E", 1584840579, "jominey", "E", 1584897671, "sendnoodlez", "E", 1584923173, "jominey", "E", 1584923278, "jominey", "E", 1584923362, "jominey", "E", 1584923449, "jominey", "E", 1584923545, "jominey", "E", 1584923600, "jominey", "E", 1584923678, "jominey", "E", 1584923930, "jominey", "E", 1584924052, "jominey", "P", 1584924154, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="sys:sync:clearing">1</Core:Property>
+      <Core:Property property="sys:sync:idpsource">
+         "ironclaw"
+      </Core:Property>
+      <Core:Property property="sys:sync:igdipro">
+         "propose"
+      </Core:Property>
+      <Core:Property property="sys:sync:proposing-revision">
+         1097564427
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

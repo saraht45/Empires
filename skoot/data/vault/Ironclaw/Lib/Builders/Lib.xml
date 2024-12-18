@@ -1,0 +1,188 @@
+<object clone="/obj/properties" owner="tunk_bodin">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="hopping:locations:backstage">
+         ([ "closet":\<Ironclaw:Backstage:Indoors:House:BuildCloset\>, "foyer":\<Ironclaw:Backstage:Indoors:House:Foyer\> ])
+      </Core:Property>
+      <Core:Property property="intercom:locations:backstage">
+         (\{ \<Ironclaw:Backstage:Indoors:House:BuildCloset\>, \<Ironclaw:Backstage:Indoors:House:Den\>, \<Ironclaw:Backstage:Indoors:House:Foyer\>, \<Ironclaw:Backstage:Indoors:House:Kitchen\>, \<Ironclaw:Backstage:Indoors:House:LivingRoom\>, \<Ironclaw:Backstage:Indoors:House:VPCloset\> \})
+      </Core:Property>
+      <Core:Property property="merry:lib:entry_restriction">
+         X[M] if(!\$actor) return FALSE;                       
+if(!\$msg \|\| \$msg == "none") \$msg = "Entry is restricted. Thou shall not pass.";                                   
+if(!\$house) \$house = "none";          
+\$house = lower_case(\$house);                    
+if(!\$rank) \$rank = "none";                       
+if(\$house == "none") \$h = 1;         
+if(\$actor.guild) \{    
+if(lower_case(\$actor.guild.shortname) == \$house) \$h = 1;       
+\}       
+if(\$rank == "none" \|\| Int(\$actor."rank:rank") \>= Int(\$rank)) \$r = 1;                    
+if(\$secret \&\& member(\$target, Arr(\$secret))) \{ \$h = 1; \$r = 1; \}               
+if(\$h == 1 \&\& \$r == 1 ) \{ return TRUE; \} else \{ EmitTo(\$actor, \$msg); return FALSE; \}
+      </Core:Property>
+      <Core:Property property="merry:lib:hopping_around">
+         X[M] mapping map, map2;                    
+\$db_bld = \$\{Ironclaw:Lib:Objects:Create\};            
+\$acct = \$actor."skotos:creator";            
+map = Get(\$actor, "*");                      
+map = prefixed_map(map, "virtualhome:");             
+\$m1a = map_indices(map);                     
+\$m1b = map_values(map);             
+map2 = \$this."hopping:locations:backstage";            
+\$m2a = map_indices(map2);            
+\$m2b = map_values(map2);            
+\$locs = implode(\$m2a, ", ");            
+\$help = "Welcome to the @hop command; created specifically for @builders. Available commands are: \\n @hop = This message. \\n @hop \<location\> \\n Possible locations are home, " +\$locs+ ".";            
+\$bad_loc = "The @hop command is only usable from your virtual room or within the backstage area.";            
+\$bad_mem = "This command is not available to you; it is specifically for those with @build abilities. If you find this message is erroneous, please @assist.";                   
+/* make sure they can use the command */            
+if(!member(\$acct, Arr(\$db_bld.access))) \{ EmitTo(\$actor, \$bad_mem); return FALSE; \}            
+/* check for a line, lower case it for comparison */            
+if(!\$line) \{ EmitTo(\$actor, \$help); return FALSE;            
+\} else \{            
+\$line = lower_case(\$line);            
+\}            
+/* check if they are in one of their virtual rooms or backstage */            
+if(!member(NRefOb(\$here), Arr(\$m1b)) \&\& !member(\$here, Arr(\$m2b))) \{ EmitTo(\$actor, \$bad_loc); return FALSE; \}            
+/* grab their home or first virtual, if lacking a home */            
+if(\$actor."virtualhome:home") \{            
+\$home = \$actor."virtualhome:home";            
+\} else \{            
+\$home = \$m1b[0];            
+\}            
+/* make sure the line is useable */            
+if(!member(\$line, \$m2a) \&\& \$line != "home") \{ EmitTo(\$actor, \$help); return FALSE; \}            
+/* send them off */           
+if(\$line == "home") \{           
+\$goto = \$home;     
+\$actor."base:environment" = \$goto;                
+\} else \{           
+\$goto = map2[\$line];                
+\}     
+\$actor."base:environment" = \$goto;     
+EmitTo(\$actor, "[You are now in " + Describe(\$goto) + "]" );           
+EmitIn(\$goto, "[" +Describe(\$actor)+ " just @hopped here.]", \$actor);
+      </Core:Property>
+      <Core:Property property="merry:lib:intercom_system">
+         X[M] \$locations = Get(\$this, "intercom:locations:" +\$sys);                 
+\$origin = Describe(\$loc);                
+\$com = "[" +Describe(\$actor)+ " @ " +\$origin+ "] ";                
+if(!\$evoke) \{                                   
+\$msg = \$com + "The sound of static and clicking can be heard. Obviously, the user forgot to actually say anything.";                                   
+\} else \{                                   
+\$msg = \$com + \$evoke;                                   
+\}                   
+\$ix = sizeof(\$locations);                                 
+for (\$i = 0; \$i \< \$ix; ++\$i) \{                                 
+EmitIn(\$locations[\$i], \$msg);                  
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:lost_objects_folder_tracking">
+         X[M] int i;
+string folder, *folders, *objects;
+
+if(!\$folder) return FALSE;
+
+\$delay(0.02, TRUE, "40b9");
+EmitTo(\$actor, "Checking items in the "+\$folder+" folder.");
+
+/* gather a list of objects in the folder */
+objects = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+for(i=0;i\<sizeof(objects);i++) \{
+  \$obj = Obj(\$folder+":"+objects[i]);
+  ::lost_objects_tracking(\$obj: \$obj, \$actor: \$actor, \$parameter: \$parameter);
+\}
+
+/* gather a list of sub-folders in this folder */
+folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+for(i=0;i\<sizeof(folders);i++) \{
+  folder = \$folder+":"+folders[i];
+  ::lost_objects_folder_tracking(\$folder: folder, \$actor: \$actor, \$parameter: \$parameter);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lost_objects_start">
+         X[M] if(!\$line) \{
+  EmitTo(\$actor, "Two forms of usage. 1st, track object and all children's locations. 2nd, track by all objects and children within a folder.");
+  EmitTo(\$actor, "Usage 1: +tracklost woe:name:of:parent");
+  EmitTo(\$actor, "Usage 2: +tracklost woe:name:of:folder");
+  return FALSE;
+\}
+
+\$parameter = explode(\$line, " ");
+if(sizeof(\$parameter) \> 1) \{
+  \$line = \$parameter[0];
+  \$parameter = \$parameter[1];
+\} else
+  \$parameter = nil;
+
+if(Obj(\$line)) \{
+  /* If they provided an object to check */
+  \$obj = Obj(\$line);
+  Call(\$this, "lost_objects_tracking", \$obj: \$obj, \$actor: \$actor, \$parameter: \$parameter);
+  return TRUE;
+\} else \{
+  /* If they provided a folder to check */
+  \$folder = \$line;
+  EmitTo(\$actor, "Starting folder hell.");
+  Call(\$this, "lost_objects_folder_tracking", \$folder: \$folder, \$actor: \$actor, \$parameter: \$parameter);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lost_objects_tracking">
+         X[M] object first, current, where;
+if(!\$obj) return FALSE;
+where = \$obj."base:environment";
+if(!\$parameter \|\| \$parameter != "quiet" \|\| !where)
+  EmitTo(\$actor, name(\$obj) + " is in " + (where ? name(where) : "the NIL"));
+
+first = \$obj."core:ur:firstchild";
+current = first;
+if(first) \{
+  do \{
+    if(\$parameter == "checkall" \|\| name(current)[0..0] == "[") /* If it's a spawn and not visible in woe */
+      ::lost_objects_tracking(\$obj: current, \$actor: \$actor, \$parameter: \$parameter);
+    current = current."core:ur:sibling:next";
+  \} while (first != current);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:turnoffdetail">
+         X[M] if(\$adverb == "off") \{           
+   \$lum = Get( \$loc, "details:"+\$id+":luminosity" );            
+   if(\$lum == 0.0) \{                            
+      EmitTo(\$actor, Describe(\$det)+ " has already been turned off.");                           
+      return FALSE;                            
+   \} else \{             
+      EmitTo(\$actor, "You turn off " +Describe(\$det)+ " and darken " +Describe(\$loc)+ ".");                           
+      EmitIn(\$loc, Describe(\$actor)+ " turns on " +Describe(\$det)+ " and darkens " +Describe(\$loc)+ ".", \$actor);                          
+      Set( \$loc, "details:"+\$id+":luminosity", 0.0 );                          
+      return FALSE;                        
+   \}           
+return TRUE;         
+\}         
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:turnondetail">
+         X[M] \$lum = Get( \$loc, "details:"+\$id+":luminosity" );            
+if(\$lum \>= 0.1) \{                             
+EmitTo(\$actor, Describe(\$det)+ " has already been turned on.");                            
+return FALSE;                             
+\} else \{                            
+EmitTo(\$actor, "You turn on " +Describe(\$det)+ " and lighten " +Describe(\$loc)+ ".");                            
+EmitIn(\$loc, Describe(\$actor)+ " turns on " +Describe(\$det)+ " and lightens " +Describe(\$loc)+ ".", \$actor);                           
+Set( \$loc, "details:"+\$id+":luminosity", 5.0 );                           
+return FALSE;                            
+\}         
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1307130918, "tunk_bodin", "X", 1307131338, "tunk_bodin", "X", 1307131441, "tunk_bodin", "X", 1307131551, "tunk_bodin", "X", 1307131610, "tunk_bodin", "X", 1307131753, "tunk_bodin", "X", 1307131888, "tunk_bodin", "X", 1307131915, "tunk_bodin", "X", 1307132136, "tunk_bodin", "X", 1307132626, "tunk_bodin", "X", 1307132653, "tunk_bodin", "X", 1307132682, "tunk_bodin", "X", 1307133229, "tunk_bodin", "X", 1307133432, "tunk_bodin", "X", 1307164561, "tonyd", "P", 1307164615, "tonyd", "P", 1307164722, "tonyd", "P", 1307164805, "tonyd", "P", 1307164882, "tonyd", "P", 1307164921, "tonyd", "P", 1307164941, "tonyd", "P", 1307164948, "tonyd", "P", 1307164991, "tonyd", "P", 1307165207, "tonyd", "P", 1307165223, "tonyd", "P", 1307165286, "tonyd", "P", 1307165377, "tonyd", "P", 1307165451, "tonyd", "P", 1307165468, "tonyd", "P", 1307165516, "tonyd", "P", 1307165616, "tonyd", "P", 1307165671, "tonyd", "P", 1307165705, "tonyd", "P", 1307165762, "tonyd", "P", 1307165820, "tonyd", "P", 1307165953, "tonyd", "P", 1307165974, "tonyd", "P", 1307166002, "tonyd", "P", 1307166025, "tonyd", "P", 1307166057, "tonyd", "P", 1307166113, "tonyd", "P", 1307166167, "tonyd", "P", 1307166180, "tonyd", "P", 1307166400, "tonyd", "P", 1307166673, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

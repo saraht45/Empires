@@ -1,0 +1,151 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="10" density="1"/>
+    <Base:Container flexible="true" transparent-container="false" public-container="false" tight="false" capacity="15" maxweight="50" verb2="hold" verb3="holds"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="false" under="false" on="false" inside="false" near="true" over="false" behind="false" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="teller"/>
+            <Base:SName sname="box"/>
+          </Base:SNames>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="gem"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             gem teller box
+          </Base:Description>
+          <Base:Description type="look">
+             This little box, known as a gem teller, possess one large red botton upon the flat of its surface.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="true" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="button" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="button"/>
+          </Base:SNames>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="large"/>
+          <Base:Adjective adjective="red"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             big red button
+          </Base:Description>
+          <Base:Description type="look">
+             A large red button.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:gems">
+         (\{ (\{ "emerald", 20 \}), (\{ "ruby", 10 \}), (\{ "diamond", 30 \}), (\{ "topaz", 9 \}), (\{ "garnet", 15 \}) \})
+      </Core:Property>
+      <Core:Property property="merry:react-post:add-iob">
+         X[M] if(!\$evoke) \{
+  EmitTo(\$actor, "Format is: add to box 'GEMNAME COST");
+  return FALSE;
+\}
+
+/* explode will make \$evoke into an array of words */
+\$input_array = explode(\$evoke[1..strlen(\$evoke)-3], " ");
+
+if(sizeof(\$input_array) != 2) \{
+  EmitTo(\$actor, "Format is: add to box 'GEMNAME COST");
+  return FALSE;
+\}
+
+/* now let's add this new gem to the list */
+\$new_gems_array = \$this.gems;
+\$new_gems_array += (\{ (\{ \$input_array[0], Int(\$input_array[1]) \}) \});
+\$this.gems = \$new_gems_array;
+
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " adds a "+\$input_array[0]+" with value of "+Str(\$input_array[1])+" to the box's list.");
+
+\$gem = \$\{IronClaw:Staff:Vic:Props:Test:Gem\};
+\$blank = Spawn(\$gem);
+\$blank."trait:name" = lower_case(\$input_array[0]);
+\$blank."details:default:sname:" = \$input_array[0];
+\$blank."trait:price" = \$input_array[1];
+\$blank."base:environment" = \$this;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:poke-dob">
+         X[M] \$button = NRefDetail(\$target);
+
+\$gems = \$this.gems;
+
+if(\$button != "button")\{
+\$number = random(sizeof(\$gems));
+EmitIn(\$actor."base:environment", Describe(\$this)+ " displays a little holographic message that says: A " +\$gems[\$number][0]+ " is worth "+\$gems[\$number][1]+ " denarii.");
+\}
+else if (\$button == "button")\{
+EmitIn(\$actor."base:environment", Describe(\$this)+ " displays a little holographic message that says: ");
+
+/* loop through displaying every list */
+for(\$i=0;\$i\<sizeof(\$gems);\$i++) \{
+  EmitTo(\$actor, \$gems[\$i][0]+" - "+\$gems[\$i][1]);
+\}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:shake-dob">
+         X[M] if(\$this."base:inventory" \&\& sizeof(\$this."base:inventory"))\{
+  EmitTo(\$actor, "As you shake the small box, you can distinctly hear something inside rattling about.");
+  EmitIn(\$actor."base:environment", "As " +Describe(\$actor)+ " shakes "+\$actor."trait:possessive"+ " small box, the sound of things rattling about can be hear from within it.", \$actor);
+\} else \{
+  EmitTo(\$actor, "You hear nothing when you shake the box.");
+  return TRUE;
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1160624933, "necate", "E", 1160625033, "necate", "E", 1160625085, "necate", "E", 1160625638, "necate", "P", 1160625686, "necate", "E", 1160625699, "necate", "E", 1160625729, "necate", "E", 1160625983, "necate", "P", 1160626112, "necate", "P", 1160626156, "necate", "P", 1160626278, "necate", "P", 1160626394, "necate", "P", 1160626488, "necate", "P", 1160626520, "necate", "P", 1160626534, "necate", "P", 1160626858, "necate", "P", 1160626913, "necate", "P", 1160626961, "necate", "P", 1160627043, "necate", "E", 1160627179, "necate", "P", 1160627269, "necate", "P", 1160627332, "necate", "P", 1160627481, "necate", "P", 1160627663, "tonyd", "P", 1160627713, "tonyd", "P", 1160627752, "necate", "P", 1160627894, "necate", "E", 1163020329, "necate", "E", 1169189569, "necate", "P", 1169189906, "necate", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

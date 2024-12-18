@@ -1,0 +1,343 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Generic:food:UrFood)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="true"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="false" under="false" on="true" inside="false" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="cards"/>
+            <Base:SName sname="pack"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="cards"/>
+            <Base:PName pname="packs"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="deck"/>
+          <Base:Adjective adjective="of"/>
+          <Base:Adjective adjective="pack"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:brief)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="card" prime="false" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="card"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="cards"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="single"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">a card</Base:Description>
+          <Base:Description type="look">
+             A single card from the deck.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "deck of cards"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "A pack of cards, decorated with finely painted images. A full set contains all four suits (earth, air, fire and water), and each suit has an ace, cards numbered 2 to 10, then a knight, baron, and king. Some packs also include the fool, but this one doesn't."
+      </Core:Property>
+      <Core:Property property="export:trait:look">
+         "A pack of cards, decorated with finely painted images."
+      </Core:Property>
+      <Core:Property property="merry:react:hit-dob">
+         X[M] EmitTo(\$actor, "Playing a hand of BlackKnight.");
+
+if(this."blackknight:players")
+\{
+  for(\$counter = 0; \$counter \< sizeof(this."blackknight:players"); \$counter++)
+  \{
+    if(this."blackknight:players"[\$counter] == \$actor)
+    \{
+      if(this."blackknight:scores"[\$counter] \> 21)
+      \{
+        EmitTo(\$actor, "Sorry, you're bust");
+        return FALSE;
+      \}
+
+      \$card1 = random(13);
+      switch(\$card1)
+      \{
+        case 0:
+          \$card1desc = "ace";
+          break;
+        case 10:
+          \$card1desc = "knight";
+          break;
+        case 11:
+          \$card1desc = "baron";
+          break;
+        case 12:
+          \$card1desc = "king";
+          break;
+        default:
+          \$card1desc = Str(\$card1+1);
+      \}
+      \$card1desc += " of ";
+      switch(random(4))
+      \{
+        case 0:
+          \$card1desc += "air";
+          break;
+        case 1:
+          \$card1desc += "earth";
+          break;
+        case 2:
+          \$card1desc += "fire";
+          break;
+        case 3:
+          \$card1desc += "water";
+          break;
+      \}
+
+      \$this."blackknight:scores"[\$counter] += \$card1 + 1;
+
+      if(\$this."blackknight:scores"[\$counter] \> 21)
+      \{
+        EmitTo(\$this."blackknight:players"[\$counter], "You get dealt a " + \$card1desc + ". Unfortunately, this puts your score at "+ \$this."blackknight:scores"[\$counter] + ". Sorry, you're bust!");
+        this."blackknight:remaining" -= (\{ \$actor \});
+      \} else \{
+        EmitTo(\$this."blackknight:players"[\$counter], "You get dealt a " + \$card1desc + ". This puts your score at "+ \$this."blackknight:scores"[\$counter] + ". Do you wish to hit or stand? hit the deck of cards to hit, and poke the deck of cards to stand.");
+      \}
+    \}
+  \}
+\}
+
+if(sizeof(this."blackknight:remaining") == 0)
+\{
+  \$winner = "nobody";
+  \$max = 0;
+
+  for(\$counter = 0; \$counter \< sizeof(this."blackknight:scores"); \$counter++)
+  \{
+    if((this."blackknight:scores"[\$counter] \< 21) \&\& (this."blackknight:scores"[\$counter] \> \$max))
+    \{
+      \$max = this."blackknight:scores"[\$counter];
+      \$winner = Describe(this."blackknight:players"[\$counter]);
+    \}
+  \}
+
+  for(\$counter = 0; \$counter \< sizeof(this."blackknight:players"); \$counter++)
+  \{
+    EmitTo(this."blackknight:players"[\$counter], "The round is over, with " + \$winner + " as the winner, with a score of " + \$max +".");
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:poke-dob">
+         X[M] this."blackknight:remaining" -= (\{ \$actor \});
+
+if(sizeof(this."blackknight:remaining") == 0)
+\{
+  \$winner = "nobody";
+  \$max = 0;
+
+  for(\$counter = 0; \$counter \< sizeof(this."blackknight:scores"); \$counter++)
+  \{
+    if((this."blackknight:scores"[\$counter] \< 21) \&\& (this."blackknight:scores"[\$counter] \> \$max))
+    \{
+      \$max = this."blackknight:scores"[\$counter];
+      \$winner = Describe(this."blackknight:players"[\$counter]);
+    \}
+  \}
+
+  for(\$counter = 0; \$counter \< sizeof(this."blackknight:players"); \$counter++)
+  \{
+    EmitTo(this."blackknight:players"[\$counter], "The round is over, with " + \$winner + " as the winner, with a score of " + \$max +".");
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:prod-dob">
+         X[M] EmitTo(\$actor, "Playing a hand of BlackKnight.");
+
+if(!this."blackknight:scores")
+\{
+  this."blackknight:scores" = (\{\});
+\}
+
+this."blackknight:remaining" = this."blackknight:players";
+
+if(this."blackknight:players")
+\{
+  for(\$counter = 0; \$counter \< sizeof(this."blackknight:players"); \$counter++)
+  \{
+    \$card1 = random(13);
+    switch(\$card1)
+    \{
+      case 0:
+        \$card1desc = "ace";
+        break;
+      case 10:
+        \$card1desc = "knight";
+        break;
+      case 11:
+        \$card1desc = "baron";
+        break;
+      case 12:
+        \$card1desc = "king";
+        break;
+      default:
+        \$card1desc = Str(\$card1+1);
+    \}
+    \$card1desc += " of ";
+    switch(random(4))
+    \{
+      case 0:
+        \$card1desc += "air";
+        break;
+      case 1:
+        \$card1desc += "earth";
+        break;
+      case 2:
+        \$card1desc += "fire";
+        break;
+      case 3:
+        \$card1desc += "water";
+        break;
+    \}
+
+    \$card2 = random(13);
+    switch(\$card2)
+    \{
+      case 0:
+        \$card2desc = "ace";
+        break;
+      case 10:
+        \$card2desc = "knight";
+        break;
+      case 11:
+        \$card2desc = "baron";
+        break;
+      case 12:
+        \$card2desc = "king";
+        break;
+      default:
+        \$card2desc = Str(\$card2+1);
+    \}
+    \$card2desc += " of ";
+    switch(random(4))
+    \{
+      case 0:
+        \$card2desc += "air";
+        break;
+      case 1:
+        \$card2desc += "earth";
+        break;
+      case 2:
+        \$card2desc += "fire";
+        break;
+      case 3:
+        \$card2desc += "water";
+        break;
+    \}
+
+    \$this."blackknight:scores"[\$counter] = \$card1 + \$card2 + 2;
+
+    if((\$card1 + \$card2 + 2) \> 21)
+    \{
+      EmitTo(\$this."blackknight:players"[\$counter], "You get dealt a " + \$card1desc + ", and a " + \$card2desc + ". Unfortunately, this puts your score at "+ \$this."blackknight:scores"[\$counter] + ". Sorry, you're bust!");
+    \} else \{
+      EmitTo(\$this."blackknight:players"[\$counter], "You get dealt a " + \$card1desc + ", and a " + \$card2desc + ". Do you wish to hit or stand? hit the deck of cards to hit, and poke the deck of cards to stand.");
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:tap-dob">
+         X[M] if(\$actor."game:current")
+\{
+  EmitTo(\$actor, "You are already playing a game of " + \$actor."game:current" + ". You need to finish that first.");
+  return FALSE;
+\} else \{
+  \$actor."game:current" = "blackknight";
+\}
+
+if(this."blackknight:players")
+\{
+  this."blackknight:players" += (\{ \$actor \});
+  this."blackknight:scores" += (\{ 0 \});
+\} else \{
+  this."blackknight:players" = (\{ \$actor \});
+  this."blackknight:scores" = (\{ 0 \});
+\}
+
+EmitTo(\$actor, "So you want to play blackknight, do you? Fine, you're in for the next game.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:wash-dob">
+         X[M] EmitTo(\$actor, "Ending the game of BlackKnight.");
+
+if(this."blackknight:players")
+\{
+  for(\$counter = 0; \$counter \< sizeof(this."blackknight:players"); \$counter++)
+  \{
+    \$this."blackknight:players"[\$counter]."game:current" = nil;
+    EmitTo(\$this."blackknight:players"[\$counter], "The game of Blackknight is now over. Thank you for playing");
+  \}
+\}
+
+this."blackknight:players" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1108785234, "tonyd", "X", 1108785337, "tonyd", "E", 1108785402, "tonyd", "E", 1108787596, "tonyd", "E", 1108787610, "tonyd", "E", 1108787622, "tonyd", "E", 1108788050, "tonyd", "P", 1108788104, "tonyd", "P", 1108788133, "tonyd", "P", 1108788400, "tonyd", "P", 1108788466, "tonyd", "P", 1108788535, "tonyd", "P", 1108788792, "tonyd", "P", 1108788861, "tonyd", "P", 1108788872, "tonyd", "E", 1108789103, "tonyd", "P", 1108789475, "tonyd", "P", 1108789505, "tonyd", "P", 1108789662, "tonyd", "P", 1108789749, "tonyd", "P", 1108789965, "tonyd", "P", 1108790075, "tonyd", "P", 1108790913, "tonyd", "P", 1108791249, "tonyd", "P", 1108791314, "tonyd", "P", 1108791827, "tonyd", "P", 1108791842, "tonyd", "P", 1108791989, "tonyd", "P", 1108792056, "tonyd", "P", 1108792126, "tonyd", "P", 1108792201, "tonyd", "P", 1108792401, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

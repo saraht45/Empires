@@ -1,0 +1,2341 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Old:Trading:Trading)"/>
+    <Core:PCProperties>
+      <Core:Property property="#list#">
+         X[M] /* 
+ 
+----------------------------------- 
+ LIBRARY CONTENT (Merry/SAM) 
+ 
+ Object:     Lib:NIP:lib:trading-advanced 
+ Maintainer: Kalle Alm 
+ Email:      kalle@mortalis.skotos.net 
+ Rev:        1 
+ Generated:  Wed Oct 18 07:57:58 2006 
+ 
+ 
+ 
+(Do not modify #list#. Automatically constructed property.) 
+ 
+ 
+----- 
+----- 
+ 
+*/
+      </Core:Property>
+      <Core:Property property="backup:merry:lib:handler:ask-for">
+         X[M] /*
+
+  D=Replacement for the "presents" lib 'ask-for' handler, this script will take into account cost of item. The ability to hand out "free" things is lost, however, and a customized merge of this and the presents v. is required in order to implement such.
+  Contact me if you are in need of this. Currently, I see no requirement for it which is why I am not putting the feature in right away. kalle@marrach.skotos.net
+
+  This script will look for a few values in the object being offered. This object will _need_ to have these values set, otherwise the NPC will not be able to sell them:
+
+    nip:item:cost  (int) - the cost of this item.
+
+  If the property "nip:trait:trading:list" is set to an object, that object will be handed out to people by request, containing a price list.
+  Additionally, the property "nip:trait:trading:detail" may be set, if the detail which should be written upon is not the prime detail of the "nip:trait:trading:list" object.
+  The property "nip:trait:trading:head" can be set to some text that is appended before the price list.
+  The property "nip:trait:trading:foot" can be set to some text appended after the price list.
+
+*/
+
+mixed objects;
+string word, adjective, message;
+object *ind, *matches, CDO;
+int i, sz;
+int cost;
+
+/* and for the lower code */
+mixed *inv_matches;
+string adverb;
+object *inventories;
+string  list, and, *items, *inv_ind;
+int     denied, j, jx;
+
+objects = this."nip:trait:present:objects";
+CDO     = this."nip:trait:trading:object";
+
+/* Grab global properties from CDO. */
+\$hide_decimals = CDO."cash:hide-decimals";
+
+if( !CDO )
+\{
+  /*
+   * We don't have a Cash Data Object!
+   * Give the actor a lame "out of stock" message
+   * and, if they're SH enabled, a hint as to why.
+   */
+  EmitTo( \$actor, "Unfortunately, "+Describe(this)+" is currently out of stock on everything! Come back later." );
+  if( \$actor."udat:host" )
+    EmitTo( \$actor, "[\<StoryHost\> HINT]: This nipper doesn't have a cash data object. The property for this object is 'nip:trait:trading:object' and should point to an object set up accordingly. See Builder's TWiki for further information on this subject." );
+  return FALSE;
+\}
+
+
+/* Pick the LAST word from \$(for:words), as someone could be funny,
+   and type 'ask cook for a deliciously prepared cookie' but keep the
+   second last word in case we need to go into adjective details. */
+
+word = \$(for:words)[ sizeof( \$(for:words) )-1 ];
+
+if( sizeof( \$(for:words) ) \> 1 )
+  adjective = \$(for:words)[ sizeof( \$(for:words) )-2 ];
+else
+  adjective = nil;
+
+/* Step through the presents list objects and see if we find any matches for 'word' */
+
+/* Do we have anything to sell? */
+if( !objects \|\|
+    !map_sizeof( objects ))
+  /* Nope. */
+  objects = ([ ]);
+
+
+ind = map_indices( objects );
+matches = (\{ \});
+sz = sizeof( ind );
+
+for( i = 0; i \< sz; i++ )
+\{
+  if( arr_to_set( objects[ind[i]] )[word] )\{
+    /* Found a match. */
+
+    /*
+     * We are not doing a "spam check", since the \$actor
+     * is paying for each item anyway.
+     */
+    matches += (\{ ind[i] \});
+  \}
+\}
+
+/* Step through the advanced trading list inventories and see if we find any matches for 'word' */
+inventories = Arr(this."nip:trait:trading-advanced:inventories");
+inv_matches = (\{ \});
+if(inventories \&\& sizeof(inventories)) \{
+  /* add items to the list */
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if this item matches */
+      if( (sizeof(Get(inventories[i], inv_ind[j])) \> 4) \&\& member(word, Arr(Get(inventories[i], inv_ind[j])[4])) ) \{
+        /* it matches */
+        /* check if the actor is allowed this item */
+        if(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inventories[i], \$item: inv_ind[j]) != nil)\{
+          inv_matches \|= (\{ (\{ inventories[i], inv_ind[j] \}) \});
+        \}
+      \}
+    \}
+  \}
+\}
+
+/* if we have an item matched */
+if( sizeof( matches ) + sizeof( inv_matches ) ) \{
+EmitTo(\$actor, "Matches is "+dump_value(matches)+" and inv_matches is "+dump_value(inv_matches));
+  /* if there is more than one item matched, try to work out which one based on adjective */
+  if( adjective \&\& (sizeof(matches)+sizeof(inv_matches)) \> 1 )
+  \{
+EmitTo(\$actor, "We have an adjective:" +dump_value(adjective));
+    /* strip invalid choices from the matches list */
+    for( i = 0; i \< sizeof( matches ); i++ )
+      if( !arr_to_set( Get( matches[i], "details:"+NRefDetail(matches[i])+":adjectives" ))[adjective] )
+        matches[i] = nil;
+
+    matches -= (\{ nil \});
+
+    /* strip invalid choices from the inventories list */
+    for( i = 0; i \< sizeof( inv_matches ); i++ ) \{
+EmitTo(\$actor, "Checking "+dump_value(Get(inv_matches[i][0], inv_matches[i][1])));
+      if(sizeof(Get(inv_matches[i][0], inv_matches[i][1])) \> 4) \{
+EmitTo(\$actor, "Found an adjective");
+        /* this item has an adjective listed. Check it matches */
+        if(!member(adjective, Arr(Get(inv_matches[i][0], inv_matches[i][1])[5]))) \{
+EmitTo(\$actor, "Adjective doesn't match");
+          /* this item has an adjective that doesn't match */
+          inv_matches[i] = nil;
+      \} else \{
+EmitTo(\$actor, "no adjectives");
+        /* this item doesn't have any adjectives */
+        inv_matches[i] = nil;
+      \}
+    \}
+    inv_matches -= (\{ nil \});
+
+  \}
+
+EmitTo(\$actor, "Now we have "+dump_value(inv_matches));
+
+  /* if we still have more than one choice */
+
+  if( sizeof( matches ) + sizeof( inv_matches ) \> 1 )
+    /* pick one */
+    /* give inventory lists priority */
+    if(sizeof(inv_matches)) \{
+      inv_matches = (\{ inv_matches[random( sizeof( inv_matches ))] \});
+      matches = (\{ \});
+    \} else \{
+      matches = (\{ matches[random( sizeof( matches ))] \});
+      inv_matches = (\{ \});
+    \}
+  \}
+
+  /* if we chose to use the presents list, sell or give the item */
+  if( sizeof( matches ))
+  \{
+    /*
+     * We have found a matching item for the \$actor.
+     * Let's check if it's got valid cost settings.
+     */
+    \$item = Spawn( matches[0] );
+
+    if( typeof( \$item."nip:item:cost" ) != T_INT )
+    \{
+      /*
+       * Nope. Let's say it's "out of stock", and additionally,
+       * if \$actor is a storyhost, give him advise on why.
+       */
+      EmitTo( \$actor, "Unfortunately, "+Describe(\$item)+" is currently out of stock." );
+      if( \$actor."udat:host" )
+        EmitTo( \$actor, "[\<StoryHost\> HINT]: This is because the item does not have a cost setting.\\nThe property for this setting is 'nip:item:cost'. However, set 'export:nip:item:cost' to ensure that all UrChildren get the property as well." );
+      Slay( \$item );
+      return FALSE;
+    \}
+
+    cost = \$item."nip:item:cost";
+
+    if( !cost )
+    \{
+      /*
+       * This item is free.
+       */
+      \$spam = this."npc:spam:presents";
+      if( \$spam \&\&
+          \$spam[\$actor] \&\&
+          \$spam[\$actor] + 30 \> time() ) \{
+        EmitTo( \$actor, "You just asked "+Describe( this )+" for something. Please ask again later." );
+        Slay( \$item );
+        return FALSE;
+      \}
+      this."npc:spam:presents" = \$spam ? \$spam + ([ \$actor : time() ]) : ([ \$actor : time() ]);
+
+      EmitIn( this."base:environment", Describe( this ) + " gives " + Describe( \$actor ) + " " + Describe( \$item ) + ".", \$actor );
+      EmitTo( \$actor, Describe( this ) + " gives you " + Describe( \$item ) + "." );
+      \$item."base:environment" = \$actor;
+      return FALSE;
+    \}
+
+    /*
+     * There is a 'cost' value. Good! Let's see if
+     * \$actor has the proper amount of cash.
+     */
+    if( ::core_trading_query_assets(\$CDO: CDO, \$query: cost))
+    \{
+      /*
+       * The actor has enough cash to pay for this item.
+       * Grand! Let's offer it to him and set a temp-hook
+       * in the object we sell for a react. We hold it for 60
+       * seconds before we slay it and consider the trade aborted.
+       * Additionally, we announce the price to actor.
+       */
+      \$item."merry:inherit:react:take" = FindMerry( this, "react", "take" );
+      \$item."base:environment" = this;
+      \$item."nip:item:cdo" = CDO;
+
+      Act( this, "offer", \$who: \$actor, \$what: (\{ \$item \}) );
+
+      message = CDO."cash:announce-cost";
+      if( !message )
+        message = "This will cost you \$(prefix)\$(cost)\$(suffix).";
+
+      message = replace_strings( message, "\$(prefix)", Str(\$option."cash:prefix"), "\$(suffix)", Str(\$option."cash:suffix"), "\$(cost)", ::core_clean_currency(\$value: cost) );
+      EmitTo( \$actor, message );
+
+      \$delay(60, FALSE, "78bb");
+      if( \$item \&\&
+          \$item."base:environment" == this )
+        Slay(\$item);
+    \} else \{
+      /*
+       * Not enough cash.
+       */
+      message = \$option."cash:announce-shortage";
+      if( !message )
+        message = CDO."cash:announce-shortage";
+      if( !message )
+        message = "You do not have enough \$(name) for \$(item).";
+      message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+      EmitTo( \$actor, message );
+      Slay(\$item);
+    \}
+
+    return FALSE;
+  \} else if( sizeof( inv_matches )) \{
+
+    /* if we chose to use the advanced trading inventory list, sell or give the item */
+
+    /*
+     * We have found a matching item for the \$actor.
+     * Let's check if it's got valid cost settings.
+     */
+    inv_matches = inv_matches[0];
+    cost = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inv_matches[0], \$item: inv_matches[1]);
+    /* spawn the item */
+    \$item = Spawn( Get(inv_matches[0], inv_matches[1])[2] );
+
+    /* set any special properties this item may have */
+    items = Get(inv_matches[0], "settings:"+inv_matches[1]+":properties");
+    if(items \&\& sizeof(items))\{
+      /* step through each of these properties, adding them to the array */
+      sz = sizeof(items)-1;
+      for(i=0;i\<sz;i=i+2)\{
+        Set(\$item, items[i], items[i+1]);
+      \}
+    \}
+
+    /* if there is a limited quantity of the item, record that this item is unavailable */
+    if(Get(inv_matches[0], inv_matches[1])[1] \> 0) \{
+      /* reduce the quantity of this item available */
+      \$tmp = Get(inv_matches[0], inv_matches[1]);
+      \$tmp[1] = \$tmp[1]-1;
+      Set(inv_matches[0], inv_matches[1], \$tmp);
+      /* set a holding property, for bookkeeping */
+      \$holding = (\{ inv_matches[0], inv_matches[1] \});
+      if(Get(inv_matches[0], "holding:"+inv_matches[1])) \{
+        Set(inv_matches[0], "holding:"+inv_matches[1], Get(inv_matches[0], "holding:"+inv_matches[1])+1);
+      \} else \{
+        Set(inv_matches[0], "holding:"+inv_matches[1], 1);
+      \}
+    \}
+
+    if( !cost )
+    \{
+      /*
+       * This item is free.
+       */
+      \$spam = this."npc:spam:presents";
+      if( \$spam \&\&
+          \$spam[\$actor] \&\&
+          \$spam[\$actor] + 30 \> time() ) \{
+        EmitTo( \$actor, "You just asked "+Describe( this )+" for something. Please ask again later." );
+        Slay( \$item );
+        if(\$holding) \{
+          /* increase the number of items remaining */
+          if( \$item \&\& \$item."base:environment" == this ) \{
+            \$tmp = Get(\$holding[0], \$holding[1]);
+            \$tmp[1] = \$tmp[1]+1;
+            Set(\$holding[0], \$holding[1], \$tmp);
+          \}
+          /* remove holding marker */
+          if(Get(\$holding[0], \$holding[1])) \{
+            \$tmp = Get(\$holding[0], "holding:"+\$holding[1]);
+            \$tmp--;
+            if(\$tmp) \{
+              Set(\$holding[0], "holding:"+\$holding[1], \$tmp);
+            \} else \{
+              Set(\$holding[0], "holding:"+\$holding[1], nil);
+            \}
+          \}
+        \}
+
+        return FALSE;
+      \}
+      this."npc:spam:presents" = \$spam ? \$spam + ([ \$actor : time() ]) : ([ \$actor : time() ]);
+
+      EmitIn( this."base:environment", Describe( this ) + " gives " + Describe( \$actor ) + " " + Describe( \$item ) + ".", \$actor );
+      EmitTo( \$actor, Describe( this ) + " gives you " + Describe( \$item ) + "." );
+      \$item."base:environment" = \$actor;
+      if(\$holding) \{
+        /* remove holding marker */
+        if(Get(\$holding[0], \$holding[1])) \{
+          \$tmp = Get(\$holding[0], "holding:"+\$holding[1]);
+          \$tmp--;
+          if(\$tmp) \{
+            Set(\$holding[0], "holding:"+\$holding[1], \$tmp);
+          \} else \{
+            Set(\$holding[0], "holding:"+\$holding[1], nil);
+          \}
+        \}
+      \}
+      return FALSE;
+    \}
+
+    /*
+     * There is a 'cost' value. Good! Let's see if
+     * \$actor has the proper amount of cash.
+     */
+    if( ::core_trading_query_assets(\$CDO: CDO, \$query: cost))
+    \{
+      /*
+       * The actor has enough cash to pay for this item.
+       * Grand! Let's offer it to him and set a temp-hook
+       * in the object we sell for a react. We hold it for 60
+       * seconds before we slay it and consider the trade aborted.
+       * Additionally, we announce the price to actor.
+       */
+      \$item."merry:inherit:react:take" = FindMerry( this, "react", "take" );
+      \$item."base:environment" = this;
+      \$item."nip:item:cdo" = CDO;
+
+      Act( this, "offer", \$who: \$actor, \$what: (\{ \$item \}) );
+
+      message = CDO."cash:announce-cost";
+      if( !message )
+        message = "This will cost you \$(prefix)\$(cost)\$(suffix).";
+
+      message = replace_strings( message, "\$(prefix)", Str(\$option."cash:prefix"), "\$(suffix)", Str(\$option."cash:suffix"), "\$(cost)", ::core_clean_currency(\$value: cost) );
+      EmitTo( \$actor, message );
+
+      \$delay(60, FALSE, "7b6d");
+
+      if(\$holding) \{
+        /* increase the number of items remaining */
+        if( \$item \&\& \$item."base:environment" == this ) \{
+          \$tmp = Get(\$holding[0], \$holding[1]);
+          \$tmp[1] = \$tmp[1]+1;
+          Set(\$holding[0], \$holding[1], \$tmp);
+        \}
+        /* remove holding marker */
+        if(Get(\$holding[0], \$holding[1])) \{
+          \$tmp = Get(\$holding[0], "holding:"+\$holding[1]);
+          \$tmp--;
+          if(\$tmp) \{
+            Set(\$holding[0], "holding:"+\$holding[1], \$tmp);
+          \} else \{
+            Set(\$holding[0], "holding:"+\$holding[1], nil);
+          \}
+        \}
+      \}
+
+      if( \$item \&\&
+          \$item."base:environment" == this )
+        Slay(\$item);
+
+    \} else \{
+      /*
+       * Not enough cash.
+       */
+      message = \$option."cash:announce-shortage";
+      if( !message )
+        message = CDO."cash:announce-shortage";
+      if( !message )
+        message = "You do not have enough \$(name) for \$(item).";
+      message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+      EmitTo( \$actor, message );
+      Slay(\$item);
+      if(\$holding) \{
+        /* increase the number of items remaining */
+        \$tmp = Get(\$holding[0], \$holding[1]);
+        \$tmp[1] = \$tmp[1]+1;
+        Set(\$holding[0], \$holding[1], \$tmp);
+        /* remove holding marker */
+        if(Get(\$holding[0], \$holding[1])) \{
+          \$tmp = Get(\$holding[0], "holding:"+\$holding[1]);
+          \$tmp--;
+          if(\$tmp) \{
+            Set(\$holding[0], "holding:"+\$holding[1], \$tmp);
+          \} else \{
+            Set(\$holding[0], "holding:"+\$holding[1], nil);
+          \}
+        \}
+      \}
+    \}
+
+    return FALSE;
+  \}
+
+\}
+
+/*
+ * Found nothing so far. See if we have a price menu.
+ * Maybe that's what's being requested.
+ */
+if( this."nip:trait:trading:list" )
+\{
+  /*
+   * An object is set, at least.
+   */
+  object o;
+  string prime;
+
+  o = this."nip:trait:trading:list";
+  prime = NRefDetail( o );
+
+  if(( !adjective \|\|
+       Get( o, "details:" + prime + ":adjective:" + adjective )) \&\&
+      Get( o, "details:" + prime + ":sname:" + word ))
+  \{
+    /*
+     * Seems they asked for a menu!
+     * Create one.
+     */
+    string detail, prefix, suffix;
+    object *list;
+
+    \$option = CDO."cash:options"[0];
+    prefix  = \$option."cash:prefix";
+    suffix  = \$option."cash:suffix";
+    o       = Spawn( o );
+    detail  = this."nip:trait:trading:detail";
+    if( !detail )
+      detail = prime;
+
+    /*
+     * Let's write the head (if any).
+     */
+    o."nip:item:head" = this."nip:trait:trading:head";
+
+    /*
+     * Print menu.
+     */
+    list = map_indices( objects );
+    sz   = sizeof( list );
+
+    \$content = (\{ (\{ "item", "price" \}) \});
+
+    for( i = 0; i \< sz; i++ )
+      \$content += (\{ (\{ Describe( list[i] ), (prefix ? prefix : "") + ::core_clean_currency(\$value: list[i]."nip:item:cost") + (suffix ? " " + suffix : "") \}) \});
+
+    o."nip:item:list" = ascii::table(\$ignoreseparator: "top bottom left right");
+
+    /*
+     * Write the foot, if any.
+     */
+    o."nip:item:foot" = this."nip:trait:trading:foot";
+
+    /*
+     * Set the inherit replacement for read.
+     */
+    Set( o, "merry:inherit:react:read-what", \$\{MOVED:20080918-114107:Lib:NIP:lib:trading\} );
+
+    /*
+     * Move into trade NPC's environment and offer to actor.
+     */
+    o."base:environment" = this;
+    Act( this, "offer", \$who: \$actor, \$what: (\{ o \}) );
+    \$delay(60, FALSE, "4309");
+    if( o \&\&
+        o."base:environment" == this )
+      Slay( o );
+    return FALSE;
+  \}
+\}
+
+/* Found nothing. */
+EmitTo( \$actor, Describe( this ) + " doesn't have that. Try 'ask "+Describe( this ) + "'." );
+return FALSE;
+
+
+/* -------------------------------------------------------------------------- */
+
+/*
+ * D=This script is part of the core of the ask \<npc\> for \<item\> functionality.
+ *
+ * This script is called when no item is specified. A message stating which items the NPC can hand out will be displayed.
+ */
+
+objects = this."nip:trait:present:objects";
+
+/* Do we have anything to offer? */
+
+/* check the normal trading list */
+if (!objects \|\| !map_sizeof(objects)) \{
+        /* Nope. */
+        objects = ([ ]);
+\}
+
+/* gather a list of items available so far */
+ind = map_indices(objects);
+items = (\{ \});
+for (i = 0; i \< sizeof(ind); i++)
+        items \|= (\{ Describe( ind[i] ) \});
+
+/* now check the advanced trading lists */
+inventories = Arr(this."nip:trait:trading-advanced:inventories");
+if(inventories \&\& sizeof(inventories)) \{
+  /* add items to the list */
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if the actor is allowed this item */
+      if(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inventories[i], \$item: inv_ind[j]) != nil)\{
+        items \|= (\{ Str(Arr(Get(inventories[i], inv_ind[j]))[0]) \});
+      \}
+    \}
+  \}
+\}
+
+/* Do we have anything to offer? */
+if (!sizeof(items)) \{
+        /* Nope. */
+        return TRUE;
+\}
+
+list = "";
+and = "";
+for (i = 0; i \< sizeof(items); i++) \{
+        list += and + items[i];
+        and = i+2 \< sizeof( items ) ? ", " : " or ";
+\}
+
+EmitTo(\$actor, Describe(this, nil, nil, STYLE_DEFINITE) + " can give you " + list + ".");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="dependency:needs">
+         (\{ \<MOVED:20080918-114107:Lib:NIP:lib:trading\> \})
+      </Core:Property>
+      <Core:Property property="done:message">
+         "The advanced trading has been added. TWiki shall have glorious details about this library. Azrael will write them. He promised."
+      </Core:Property>
+      <Core:Property property="init:merry">
+         (\{ "react:take", "lib:handler:ask", "lib:handler:ask-for", "react-post:offer-who" \})
+      </Core:Property>
+      <Core:Property property="merry:lib:check_price">
+         X[M] /* checks if actor is allowed to buy this item */
+int i, ix, j, jx, valid;
+int minprice, maxprice, minstock, maxstock, stock;
+string *pricegroups;
+
+/* check if there is a stock change */
+if(!\$stockchange) \$stockchange = 0;
+
+/* check if this is new-advanced trading or old-advanced trading */
+/* hopefully remove this double-checking when things are better */
+\$az = \$\{Chatters:AE:az:azrael\};
+if(typeof(Get(\$inventory, \$item)) == T_MAPPING) \{
+/* new-advanced trading */
+
+EmitTo(\$az, "new trading");
+EmitTo(\$az, dump_value(\$item));
+
+
+
+
+\}
+/* old-advanced trading */
+EmitTo(\$az, "old trading");
+EmitTo(\$az, dump_value(\$item));
+
+/* check if any items are in stock */
+if(Get(\$inventory, \$item)[1] \<= 0 \&\& \$stockchange == 0)
+  /* none in stock */
+  return nil;
+
+/* check if item should be hidden */
+if(\$stocklisting \&\& Get(\$inventory, "settings:"+\$item+":hidden"))
+  return nil;
+
+/* check the denied list */
+\$settings = Arr(Get(\$inventory, "settings:"+\$item+":denied"));
+if(\$settings \&\& sizeof(\$settings) \>= 2) \{
+  /* loop through all the "pairs" */
+  ix = sizeof(\$settings);
+  for(i=0;i\<ix-1;i=i+2)\{
+    \$value = Get(\$actor, \$settings[i]);
+    if(\$value) \{
+      /* are we comparing against a number, or something else? */
+      if(typeof(\$settings[i+1]) == T_INT) \{
+        /* it's a number. Deny if our property matches this number, or is higher, or isn't a number */
+        if(typeof(\$value) != T_INT \&\& typeof(\$value) != T_FLOAT) \{
+          /* not a number */
+          return nil;
+        \} else \{
+          /* if the value is less than or equal the number */
+          if(Flt(\$value) \<= Flt(\$settings[i+1]))
+            return nil;
+        \}
+      \} else \{
+        /* check these don't match */
+        if(member(\$value, Arr(\$settings[i+1])))
+          return nil;
+      \}
+    \}
+  \}
+\}
+
+/* check the base price */
+\$listing = Get(\$inventory, \$item);
+stock = Int(\$listing[1]);
+if(stock != -1) stock += \$stockchange;
+if(sizeof(\$listing) \>= 4) \{
+  /* inventory includes base price */
+  if(\$listing[3] == nil) \{
+    \$price = nil;
+  \} else \{
+    \$price = Int(\$listing[3]);
+  \}
+  /* if there is a fluctuating price, calculate it */
+  if(stock != -1 \&\& sizeof(\$listing) \>= 8) \{
+    minprice = Int(\$listing[6]);
+    maxprice = Int(\$listing[7]);
+    if(sizeof(\$listing) \>= 10) \{
+      minstock = Int(\$listing[8]);
+      maxstock = Int(\$listing[9]);
+    \} else \{
+      minstock = 1;
+      maxstock = 20;
+    \}
+    if(stock \<= minstock) \{
+      \$price = maxprice;
+    \} else if (stock \>= maxstock) \{
+      \$price = minprice;
+    \} else \{
+      \$price=Int( ( (1.0-(Flt(stock-minstock)/Flt(maxstock-minstock))) * Flt(maxprice-minprice) + Flt(minprice) )/100.0) * 100;
+    \}
+  \}
+\} else \{
+  /* object includes base price (and may be nil */
+  \$price = Int(Get(\$inventory, \$item)[2]."nip:item:cost");
+\}
+
+/* check the pricegroups */
+pricegroups = map_indices(prefixed_map(\$inventory."*", "settings:"+\$item+":pricegroup"));
+/* loop through the pricegroups, checking if we should change the price */
+jx = sizeof(pricegroups);
+for(j=0;j\<jx;j++) \{
+  \$settings = Arr(Get(\$inventory, "settings:"+\$item+":pricegroup:guilds"));
+  if(\$settings \&\& sizeof(\$settings) \>= 2) \{
+    /* loop through all the "pairs" */
+    valid = TRUE;
+    ix = sizeof(\$settings);
+    for(i=0;i\<ix-2;i=i+2)\{
+      \$value = Get(\$actor, \$settings[i]);
+      if(\$value) \{
+        /* are we comparing against a number, or something else? */
+        if(typeof(\$settings[i+1]) == T_INT) \{
+          /* it's a number. Deny if our property is less than this number */
+          if(typeof(\$value) != T_INT \&\& typeof(\$value) != T_FLOAT) \{
+            /* not a number */
+            valid = FALSE;
+            break;
+          \} else \{
+            /* if the value is less than or equal the number */
+            if(Flt(\$value) \< Flt(\$settings[i+1]))
+              valid = FALSE;
+              break;
+          \}
+        \} else \{
+          /* check these don't match */
+          if(!member(\$value, Arr(\$settings[i+1])))
+            valid = FALSE;
+            break;
+        \}
+      \} else \{
+        /* \$actor doesn't have the required property */
+        valid = FALSE;
+        break;
+      \}
+    \}
+    if(valid) \{
+      /*return Int(\$settings[sizeof(\$settings)-1]);*/
+      \$price = Int(\$settings[sizeof(\$settings)-1]);
+      /* if there is a fluctuating price, calculate it */
+      if(stock != -1 \&\& sizeof(\$settings) \>= 5) \{
+        minprice = Int(\$settings[3]);
+        maxprice = Int(\$settings[4]);
+        if(sizeof(\$settings) \>= 7) \{
+          minstock = Int(\$settings[5]);
+          maxstock = Int(\$settings[6]);
+        \} else \{
+          minstock = 1;
+          maxstock = 20;
+        \}
+        if(stock \<= minstock) \{
+          \$price = maxprice;
+        \} else if (stock \>= maxstock) \{
+          \$price = minprice;
+        \} else \{
+          \$price=Int( ( (1.0-(Flt(stock-minstock)/Flt(maxstock-minstock))) * Flt(maxprice-minprice) + Flt(minprice) )/100.0) * 100;
+        \}
+      \}
+      return \$price;
+    \}
+  \}
+\}
+return \$price;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_price-bak">
+         X[M] /* checks if actor is allowed to buy this item */
+int i, ix, j, jx, valid;
+int minprice, maxprice, minstock, maxstock, stock;
+string *pricegroups;
+
+/* check if there is a stock change */
+if(!\$stockchange) \$stockchange = 0;
+
+/* check if any items are in stock */
+if(Get(\$inventory, \$item)[1] == 0 \&\& \$stockchange == 0)
+  /* none in stock */
+  return nil;
+
+/* check if item should be hidden */
+if(\$stocklisting \&\& Get(\$inventory, "settings:"+\$item+":hidden"))
+  return nil;
+
+/* check the denied list */
+\$settings = Arr(Get(\$inventory, "settings:"+\$item+":denied"));
+if(\$settings \&\& sizeof(\$settings) \>= 2) \{
+  /* loop through all the "pairs" */
+  ix = sizeof(\$settings);
+  for(i=0;i\<ix-1;i=i+2)\{
+    \$value = Get(\$actor, \$settings[i]);
+    if(\$value) \{
+      /* are we comparing against a number, or something else? */
+      if(typeof(\$settings[i+1]) == T_INT) \{
+        /* it's a number. Deny if our property matches this number, or is higher, or isn't a number */
+        if(typeof(\$value) != T_INT \&\& typeof(\$value) != T_FLOAT) \{
+          /* not a number */
+          return nil;
+        \} else \{
+          /* if the value is less than or equal the number */
+          if(Flt(\$value) \<= Flt(\$settings[i+1]))
+            return nil;
+        \}
+      \} else \{
+        /* check these don't match */
+        if(member(\$value, Arr(\$settings[i+1])))
+          return nil;
+      \}
+    \}
+  \}
+\}
+
+/* check the base price */
+\$listing = Get(\$inventory, \$item);
+stock = Int(\$listing[1]);
+if(stock != -1) stock += \$stockchange;
+if(sizeof(\$listing) \>= 4) \{
+  /* inventory includes base price */
+  if(\$listing[3] == nil) \{
+    \$price = nil;
+  \} else \{
+    \$price = Int(\$listing[3]);
+  \}
+  /* if there is a fluctuating price, calculate it */
+  if(stock != -1 \&\& sizeof(\$listing) \>= 8) \{
+    minprice = Int(\$listing[6]);
+    maxprice = Int(\$listing[7]);
+    if(sizeof(\$listing) \>= 10) \{
+      minstock = Int(\$listing[8]);
+      maxstock = Int(\$listing[9]);
+    \} else \{
+      minstock = 1;
+      maxstock = 20;
+    \}
+    if(stock \<= minstock) \{
+      \$price = maxprice;
+    \} else if (stock \>= maxstock) \{
+      \$price = minprice;
+    \} else \{
+      \$price=Int( ( (1.0-(Flt(stock-minstock)/Flt(maxstock-minstock))) * Flt(maxprice-minprice) + Flt(minprice) )/100.0) * 100;
+    \}
+  \}
+\} else \{
+  /* object includes base price (and may be nil */
+  \$price = Int(Get(\$inventory, \$item)[2]."nip:item:cost");
+\}
+
+/* check the pricegroups */
+pricegroups = map_indices(prefixed_map(\$inventory."*", "settings:"+\$item+":pricegroup"));
+/* loop through the pricegroups, checking if we should change the price */
+jx = sizeof(pricegroups);
+for(j=0;j\<jx;j++) \{
+  \$settings = Arr(Get(\$inventory, "settings:"+\$item+":pricegroup:guilds"));
+  if(\$settings \&\& sizeof(\$settings) \>= 2) \{
+    /* loop through all the "pairs" */
+    valid = TRUE;
+    ix = sizeof(\$settings);
+    for(i=0;i\<ix-2;i=i+2)\{
+      \$value = Get(\$actor, \$settings[i]);
+      if(\$value) \{
+        /* are we comparing against a number, or something else? */
+        if(typeof(\$settings[i+1]) == T_INT) \{
+          /* it's a number. Deny if our property is less than this number */
+          if(typeof(\$value) != T_INT \&\& typeof(\$value) != T_FLOAT) \{
+            /* not a number */
+            valid = FALSE;
+            break;
+          \} else \{
+            /* if the value is less than or equal the number */
+            if(Flt(\$value) \< Flt(\$settings[i+1]))
+              valid = FALSE;
+              break;
+          \}
+        \} else \{
+          /* check these don't match */
+          if(!member(\$value, Arr(\$settings[i+1])))
+            valid = FALSE;
+            break;
+        \}
+      \} else \{
+        /* \$actor doesn't have the required property */
+        valid = FALSE;
+        break;
+      \}
+    \}
+    if(valid) \{
+      /*return Int(\$settings[sizeof(\$settings)-1]);*/
+      \$price = Int(\$settings[sizeof(\$settings)-1]);
+      /* if there is a fluctuating price, calculate it */
+      if(stock != -1 \&\& sizeof(\$settings) \>= 5) \{
+        minprice = Int(\$settings[3]);
+        maxprice = Int(\$settings[4]);
+        if(sizeof(\$settings) \>= 7) \{
+          minstock = Int(\$settings[5]);
+          maxstock = Int(\$settings[6]);
+        \} else \{
+          minstock = 1;
+          maxstock = 20;
+        \}
+        if(stock \<= minstock) \{
+          \$price = maxprice;
+        \} else if (stock \>= maxstock) \{
+          \$price = minprice;
+        \} else \{
+          \$price=Int( ( (1.0-(Flt(stock-minstock)/Flt(maxstock-minstock))) * Flt(maxprice-minprice) + Flt(minprice) )/100.0) * 100;
+        \}
+      \}
+      return \$price;
+    \}
+  \}
+\}
+return \$price;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_price_for_offer">
+         X[M] /*
+  D=Code to allow advanced traders to calculate the cost they will offer to players
+
+  The trader needs to have advanced trading lists.
+*/
+
+int price_tmp, denied, item_count, holding;
+float multiplier;
+mixed *properties;
+
+
+mixed objects;
+string word, adjective, message;
+object *ind;
+/*object *matches;*/
+int cost;
+
+/* and for the lower code */
+/*mapping *inv_matches;*/
+
+
+/* NEW CODE HERE */
+int price;
+mapping additions;
+string *inv_ind;
+
+int found, i, sz, j, jx, k, l, lx;
+mixed *matches, bestmatch;
+mapping finalmatches;
+mixed *wanted;
+
+if(!\$what) return nil;
+if(!\$inventories) return nil;
+
+/* CHECK FOR NEW TRADING */
+\$az = \$\{Chatters:AE:az:azrael\};
+if(TRUE) \{
+EmitTo(\$az, "New code in check_price_for_offer");
+/* CHECK FOR NEW TRADING DONE */
+
+/* Step through the advanced trading list inventories and see if we find any matches we want */
+matches = (\{ \}); /* the possible sales that we've found */
+
+if(\$inventories \&\& sizeof(\$inventories)) \{
+  /* add items to the list of things the merchant wants */
+  sz = sizeof(\$inventories);
+  for(i=0;i\<sz;i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(\$inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if this item matches */
+      \$info = Get(\$inventories[i], inv_ind[j]);
+      /* CHECK FOR NEW TRADING */
+      if(typeof(\$info) == T_MAPPING) \{
+      /* using new trading */
+      EmitTo(\$az, "Checking "+dump_value(inv_ind[j]));
+      /* CHECK FOR NEW TRADING DONE */
+
+      found = FALSE;
+      for(k=0;!found \&\& k\<sizeof(\$what);k++)\{
+        if(!\$info["object"] \|\| \$what[k]."core:ur:parent" == \$info["object"]) \{
+          /* object parent matches */
+          found = TRUE;
+          /* are there any settings that need to match? */
+          if(\$info["properties"]) \{
+            lx = sizeof(\$info["properties"]);
+            for(l=0;found\&\&l\<lx;l++) \{
+              if(!member(Get(\$what[k], \$info["properties"][l][0]), \$info["properties"][l]))
+                found = FALSE;
+            \}
+          \}
+          /* add to the list of potentials */
+          if(found) \{
+            EmitTo(\$az, "Match found: "+dump_value(\$info));
+            \$info = copy(\$info);
+            \$info["generated:obj"] = \$inventories[i];
+            \$info["generated:name"] = inv_ind[j];
+            matches \|= (\{ \$info \});
+            EmitTo(\$az, "Matches so far: "+dump_value(matches));
+          \}
+        \}
+      \}
+      
+      /* CHECK FOR NEW TRADING */
+      \}
+      /* CHECK FOR NEW TRADING DONE */
+    \}
+  \}
+\}
+
+/* did we find any potential matches? */
+price = 0;
+wanted = (\{ \});
+finalmatches = ([ ]);
+
+if(!sizeof(matches)) return (\{ price, wanted, additions \});
+
+/* for each item, go through our list of matches, and find the highest priority match */
+/* (highest priority as in lowest number. So priority 1 is better than priority 3) */
+jx = sizeof(matches);
+for(i=0;!found \&\& i\<sizeof(\$what);i++)\{
+  bestmatch = nil;
+  for(j=0;j\<jx;j++) \{
+    found = FALSE;
+    \$info = matches[j];
+    if(!\$info["object"] \|\| \$what[i]."core:ur:parent" == \$info["object"]) \{
+      /* object parent matches */
+      found = TRUE;
+      /* are there any settings that need to match? */
+      if(\$info["properties"]) \{
+        lx = sizeof(\$info["properties"]);
+        for(l=0;found\&\&l\<lx;l++) \{
+          if(!member(Get(\$what[i], \$info["properties"][l][0]), \$info["properties"][l]))
+            found = FALSE;
+        \}
+      \}
+    \}
+    if(found) \{
+      /* do we already have a match? */
+      /* is this a better priority match than we had? */
+      if(bestmatch) \{
+        if(!bestmatch["priority"]) \{
+          if(\$info["priority"] \&\& \$info["priority"] \<= 100)
+            bestmatch = \$info;
+        \} else \{
+          if((\$info["priority"] \&\& \$info["priority"] \< bestmatch["priority"])
+          \|\| (!\$info["priority"] \&\& bestmatch["priority"] \> 100))
+            bestmatch = \$info;
+        \}
+      \} else \{
+        bestmatch = \$info;
+      \}
+    \}
+  \}
+  if(bestmatch) \{
+    wanted \|= (\{ \$what[i] \});
+
+  \}
+\}
+
+return (\{ price, wanted, additions \});
+/* CHECK FOR NEW TRADING */
+\}
+/* CHECK FOR NEW TRADING DONE */
+
+/* Step through the advanced trading list inventories and see if we find any matches we want */
+price = 0;
+wanted = (\{ \});
+additions = ([ ]);
+\$inventories;
+/*inv_matches = (\{ \});*/
+if(\$inventories \&\& sizeof(\$inventories)) \{
+  /* add items to the list */
+  sz = sizeof(\$inventories);
+  for(i=0;i\<sz;i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(\$inventories[i]."*", "buying:tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if this item matches */
+      if(Get(\$inventories[i], inv_ind[j][7..strlen(inv_ind[j])-1])) \{
+        multiplier = Arr(Get(\$inventories[i], inv_ind[j]))[0];
+        k = 0;
+        if(\$actor."trading:tradingroll") \{
+          if(\$actor."trading:tradingroll"[1] + 60*60*8 \> time())
+            k = \$actor."trading:tradingroll"[0];
+        \}
+        if(k==0) \{
+          k = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ Int(\$actor."trait:mind"), \$actor."skill:social:trading", \$actor."career:social:trading" \}));
+          \$actor."trading:tradingroll" = (\{ k, time() \});
+        \}
+        multiplier += ((Flt(k)*0.1)-0.5);
+        if(multiplier \< 0.1) multiplier = 0.1;
+        if(multiplier \> 0.9) multiplier = 0.9;
+        /* compare the object names */
+        if(Get(\$inventories[i], "holding:"+inv_ind[j][7..strlen(inv_ind[j])-1])) \{
+          item_count = Get(\$inventories[i], "holding:"+inv_ind[j][7..strlen(inv_ind[j])-1]);
+        \} else \{
+          item_count = 0;
+        \}
+        for(k=0;k\<sizeof(\$what);k++)\{
+          if(\$what[k]."core:ur:parent" == Get(\$inventories[i], inv_ind[j][7..strlen(inv_ind[j])-1])[2]) \{
+            /* object parent matches */
+            /* are there any settings that need to match? */
+            denied = FALSE;
+            properties = Get(\$inventories[i], "settings:"+inv_ind[j][7..strlen(inv_ind[j])-1]+":properties");
+            /* EXTENSION - check the denied list */
+            if(properties)\{
+              /* check that the properties match */
+              lx = sizeof(properties);
+              for(l=0;!denied \&\& l\<lx;l=l+2) \{
+                if(Get(\$what[k], properties[l]) != properties[l+1])
+                  denied = TRUE;
+              \}
+            \}
+            if(!denied) \{
+              /* add this item to the list */
+              item_count++;
+              /*price += Int(Flt(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: \$inventories[i], \$item: inv_ind[j][7..strlen(inv_ind[j])-1], \$stockchange: item_count))*multiplier);*/
+              price_tmp = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: \$inventories[i], \$item: inv_ind[j][7..strlen(inv_ind[j])-1], \$stockchange: item_count);
+              if(price_tmp \> 0) \{
+                price_tmp = Int(Flt(price_tmp)*multiplier);
+                /* do we multiply the multiplier by anything else? */
+                for(l=1;l\<sizeof(Arr(Get(\$inventories[i], inv_ind[j])));l++) \{
+                  price_tmp = Int(Flt(price_tmp) * Flt(Get(\$what[k], Arr(Get(\$inventories[i], inv_ind[j]))[l]))*0.1);
+                \}
+                if(price_tmp == 0) price_tmp = 1;
+              \}
+              price += price_tmp;
+              wanted += (\{ (\{ \$what[k], inv_ind[j][7..strlen(inv_ind[j])-1] \}) \});
+              if(additions[inv_ind[j][7..strlen(inv_ind[j])-1]]) \{
+                additions[inv_ind[j][7..strlen(inv_ind[j])-1]]++;
+              \} else \{
+                additions[inv_ind[j][7..strlen(inv_ind[j])-1]] = 1;
+              \}
+              \$what -= (\{ \$what[k] \});
+              k--;
+            \}
+          \}
+        \}
+      \}
+    \}
+  \}
+\}
+
+/*EmitTo(\$actor, "wanted: "+dump_value(wanted));
+EmitTo(\$actor, "multiplier: "+dump_value(multiplier));
+EmitTo(\$actor, "final price: "+dump_value(price));*/
+
+return (\{ price, wanted, additions \});
+      </Core:Property>
+      <Core:Property property="merry:lib:check_price_for_offer-bak">
+         X[M] /*
+  D=Code to allow advanced traders to calculate the cost they will offer to players
+
+  The trader needs to have advanced trading lists.
+*/
+
+int price_tmp, denied, item_count, holding;
+float multiplier;
+mixed *properties;
+
+
+mixed objects;
+string word, adjective, message;
+object *ind;
+/*object *matches;*/
+int cost;
+
+/* and for the lower code */
+/*mapping *inv_matches;*/
+
+
+/* NEW CODE HERE */
+int price;
+mapping additions;
+string *inv_ind;
+
+int found, i, sz, j, jx, k, l, lx;
+mixed *matches, bestmatch;
+mapping finalmatches;
+mixed *wanted;
+
+if(!\$what) return nil;
+if(!\$inventories) return nil;
+
+/* CHECK FOR NEW TRADING */
+\$az = \$\{Chatters:AE:az:azrael\};
+if(TRUE) \{
+EmitTo(\$az, "New code in check_price_for_offer");
+/* CHECK FOR NEW TRADING DONE */
+
+/* Step through the advanced trading list inventories and see if we find any matches we want */
+matches = (\{ \}); /* the possible sales that we've found */
+
+if(\$inventories \&\& sizeof(\$inventories)) \{
+  /* add items to the list of things the merchant wants */
+  sz = sizeof(\$inventories);
+  for(i=0;i\<sz;i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(\$inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if this item matches */
+      \$info = Get(\$inventories[i], inv_ind[j]);
+      /* CHECK FOR NEW TRADING */
+      if(typeof(\$info) == T_MAPPING) \{
+      /* using new trading */
+      EmitTo(\$az, "Checking "+dump_value(inv_ind[j]));
+      /* CHECK FOR NEW TRADING DONE */
+
+      found = FALSE;
+      for(k=0;!found \&\& k\<sizeof(\$what);k++)\{
+        if(!\$info["object"] \|\| \$what[k]."core:ur:parent" == \$info["object"]) \{
+          /* object parent matches */
+          found = TRUE;
+          /* are there any settings that need to match? */
+          if(\$info["properties"]) \{
+            lx = sizeof(\$info["properties"]);
+            for(l=0;found\&\&l\<lx;l++) \{
+              if(!member(Get(\$what[k], \$info["properties"][l][0]), \$info["properties"][l]))
+                found = FALSE;
+            \}
+          \}
+          /* add to the list of potentials */
+          if(found) \{
+            \$info = copy(\$info);
+            \$info["generated:obj"] = \$inventories[i];
+            \$info["generated:name"] = inv_ind[j];
+            matches \|= (\{ \$info \});
+          \}
+        \}
+      \}
+      
+      /* CHECK FOR NEW TRADING */
+      \}
+      /* CHECK FOR NEW TRADING DONE */
+    \}
+  \}
+\}
+
+/* did we find any potential matches? */
+price = 0;
+wanted = (\{ \});
+finalmatches = ([ ]);
+
+if(!sizeof(matches)) return (\{ price, wanted, ([ ]) \});
+
+/* for each item, go through our list of matches, and find the highest priority match */
+/* (highest priority as in lowest number. So priority 1 is better than priority 3) */
+jx = sizeof(matches);
+for(i=0;i\<sizeof(\$what);i++)\{
+  bestmatch = nil;
+  EmitTo(\$az, "Now checking "+dump_value(\$what[i]));
+  for(j=0;j\<jx;j++) \{
+    found = FALSE;
+    \$info = matches[j];
+    if(!\$info["object"] \|\| \$what[i]."core:ur:parent" == \$info["object"]) \{
+      /* object parent matches */
+      found = TRUE;
+      /* are there any settings that need to match? */
+      if(\$info["properties"]) \{
+        lx = sizeof(\$info["properties"]);
+        for(l=0;found\&\&l\<lx;l++) \{
+          if(!member(Get(\$what[i], \$info["properties"][l][0]), \$info["properties"][l]))
+            found = FALSE;
+        \}
+      \}
+    \}
+    if(found) \{
+      /* do we already have a match? */
+      /* is this a better priority match than we had? */
+      if(bestmatch) \{
+        if(!bestmatch["priority"]) \{
+          if(\$info["priority"] \&\& \$info["priority"] \<= 100)
+            bestmatch = \$info;
+        \} else \{
+          if((\$info["priority"] \&\& \$info["priority"] \< bestmatch["priority"])
+          \|\| (!\$info["priority"] \&\& bestmatch["priority"] \> 100))
+            bestmatch = \$info;
+        \}
+      \} else \{
+        bestmatch = \$info;
+      \}
+    \}
+  \}
+  if(bestmatch) \{
+    wanted \|= (\{ \$what[i] \});
+    EmitTo(\$az, dump_value(bestmatch));
+  \}
+\}
+
+EmitTo(\$actor, "DONE!");
+return (\{ 0, (\{ \}), ([ ]) \});
+
+return (\{ price, wanted, ([ ]) \});
+
+return (\{ price, wanted, additions \});
+/* CHECK FOR NEW TRADING */
+\}
+/* CHECK FOR NEW TRADING DONE */
+
+/* Step through the advanced trading list inventories and see if we find any matches we want */
+price = 0;
+wanted = (\{ \});
+additions = ([ ]);
+\$inventories;
+/*inv_matches = (\{ \});*/
+if(\$inventories \&\& sizeof(\$inventories)) \{
+  /* add items to the list */
+  sz = sizeof(\$inventories);
+  for(i=0;i\<sz;i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(\$inventories[i]."*", "buying:tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if this item matches */
+      if(Get(\$inventories[i], inv_ind[j][7..strlen(inv_ind[j])-1])) \{
+        multiplier = Arr(Get(\$inventories[i], inv_ind[j]))[0];
+        k = 0;
+        if(\$actor."trading:tradingroll") \{
+          if(\$actor."trading:tradingroll"[1] + 60*60*8 \> time())
+            k = \$actor."trading:tradingroll"[0];
+        \}
+        if(k==0) \{
+          k = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ Int(\$actor."trait:mind"), \$actor."skill:social:trading", \$actor."career:social:trading" \}));
+          \$actor."trading:tradingroll" = (\{ k, time() \});
+        \}
+        multiplier += ((Flt(k)*0.1)-0.5);
+        if(multiplier \< 0.1) multiplier = 0.1;
+        if(multiplier \> 0.9) multiplier = 0.9;
+        /* compare the object names */
+        if(Get(\$inventories[i], "holding:"+inv_ind[j][7..strlen(inv_ind[j])-1])) \{
+          item_count = Get(\$inventories[i], "holding:"+inv_ind[j][7..strlen(inv_ind[j])-1]);
+        \} else \{
+          item_count = 0;
+        \}
+        for(k=0;k\<sizeof(\$what);k++)\{
+          if(\$what[k]."core:ur:parent" == Get(\$inventories[i], inv_ind[j][7..strlen(inv_ind[j])-1])[2]) \{
+            /* object parent matches */
+            /* are there any settings that need to match? */
+            denied = FALSE;
+            properties = Get(\$inventories[i], "settings:"+inv_ind[j][7..strlen(inv_ind[j])-1]+":properties");
+            /* EXTENSION - check the denied list */
+            if(properties)\{
+              /* check that the properties match */
+              lx = sizeof(properties);
+              for(l=0;!denied \&\& l\<lx;l=l+2) \{
+                if(Get(\$what[k], properties[l]) != properties[l+1])
+                  denied = TRUE;
+              \}
+            \}
+            if(!denied) \{
+              /* add this item to the list */
+              item_count++;
+              /*price += Int(Flt(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: \$inventories[i], \$item: inv_ind[j][7..strlen(inv_ind[j])-1], \$stockchange: item_count))*multiplier);*/
+              price_tmp = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: \$inventories[i], \$item: inv_ind[j][7..strlen(inv_ind[j])-1], \$stockchange: item_count);
+              if(price_tmp \> 0) \{
+                price_tmp = Int(Flt(price_tmp)*multiplier);
+                /* do we multiply the multiplier by anything else? */
+                for(l=1;l\<sizeof(Arr(Get(\$inventories[i], inv_ind[j])));l++) \{
+                  price_tmp = Int(Flt(price_tmp) * Flt(Get(\$what[k], Arr(Get(\$inventories[i], inv_ind[j]))[l]))*0.1);
+                \}
+                if(price_tmp == 0) price_tmp = 1;
+              \}
+              price += price_tmp;
+              wanted += (\{ (\{ \$what[k], inv_ind[j][7..strlen(inv_ind[j])-1] \}) \});
+              if(additions[inv_ind[j][7..strlen(inv_ind[j])-1]]) \{
+                additions[inv_ind[j][7..strlen(inv_ind[j])-1]]++;
+              \} else \{
+                additions[inv_ind[j][7..strlen(inv_ind[j])-1]] = 1;
+              \}
+              \$what -= (\{ \$what[k] \});
+              k--;
+            \}
+          \}
+        \}
+      \}
+    \}
+  \}
+\}
+
+/*EmitTo(\$actor, "wanted: "+dump_value(wanted));
+EmitTo(\$actor, "multiplier: "+dump_value(multiplier));
+EmitTo(\$actor, "final price: "+dump_value(price));*/
+
+return (\{ price, wanted, additions \});
+      </Core:Property>
+      <Core:Property property="merry:lib:handler:ask">
+         X[M] /*
+ * D=This script is part of the core of the ask \<npc\> for \<item\> functionality.
+ *
+ * This script is called when no item is specified. A message stating which items the NPC can hand out will be displayed.
+ */
+mapping objects;
+object *inventories;
+string  list, and, *items, *inv_ind, output;
+object  *ind;
+int     denied, i, j, jx;
+
+objects = this."nip:trait:present:objects";
+
+/* Do we have anything to offer? */
+
+/* check the normal trading list */
+if (!objects \|\| !map_sizeof(objects)) \{
+        /* Nope. */
+        objects = ([ ]);
+\}
+
+/* gather a list of items available so far */
+ind = map_indices(objects);
+items = (\{ \});
+for (i = 0; i \< sizeof(ind); i++)
+        items \|= (\{ Describe( ind[i] ) \});
+
+/* now check the advanced trading lists */
+inventories = Arr(this."nip:trait:trading-advanced:inventories");
+if(inventories \&\& sizeof(inventories)) \{
+  /* add items to the list */
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if the actor is allowed this item */
+      if(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inventories[i], \$item: inv_ind[j], \$stocklisting: TRUE) != nil)\{
+        items \|= (\{ Str(Arr(Get(inventories[i], inv_ind[j]))[0]) \});
+      \}
+    \}
+  \}
+\}
+
+/* Do we have anything to offer? */
+output = "";
+if (sizeof(items)) \{
+  list = "";
+  and = "";
+  for (i = 0; i \< sizeof(items); i++) \{
+    list += and + items[i];
+    and = i+2 \< sizeof( items ) ? ", " : " or ";
+  \}
+
+  output = Describe(this, nil, nil, STYLE_DEFINITE) + " can give you " + list;
+
+\}
+
+/* will we buy anything? */
+items = (\{ \});
+if(inventories \&\& sizeof(inventories)) \{
+  /* add items to the list */
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* does this inventory have a buying list? */
+    if(inventories[i]."messages:buying:override")\{
+      items \|= (\{ inventories[i]."messages:buying:override" \});
+    \} else \{
+      if(inventories[i]."messages:buying")
+        items \|= (\{ inventories[i]."messages:buying" \});
+      /* add these items to our objects list */
+      inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+      jx = sizeof(inv_ind);
+      for(j=0;j\<jx;j++) \{
+        /* check if the actor can buy this item */
+        if(Get(inventories[i], "buying:"+inv_ind[j]) \&\& !Get(inventories[i], "buying:"+inv_ind[j]+":hidden"))\{
+          items \|= (\{ Str(Arr(Get(inventories[i], inv_ind[j]))[0]) \});
+        \}
+      \}
+    \}
+  \}
+\}
+
+/* Do we have anything to offer? */
+if (sizeof(items)) \{
+  if(output == "") \{
+    output += Describe(this, nil, nil, STYLE_DEFINITE) + " will buy ";
+  \} else \{
+    output += ", and will buy ";
+  \}
+
+  list = "";
+  and = "";
+  for (i = 0; i \< sizeof(items); i++) \{
+    list += and + items[i];
+    and = i+2 \< sizeof( items ) ? ", " : " or ";
+  \}
+  output += list;
+\}
+
+
+if(output != "") \{
+  output += ".";
+  EmitTo(\$actor, output);
+  return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:handler:ask-for">
+         X[M] /*
+
+  D=Replacement for the "presents" lib 'ask-for' handler, this script will take into account cost of item. The ability to hand out "free" things is lost, however, and a customized merge of this and the presents v. is required in order to implement such.
+  Contact me if you are in need of this. Currently, I see no requirement for it which is why I am not putting the feature in right away. kalle@marrach.skotos.net
+
+  This script will look for a few values in the object being offered. This object will _need_ to have these values set, otherwise the NPC will not be able to sell them:
+
+    nip:item:cost  (int) - the cost of this item.
+
+  If the property "nip:trait:trading:list" is set to an object, that object will be handed out to people by request, containing a price list.
+  Additionally, the property "nip:trait:trading:detail" may be set, if the detail which should be written upon is not the prime detail of the "nip:trait:trading:list" object.
+  The property "nip:trait:trading:head" can be set to some text that is appended before the price list.
+  The property "nip:trait:trading:foot" can be set to some text appended after the price list.
+
+*/
+
+mixed objects;
+string word, adjective, message;
+object *ind, *matches, CDO;
+int i, sz;
+int cost;
+
+/* and for the lower code */
+mixed *inv_matches;
+string adverb;
+object *inventories;
+string  list, and, *items, *inv_ind;
+int     denied, j, jx;
+
+objects = this."nip:trait:present:objects";
+CDO     = this."nip:trait:trading:object";
+
+/* Grab global properties from CDO. */
+\$hide_decimals = CDO."cash:hide-decimals";
+
+if( !CDO )
+\{
+  /*
+   * We don't have a Cash Data Object!
+   * Give the actor a lame "out of stock" message
+   * and, if they're SH enabled, a hint as to why.
+   */
+  EmitTo( \$actor, "Unfortunately, "+Describe(this)+" is currently out of stock on everything! Come back later." );
+  if( \$actor."udat:host" )
+    EmitTo( \$actor, "[\<StoryHost\> HINT]: This nipper doesn't have a cash data object. The property for this object is 'nip:trait:trading:object' and should point to an object set up accordingly. See Builder's TWiki for further information on this subject." );
+  return FALSE;
+\}
+
+
+/* Pick the LAST word from \$(for:words), as someone could be funny,
+   and type 'ask cook for a deliciously prepared cookie' but keep the
+   second last word in case we need to go into adjective details. */
+
+word = \$(for:words)[ sizeof( \$(for:words) )-1 ];
+
+if( sizeof( \$(for:words) ) \> 1 )
+  adjective = \$(for:words)[ sizeof( \$(for:words) )-2 ];
+else
+  adjective = nil;
+
+/* Step through the presents list objects and see if we find any matches for 'word' */
+
+/* Do we have anything to sell? */
+if( !objects \|\|
+    !map_sizeof( objects ))
+  /* Nope. */
+  objects = ([ ]);
+
+
+ind = map_indices( objects );
+matches = (\{ \});
+sz = sizeof( ind );
+
+for( i = 0; i \< sz; i++ )
+\{
+  if( arr_to_set( objects[ind[i]] )[word] )\{
+    /* Found a match. */
+
+    /*
+     * We are not doing a "spam check", since the \$actor
+     * is paying for each item anyway.
+     */
+    matches += (\{ ind[i] \});
+  \}
+\}
+
+/* Step through the advanced trading list inventories and see if we find any matches for 'word' */
+inventories = Arr(this."nip:trait:trading-advanced:inventories");
+inv_matches = (\{ \});
+if(inventories \&\& sizeof(inventories)) \{
+  /* add items to the list */
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if this item matches */
+      if( (sizeof(Get(inventories[i], inv_ind[j])) \> 4) \&\& member(word, Arr(Get(inventories[i], inv_ind[j])[4])) ) \{
+        /* it matches */
+        /* check if the actor is allowed this item */
+        if(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inventories[i], \$item: inv_ind[j]) != nil)\{
+          inv_matches \|= (\{ (\{ inventories[i], inv_ind[j] \}) \});
+        \}
+      \}
+    \}
+  \}
+\}
+
+/* if we have an item matched */
+if( sizeof( matches ) + sizeof( inv_matches ) ) \{
+  /* if there is more than one item matched, try to work out which one based on adjective */
+  if( adjective \&\& (sizeof(matches)+sizeof(inv_matches)) \> 1 )
+  \{
+    /* strip invalid choices from the matches list */
+    for( i = 0; i \< sizeof( matches ); i++ )
+      if( !arr_to_set( Get( matches[i], "details:"+NRefDetail(matches[i])+":adjectives" ))[adjective] )
+        matches[i] = nil;
+
+    matches -= (\{ nil \});
+
+    /* strip invalid choices from the inventories list */
+    for( i = 0; i \< sizeof( inv_matches ); i++ ) \{
+      if(sizeof(Get(inv_matches[i][0], inv_matches[i][1])) \> 4) \{
+        /* this item has an adjective listed. Check it matches */
+        if(!member(adjective, Arr(Get(inv_matches[i][0], inv_matches[i][1])[5]))) \{
+          /* this item has an adjective that doesn't match */
+          inv_matches[i] = nil;
+        \}
+      \} else \{
+        /* this item doesn't have any adjectives */
+        inv_matches[i] = nil;
+      \}
+    \}
+    inv_matches -= (\{ nil \});
+
+  \}
+
+  /* if we still have more than one choice */
+
+  if( sizeof( matches ) + sizeof( inv_matches ) \> 1 ) \{
+    /* pick one */
+    /* give inventory lists priority */
+    if(sizeof(inv_matches)) \{
+      inv_matches = (\{ inv_matches[random( sizeof( inv_matches ))] \});
+      matches = (\{ \});
+    \} else \{
+      matches = (\{ matches[random( sizeof( matches ))] \});
+      inv_matches = (\{ \});
+    \}
+  \}
+
+  /* if we chose to use the presents list, sell or give the item */
+  if( sizeof( matches ))
+  \{
+    /*
+     * We have found a matching item for the \$actor.
+     * Let's check if it's got valid cost settings.
+     */
+    \$item = Spawn( matches[0] );
+
+    if( typeof( \$item."nip:item:cost" ) != T_INT )
+    \{
+      /*
+       * Nope. Let's say it's "out of stock", and additionally,
+       * if \$actor is a storyhost, give him advise on why.
+       */
+      EmitTo( \$actor, "Unfortunately, "+Describe(\$item)+" is currently out of stock." );
+      if( \$actor."udat:host" )
+        EmitTo( \$actor, "[\<StoryHost\> HINT]: This is because the item does not have a cost setting.\\nThe property for this setting is 'nip:item:cost'. However, set 'export:nip:item:cost' to ensure that all UrChildren get the property as well." );
+      Slay( \$item );
+      return FALSE;
+    \}
+
+    cost = \$item."nip:item:cost";
+
+    if( !cost )
+    \{
+      /*
+       * This item is free.
+       */
+      \$spam = this."npc:spam:presents";
+      if( \$spam \&\&
+          \$spam[\$actor] \&\&
+          \$spam[\$actor] + 30 \> time() ) \{
+        EmitTo( \$actor, "You just asked "+Describe( this )+" for something. Please ask again later." );
+        Slay( \$item );
+        return FALSE;
+      \}
+      this."npc:spam:presents" = \$spam ? \$spam + ([ \$actor : time() ]) : ([ \$actor : time() ]);
+
+      EmitIn( this."base:environment", Describe( this ) + " gives " + Describe( \$actor ) + " " + Describe( \$item ) + ".", \$actor );
+      EmitTo( \$actor, Describe( this ) + " gives you " + Describe( \$item ) + "." );
+      \$item."base:environment" = \$actor;
+      return FALSE;
+    \}
+
+    /*
+     * There is a 'cost' value. Good! Let's see if
+     * \$actor has the proper amount of cash.
+     */
+    if( ::core_trading_query_assets(\$CDO: CDO, \$query: cost))
+    \{
+      /*
+       * The actor has enough cash to pay for this item.
+       * Grand! Let's offer it to him and set a temp-hook
+       * in the object we sell for a react. We hold it for 60
+       * seconds before we slay it and consider the trade aborted.
+       * Additionally, we announce the price to actor.
+       */
+      \$item."merry:inherit:react:take" = FindMerry( this, "react", "take" );
+      \$item."base:environment" = this;
+      \$item."nip:item:cdo" = CDO;
+
+      Act( this, "offer", \$who: \$actor, \$what: (\{ \$item \}) );
+
+      message = CDO."cash:announce-cost";
+      if( !message )
+        message = "This will cost you \$(prefix)\$(cost)\$(suffix).";
+
+      message = replace_strings( message, "\$(prefix)", Str(\$option."cash:prefix"), "\$(suffix)", Str(\$option."cash:suffix"), "\$(cost)", ::core_clean_currency(\$value: cost) );
+      EmitTo( \$actor, message );
+
+      \$delay(60, FALSE, "78bb");
+      if( \$item \&\&
+          \$item."base:environment" == this )
+        Slay(\$item);
+    \} else \{
+      /*
+       * Not enough cash.
+       */
+      message = \$option."cash:announce-shortage";
+      if( !message )
+        message = CDO."cash:announce-shortage";
+      if( !message )
+        message = "You do not have enough \$(name) for \$(item).";
+      message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+      EmitTo( \$actor, message );
+      Slay(\$item);
+    \}
+
+    return FALSE;
+  \} else if( sizeof( inv_matches )) \{
+
+    /* if we chose to use the advanced trading inventory list, sell or give the item */
+
+    /*
+     * We have found a matching item for the \$actor.
+     * Let's check if it's got valid cost settings.
+     */
+    inv_matches = inv_matches[0];
+    cost = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inv_matches[0], \$item: inv_matches[1]);
+    /* spawn the item */
+    \$item = Spawn( Get(inv_matches[0], inv_matches[1])[2] );
+    \$item."nip:item:cost" = cost;
+
+    /* set any special properties this item may have */
+    items = Get(inv_matches[0], "settings:"+inv_matches[1]+":properties");
+    if(items \&\& sizeof(items))\{
+      /* step through each of these properties, adding them to the array */
+      sz = sizeof(items)-1;
+      for(i=0;i\<sz;i=i+2)\{
+        Set(\$item, items[i], items[i+1]);
+      \}
+    \}
+
+    /* if there is a limited quantity of the item, record that this item is unavailable */
+    if(Get(inv_matches[0], inv_matches[1])[1] \> 0) \{
+      /* reduce the quantity of this item available */
+      \$tmp = Get(inv_matches[0], inv_matches[1]);
+      \$tmp[1] = \$tmp[1]-1;
+      Set(inv_matches[0], inv_matches[1], \$tmp);
+      /* set a holding property, for bookkeeping */
+      \$holding = (\{ inv_matches[0], inv_matches[1] \});
+      if(Get(inv_matches[0], "holding:"+inv_matches[1])) \{
+        Set(inv_matches[0], "holding:"+inv_matches[1], Get(inv_matches[0], "holding:"+inv_matches[1])+1);
+      \} else \{
+        Set(inv_matches[0], "holding:"+inv_matches[1], 1);
+      \}
+    \}
+
+    if( !cost )
+    \{
+      /*
+       * This item is free.
+       */
+      \$spam = this."npc:spam:presents";
+      if( \$spam \&\&
+          \$spam[\$actor] \&\&
+          \$spam[\$actor] + 30 \> time() ) \{
+        EmitTo( \$actor, "You just asked "+Describe( this )+" for something. Please ask again later." );
+        Slay( \$item );
+        if(\$holding) \{
+          /* increase the number of items remaining */
+          if( \$item \&\& \$item."base:environment" == this ) \{
+            \$tmp = Get(\$holding[0], \$holding[1]);
+            \$tmp[1] = \$tmp[1]+1;
+            Set(\$holding[0], \$holding[1], \$tmp);
+          \}
+          /* remove holding marker */
+          if(Get(\$holding[0], \$holding[1])) \{
+            \$tmp = Get(\$holding[0], "holding:"+\$holding[1]);
+            \$tmp--;
+            if(\$tmp) \{
+              Set(\$holding[0], "holding:"+\$holding[1], \$tmp);
+            \} else \{
+              Set(\$holding[0], "holding:"+\$holding[1], nil);
+            \}
+          \}
+        \}
+
+        return FALSE;
+      \}
+      this."npc:spam:presents" = \$spam ? \$spam + ([ \$actor : time() ]) : ([ \$actor : time() ]);
+
+      EmitIn( this."base:environment", Describe( this ) + " gives " + Describe( \$actor ) + " " + Describe( \$item ) + ".", \$actor );
+      EmitTo( \$actor, Describe( this ) + " gives you " + Describe( \$item ) + "." );
+      \$item."base:environment" = \$actor;
+      if(\$holding) \{
+        /* remove holding marker */
+        if(Get(\$holding[0], \$holding[1])) \{
+          \$tmp = Get(\$holding[0], "holding:"+\$holding[1]);
+          \$tmp--;
+          if(\$tmp) \{
+            Set(\$holding[0], "holding:"+\$holding[1], \$tmp);
+          \} else \{
+            Set(\$holding[0], "holding:"+\$holding[1], nil);
+          \}
+        \}
+      \}
+      return FALSE;
+    \}
+
+    /*
+     * There is a 'cost' value. Good! Let's see if
+     * \$actor has the proper amount of cash.
+     */
+    if( ::core_trading_query_assets(\$CDO: CDO, \$query: cost))
+    \{
+      /*
+       * The actor has enough cash to pay for this item.
+       * Grand! Let's offer it to him and set a temp-hook
+       * in the object we sell for a react. We hold it for 60
+       * seconds before we slay it and consider the trade aborted.
+       * Additionally, we announce the price to actor.
+       */
+      \$item."merry:inherit:react:take" = FindMerry( this, "react", "take" );
+      \$item."base:environment" = this;
+      \$item."nip:item:cdo" = CDO;
+
+      Act( this, "offer", \$who: \$actor, \$what: (\{ \$item \}) );
+
+      message = CDO."cash:announce-cost";
+      if( !message )
+        message = "This will cost you \$(prefix)\$(cost)\$(suffix).";
+
+      message = replace_strings( message, "\$(prefix)", Str(\$option."cash:prefix"), "\$(suffix)", Str(\$option."cash:suffix"), "\$(cost)", ::core_clean_currency(\$value: cost) );
+      EmitTo( \$actor, message );
+
+      \$delay(60, FALSE, "7b6d");
+
+      if(\$holding) \{
+        /* increase the number of items remaining */
+        if( \$item \&\& \$item."base:environment" == this ) \{
+          \$tmp = Get(\$holding[0], \$holding[1]);
+          \$tmp[1] = \$tmp[1]+1;
+          Set(\$holding[0], \$holding[1], \$tmp);
+        \}
+        /* remove holding marker */
+        if(Get(\$holding[0], \$holding[1])) \{
+          \$tmp = Get(\$holding[0], "holding:"+\$holding[1]);
+          \$tmp--;
+          if(\$tmp) \{
+            Set(\$holding[0], "holding:"+\$holding[1], \$tmp);
+          \} else \{
+            Set(\$holding[0], "holding:"+\$holding[1], nil);
+          \}
+        \}
+      \}
+
+      if( \$item \&\&
+          \$item."base:environment" == this )
+        Slay(\$item);
+
+    \} else \{
+      /*
+       * Not enough cash.
+       */
+      message = \$option."cash:announce-shortage";
+      if( !message )
+        message = CDO."cash:announce-shortage";
+      if( !message )
+        message = "You do not have enough \$(name) for \$(item).";
+      message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+      EmitTo( \$actor, message );
+      Slay(\$item);
+      if(\$holding) \{
+        /* increase the number of items remaining */
+        \$tmp = Get(\$holding[0], \$holding[1]);
+        \$tmp[1] = \$tmp[1]+1;
+        Set(\$holding[0], \$holding[1], \$tmp);
+        /* remove holding marker */
+        if(Get(\$holding[0], \$holding[1])) \{
+          \$tmp = Get(\$holding[0], "holding:"+\$holding[1]);
+          \$tmp--;
+          if(\$tmp) \{
+            Set(\$holding[0], "holding:"+\$holding[1], \$tmp);
+          \} else \{
+            Set(\$holding[0], "holding:"+\$holding[1], nil);
+          \}
+        \}
+      \}
+    \}
+
+    return FALSE;
+  \}
+
+
+\}
+
+/*
+ * Found nothing so far. See if we have a price menu.
+ * Maybe that's what's being requested.
+ */
+if( this."nip:trait:trading:list" )
+\{
+  /*
+   * An object is set, at least.
+   */
+  object o;
+  string prime;
+
+  o = this."nip:trait:trading:list";
+  prime = NRefDetail( o );
+
+  if(( !adjective \|\|
+       Get( o, "details:" + prime + ":adjective:" + adjective )) \&\&
+      Get( o, "details:" + prime + ":sname:" + word ))
+  \{
+    /*
+     * Seems they asked for a menu!
+     * Create one.
+     */
+    string detail, prefix, suffix;
+    object *list;
+
+    \$option = CDO."cash:options"[0];
+    prefix  = \$option."cash:prefix";
+    suffix  = \$option."cash:suffix";
+    o       = Spawn( o );
+    detail  = this."nip:trait:trading:detail";
+    if( !detail )
+      detail = prime;
+
+    /*
+     * Let's write the head (if any).
+     */
+    o."nip:item:head" = this."nip:trait:trading:head";
+
+    /*
+     * Print menu.
+     */
+    list = map_indices( objects );
+    sz   = sizeof( list );
+
+    \$content = (\{ (\{ "item", "price" \}) \});
+
+    for( i = 0; i \< sz; i++ )
+      \$content += (\{ (\{ Describe( list[i] ), (prefix ? prefix : "") + ::core_clean_currency(\$value: list[i]."nip:item:cost") + (suffix ? " " + suffix : "") \}) \});
+
+    o."nip:item:list" = ascii::table(\$ignoreseparator: "top bottom left right");
+
+    /*
+     * Write the foot, if any.
+     */
+    o."nip:item:foot" = this."nip:trait:trading:foot";
+
+    /*
+     * Set the inherit replacement for read.
+     */
+    Set( o, "merry:inherit:react:read-what", \$\{MOVED:20080918-114107:Lib:NIP:lib:trading\} );
+
+    /*
+     * Move into trade NPC's environment and offer to actor.
+     */
+    o."base:environment" = this;
+    Act( this, "offer", \$who: \$actor, \$what: (\{ o \}) );
+    \$delay(60, FALSE, "4309");
+    if( o \&\&
+        o."base:environment" == this )
+      Slay( o );
+    return FALSE;
+  \}
+\}
+
+/* Found nothing. */
+EmitTo( \$actor, Describe( this ) + " doesn't have that. Try 'ask "+Describe( this ) + "'." );
+return FALSE;
+
+
+/* -------------------------------------------------------------------------- */
+
+/*
+ * D=This script is part of the core of the ask \<npc\> for \<item\> functionality.
+ *
+ * This script is called when no item is specified. A message stating which items the NPC can hand out will be displayed.
+ */
+
+objects = this."nip:trait:present:objects";
+
+/* Do we have anything to offer? */
+
+/* check the normal trading list */
+if (!objects \|\| !map_sizeof(objects)) \{
+        /* Nope. */
+        objects = ([ ]);
+\}
+
+/* gather a list of items available so far */
+ind = map_indices(objects);
+items = (\{ \});
+for (i = 0; i \< sizeof(ind); i++)
+        items \|= (\{ Describe( ind[i] ) \});
+
+/* now check the advanced trading lists */
+inventories = Arr(this."nip:trait:trading-advanced:inventories");
+if(inventories \&\& sizeof(inventories)) \{
+  /* add items to the list */
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if the actor is allowed this item */
+      if(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inventories[i], \$item: inv_ind[j]) != nil)\{
+        items \|= (\{ Str(Arr(Get(inventories[i], inv_ind[j]))[0]) \});
+      \}
+    \}
+  \}
+\}
+
+/* Do we have anything to offer? */
+if (!sizeof(items)) \{
+        /* Nope. */
+        return TRUE;
+\}
+
+list = "";
+and = "";
+for (i = 0; i \< sizeof(items); i++) \{
+        list += and + items[i];
+        and = i+2 \< sizeof( items ) ? ", " : " or ";
+\}
+
+EmitTo(\$actor, Describe(this, nil, nil, STYLE_DEFINITE) + " can give you " + list + ".");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:offer_accepted">
+         X[M] /* decide not to sell this item */
+int i, j, increase;
+
+/*
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": this, "price": \$tmp[0], "wanted": \$tmp[1], "items":items, \$inventories: Arr(this."nip:trait:trading-advanced:inventories")]));
+*/
+
+
+/*\$tmp = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price_for_offer", \$inventories: Arr(this."nip:trait:trading-advanced:inventories"));*/
+
+/*if(!\$tmp) return TRUE;*/
+
+\$what = \$par["items"];
+\$what -= (\{ nil \});
+for(i=0;i\<sizeof(\$what);i++) \{
+  if(NRefOb(\$what[i])."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You are not holding "+Describe(\$what[i], nil, \$actor)+".");
+    return FALSE;
+  \}
+  \$what[i] = NRefOb(\$what[i]);
+\}
+
+/* check the price and items */
+\$tmp = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price_for_offer", \$inventories: Arr(\$par["trader"]."nip:trait:trading-advanced:inventories"));
+
+if(!\$tmp) \{
+  EmitTo(\$actor, "You don't have anything "+Describe(\$par["trader"])+" wants to trade for.");
+  return TRUE;
+\}
+
+/*EmitTo(\$actor, "Wanted: "+dump_value(\$tmp[1]));
+EmitTo(\$actor, "Wanted: "+dump_value(\$par["wanted"]));
+EmitTo(\$actor, "final price: "+dump_value(\$tmp[0]));
+EmitTo(\$actor, "final price: "+dump_value(\$par["price"]));*/
+
+if(dump_value(\$tmp[1]) != dump_value(\$par["wanted"]) \|\| \$tmp[0] != \$par["price"]) \{
+  /* the original offer and the current offer don't match */
+  \$delay(0.1, TRUE, "34bb");
+  \$question = "The trading offer has changed. Would you like to sell "+Describe(\$par["items"], nil, \$actor)+" for "+dump_value(\$tmp[0])+"?";
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": \$par["trader"], "price": \$tmp[0], "wanted": \$tmp[1], "additions": \$tmp[2], "items":\$par["items"]]));
+  return TRUE;
+\}
+
+/* make the trade */
+EmitTo(\$actor, "You hand "+Describe(\$par["items"], nil, \$actor)+" to "+Describe(\$par["trader"])+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" hands "+Describe(\$par["items"], \$actor)+" to "+Describe(\$par["trader"])+".", \$actor);
+/* pay the player */
+::pay_money(\$npc: Describe(\$par["trader"]), \$amount: \$tmp[0], \$cdo: \$par["trader"]."nip:trait:trading:object");
+/* remove the items and update the trading DB */
+for(i=0;i\<sizeof(\$par["items"]);i++)
+  Slay(NRefOb(\$par["items"][i]));
+/* increase quantity in stock */
+for(i=0;i\<sizeof(map_indices(\$par["additions"]));i++) \{
+  increase = \$par["additions"][map_indices(\$par["additions"])[i]];
+  for(j=0;increase\>0\&\&j\<sizeof(\$par["inventories"]);j++) \{
+    /* check each inventory for this */
+    if(\$tmp = Get(\$par["inventories"][j], map_indices(\$par["additions"])[i]))\{
+      /* increment the number */
+      if(\$tmp) \{
+        if(\$tmp[1] != -1) \{
+          \$tmp[1] += increase;
+          Set(\$par["inventories"][j], map_indices(\$par["additions"])[i], \$tmp);
+        \}
+        increase = 0;
+      \}
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:offer_denied">
+         X[M] /* decide not to sell this item */
+
+/*
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": this, "price": \$tmp[0], "wanted": \$tmp[1], "items":items, \$inventories: Arr(this."nip:trait:trading-advanced:inventories")]));
+*/
+
+EmitTo(\$actor, "You decide not to sell "+Describe(\$par["items"], nil, \$actor)+" to "+Describe(\$par["trader"])+".");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:offer_expired">
+         X[M] /* decide not to sell this item */
+
+/*
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": this, "price": \$tmp[0], "wanted": \$tmp[1], "items":items, \$inventories: Arr(this."nip:trait:trading-advanced:inventories")]));
+*/
+
+EmitTo(\$actor, Describe(\$par["trader"])+"'s offer to buy "+Describe(\$par["items"], nil, \$actor)+" has expired.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:pay_money">
+         X[M] /* hand out money */
+int i;
+
+/* this is the simple version, that doesn't use clever kalle-code */
+
+/* update the economy tracker */
+\$tracker = \$\{Ironclaw:Lib:Economy:economy\};
+\$tracker."moneypool:pc" += \$amount;
+\$tracker."moneypool:npc" -= \$amount;
+
+if(!\$npc) \$npc = "the merchant";
+
+\$coins = (\{ \});
+/*EmitTo(\$actor, dump_value(\$amount));*/
+while(\$amount \>= 2400) \{
+  /* spawn aureals */
+  \$coins += (\{ Spawn(\$\{Allegory:Props:Finance:Cash:Lira\}) \});
+  \$amount -= 2400;
+\}
+while(\$amount \>= 100) \{
+  /* spawn denarii */
+  \$coins += (\{ Spawn(\$\{Allegory:Props:Finance:Cash:Florin\}) \});
+  \$amount -= 100;
+\}
+while(\$amount \>= 10) \{
+  /* spawn denarii */
+  \$coins += (\{ Spawn(\$\{Ironclaw:Props:Finance:Cash:10\}) \});
+  \$amount -= 10;
+\}
+while(\$amount \>= 1) \{
+  /* spawn denarii */
+  \$coins += (\{ Spawn(\$\{Ironclaw:Props:Finance:Cash:1\}) \});
+  \$amount -= 1;
+\}
+
+if(sizeof(\$coins)) \{
+  EmitTo(\$actor, \$npc+" hands "+Describe(\$coins)+" to you.");
+  EmitIn(\$actor."base:environment", \$npc+" hands "+Describe(\$coins)+" to "+Describe(\$actor)+".", \$actor);
+\}
+
+/* move the coins to the actors inventory */
+for(i=0;i\<sizeof(\$coins);i++)
+  \$coins[i]."base:environment" = \$actor;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:offer-who">
+         X[M] /*
+
+  D=Code to allow advanced traders purchase items from other characters.
+
+  The trader needs to have advanced trading lists.
+
+  This script will look for a few values in the object being offered. This object will _need_ to have these values set, otherwise the NPC will not be able to sell them:
+
+    nip:item:cost  (int) - the cost of this item.
+
+  If the property "nip:trait:trading:list" is set to an object, that object will be handed out to people by request, containing a price list.
+  Additionally, the property "nip:trait:trading:detail" may be set, if the detail which should be written upon is not the prime detail of the "nip:trait:trading:list" object.
+  The property "nip:trait:trading:head" can be set to some text that is appended before the price list.
+  The property "nip:trait:trading:foot" can be set to some text appended after the price list.
+
+*/
+
+object CDO, *inventories;
+string *inv_ind;
+int price, denied, i, sz, j, jx, k, l, lx, item_count, holding;
+float multiplier;
+mixed *wanted, *properties;
+
+mixed objects;
+string word, adjective, message;
+object *ind, *matches, *items;
+int cost;
+
+if(!\$what) return TRUE;
+
+CDO     = this."nip:trait:trading:object";
+
+/* Grab global properties from CDO. */
+\$hide_decimals = CDO."cash:hide-decimals";
+
+if( !CDO )
+\{
+  /*
+   * We don't have a Cash Data Object!
+   * Give the actor a lame "out of stock" message
+   * and, if they're SH enabled, a hint as to why.
+   */
+  EmitTo( \$actor, "Unfortunately, "+Describe(this)+" is not buying anything! Come back later." );
+  if( \$actor."udat:host" )
+    EmitTo( \$actor, "[\<StoryHost\> HINT]: This nipper doesn't have a cash data object. The property for this object is 'nip:trait:trading:object' and should point to an object set up accordingly. See Builder's TWiki for further information on this subject." );
+  return FALSE;
+\}
+
+\$tmp = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price_for_offer", \$inventories: Arr(this."nip:trait:trading-advanced:inventories"));
+
+if(!\$tmp) return TRUE;
+
+/*EmitTo(\$actor, "Wanted: "+dump_value(\$tmp[1]));
+EmitTo(\$actor, "final price: "+dump_value(\$tmp[0]));*/
+
+
+/* remove the offer so the player doesn't have to revoke */
+Call(\$this, "base:removeoffer", \$from: \$actor);
+
+if(!sizeof(\$tmp[1])) \{
+  /* don't have anything the NIP wants */
+  /* check what items the NIP will buy */
+    /* NOT WRITTEN YET */
+    /* Arr(this."nip:trait:trading-advanced:inventories") */
+  EmitTo(\$actor, Describe(\$this)+" isn't interested in buying "+Describe(\$what, nil, \$actor)+".");
+\} else \{
+  /*EmitTo(\$actor, "Offering to buy");*/
+  items = (\{ \});
+  for(i=0;i\<sizeof(\$tmp[1]);i++)\{
+    items += (\{ NewNRef(\$tmp[1][i][0], "default") \});
+  \}
+  \$question = Describe(\$this)+" is willing to buy "+Describe(items, nil, \$actor)+" for ";
+  if(\$tmp[0] == 0) \{
+    \$question += "nothing";
+  \} else \{
+    switch(\$tmp[0]/100) \{
+      case 0:
+        \$question += "0 denarii";
+        break;
+      case 1:
+        \$question += "1 denar";
+        break;
+      default:
+        \$question += Str(\$tmp[0]/100)+" denarii";
+    \}
+    switch(\$tmp[0]%100/10) \{
+      case 0:
+        break;
+      case 1:
+        \$question += ", 1 bronze";
+        if(\$tmp[0]%10 == 0) \$question += " bit";
+        break;
+      default:
+        \$question += ", "+Str(\$tmp[0]%100/10)+" bronze";
+        if(\$tmp[0]%10 == 0) \$question += " bits";
+    \}
+    switch(\$tmp[0]%10) \{
+      case 0:
+        break;
+      case 1:
+        \$question += " and 1 brass bit";
+        break;
+      default:
+        \$question += " and "+Str(\$tmp[0]%100)+" brass bits";
+    \}
+  \}
+  \$question += " - do you wish to make this trade?";
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": this, "price": \$tmp[0], "wanted": \$tmp[1], "additions": \$tmp[2], "items":items, "inventories": Arr(this."nip:trait:trading-advanced:inventories")]));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:take">
+         X[M] /*
+ * D=Accept and pay for an object.
+ */
+object CDO;
+
+CDO = this."nip:item:cdo";
+
+/* Grab global properties from CDO. */
+\$hide_decimals = CDO."cash:hide-decimals";
+
+if (!CDO) \{
+        EmitTo(\$actor, "Oops! No CDO. This is a bug. :(");
+        return FALSE;
+\}
+
+if (Call(this."base:environment", "core_trading_deduct", \$CDO: CDO, \$query: this."nip:item:cost", \$item: this)) \{
+  /* update the economy tracker */
+  \$tracker = \$\{Ironclaw:Lib:Economy:economy\};
+  \$tracker."moneypool:npc" += this."nip:item:cost";
+  \$tracker."moneypool:pc" -= this."nip:item:cost";
+
+        this."merry:inherit:react:take" = nil;
+        this."nip:item:cdo" = nil;
+        return TRUE;
+\}
+      </Core:Property>
+      <Core:Property property="property:map">
+         ([ "nip:trait:trading:stock":4 ])
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1172378002, "tonyd", "P", 1172378169, "tonyd", "P", 1172378235, "tonyd", "P", 1172378301, "tonyd", "P", 1172378316, "tonyd", "P", 1172378365, "tonyd", "P", 1172409862, "tonyd", "P", 1172409888, "tonyd", "P", 1172409910, "tonyd", "P", 1172410109, "tonyd", "P", 1172410722, "tonyd", "P", 1172410915, "tonyd", "P", 1172410956, "tonyd", "P", 1172412239, "tonyd", "P", 1172412817, "tonyd", "P", 1172412942, "tonyd", "P", 1200968759, "tonyd", "P", 1200968948, "tonyd", "P", 1200969608, "tonyd", "E", 1200969682, "tonyd", "P", 1200969783, "tonyd", "P", 1200971015, "tonyd", "P", 1200971437, "tonyd", "P", 1200971467, "tonyd", "P", 1200971727, "tonyd", "P", 1200971872, "tonyd", "E", 1200972085, "tonyd", "E", 1200972282, "tonyd", "P", 1200972293, "tonyd", "P", 1200975227, "tonyd", "P", 1200975524, "tonyd", "P", 1200975574, "tonyd", "P", 1200976888, "tonyd", "P", 1200976918, "tonyd", "P", 1200977024, "tonyd", "P", 1200977035, "tonyd", "P", 1200977088, "tonyd", "P", 1200977124, "tonyd", "P", 1200977145, "tonyd", "P", 1200977171, "tonyd", "P", 1200977378, "tonyd", "P", 1200977631, "tonyd", "P", 1200977677, "tonyd", "P", 1200977886, "tonyd", "P", 1200978638, "tonyd", "P", 1200979110, "tonyd", "P", 1200979156, "tonyd", "P", 1200979186, "tonyd", "P", 1200979664, "tonyd", "P", 1200979750, "tonyd", "P", 1200979919, "tonyd", "P", 1200980047, "tonyd", "P", 1200980239, "tonyd", "P", 1200980284, "tonyd", "P", 1200980477, "tonyd", "P", 1200980511, "tonyd", "P", 1200980536, "tonyd", "P", 1200980610, "tonyd", "P", 1200980716, "tonyd", "P", 1200980890, "tonyd", "P", 1200980985, "tonyd", "P", 1200981048, "tonyd", "P", 1200981133, "tonyd", "P", 1200981502, "tonyd", "P", 1200981848, "tonyd", "P", 1200983231, "tonyd", "P", 1200983351, "tonyd", "P", 1200986320, "tonyd", "P", 1200986905, "tonyd", "P", 1200986952, "tonyd", "P", 1201063451, "tonyd", "P", 1201067462, "tonyd", "P", 1201077502, "tonyd", "P", 1201077768, "tonyd", "P", 1201078850, "tonyd", "P", 1201083893, "tonyd", "E", 1201083959, "tonyd", "E" \})
+      </Core:Property>
+      <Core:Property property="{author}">"Kalle Alm"</Core:Property>
+      <Core:Property property="{email}">
+         "kalle@mortalis.skotos.net"
+      </Core:Property>
+      <Core:Property property="{rev}">1</Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

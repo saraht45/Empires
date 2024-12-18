@@ -1,0 +1,775 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Old:Trading:Trading)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:buy_item">
+         X[M] /* Buying an item from the trading table - this needs to:
+ - charge the player
+ - set the item to be takeable
+ - force actor to take it again
+*/
+\$item = \$par["item"];
+
+/* Can they afford the item? */
+\$price = \$item."nip:item:cost";
+if(Int(\$price) \> Int(\$actor."trait:money")) \{
+  EmitTo(\$actor, Describe(\$item)+" costs "+ironclaw::describe_money(\$amount: \$price)+", and you only have "+ironclaw::describe_money(\$amount: \$actor."trait:money")+".");
+  return FALSE;
+\}
+
+/* if we know what table this is being sold from, and it has an attached sales assistant */
+if(\$item."trading:table") \{
+  if(\$item."trading:table"."trading:assistant") \{
+    \$sales_assistant = Describe(\$item."trading:table"."trading:assistant");
+  \} else if(\$item."trading:table"."trading:assistantname") \{
+    \$sales_assistant = \$item."trading:table"."trading:assistantname";
+  \}
+\}
+if(\$sales_assistant) \{
+  EmitTo(\$actor, "You pay "+ironclaw::describe_money(\$amount: \$price)+" to "+\$sales_assistant+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" pays "+\$sales_assistant+".");
+\}
+
+/* Take the money */
+\$actor."trait:money" -= \$price;
+
+/* Pay the seller of this item */
+if(\$item."trading:seller") \{
+  \$payment = \$price;
+  /* if there is a fee associated with this table, remove it from the fee */
+  if(\$item."trading:table" \&\& \$item."trading:table"."trading:usagecost") \{
+    /* there is a usage cost */
+    /* if the cost goes to a guild, pay the guild */
+    if(\$item."trading:table".guild) \{
+      if(!\$item."trading:table".guild.kitty)
+        \$item."trading:table".guild.kitty = 0;
+      if(\$payment \> \$item."trading:table"."trading:usagecost") \{
+        \$item."trading:table".guild.kitty += \$item."trading:table"."trading:usagecost";
+
+        \$name = name(\$item."trading:table".guild)[16..strlen(name(\$item."trading:table".guild))-1];
+        if(!Obj("Ironclaw:Guilds:Trades:" + \$name)) \{
+            \$trades = Duplicate(\$\{Allegory:Guilds:Trades:default_trades\});
+            \$trades."core:objectname" = "Ironclaw:Guilds:Trades:" + \$name;
+        \} else \{
+            \$trades = Obj("Ironclaw:Guilds:Trades:" + \$name);
+        \}
+
+        /* send a note to the winning guild */
+        if(!\$trades."trading:notes") \{
+            \$trades."trading:notes" = (\{ \});
+        \}
+        \$trades."trading:notes" += (\{ "Your guild has successfully earned " + Str(\$item."trading:table"."trading:usagecost"/100) + " florins for the sale of " + Describe(\$item, nil, nil, STYLE_NONPOSS) + " by " + Str(\$item."trading:sellername") + "." \});
+
+      \} else \{
+        \$item."trading:table".guild.kitty += \$payment;
+      \}
+    \} else \{ 
+        /* GUILD COUNCIL CODE */
+        /* \$council = nil*/ /* defunct */;
+       /* \$council.kitty = \$council.kitty + \$item."trading:table"."trading:usagecost";
+
+        \$data = explode(ctime(time()), " ");
+        \$month = \$data[1];
+        \$year = \$data[4];
+
+        if(\$month == "Jan") \$month = "01";
+        if(\$month == "Feb") \$month = "02";
+        if(\$month == "Mar") \$month = "03";
+        if(\$month == "Apr") \$month = "04";
+        if(\$month == "May") \$month = "05";
+        if(\$month == "Jun") \$month = "06";
+        if(\$month == "Jul") \$month = "07";
+        if(\$month == "Aug") \$month = "08";
+        if(\$month == "Sep") \$month = "09";
+        if(\$month == "Oct") \$month = "10";
+        if(\$month == "Nov") \$month = "11";
+        if(\$month == "Dec") \$month = "12";
+
+        \$property = "transactions:deposit:tradingtable:" + Str(\$year) + ":" + Str(\$month);
+        if(Get(\$council, \$property)) \{
+            Set(\$council, \$property, Int(Get(\$council, \$property)) + Int(\$item."trading:table"."trading:usagecost"));
+        \} else \{
+            Set(\$council, \$property, Int(\$item."trading:table"."trading:usagecost"));
+        \} */
+    \}
+    \$payment -= \$item."trading:table"."trading:usagecost";
+    if(\$payment \< 0) \$payment = 0;
+
+  \}
+  if(\$payment \> 0) \{
+    \$item."trading:seller"."trait:money" += \$payment;
+  \}
+\}
+
+/* Remove trading properties from the item */
+::remove_trading_from_item(\$item: \$item);
+/* And take the item again */
+Act(\$actor, "take", \$what: (\{ NewNRef(\$item, "default") \}) );
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:buy_item_denied">
+         X[M] /* We've decided not to buy this item */
+\$item = \$par["item"];
+EmitTo(\$actor, "You decide not to purchase "+Describe(\$item)+".");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:buy_item_question">
+         X[M] /* Asks if the actor wants to buy this item */
+if(!\$item) \{
+  EmitTo(\$actor, TAG("No \$item variable found. Please @bug this, and let us know what item you were buying.", "imp"));
+  return FALSE;
+\}
+
+/* if we were the seller, we can take the item */
+if(\$actor == \$item."trading:seller") \{
+  ::remove_trading_from_item(\$item: \$item);
+  return TRUE;
+\}
+
+/* find the cost of this item in words */
+\$cost = ironclaw::describe_money(\$amount: \$item."nip:item:cost");
+
+/* ask if the player wants to buy this */
+\$question = "Do you want to purchase "+Describe(\$item)+" for "+\$cost+"?";
+/* if this table displays names, display the name */
+\$namestring = "";
+/* if we know what table this is being sold from, and it has an attached sales assistant */
+if(\$item."trading:table" \&\& (\$item."trading:table".guild \|\| !\$item."trading:table".nonames)) \{
+  if(\$item."trading:table"."trading:assistant") \{
+    \$namestring += Describe(\$item."trading:table"."trading:assistant")+" informs you that ";
+  \} else if(\$item."trading:table"."trading:assistantname") \{
+    \$namestring += \$item."trading:table"."trading:assistantname"+" informs you that ";
+  \}
+\}
+if(\$item."trading:table" \&\& \$item."trading:table".guild) \{
+  \$namestring += "this table is owned by "+\$item."trading:table"."guild:longname";
+  if(!\$item."trading:table".nonames) \{
+    \$namestring += " and ";
+  \} else \{
+    \$namestring += ".";
+  \}
+\}
+if(\$item."trading:table" \&\& !\$item."trading:table".nonames) \{
+  if(\$item."trading:sellername") \{
+    \$namestring += "the seller is "+\$item."trading:sellername"+".";
+  \} else \{
+    \$namestring += "the seller is "+Describe(this."trading:seller")+".";
+  \}
+\}
+
+\$question = \$question+" "+capitalize(\$namestring);
+
+interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{Ironclaw:Lib:Economy:TradingTables\}, \$no_ob: \$\{Ironclaw:Lib:Economy:TradingTables\}, \$expire_ob: \$\{Ironclaw:Lib:Economy:TradingTables\}, \$yes_fun: "buy_item", \$no_fun: "buy_item_denied", \$expire_fun: "buy_item_denied", \$par: ([ "item": \$item, "answer": nil, "hint": nil]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:core_trading_deduct">
+         X[M] /*
+
+  D=Deduct money from \$actor, based on a specific CDO (cash data object).
+
+  Required arguments:
+    \$CDO   (object): The CDO reference.
+    \$query (int):    The amount of money requested.
+    \$item  (object): The item being sold.
+    \$actor (object): The person for which money should be deducted.
+    \$sales_assistant (string): Who accepts the sale.
+
+  Return values:
+    TRUE if the purchase went OK. FALSE if not.
+    (core_trading_deduct will emit a message to \$actor if things go bad)
+
+*/
+
+constant prefix = Str(\$option."cash:prefix");
+constant suffix = Str(\$option."cash:suffix");
+
+string message, npc;
+
+if(\$sales_assistant) \{
+  npc = \$sales_assistant;
+\} else \{
+  npc = "the clerk";
+\}
+
+/*
+ * Firstly, query the purchase to ensure the actor has
+ * cash to pay for it.
+ */
+
+if( !::core_trading_query_assets() )
+\{
+  /*
+   * Not enough cash.
+   */
+  message = \$option."cash:announce-shortage";
+  if( !message )
+    message = \$CDO."cash:announce-shortage";
+  if( !message )
+    message = "You do not have enough \$(name) for \$(item).";
+  message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+  EmitTo( \$actor, message );
+  return FALSE;
+\}
+
+\{
+
+  /*
+   * Enough cash. Firstly, find the most accurate amount of
+   * money with as little change back as possible.
+   */
+
+  int   physical, sz, i;
+  int rest, sum, prest, f;
+  int *range, *worth;
+  object *snatched, *change, *objects;
+  mapping currency, cobject;
+  string money;
+
+  physical = \$option."cash:physical";
+  change   = (\{ \});
+  snatched = (\{ \});
+
+  if( !physical )
+  \{
+    /*
+     * Well, that's easy. No change, and the ability to
+     * split freely. Credit cards rock! :)
+     */
+    \$value_hits."cash:balance" -= \$query;
+    \$using                      = \$value_hits;
+    sum                         = \$query;
+
+  \} else \{
+    /*
+     * Physical payment, including bills and coins and
+     * returned change and such.
+     * ---
+     * The \$value_hits property will, in the case of
+     * physical, be a mapping with the values;
+     * ([ \<worth\> : (\{ \<physical object(s)\>, ... \}) ])
+     */
+    cobject  = \$option."cash:object";
+    currency = reverse_mapping( cobject );
+    range    = \$option."cash:range";
+    worth    = map_indices( \$value_hits ); /* \<-- needed? */
+    sz       = sizeof( range );
+    sum      = 0;
+    rest     = \$query;
+
+    for( i = sz-1; i \> -1;  i-- )
+      if( \$value_hits[ range[i] ] )
+        while( rest \> 0 \&\& sizeof( \$value_hits[ range[i] ] ))
+        \{
+          sum                     += range[i];
+          rest                    -= range[i];
+          snatched                += (\{ \$value_hits[ range[i] ][0] \});
+          \$value_hits[ range[i] ] = \$value_hits[ range[i] ][1..];
+        \}
+
+    /*
+     * Now, the actor is probably about to hand out unnecessary
+     * change for the purchase. So we'll step through the
+     * offered (snatched) array and remove excess additions.
+     */
+    sz = sizeof( snatched );
+    for( i = sz-1; i \> -1; i-- )
+    \{
+      f = cobject[ snatched[i]."core:ur:parent" ];
+      if( rest + f \< 1 )
+      \{
+        sum         -= f;
+        rest        += f;
+        snatched[i] = nil;
+      \}
+      if( rest == 0 )
+        i = -1;
+    \}
+    snatched -= (\{ nil \});
+
+    if( rest \> 0 \|\| !sizeof( snatched ))
+    \{
+      /*
+       * Not enough cash.
+       * (In reality, we've already checked whether actor
+       * has cash -- and they do. Something went awry
+       * with paying/etc. So we say "no cash" and let them
+       * assist or similar, so this obvious bug can be
+       * dealt with.
+       */
+      message = \$option."cash:announce-shortage";
+      if( !message )
+        message = \$CDO."cash:announce-shortage";
+      if( !message )
+        message = "You do not have enough \$(name) for \$(item).";
+      message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+      EmitTo( \$actor, message );
+      return FALSE;
+    \}
+
+    /*
+     * The NPC has unlimited amount of money, which
+     * makes paying back fairly simple. Step from
+     * biggest-worth to lowest-worth and keep adding
+     * until we have an exact match of the to-be returned
+     * in change.
+     */
+
+    rest  = -rest;
+    prest = rest;
+    sz    = sizeof( range );
+
+    for( i = 0; i \< sz; i++ )
+      while( range[i] \<= rest )
+      \{
+        rest -= range[i];
+        change += (\{ Spawn( currency[ range[i] ] ) \});
+      \}
+
+    if( rest \>= 1 )
+    \{
+      EmitTo( \$actor, "[OOC: You have been given TOO LITTLE change back. This is NOT an IC occurence, but rather a miscalculation! Assist about this immediately, and include this message! You're missing: " + Str(rest) + "; the NPC in question is: "+dump_value(this)+"; property \\"change:fault\\".]" );
+      this."change:fault" = dump_value(\$actor)+" lost "+Str(rest)+" "+ctime(time())+".";
+    \}
+
+    \$using = snatched;
+  \}
+
+  message = \$option."cash:announce-pay";
+  if( !message )
+    message = "You pay \$(npc) \$(prefix)\$(paid)\$(suffix).";
+
+  money = ::core_clean_currency(\$value: sum);
+
+  message = replace_strings( message, "\$(npc)", npc, "\$(prefix)", prefix, "\$(suffix)", suffix, "\$(paid)", money, "\$(using)", Describe(\$using, nil, \$actor) );
+  EmitTo( \$actor, message );
+
+  /*
+   * Slay the money used to pay for the item,
+   * if any.
+   */
+  sz = sizeof( snatched );
+  for( i = 0; i \< sz; i++ ) \{
+    snatched[i].pending_slayage = TRUE;
+    Slay( snatched[i] );
+  \}
+
+  if( sizeof(change) )
+  \{
+    /*
+     * We're giving the actor back some cash in change.
+     * Emit appropriately, according to the settings in
+     * the CDO.
+     */
+    message = \$CDO."cash:announce-change";
+    if( !message )
+      message = \$option."cash:announce-change";
+    if( !message )
+      message = "\$(npc) gives you back \$(prefix)\$(change)\$(suffix) in change.";
+
+    money = ::core_clean_currency(\$value: prest);
+
+    message = replace_strings( message, "\$(npc)", npc, "\$(prefix)", prefix, "\$(suffix)", suffix, "\$(change)", money );
+    EmitTo( \$actor, message );
+
+    /*
+     * Physically put the change in the actor's inventory.
+     */
+    sz = sizeof( change );
+    for( i = 0; i \< sz; i++ )
+      change[i]."base:environment" = \$actor;
+  \}
+
+\}
+
+/* Pay the seller of this item */
+if(\$item."trading:seller") \{
+  \$payment = \$query;
+  /* if there is a fee associated with this table, remove it from the fee */
+  if(\$item."trading:table" \&\& \$item."trading:table"."trading:usagecost") \{
+    /* there is a usage cost */
+    /* if the cost goes to a guild, pay the guild */
+    if(\$item."trading:table".guild) \{
+      if(!\$item."trading:table".guild.kitty)
+        \$item."trading:table".guild.kitty = 0;
+      if(\$payment \> \$item."trading:table"."trading:usagecost") \{
+        \$item."trading:table".guild.kitty += \$item."trading:table"."trading:usagecost";
+      \} else \{
+        \$item."trading:table".guild.kitty += \$payment;
+      \}
+    \}
+    \$payment -= \$item."trading:table"."trading:usagecost";
+    if(\$payment \< 0) \$payment = 0;
+  \}
+  if(\$payment \> 0) \{
+    \$item."trading:seller"."trait:money" += \$payment;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:place_item">
+         X[M] /* This script is run when someone puts an item on the trading table */
+
+if(!\$(where:preposition)) \{
+    \$obprep = 8;
+    \$(where:description) = "put on";
+    \$(where:preposition) = "on";
+\}
+
+/* check if they are placing the object ON the table */
+if(\$(where:preposition) != "on" \&\& \$(where:preposition) != "in" \&\& \$(where:preposition) != "into" \&\& \$(where:preposition) != "inside")
+  return TRUE;
+
+/* set the cost for this item */
+\$errormsg = "This is a trading table. You must specify a cost when you place an item on "+Describe(\$this)+". For example: place my hat on table '5 - if you wanted to sell your hat for 5 florins.";
+if(!\$evoke) \{
+  EmitTo(\$actor, \$errormsg);
+  return FALSE;
+\}
+
+/* calculate the value of the cost */
+if (sscanf(\$evoke[1..strlen(\$evoke)-2], "%d%s", \$cost, \$dummy) == 2) \{
+  if(strlen(\$dummy) \&\& !(\$dummy == " florins" \|\| \$dummy == " florin" \|\| \$dummy == " aureal" \|\| \$dummy == " aureals")) \{
+    EmitTo(\$actor, \$errormsg);
+    return FALSE;
+  \}
+  if(strlen(\$dummy) \&\& (\$dummy == " aureal" \|\| \$dummy == " aureals")) \{
+    \$cost = \$cost * 24;
+  \}
+  \$cost = Int(\$cost)*100;
+  \$evoke = nil;
+  if(\$cost \< 0) \{
+    EmitTo(\$actor, "If you really want to pay people to take your junk, you might find that using garbage bins is cheaper.");
+    return FALSE;
+  \} else if(\$cost == 0) \{
+    /* giving away item for free, so just place it on the table with no extra code */
+    return TRUE;
+  \}
+\} else \{
+  EmitTo(\$actor, \$errormsg);
+  return FALSE;
+\}
+
+
+
+/* Set properties to make this cost when players take it */
+if(!\$what) return TRUE;
+for(\$i=0;\$i\<sizeof(\$what);\$i++) \{
+  if(NRefOb(\$what[\$i])."base:worn-by" == \$actor) break;
+  if(NRefOb(\$what[\$i])."base:volition") break;
+  NRefOb(\$what[\$i])."merry:inherit:react:take" = \$\{Ironclaw:Lib:Economy:TradingTables\};
+  NRefOb(\$what[\$i])."merry:inherit:react-pre:take-from" = \$\{Ironclaw:Lib:Economy:TradingTables\};
+  NRefOb(\$what[\$i])."merry:inherit:react-pre:tap-dob" = \$\{Ironclaw:Lib:Economy:TradingTables\};
+  NRefOb(\$what[\$i])."merry:inherit:react:snatch-dob" = \$\{Ironclaw:Lib:Economy:TradingTables\};
+  NRefOb(\$what[\$i])."merry:inherit:react:catch-what" = \$\{Ironclaw:Lib:Economy:TradingTables\};
+  NRefOb(\$what[\$i])."nip:item:cdo" = \$\{Ironclaw:Data:Trading:Money\};
+  NRefOb(\$what[\$i])."trading:table" = \$this;
+  NRefOb(\$what[\$i])."trading:seller" = \$actor;
+  NRefOb(\$what[\$i])."trading:sellername" = Describe(\$actor);
+  NRefOb(\$what[\$i])."trading:selltime" = time();
+  NRefOb(\$what[\$i])."nip:item:cost" = \$cost;
+  /* tell the player how much they are selling this for */
+  \$costdesc = Int(\$cost/100);
+  if(\$costdesc \< 1) \{
+    \$costdesc = "nothing";
+  \} else if (\$costdesc \< 2) \{
+    \$costdesc = "1 florin";
+  \} else \{
+    \$costdesc = Str(\$costdesc)+" florins";
+  \}
+
+  if(sizeof(\$what) \> 1) \{
+    EmitTo(\$actor, "You set "+Describe(\$what, nil, \$actor)+" to sell for "+\$costdesc+" each.");
+  \} else \{
+    EmitTo(\$actor, "You set "+Describe(\$what, nil, \$actor)+" to sell for "+\$costdesc+".");
+  \}
+  /* if there is a cost to use this table */
+  if(\$this."trading:usagecost") \{
+    /* how much does it cost to use the table? */
+    \$usagecost = Int(\$this."trading:usagecost"/100);
+    if(\$usagecost \< 1) \{
+      \$usagecost = "nothing";
+    \} else if (\$usagecost \< 2) \{
+      \$usagecost = "1 florin";
+    \} else \{
+      \$usagecost = Str(\$usagecost)+" florins";
+    \}
+    /* so how much profit do we make? */
+    \$profit = Int((\$cost - \$this."trading:usagecost")/100);
+    if(\$profit \< 0) \$profit = 0;
+    if(\$profit \< 1) \{
+      \$profit = "nothing";
+    \} else if (\$profit \< 2) \{
+      \$profit = "1 florin";
+    \} else \{
+      \$profit = Str(\$profit)+" florins";
+    \}
+    /* tell the seller what their profit will be */
+    if(\$cost \<= \$this."trading:usagecost") \{
+      EmitTo(\$actor, "Because this table has a usage cost of "+\$usagecost+" you will be making no money from this sale.");
+    \} else \{
+      if(sizeof(\$what) \> 1) \{
+        EmitTo(\$actor, "As this table has a usage cost of "+\$usagecost+" you will be making "+\$profit+" from these sales.");
+      \} else \{
+        EmitTo(\$actor, "As this table has a usage cost of "+\$usagecost+" you will be making "+\$profit+" from this sale.");
+      \}
+    \}
+  \}
+  Call(\$\{Ironclaw:Lib:Economy:TradingTables\}, "remove-from-table-after-delay", \$item: NRefOb(\$what[\$i]), \$selldelay: \$this.selldelay);
+\}
+
+if(\$this."base:public-container") \{
+    \$obprep = 16;
+    \$(where:description) = "put in";
+    \$(where:preposition) = "in";
+\} else \{
+    \$obprep = 8;
+    \$(where:description) = "put on";
+    \$(where:preposition) = "on";
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove-from-table-after-delay">
+         X[M] /* move the item from the trading table back to the seller */
+
+if(!\$item \&\& !NRefOb(\$item)) return TRUE;
+\$item = NRefOb(\$item);
+
+/* after a delay, depending on the table, remove the item */
+\$selltime = \$item."trading:selltime";
+
+if(\$selldelay) \$delay(\$selldelay, TRUE, "5ba5");
+if(!\$item) return TRUE;
+
+if(\$item."trading:selltime" == \$selltime) \{
+  /* item is still on the trading table, remove it */
+    
+  /* Emit item being removed */
+  EmitIn(\$item."base:environment", "A nearby merchant points out some unsold items to a slave who promptly gathers them up to deliver back to their owner.");
+
+  if(\$item."trading:seller") \{
+    if(\$item."trading:seller"."virtualhome:home") \{
+      \$item."base:environment" = \$item."trading:seller"."virtualhome:home";
+    \} else \{
+      \$item."base:environment" = \$item."trading:seller";
+    \}
+  \} else \{
+    \$item."base:environment" = \$item."trading:seller";
+  \}
+  \$item."merry:inherit:react:take" = nil;
+  if(\$item."merry:inherit:react-pre:take-from") \{ \$item."merry:inherit:react-pre:take-from" = nil; \}
+  if(\$item."merry:inherit:react:retrieve-what") \{ \$item."merry:inherit:react:retrieve-what" = nil; \}
+  if(\$item."merry:inherit:react-pre:tap-dob")   \{ \$item."merry:inherit:react-pre:tap-dob" = nil; \}
+  \$item."merry:inherit:react:snatch-dob" = nil;
+  \$item."merry:inherit:react:catch-what" = nil;
+  \$item."nip:item:cdo" = nil;
+  \$item."trading:table" = nil;
+  \$item."trading:seller" = nil;
+  \$item."trading:sellername" = nil;
+  \$item."trading:selltime" = nil;
+  \$item."nip:item:cost" = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_trading_from_item">
+         X[M] /* Remove all the trading properties from this item */
+if(!\$item) return FALSE;
+\$item."merry:inherit:react:take" = nil;
+\$item."merry:inherit:react-pre:tap-dob" = nil;
+\$item."merry:inherit:react-pre:take-from" = nil;
+\$item."merry:inherit:react:snatch-dob" = nil;
+\$item."merry:inherit:react:catch-what" = nil;
+\$item."trading:table" = nil;
+\$item."trading:seller" = nil;
+\$item."trading:sellername" = nil;
+\$item."trading:selltime" = nil;
+\$item."nip:item:cost" = nil;
+
+/* Hopefully can remove this line when tables are properly updated */
+\$item."nip:item:cdo" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:rent_table_no">
+         X[M] EmitTo(\$actor, "You decide to not rent " + Describe(\$par["table"]) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:rent_table_yes">
+         X[M] object guild, table;
+mixed item, evoke;
+int cost, timedelay, i;
+
+cost = \$par["cost"]*100;
+timedelay = \$par["timedelay"];
+table = \$par["table"];
+item = \$par["item"];
+evoke = \$par["evoke"];
+
+if(!\$actor.guild) \{
+    EmitTo(\$actor, "You cannot rent a table unless you are a member of a guild.");
+    return FALSE;
+\}
+
+guild = \$actor.guild;
+
+/* Make sure the guild is not already renting a table. */
+if(guild."trade:table") \{
+    EmitTo(\$actor, "Your guild is already renting a table.");
+    return FALSE;
+\}
+
+/* Make sure the guild has enough money to rent the table. */
+if(Int(guild.kitty) \< cost) \{
+    EmitTo(\$actor, "Your guild is not holding enough money to rent that table.");
+    return FALSE;
+\}
+
+/* Make sure this character has the authority to spend guild money. */
+if(Int(\$actor."guild:rank") != 1 \&\& !\$actor."guild:trader") \{
+    EmitTo(\$actor, "You do not have the authority to spend guild money.");
+    return FALSE;
+\}
+
+guild.kitty -= cost;
+guild."trade:table" = table;
+table.guild = guild;
+table."guild:longname" = guild.fullname;
+\$table = table;
+
+        /* GUILD COUNCIL CODE */
+        \$council = nil /* defunct */;
+        \$council.kitty = \$council.kitty + cost;
+
+        \$data = explode(ctime(time()), " ");
+        \$month = \$data[1];
+        \$year = \$data[4];
+
+        if(\$month == "Jan") \$month = "01";
+        if(\$month == "Feb") \$month = "02";
+        if(\$month == "Mar") \$month = "03";
+        if(\$month == "Apr") \$month = "04";
+        if(\$month == "May") \$month = "05";
+        if(\$month == "Jun") \$month = "06";
+        if(\$month == "Jul") \$month = "07";
+        if(\$month == "Aug") \$month = "08";
+        if(\$month == "Sep") \$month = "09";
+        if(\$month == "Oct") \$month = "10";
+        if(\$month == "Nov") \$month = "11";
+        if(\$month == "Dec") \$month = "12";
+
+        \$property = "transactions:deposit:tradingtable:" + Str(\$year) + ":" + Str(\$month);
+        if(Get(\$council, \$property)) \{
+            Set(\$council, \$property, Int(Get(\$council, \$property)) + Int(cost));
+        \} else \{
+            Set(\$council, \$property, Int(cost));
+        \}
+
+\$name = name(guild)[16..strlen(name(guild))-1];
+        if(!Obj("Ironclaw:Guilds:Trades:" + \$name)) \{
+            \$trades = Duplicate(\$\{Allegory:Guilds:Trades:default_trades\});
+            \$trades."core:objectname" = "Ironclaw:Guilds:Trades:" + \$name;
+        \} else \{
+            \$trades = Obj("Ironclaw:Guilds:Trades:" + \$name);
+        \}
+
+        /* send a note to the winning guild */ 
+        if(!\$trades."trading:notes") \{ 
+            \$trades."trading:notes" = (\{ \}); 
+        \} 
+        \$trades."trading:notes" += (\{ "Your guild has rented the use of a trading table or display case for " + Str(cost/100) + " florins." \}); 
+
+
+EmitTo(\$actor, "Congratulations! The table is set up for your guild to use. Any items remaining at the end of your rental period will be delivered back to the seller.");
+
+Act(\$actor, "place", \$what: item, \$where: \$table, \$evoke: evoke);
+
+\$delay(timedelay, FALSE, "d4a0");
+
+\$table.guild."trade:table" = nil;
+\$table.guild = nil;
+\$table."guild:longname" = nil;
+
+\$inventory = \$table."base:proximates";
+for(i = 0; i \< sizeof(\$inventory); i++) \{
+    if(\$inventory[i]."trading:table") \{
+        Call(\$this, "remove-from-table-after-delay", \$item: \$inventory[i]);
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take-from">
+         X[M] if(\$target."trading:table") \{
+    EmitTo(\$actor, "You can't take anything from " + Describe(\$target) + " without buying it first.");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:tap-dob">
+         X[M] if(\$target."trading:table") \{
+    EmitTo(\$actor, "You can't take anything from " + Describe(\$target) + " without buying it first.");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:catch-what">
+         X[M] /* Can only take the item if they own it, or if they pay for it */
+EmitTo(\$actor, "Catching");
+return Call(\$\{Ironclaw:Lib:Economy:TradingTables\}, "buy_item_question", \$item: this);
+      </Core:Property>
+      <Core:Property property="merry:react:place-where">
+         X[M] object guild;
+string timestr;
+int timedelay, cost;
+
+/* If the table is rented */
+if(\$this.guild) \{
+    guild = \$this.guild;
+
+    if(!\$actor.guild) \{
+        EmitTo(\$actor, "You must be a member of " + guild.fullname + " to use this table.");
+        return FALSE;
+    \}
+
+    if(\$actor.guild != guild) \{
+        EmitTo(\$actor, "You must be a member of " + guild.fullname + " to use this table.");
+        return FALSE;
+    \}
+
+    return Call(\$this, "place_item");
+\}
+
+/* If the table is not rented */
+timestr = \$this."trait:rentcost"[0];
+timedelay = \$this."trait:rentcost"[1];
+cost = \$this."trait:rentcost"[2];
+\$question = "Before you can use this table, you must first rent it. The cost is " + Str(cost) + " florins for " + timestr + " and will be deducted from your guild kitty. Would you like to rent it?";
+interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{Ironclaw:Lib:Economy:TradingTables\}, \$no_ob: \$\{Ironclaw:Lib:Economy:TradingTables\}, \$expire_ob: \$\{Ironclaw:Lib:Economy:TradingTables\}, \$yes_fun: "rent_table_yes", \$no_fun: "rent_table_no", \$expire_fun: "rent_table_no", \$par: ([ "cost":cost, "timedelay":timedelay, "table":\$this, "item":\$what, "evoke":\$evoke ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:snatch-dob">
+         X[M] /* Can only take the item if they own it, or if they pay for it */
+return Call(\$\{Ironclaw:Lib:Economy:TradingTables\}, "buy_item_question", \$item: this);
+      </Core:Property>
+      <Core:Property property="merry:react:take">
+         X[M] /* Can only take the item if they own it, or if they pay for it */
+return Call(\$\{Ironclaw:Lib:Economy:TradingTables\}, "buy_item_question", \$item: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1468170662, "jominey", "E", 1468170678, "jominey", "E", 1468170722, "jominey", "E", 1468170771, "jominey", "E", 1468170812, "jominey", "E", 1468171055, "jominey", "E", 1468171819, "jominey", "E", 1468173352, "jominey", "E", 1468173864, "jominey", "E", 1468173885, "jominey", "E", 1468173955, "jominey", "E", 1468174026, "jominey", "E", 1468174352, "jominey", "E", 1468174406, "jominey", "E", 1468176096, "jominey", "E", 1468176284, "jominey", "E", 1468176339, "jominey", "E", 1468176473, "jominey", "E", 1468176483, "jominey", "E", 1468176842, "jominey", "E", 1468178366, "jominey", "E", 1468178401, "jominey", "E", 1468178660, "jominey", "E", 1468178882, "jominey", "E", 1468179069, "jominey", "E", 1468179298, "jominey", "P", 1468179328, "jominey", "P", 1468179353, "jominey", "P", 1468179372, "jominey", "P", 1468179590, "jominey", "E", 1468179682, "jominey", "E", 1468179797, "jominey", "E", 1468179845, "jominey", "E", 1468180161, "jominey", "E", 1468180278, "jominey", "E", 1468180304, "jominey", "E", 1468180383, "jominey", "E", 1468180532, "jominey", "E", 1468180584, "jominey", "E", 1468180614, "jominey", "E", 1468180685, "jominey", "E", 1468180771, "jominey", "E", 1468180858, "jominey", "E", 1468180946, "jominey", "E", 1468181009, "jominey", "E", 1468181092, "jominey", "E", 1468181173, "jominey", "E", 1468181247, "jominey", "E", 1468181280, "jominey", "E", 1468181371, "jominey", "E", 1468181438, "jominey", "E", 1468181469, "jominey", "E", 1468181495, "jominey", "E", 1468181563, "jominey", "E", 1468181617, "jominey", "E", 1468181711, "jominey", "E", 1468181906, "jominey", "E", 1468181988, "jominey", "E", 1468182103, "jominey", "E", 1468182106, "jominey", "E", 1468183547, "jominey", "E", 1468183758, "jominey", "E", 1468184073, "jominey", "E", 1468184199, "jominey", "E", 1468184730, "jominey", "E", 1479424261, "jominey", "E", 1479425134, "jominey", "E", 1479425339, "jominey", "E", 1479425486, "jominey", "E", 1479425528, "jominey", "E", 1572040660, "sendnoodlez", "E", 1572040706, "sendnoodlez", "E", 1572055809, "jominey", "E", 1572055860, "jominey", "E", 1572055933, "jominey", "E", 1572056015, "jominey", "E", 1572407357, "jominey", "P", 1597017986, "jominey", "E", 1597018004, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

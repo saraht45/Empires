@@ -1,0 +1,144 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tonyd">
+  <SkotOS:MerAcHa action_id="write">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-pre:action">
+         X[M] object scroll;  
+NRef ref;  
+  
+ref = \$what[0];  
+  
+scroll = NRefOb(ref);  
+ 
+if (scroll."base:holder" \&\& scroll."base:holder" != \$actor) \{ 
+  EmitTo(\$actor, "You cannot modify a scroll you're not holding.\\n"); 
+  return FALSE; 
+\} 
+  
+if (!Get(scroll, "writable")) \{  
+  \$what = nil;  
+  EmitTo(\$actor, "Alas, " + Describe(scroll, nil, \$actor) + " is not something you can write on.\\n");  
+  return FALSE;  
+\}  
+  
+if (Get(scroll, "generic")) \{  
+  /* the generic system has its own checks */  
+  return TRUE;  
+\}  
+if (!IsPrime(ref) \&\& NRefOb(ref)."trait:objecttype" != "book" \&\& NRefOb(ref)."trait:objecttype" != "newspaper") \{  
+  \$what = nil;  
+  EmitTo(\$actor, "You cannot write on the detail of an object.\\n");  
+  return FALSE;  
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global:action">
+         X[M] object scroll;
+string det;
+string text, evoke;
+mixed langlevel, langname, langskill;
+
+scroll = NRefOb(\$what[0]);
+det = NRefDetail(\$what[0]);
+
+Set(scroll, "brokenseal", nil);
+
+if(scroll."trait:objecttype" == "newspaper") \{
+    EmitTo(\$actor, "[OOC: Please use the @compose command to create a newspaper.]");
+    return FALSE;
+\}
+
+/*
+if (Get(scroll, "details:objskin:description:delivery-from") \&\&
+    Get(scroll, "details:objskin:description:delivery-from") != Describe(\$actor)) \{
+*/
+  if ((!scroll."lastsigner:object" \&\& scroll."details:objskin:description:delivery-from" \&\& scroll."details:objskin:description:delivery-from" != "" \&\& lower_case(scroll."details:objskin:description:delivery-from") != lower_case(Describe(\$actor))) \|\| scroll."lastsigner:object" \&\& scroll."lastsigner:object" != \$actor) \{
+    EmitTo(\$actor, "You may not add to a scroll that is signed by another person. Please erase the scroll and try again.");
+    return FALSE;
+  \}
+
+if (Get(scroll, "lastwriter") == nil \|\|
+    Get(scroll, "lastwriter") == Describe(\$actor)) \{
+
+  text = UnSAM(Get(scroll, 
+             "details:" + det + ":description:writing")); 
+\}
+
+if(scroll."trait:objecttype" == "book") \{
+    text = Get(scroll, "trait:" + det);
+\}
+if (text) \{
+  text = text + "\\n";
+/* 
+  text = text[1 .. strlen(text)-2] + "\\n";
+*/
+\} else \{
+  text = "";
+\}
+
+/* This code lets you write in languages - Aziel, 13, June 2004 */
+/* Ironclaw has it's own language system - temporary fix forces writing in common */
+
+langlevel = Str((\$r1 = \$actor."skotos:currentlang") ? \$r1 : 0);
+langname = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + langlevel);
+langskill = Get(\$actor, "skill:lang:" + langname);
+
+if (langlevel \&\& langlevel != "0" \&\& strlen(\$(raw-evoke)) \> 0) \{
+  evoke = INLANG(langname, langskill, \$(raw-evoke));
+\} else \{
+  evoke = \$(raw-evoke);
+\}
+
+/* evoke = \$(raw-evoke); */
+
+/* Old method
+text += \$evoke[1 .. strlen(\$evoke)-2];
+*/
+
+/* New method */
+text += evoke;
+
+if(scroll."trait:objecttype" == "book") \{
+    Set(scroll, "trait:" + det, text);
+    return TRUE;
+\} else \{
+    Set(scroll,
+    "details:" + det + ":description:writing",
+    text);
+\}
+
+Set(scroll, "lastwriter", Describe(\$actor));
+Set(scroll, "lastwritetime", time());
+Set(scroll, "lastwriter_object", \$actor);
+
+/* Do a skill roll to see how hard it is to recognize the handwriting on this scroll */
+scroll.lastwriter_recognition_difficulty = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "disguise_writer" \}), \$bonus: 0);
+
+if (Get(scroll, "details:" + det +
+    ":description:delivery-from") != Describe(\$actor)) \{
+  Set(scroll, "details:" + det +
+      ":description:delivery-from", nil);
+  Set(scroll, "details:" + det +
+      ":description:delivery-end", nil);
+\}
+
+return TRUE;
+
+/*
+ * Aziel, Sep 30, 2003:
+ * If a scroll is signed, it should be erased before
+ * being written on by another person. Enforce that here.
+ *
+ * Kalle, Sep 21, 2004:
+ * Property usage inconsistent;
+ * - was "descriptions:writing"
+ * - changed to "description:writing"
+ * The reason why consistency is important is the setprop-trigger
+ * solution in the courier scrolls.
+ */
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1064274993, "kargh", "E", 1064275095, "kargh", "E", 1064963650, "kargh", "P", 1064963885, "kargh", "P", 1064964020, "kargh", "P", 1064964126, "kargh", "P", 1064964145, "kargh", "P", 1064964351, "kargh", "P", 1064964928, "kargh", "P", 1085572613, "kargh", "P", 1085572851, "kargh", "P", 1085572859, "kargh", "P", 1085573811, "kargh", "P", 1085573968, "kargh", "P", 1087123995, "kargh", "P", 1087124661, "kargh", "P", 1087124774, "kargh", "P", 1087125627, "kargh", "P", 1087125828, "kargh", "P", 1087152457, "kargh", "P", 1087152667, "kargh", "P", 1092757961, "nino", "P", 1095750258, "zwoc", "P", 1112331193, "nino", "P", 1135558380, "tonyd", "E", 1135558405, "tonyd", "E", 1135558607, "tonyd", "P", 1173189378, "librarysage", "R", 1230954229, "tonyd", "E", 1409137811, "tonyd", "P", 1409137929, "tonyd", "P", 1409138027, "tonyd", "P", 1409138100, "tonyd", "P", 1409138918, "tonyd", "P", 1409139074, "tonyd", "P", 1409143941, "tonyd", "P", 1409144029, "tonyd", "P", 1409144094, "tonyd", "P", 1409144105, "tonyd", "P", 1409145797, "tonyd", "P", 1409145839, "tonyd", "P", 1460003747, "tonyd", "P", 1460003784, "tonyd", "P", 1460003809, "tonyd", "P", 1460003841, "tonyd", "P", 1460003857, "tonyd", "P", 1460003879, "tonyd", "P", 1460003905, "tonyd", "P", 1460003953, "tonyd", "P", 1460003990, "tonyd", "P", 1569976238, "jominey", "E", 1569976344, "jominey", "P", 1569976371, "jominey", "P", 1569976426, "jominey", "P", 1569976523, "jominey", "P", 1569976543, "jominey", "P", 1569976614, "jominey", "P", 1569976733, "jominey", "P", 1569976746, "jominey", "P", 1569976799, "jominey", "P", 1569976986, "jominey", "E", 1569976996, "jominey", "R", 1573344223, "jominey", "E", 1573344528, "jominey", "E", 1573344574, "jominey", "E", 1573344631, "jominey", "E", 1573344771, "jominey", "E", 1573344803, "jominey", "E", 1573346520, "jominey", "P", 1573346688, "jominey", "P", 1573346984, "jominey", "P", 1573347043, "jominey", "P", 1573347075, "jominey", "P", 1573347092, "jominey", "P", 1573347115, "jominey", "P", 1573347149, "jominey", "P", 1573347632, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

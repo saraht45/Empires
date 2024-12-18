@@ -1,0 +1,567 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="growth:stages">
+         ([ "adolescent":(\{ 4, "teenager", \<Allegory:Props:Children:Stages:06-UrAdolescent\> \}), "baby":(\{ 1, "toddler", \<Allegory:Props:Children:Stages:02-UrBaby\> \}), "child":(\{ 4, "adolescent", \<Allegory:Props:Children:Stages:05-UrChild\> \}), "infant":(\{ 1, "baby", \<Allegory:Props:Children:Stages:01-UrInfant\> \}), "teenager":(\{ 4, "adult", \<Allegory:Props:Children:Stages:07-UrTeenager\> \}), "toddler":(\{ 2, "young child", \<Allegory:Props:Children:Stages:03-UrToddler\> \}), "young child":(\{ 2, "child", \<Allegory:Props:Children:Stages:04-UrYoungChild\> \}) ])
+      </Core:Property>
+      <Core:Property property="merry:lib:access">
+         X[M] \$prop = NRefOb(\$dob[0]);
+
+if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor)) \{                  
+  EmitTo(\$actor, "Only owners can view permissions of " + Describe(\$prop, nil, nil, STYLE_NONPOSS) + ".");                  
+  return FALSE;                  
+\}  
+ 
+\$rstr = "The following people have access to " + Describe(\$prop) + ":\\n"; 
+if(\$prop."trait:ownerone") \{ 
+    \$rstr += "Owner 1 - " + Describe(\$prop."trait:ownerone") + "\\n"; 
+\} 
+if(\$prop."trait:ownerone") \{ 
+    \$rstr += "Owner 2 - " + Describe(\$prop."trait:ownertwo") + "\\n"; 
+\} 
+ 
+if(\$prop."trait:friends") \{ 
+    \$friends = \$prop."trait:friends"; 
+\} else \{ 
+    \$friends = (\{ \}); 
+\} 
+ 
+\$friends -= (\{ nil \}); 
+ 
+for(\$i = 0; \$i \< sizeof(\$friends); \$i++) \{ 
+    \$rstr += "Friend - " + Describe(\$friends[\$i]) + "\\n"; 
+\} 
+ 
+EmitTo(\$actor, \$rstr); 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:afternoon">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "herald", "politely", "Good afternoon.", nil, \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:allow">
+         X[M] \$type = "pet";
+\$prop = NRefOb(\$dob[0]);
+if(\$prop."trait:objecttype") \$type = \$prop."trait:objecttype";
+
+if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor)) \{                  
+  EmitTo(\$actor, "Only owners can assign permissions to " + Describe(\$prop, nil, nil, STYLE_NONPOSS) + ".");                  
+  return FALSE;                  
+\}  
+ 
+if(!\$param) \{ 
+    EmitTo(\$actor, "[OOC: Give control of " + Describe(\$prop, nil, nil, STYLE_NONPOSS) + " to another character.]"); 
+    EmitTo(\$actor, "Syntax: control " + Str(\$type) + " 'allow bob'"); 
+    return FALSE; 
+\} 
+ 
+if(!(\$friend = common::lookup(\$name: \$param))) \{ 
+    EmitTo(\$actor, TAG("Cannot find character named " + Str(\$param), "imp")); 
+    EmitTo(\$actor, "Syntax: control " + Str(\$type) + " 'allow bob'"); 
+    return FALSE; 
+\} 
+ 
+if(\$prop."trait:friends") \{ 
+    \$friends = \$prop."trait:friends"; 
+\} else \{ 
+    \$friends= (\{ \}); 
+\} 
+ 
+\$friends \|= (\{ \$friend \}); 
+ 
+\$prop."trait:friends" = \$friends; 
+ 
+EmitTo(\$actor, "Access to " + Describe(\$prop, nil, nil, STYLE_NONPOSS) + " has been given to " + Describe(\$friend) + "."); 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:blessings">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "express", "reverently", "God's blessings!", "to", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:bow">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "bow", "properly", nil, "to", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:curtsy">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "curtsy", "respectfully", nil, "to", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:deny">
+         X[M] \$type = "pet";
+\$prop = NRefOb(\$dob[0]);
+if(\$prop."trait:objecttype") \$type = \$prop."trait:objecttype";
+
+if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor)) \{                  
+  EmitTo(\$actor, "Only owners can assign permissions to " + Describe(\$prop, nil, nil, STYLE_NONPOSS) + ".");                  
+  return FALSE;                  
+\}  
+
+if(!\$param) \{
+    EmitTo(\$actor, "[OOC: Revoke control of your pet from another character.]");
+    EmitTo(\$actor, "Syntax: control " + \$type + " 'deny bob'");
+    return FALSE;
+\}
+
+if(!(\$friend = common::lookup(\$name: \$param))) \{
+    EmitTo(\$actor, TAG("Cannot find character named " + Str(\$param), "imp"));
+    EmitTo(\$actor, "Syntax: control " + \$type + " 'deny bob'");
+    return FALSE;
+\}
+
+if(\$prop."trait:friends") \{
+    \$friends = \$prop."trait:friends";
+\} else \{
+    \$friends= (\{ \});
+\}
+
+if(!member(\$friend, \$friends)) \{
+    EmitTo(\$actor, Describe(\$friend) + " does not have access to " + Describe(\$prop) + ".");
+    return FALSE;
+\}
+
+\$friends -= (\{ \$friend \});
+
+\$prop."trait:friends" = \$friends;
+
+EmitTo(\$actor, "Access to " + Describe(\$prop) + " has been revoked from " + Describe(\$friend) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:down">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "lie", nil, nil, "beside", \$actor );
+      </Core:Property>
+      <Core:Property property="merry:lib:dress">
+         X[M] \$prop = NRefOb(\$dob[0]);
+
+\$inventory = NRefOb(\$dob[0])."base:inventory";         
+Act(NRefOb(\$dob[0]), "wear", \$articles: \$inventory);
+      </Core:Property>
+      <Core:Property property="merry:lib:evening">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "smile", "warmly", "Good evening!", "to", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:follow">
+         X[M] \$prop = NRefOb(\$dob[0]);
+
+EmitTo(\$actor, Describe(\$prop)+" will now follow you.");
+\$prop.follow = \$actor;
+Social(NRefOb(\$prop), "walk", nil, nil, "to", \$actor );
+      </Core:Property>
+      <Core:Property property="merry:lib:freemote">
+         X[M] /*         
+         
+  D=+emote Merry replacement.         
+         
+*/         
+         
+int i, sz;         
+string d_actor;      
+
+\$backup = Str(\$actor);
+
+\$line = replace_strings(\$evoke, ".", "", "freemote ", "");  
+\$actor = NRefOb(\$target);
+         
+Call(\$\{Ironclaw:Neoct:Verbs:EmoteLib\}, "prepare_emit"); 
+if(!\$line) return FALSE; 
+         
+d_actor     = Describe(\$actor);         
+sz          = sizeof(\$targets);  
+ 
+if(\$line[0] == '\\'') \{ 
+\$spacer = ""; 
+\} else \{ 
+\$spacer = " "; 
+\}        
+      
+for (i = 0; i \< sz; i++)         
+if(\$targets[i]."base:environment" == \$actor."base:environment") \{        
+  EmitTo(\$targets[i], TAG(capitalize(d_actor) + \$spacer + \$emits[\$targets[i]], "social:second"));         
+\}         
+
+\$actor = Obj(\$backup);
+     
+EmitIn(\$actor."base:environment", TAG(capitalize(d_actor) + \$spacer + \$emits["*"], "social:third"), \$targets...);
+      </Core:Property>
+      <Core:Property property="merry:lib:frown">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "frown", "displeasedly", nil, "at", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:giggle">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "giggle", "entertainedly", nil, "at", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:go-home">
+         X[M] \$prop = NRefOb(\$dob[0]);
+
+\$home = Get(Obj(\$ownerone), "virtualhome:home");  
+
+if(\$home) \{
+    \$prop."base:environment" = \$home;       
+    EmitIn(\$actor."base:environment", Describe(\$prop) + " goes home.");
+    return TRUE;
+\}
+
+if(Obj(\$ownertwo)) \{
+    \$home = Get(Obj(\$ownertwo), "virtualhome:home");
+
+    if(\$home) \{
+        \$prop."base:environment" = \$home;       
+        EmitIn(\$actor."base:environment", Describe(\$prop) + " goes home.");
+        return TRUE;
+    \}
+\}
+
+EmitTo(\$actor, Describe(\$prop) + " is homeless.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:grow">
+         X[M] \$stages = Get(\$\{Allegory:Lib:Controls:General\}, "growth:stages");
+
+\$lastStage = \$this."trait:stage";
+\$currentStage = \$stages[\$lastStage][1];
+
+\$env = \$this."base:environment"; 
+if(\$env."udat:possessed") \$env = \$env."base:environment";
+
+\$descPre = Describe(\$this, nil, nil, STYLE_NONPOSS);
+
+if(\$currentStage == "adult") \{ 
+    Call(\$this, "stop_growth");
+    EmitIn(\$env, TAG(\$descPre + " is now an adult. [File an assist to notify staff]", "imp"));
+    return TRUE;
+\}
+
+\$currentUr = \$stages[\$currentStage][2];
+\$timeToNext = \$stages[\$currentStage][0];
+
+\$timeToNext = 60*60*24*365*\$timeToNext;
+
+\$timeToNext = 20*\$timeToNext;
+
+\$this."base:urparent" = \$currentUr;
+\$this."core:urparent" = \$currentUr;
+
+\$descPost = Describe(\$this, nil, nil, STYLE_NONPOSS);
+
+EmitIn(\$env, TAG(\$descPre + " is now " + \$descPost + ".", "imp"));
+
+\$this."growth:id" = In("grow", \$timeToNext);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:laugh">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "laugh", "amusedly", nil, "at", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:morning">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "greet", "pleasantly", "Good morning!", nil, \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:night">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "bid", "quietly", "Good night.", nil, \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:sigh">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "sigh", "quietly", nil, "to", \$prop );
+      </Core:Property>
+      <Core:Property property="merry:lib:sit">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "sit", nil, nil, "beside", \$actor );
+      </Core:Property>
+      <Core:Property property="merry:lib:smile">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "smile", "pleasantly", nil, "to", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:start_growth">
+         X[M] EmitTo(\$\{Chatters:AE:ro:roo\}, "STARTING");
+
+\$stages = Get(\$\{Allegory:Lib:Controls:General\}, "growth:stages");
+
+if(\$this.growing) return TRUE;
+
+\$currentStage = \$this."trait:stage";
+
+\$timeToNext = \$stages[\$currentStage][0];
+
+\$timeToNext = 60*60*24*365*\$timeToNext;
+
+\$timeToNext = 20*\$timeToNext;
+
+\$this."growth:id" = In("grow", \$timeToNext);
+
+\$this.growing = 1;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:stay">
+         X[M] \$prop = NRefOb(\$dob[0]);
+
+EmitTo(\$actor, Describe(\$prop)+" will no longer follow you.");      
+\$prop.follow = nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:stop_growth">
+         X[M] EmitTo(\$\{Chatters:AE:ro:roo\}, "STOPPING");
+
+if(\$this."growth:id") \{
+    Stop(\$this."growth:id");
+    \$this."growth:id" = nil;
+\}
+
+\$this.growing = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:thanks">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "express", "gratefully", "Thank you!", "to", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:undress">
+         X[M] /* undressing ourselves */               
+\$delay(0.01, TRUE, "c799");               
+    
+\$prop = NRefOb(\$dob[0]);
+           
+\$mapping = \$prop."base:clothes-worn";               
+\$clothes = (\{ \});               
+\$indices = map_indices(\$mapping);               
+for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{               
+  for(\$j=0;\$j\<sizeof(\$mapping[\$indices[\$i]]);\$j++) \{               
+    \$item = \$mapping[\$indices[\$i]][\$j];               
+    if(member(\$item, \$clothes)) \{               
+      /* already in the list */               
+      /* add anything covering this item */               
+      if(sizeof(\$mapping[\$indices[\$i]]) \> \$j+1) \{               
+        /* there are items covering this */               
+        \$item."clothing:covered-by" \|= \$mapping[\$indices[\$i]][\$j+1..];               
+      \}               
+    \} else \{               
+      /* not in the list */               
+      /* add anything covering this item */               
+      \$clothes += (\{ \$item \});               
+      if(sizeof(\$mapping[\$indices[\$i]]) \> \$j+1) \{               
+        /* there are items covering this */               
+        \$item."clothing:covered-by" = \$mapping[\$indices[\$i]][\$j+1..];               
+      \} else \{               
+        \$item."clothing:covered-by" = (\{ \});               
+      \}               
+    \}               
+  \}               
+\}               
+               
+/* now make a list of what is on top to bottom */               
+\$ordered_list = (\{ \});               
+while(sizeof(\$clothes)) \{               
+  \$tmp_list = (\{ \});               
+  for(\$i=0;\$i\<sizeof(\$clothes);\$i++) \{               
+    if(sizeof(\$clothes[\$i]."clothing:covered-by")) \{               
+      /* this item is covered by something. Is that something already removed? */               
+      if(!sizeof(\$clothes \& \$clothes[\$i]."clothing:covered-by")) \{               
+        /* no longer covered. Add to the list */               
+        \$tmp_list \|= (\{ \$clothes[\$i] \});               
+      \}               
+    \} else \{               
+      /* not covered by anything. Move this to the list */               
+      \$tmp_list \|= (\{ \$clothes[\$i] \});               
+    \}               
+  \}               
+  \$ordered_list += (\{ \$tmp_list \});               
+  \$clothes -= \$tmp_list;               
+\}               
+               
+/* save this list in the player's body */               
+if(sizeof(\$ordered_list))               
+  \$prop."clothing:last-wearing" = \$ordered_list;               
+               
+/* remove the clothes */               
+for(\$i=0;\$i\<sizeof(\$ordered_list);\$i++) \{               
+  Act(\$prop, "unwear", \$articles: \$ordered_list[\$i]);               
+\}               
+               
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:wave">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "wave", "casually", nil, "to", \$actor."base:environment" );
+      </Core:Property>
+      <Core:Property property="merry:lib:yawn">
+         X[M] \$prop = NRefOb(\$dob[0]);
+Social(NRefOb(\$prop), "yawn", "tiredly", nil, "to", \$prop );
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] if(!\$this.isapet \&\& \$this."trait:objecttype" != "child") \{
+    return Call(\$this, "take");
+\}
+
+/* Record what room the actor is in */                      
+\$room = \$actor."Base:environment";    
+
+\$friends = \$this."trait:friends";   
+if(!\$friends) \$friends = (\{ \});               
+                      
+/* Check if the actor is allowed to pick up the pet */                      
+  /* check if \$actor is the pet's owner */                      
+if(\$actor == \$this."trait:ownerone" \|\| \$actor == \$this."trait:ownertwo" \|\| member(\$actor, \$friends)) \{                      
+  /* if the actor is allowed to pick up the pet */                      
+  /* tell the actor that they picked up the pet */                      
+  /* tell the room that the actor picked up the pet */                      
+  EmitTo(\$actor, "You pick up "+Describe(\$this)+".");                      
+  EmitIn(\$room, Describe(\$actor)+" picks up "+ Describe(\$this)+".", \$actor);                      
+  \$this."base:environment" = \$actor;                      
+                      
+\} else \{                      
+  /* the actor is not the dog's owner */                      
+  /* if the dog is already being held by someone */                      
+  if(\$this."base:environment"."base:volition") \{                      
+    /* use the normal give/take/offer code */                      
+    return TRUE;                      
+  \} else \{                      
+    /* tell the actor that they can't take the animal */                      
+    EmitTo(\$actor, "You cannot take " + Describe(\$this) + ".");                                     
+  \}                      
+\}                      
+                      
+/* return false, so that the actor doesn't see a message about not being allowed to pick up the pet */                      
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:control-dob">
+         X[M] int i, sz;                 
+int found;              
+string* commands, *commandsDefault, *commandsExtra;              
+string errormsg, self, possessive, nominative, objective, input, param;              
+mixed property, result;
+
+if(!\$this.pet \&\& !\$this.isapet \&\& \$this."trait:objecttype" != "child") return TRUE;              
+              
+/* Gather commands located in UR baby */              
+commandsDefault = (\{ \});              
+if(\$this."trait:commands:default") \{              
+    commandsDefault = \$this."trait:commands:default";              
+\}              
+              
+/* Gather baby specific commands */              
+commandsExtra = (\{ \});              
+if(\$this."trait:commands:extra") \{              
+    commandsExtra = \$this."trait:commands:extra";              
+\}              
+              
+/* Put them all together */              
+commands = commandsDefault \| commandsExtra;              
+              
+if(!sizeof(commands)) \{              
+    commands = (\{ "none" \});              
+\}              
+              
+errormsg = "That is not a valid command for " + Describe(\$this) + ". Valid orders are: \\"" + implode(commands, "\\" \\"") +"\\"";              
+              
+if(!\$evoke) \{              
+    EmitTo(\$actor, errormsg);              
+    return FALSE;              
+\}              
+                 
+input = replace_strings(\$evoke, "\\"", "", ".", "");
+
+if(sizeof(explode(input, " ")) \> 1) \{
+    param = explode(input, " ")[1];
+    input = explode(input, " ")[0];
+\}           
+
+if(!member(input, commands)) \{
+    EmitTo(\$actor, errormsg);
+    return FALSE;
+\}
+              
+              
+/* check if we're allowed to command the dog */              
+\$ownerone = Str(\$this."trait:ownerone");              
+\$ownertwo = Str(\$this."trait:ownertwo");         
+\$friends = \$this."trait:friends";
+
+if(!\$friends) \$friends = (\{ \});     
+              
+if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor) \&\& !member(\$actor, \$friends)) \{                 
+  EmitTo(\$actor, "You are not my owner, so you can't control me.");                 
+  return FALSE;                 
+\}                 
+
+if(\$this."commands:lib") \{
+    \$lib = \$this."commands:lib";
+\} else \{
+    \$lib = \$this;
+\}
+              
+              
+/* check if this is a valid order */                
+if(FindMerry(\$lib, "lib", input)) \{              
+    /* Result is a script. Execute it. */              
+    result = Call(\$lib, input, \$param: param);              
+\} else if(Get(\$lib, "command:" + input)) \{              
+    /* Result is a simple emote. */              
+    property = Get(\$lib, "command:" + input);              
+              
+    if(typeof(property) == 5) \{              
+        /* Array of emits. Choose one. */              
+        sz = sizeof(property);              
+        result = property[random(sz)];              
+    \} else \{              
+        /* Assuming it's a string. Grab it. */              
+        result = Str(property);              
+    \}              
+\} else \{              
+    /* No response was defined. */              
+    result = "[OOC: No response was defined for this action. File an assist with this error and include the command you were trying to issue.]";              
+    EmitTo(\$actor, result);              
+    return FALSE;              
+\}              
+              
+if(typeof(result) == 3) \{              
+    /* Precautionary measures to ensure emits display correct gender. */              
+    if(\$this."base:genderstring" == "male") \{              
+        self = "himself";              
+        possessive = "his";              
+        nominative = "he";              
+        objective = "him";              
+    \} else if(\$this."base:genderstring" == "female") \{              
+        self = "herself";              
+        possessive = "her";              
+        nominative = "she";              
+        objective = "her";              
+    \} else \{              
+        self = "itself";              
+        possessive = "its";              
+        nominative = "it";              
+        objective = "it";              
+    \}              
+              
+    /* Display the result. */              
+    EmitIn(\$actor."base:environment", replace_strings(result, "THIS", Describe(\$this), "SELF", self, "POSSESSIVE", possessive, "NOMINATIVE", nominative, "OBJECTIVE", objective, "HERE", Describe(\$actor."base:environment"), "OWNER", Describe(\$actor)));              
+\}              
+              
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:timer:grow">
+         X[M] if(\$this."growth:id") \{
+    Stop(\$this."growth:id");
+    \$this."growth:id" = nil;
+\}
+
+Call(\$this, "grow");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1593893341, "jominey", "E", 1593894080, "jominey", "E", 1593894093, "jominey", "E", 1593899839, "jominey", "E", 1593900025, "jominey", "E", 1593900058, "jominey", "E", 1593900097, "jominey", "E", 1593900202, "jominey", "E", 1593900283, "jominey", "E", 1593900458, "jominey", "E", 1593900511, "jominey", "E", 1593900664, "jominey", "E", 1593964278, "jominey", "E", 1593964295, "jominey", "E", 1593964583, "jominey", "E", 1595116401, "sendnoodlez", "E", 1595117521, "sendnoodlez", "E", 1639109258, "ezralee", "E", 1639109356, "ezralee", "E", 1639109670, "ezralee", "E", 1639110057, "ezralee", "E", 1639110157, "ezralee", "E", 1639110245, "ezralee", "E", 1639110287, "ezralee", "E", 1639110349, "ezralee", "E", 1639110401, "ezralee", "E", 1639110457, "ezralee", "E", 1639110516, "ezralee", "E", 1639110657, "ezralee", "E", 1639110717, "ezralee", "E", 1639110945, "ezralee", "E", 1639111071, "ezralee", "E", 1639111191, "ezralee", "E", 1639112028, "ezralee", "E", 1639112067, "ezralee", "E", 1639112220, "ezralee", "E", 1639112392, "ezralee", "E", 1639112550, "ezralee", "E", 1639112607, "ezralee", "E", 1639112673, "ezralee", "E", 1639112739, "ezralee", "E", 1639112826, "ezralee", "E", 1639113213, "ezralee", "E", 1639113257, "ezralee", "E", 1639113295, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,147 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:askquestion">
+         X[M] /* if we're not playing trivia, end */
+if(!\$asker.playingtrivia) return TRUE;
+
+/* increment the counter */
+if(\$asker."trivia:counter") \{
+  \$asker."trivia:counter"++;
+\} else \{
+  \$asker."trivia:counter" = 1;
+\}
+
+\$db = this."trivia:questions";
+\$number = random(sizeof(\$db));
+
+\$question = \$db[\$number][0]+" "+\$db[\$number][2];
+
+\$asker."trivia:answer" = \$db[\$number][1];
+\$timestamp = time();
+\$asker."trivia:timestamp" = \$timestamp;
+
+\$adverb = (\{ nil, "curiously", "generally", "questioningly", "absently", "idly" \});
+\$adverb = \$adverb[random(sizeof(\$adverb))];
+switch(random(7)) \{
+  case 6:
+    Social(\$asker, "muse", \$adverb, \$question);
+    break;
+  case 5:
+    Social(\$asker, "wonder", \$adverb, \$question, "to", \$asker."base:environment");
+    break;
+  case 4:
+    Social(\$asker, "ask", \$adverb, \$question);
+    break;
+  case 3:
+    Social(\$asker, "question", \$adverb, \$question, nil, \$asker."base:environment");
+    break;
+  case 2:
+    Social(\$asker, "ponder", \$adverb, \$question);
+    break;
+  case 1:
+    Social(\$asker, "request", \$adverb, \$question);
+    break;
+  default:
+    Social(\$asker, "inquire", \$adverb, \$question);
+    break;
+\}
+
+/* wait for an answer */
+\$delay(60, TRUE, "a376");
+
+/* if this question hasn't been answered */
+if(\$asker."trivia:timestamp" \&\& \$asker."trivia:timestamp" == \$timestamp) \{
+  /* if we aren't playing anymore */
+  if(!\$asker.playingtrivia) \{
+    \$asker."trivia:answer" = nil;
+    Social(\$asker, "comment", nil, "Nobody got the answer. Oh well, I think that's enough trivia for now.", "to", \$asker."base:environment");
+  \}
+
+  /* if nobody has answered, ask another question */
+  if(\$asker."trivia:answer") \{
+    \$asker."trivia:answer" = nil;
+    \$asker."trivia:timestamp" = nil;
+    /* stop asking after 30 questions */
+    if(\$asker."trivia:counter" \> 30) \{
+      \$asker."trivia:counter" = nil;
+      \$asker.playingtrivia = nil;
+      Social(\$asker, "comment", nil, "Alright, I think that's enough questions for now. If you want to play again, just ask me for trivia.", "to", \$asker."base:environment");
+    \} else \{
+      /* keep asking */
+      Social(\$asker, "mention", nil, "Since nobody answered that question, I'll ask another.", "to", \$asker."base:environment");
+      Call(this, "askquestion");
+    \}
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:checkanswer">
+         X[M] /* if we're not playing trivia, end */
+if(!\$asker."trivia:answer") return TRUE;
+
+\$answer = \$evoke[1..strlen(\$evoke)-3];
+
+if(lower_case(\$answer) == \$asker."trivia:answer") \{
+  \$message = (\{ "Bingo!", "You got it!", "You got the right answer.", "Precisely!", "Exactly!", "That's right!", "Think you're smart, don't you?", "This one here's a smart one!", "Pshaw, too easy.", "Right on!", "Yep.", "Yes, yes, and yes!", "Uh huh.", "That's right." \});
+  \$adverb = (\{ nil, "excitedly", "loudly", "agreeingly", "dramatically" \});
+
+  \$message = \$message[random(sizeof(\$message))];
+  \$adverb = \$adverb[random(sizeof(\$adverb))];
+
+  switch(random(5)) \{
+    case 4:
+      Social(\$asker, "tell", \$adverb, \$message, nil, \$actor);
+      break;
+    case 3:
+      Social(\$asker, "inform", \$adverb, \$message, nil, \$actor);
+      break;
+    case 2:
+      Social(\$asker, "gesture", \$adverb, \$message, "at", \$actor);
+      break;
+    case 1:
+      Social(\$asker, "point", \$adverb, \$message, "at", \$actor);
+      break;
+    default:
+      Social(\$asker, "exclaim", \$adverb, \$message, "to", \$actor);
+      break;
+  \}
+  /* set the question as answered */
+  \$asker."trivia:timestamp" = nil;
+  \$asker."trivia:answer" = nil;
+  /* if we're still playing, ask another question */
+  if(\$asker.playingtrivia) \{
+    Call(this, "askquestion");
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:starttrivia">
+         X[M] if(\$asker.playingtrivia) \{
+  EmitTo(\$actor, "We're already playing trivia!");
+  return TRUE;
+\}
+
+\$message = "Who wants to play a game of trivia?";
+Social(\$asker, "wonder", "curiously", \$message, "to", \$asker."base:environment");
+
+\$asker.playingtrivia = 1;
+Call(this, "askquestion");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1143099538, "tonyd", "E", 1143099711, "tonyd", "P", 1143099732, "tonyd", "P", 1143099753, "tonyd", "P", 1143099780, "tonyd", "P", 1143099820, "tonyd", "P", 1143099914, "tonyd", "P", 1143099937, "tonyd", "P", 1143099968, "tonyd", "P", 1143100000, "tonyd", "P", 1143100144, "tonyd", "P", 1143100234, "tonyd", "P", 1143100258, "tonyd", "P", 1143101998, "tonyd", "P", 1143102071, "tonyd", "P", 1143102162, "tonyd", "P", 1143102511, "tonyd", "P", 1143102598, "tonyd", "P", 1143102632, "tonyd", "P", 1143102837, "tonyd", "P", 1143102943, "tonyd", "P", 1143103158, "tonyd", "P", 1143103190, "tonyd", "P", 1143103308, "tonyd", "P", 1143103459, "tonyd", "P", 1143103509, "tonyd", "P", 1143103620, "tonyd", "P", 1143104313, "tonyd", "P", 1143104619, "tonyd", "P", 1143104729, "tonyd", "P", 1143104794, "tonyd", "P", 1143104859, "tonyd", "P", 1143104920, "tonyd", "P", 1143104978, "tonyd", "P", 1143105058, "tonyd", "P", 1143105178, "tonyd", "P", 1143105204, "tonyd", "P", 1143105240, "tonyd", "P", 1143105379, "tonyd", "P", 1143105410, "tonyd", "P", 1143105459, "tonyd", "P", 1143105490, "tonyd", "P", 1143105580, "tonyd", "P", 1143105622, "tonyd", "P", 1143105637, "tonyd", "P", 1143105888, "tonyd", "P", 1143105970, "tonyd", "P", 1143107902, "tonyd", "E", 1143107947, "tonyd", "E", 1143107959, "tonyd", "E", 1143117533, "tonyd", "P", 1143271361, "tonyd", "P", 1143460044, "tonyd", "P", 1146103493, "sinistrelle", "E", 1146108818, "sinistrelle", "X", 1146110079, "sinistrelle", "X", 1188984660, "tonyd", "E", 1199065187, "tonyd", "E", 1417226697, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="trivia:questions">
+         (\{ (\{ "Who rules the city?", "don", "Three letters." \}), (\{ "What species are the Rinaldi?", "foxes", "Five letters." \}), (\{ "What is the secondary job of the sexy wolverine who is captain of the docktown guard?", "cartographer", "Twelve letters." \}), (\{ "What species are the Bisclavret?", "wolves", "Six letters." \}), (\{ "What species are the Avoirdupois?", "horses", "Six letters." \}), (\{ "What species are the Doloreaux?", "boars", "Five letters." \}), (\{ "What was the cause of the skink plague in docktown?", "skink king", "Two words." \}), (\{ "In which continent is the city of Triskellion found?", "calabria", "Eight letters." \}), (\{ "What is the name of this city?", "triskellian", "Eleven letters." \}), (\{ "What kind of animal is the Sly courier?", "fox", "Three letters." \}), (\{ "How many denarii in an aureal?", "24", "Two digits." \}), (\{ "Who founded the Rinaldi dynasty?", "jon the wise", "Three words." \}), (\{ "What is the proper name of the bay that the city is built on? The bay of ___?", "auvrich", "Seven letters." \}), (\{ "What is the name of the largest Doloreaux-controlled port?", "epinian", "Seven letters." \}), (\{ "What is the name of the long road crossing most of the continent, established by the Rinaldi, and now fallen into disrepair?", "via salutis", "Two words." \}), (\{ "Where is the Swing?", "under the cherry tree", "Four words." \}), (\{ "Who is the primary martyr of S'allumer?", "helloise", "Eight letters." \}), (\{ "Who was the first person healed by S'allumers cleansing light?", "constantin", "Ten letters." \}), (\{ "What is the capital city of Avoirdupois lands?", "chalon su sauldre", "Three words." \}), (\{ "What river is Triskellian built on?", "granvert", "Eight letters." \}), (\{ "What does the name S'allumer mean?", "illuminate", "Ten letters." \}), (\{ "What is the name of the lands around Triskellian?", "lykaemon", "Eight letters." \}), (\{ "What is the full name of the Cathedral?", "cathedrale de temoin", "Three words." \}), (\{ "What is the name of one of the Rinaldi's silver coins?", "denar", "Five letters." \}), (\{ "What is the dominant religion in Triskellian?", "s'allumer", "Nine letters." \}), (\{ "What is the original tongue of the Rinaldi?", "matriloquentia", "Fourteen letters." \}), (\{ "What is the modern common language of Triskellian and the rest of the island?", "calabrese", "Nine letters." \}), (\{ "What is the name of the murky swamps in the southwest of Avoirdupois lands?", "paludestris", "Eleven letters." \}), (\{ "What is the name of the treacherous waters to the northwest of Epinian?", "the broken coast", "Three words." \}), (\{ "What is the name of the capital city in Doloreaux lands?", "bruges", "Six letters." \}), (\{ "What is the name of the mad wizard, who Doloreaux legend says held the continent in slavery for 333 years?", "septagus", "Eight letters." \}), (\{ "What is the name of the mountain range to the north?", "rothos", "Six letters." \}), (\{ "What is the name of the goats who dominate the north-eastern mountains?", "chevernaise", "Eleven letters." \}), (\{ "What species are the Aoreilles?", "rabbits", "Seven letters." \}), (\{ "What species are the Avinge?", "shrews", "Six letters." \}), (\{ "What species are the Blaireu?", "badgers", "Seven letters." \}), (\{ "What species are the Casque?", "armadillos", "Ten letters." \}), (\{ "What species are the Ecorcheur?", "rhinoceroses", "Twelve letters." \}), (\{ "What species are the Esclage?", "hedgehogs", "Nine letters." \}), (\{ "What species are the Feocullans?", "skunks", "Six letters." \}), (\{ "What species are the Keylljeyder?", "elks", "Four letters." \}), (\{ "What species are the Phelan?", "wolves", "Six letters." \}), (\{ "What species are the plessis?", "wild dogs", "Two words." \}), (\{ "Where is the Swing?", "under the cherry tree", "Four words." \}), (\{ "What is the name of this tavern?", "the severed tail", "Three words." \}), (\{ "What is my name?", "matilda", "Seven letters." \}), (\{ "Which of the great Houses has consistently shown itself to be the most pious, valorous and honourable one?", "avoirdupois", "Eleven letters." \}), (\{ "Which fish weighs 40 pounds?", "black grouper", "Two words." \}), (\{ "Which one is heavier? A pound of rocks or a pound of feathers?", "neither", "Seven letters." \}), (\{ "What is the house colour of the Bisclavret?", "red", "Three letters." \}), (\{ "How much is silk?", "two aureals", "Two words." \}), (\{ "Who smells like apples?", "chinco", "Six letters." \}), (\{ "How many piers extend from the Docktown docks?", "fourteen", "Eight letters." \}), (\{ "Which smither has steel feet?", "telfor", "Six letters." \}), (\{ "Does Carlito like jackrabbits?", "yes", "Three letters." \}), (\{ "Who has a monocle?", "mufende", "Seven letters." \}), (\{ "How does the barmaid juggle plates of food?", "expertly", "Eight letters." \}), (\{ "The one who made me doesn't want me. The one who bears me doesn't keep me. The one who buys me doesn't need me. The one who has me doesn't know. What am I?", "a coffin", "Two words." \}), (\{ "What species is the barmaid?", "rat", "Three letters." \}), (\{ "The denar is worth a stevedore's work for how longs?", "half a day", "Three words." \}), (\{ "What does the fool know but the wise doesn't, the miser spends and the spendthrift saves, the poor have that the rich doesn't and what do all man take to their graves?", "nothing", "Seven letters." \}), (\{ "What does the barmaid of the Severed Tail wonder about the cook?", "what were those things the cook put in the special today", "Eleven words." \}), (\{ "Fill me up and I can point the way, leave me alone and I stay still. What am I?", "gloves", "Six letters." \}), (\{ "I have leaves that do not shed. I have sides that face each other. Judge me not by my cover. What am I?", "book", "Four letters." \}), (\{ "What is the capital city of Bisclavret lands?", "harrowgate", "Ten letters." \}), (\{ "What is it that gets wetter when it dries?", "a towel", "Two words." \}), (\{ "Who holds the lands between the Rother and Lyore Rivers?", "doloreaux", "Nine letters." \}), (\{ "What is another name for the Sacred Grove of Lutara?", "harvest haunt", "Two words." \}), (\{ "What crops are the Doloreaux known to grow most?", "roots", "Five letters." \}), (\{ "For whom is the Old Faith, otherwise known as Lutarism, named?", "lutara", "Six letters." \}), (\{ "Who is the boogeyman of the Doloreaux culture?", "septagus", "Eight letters." \}), (\{ "What house is the most friendly and supportive of the minor houses?", "doloreaux", "Nine letters." \}), (\{ "Who is the Bodyservant in Training to Sir Burcet Doloreaux?", "ian", "Three letters." \}), (\{ "If you see a skunk, what minor house does (s)he probably belong to?", "feocullan", "Nine letters." \}), (\{ "What kind of people do House Fiach serve?", "druids", "Six letters." \}), (\{ "What house do ermines belong to?", "lissemanteau", "Twelve letters." \}), (\{ "What's the name of the water bordering Triskellian?", "bay of auvrich", "Three words." \}), (\{ "What is the barmaid's name?", "vicola", "Six letters." \}), (\{ "If the mother of a child is a slave, but the father is a freeman, are the children slaves or freemen?", "freemen", "Seven letters." \}), (\{ "If someone serving the House Bisclavret has the surname Giolla, what is their job?", "mercenary", "Nine letters." \}), (\{ "What is the occupation of the man named Carmaggio?", "mercer", "Six letters." \}), (\{ "The occupation of the man who runs the inn is what?", "ostler", "Six letters." \}), (\{ "Which is correct? 'I did see him go with thee' or 'I didst see him go with thee?", "i did see him go with thee", "Seven words." \}), (\{ "The Turret Tavern is in what street?", "helloise way", "Two words." \}), (\{ "What can you purchase if you wish to legally conduct piracy?", "letters of marque", "Three words." \}), (\{ "The hall and tower, the center of Harrowgate, is quarried from what lake?", "coire", "Five letters." \}), (\{ "Who is the most obtrusive fox in the city? Five Letters?", "diego", "Five letters." \}), (\{ "The Bisclavret mint their own coins, what are they called?", "fibulae", "Seven letters." \}), (\{ "It's tradition for Bisclavret officers to learn what language?", "berla feini", "Two words." \}), (\{ "What is the oldest functioning Castle in Calabria?", "chalon su sauldre", "Three words." \}), (\{ "The Doloreaux lands are bounded on the south by what mountains?", "rothos", "Six letters." \}), (\{ "Name the hamlet closest to the Chevernaise pass?", "auriville", "Nine letters." \}), (\{ "Who do people of the Old Faith worship?", "lutara", "Six letters." \}), (\{ "What is the name of the wolves who are cousins to the Bisclavret?", "phelan", "Six letters." \}), (\{ "What is the highest rank a woman can reach within the Lutaran faith?", "high myste", "Two words." \}), (\{ "Who currently sits on the throne of the Northern Phelan clan, Tuath na Cell?", "queen morfessa", "Two words." \}), (\{ "Which Phelan clan holds a singing contest to elect new rulers?", "tuath na deasich", "Three words." \}), (\{ "What symbol is embroidered on a Bisclavret's cloak?", "windmill", "Eight letters." \}), (\{ "Name the illegal magick of Calabria?", "black", "Five letters." \}), (\{ "What kind of spell creates an invisible magic sensor that sends you information?", "scrying", "Seven letters." \}), (\{ "Sylph represents what element?", "air", "Three letters." \}), (\{ "What creature represents the spirit of fire?", "salamander", "Ten letters." \}), (\{ "What mysterious structure resides in the port of Thanon?", "the unfinished bridge", "Three words." \}), (\{ "What is the name of the bridge overlooking the endless sea in Bisclavret territory?", "the unfinished bridge", "Three words." \}), (\{ "What is the name of Lord Marcus' eldest daughter?", "alexandra", "Nine letters." \}), (\{ "Under whose rule did the Doloreaux nearly take down the Sailors Guild of Triskellian?", "lady anelie", "Two words." \}), (\{ "Trivia?", "secrets", "Seven letters." \}) \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

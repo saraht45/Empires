@@ -1,0 +1,569 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="#list#">
+         X[M] /* 
+ 
+----------------------------------- 
+ LIBRARY CONTENT (Merry/SAM) 
+ 
+ Object:     Marrach:Lib:NIP:lib:fighting-fake-marrach 
+ Maintainer: Kalle Alm/Tony Demetriou 
+ Email:      azrael@ironclaw.skotos.net kalle@marrach.skotos.net 
+ Rev:        1.0 
+ Generated:  Sun Sep 30 02:45:36 2007 
+ Last rev.:  Wed Oct 18 09:24:06 2006 by zwoc (EED) 
+ 
+ 
+ 
+(Do not modify #list#. Automatically constructed property.) 
+ 
+ 
+---------------------------------------------------------------------------------- 
+ act:nip/die              (M) Simple die action for fake fighters. 
+ lib:fight_command        (M) See if command is provocative. 
+ lib:fight_loop           (M) The main fighting loop. 
+ lib:fighting-fake:decide (M) Decide whether we attack anyone in the area or so. 
+---------------------------------------------------------------------------------- 
+ 
+*/
+      </Core:Property>
+      <Core:Property property="dependency:needs">
+         (\{ \<MOVED:20080918-114107:Lib:NIP:lib:wounding\> \})
+      </Core:Property>
+      <Core:Property property="done:message">
+         "The fighting-fake library was loaded successfully. Check twiki out for details on the properties you can customize (or leave it as is; the defaults are fairly sane)."
+      </Core:Property>
+      <Core:Property property="init:hooks">
+         (\{ "fighting-fake-abc" \})
+      </Core:Property>
+      <Core:Property property="init:merry">
+         (\{ "lib:fighting-fake-abc:decide", "lib:fight_loop" \})
+      </Core:Property>
+      <Core:Property property="init:properties">
+         ([ "nip:trait:fighting:attack-bonus":0, "nip:trait:fighting:attack-dc":12, "nip:trait:fighting:attack-everyone":0, "nip:trait:fighting:attack-roll":20, "nip:trait:fighting:attack-time-max":8, "nip:trait:fighting:attack-time-min":4, "nip:trait:fighting:attack-weapon-dc-penalty":2, "nip:trait:fighting:attack-when-provoked":1, "nip:trait:fighting:defence-bonus":0, "nip:trait:fighting:defence-roll":20, "nip:trait:fighting:delay-max":10, "nip:trait:fighting:delay-min":6, "nip:trait:fighting:health":3, "nip:trait:fighting:hurtful-verbs":(\{ "slash", "cut", "stab" \}), "nip:trait:fighting:locations":(\{ "lefthand", "righthand", "leftleg", "rightleg", "chest" \}), "nip:trait:fighting:require-weapon":1, "nip:trait:fighting:require-wielded":1, "nip:trait:fighting:targeting-frequency":3, "nip:trait:fighting:wound-max":3, "nip:trait:fighting:wound-min":1, "nip:trait:fighting:wounding":(\{ 1.0, 1.0, 0 \}) ])
+      </Core:Property>
+      <Core:Property property="merry:act:nip/die">
+         X[M] /* 
+ * D=Simple die action for fake fighters. 
+ */ 
+::shutdown(); 
+ 
+this."npc:is_dead" = TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fight_command">
+         X[M] /* 
+ * D=See if command is provocative. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Apr 25 12:23, 2006 
+ * State:  UNSTABLE 
+ */ 
+int dc, ATTACK_CALC, rolling; 
+constant PAUSE_ACT = \$fdmin + random(\$fdran); 
+constant PAUSE_ATTACK = \$admin + random(\$adran); 
+constant IN_RANGE = (\$target."base:environment" == this."base:environment"); 
+constant ALIVE = (Int(this."npc:wound-level") \< \$woundmax); 
+/*constant ATTACK_CALC = (random(20) \> this."nip:trait:fighting:attack-dc");*/ 
+constant WOUND_CALC = (this."nip:trait:fighting:wound-min" + random(this."nip:trait:fighting:wound-max"-this."nip:trait:fighting:wound-min")); 
+ 
+\$db       = this."nip:behavior:fighting"; 
+\$target   = \$actor; 
+\$fdmin    = this."nip:trait:fighting:delay-min"; 
+\$fdran    = this."nip:trait:fighting:delay-max"-\$fdmin; 
+\$admin    = this."nip:trait:fighting:attack-time-min"; 
+\$adran    = this."nip:trait:fighting:attack-time-max"-\$admin; 
+\$woundmax = this."nip:trait:fighting:health"; 
+ 
+if (!this."nip:trait:fighting:attack-when-provoked") \{ 
+    return TRUE; 
+\} 
+ 
+if (!ALIVE) \{ 
+    return TRUE; 
+\} 
+ 
+if (!member(\$imperative, this."nip:trait:fighting:hurtful-verbs")) \{ 
+    return TRUE; 
+\} 
+ 
+/* Must the actor be wielding a weapon? */ 
+if (this."nip:trait:fighting:require-weapon") \{ 
+    \$weapons = \$actor."base:weapons"; 
+    if (!sizeof(\$weapons)) \{ 
+        EmitTo(\$actor, "You must be wielding a weapon to do that."); 
+        return FALSE; 
+    \} 
+    /* Must the weapon be wielded? Redundant question. If it's in base:weapons, it IS wielded. */ 
+\} 
+ 
+/* This is a hurtful command. Check if there's a further script in the NIP to run */ 
+if(FindMerry( this, "lib", "fighting_react_to_attack" )) \{ 
+  /* There is. Run it, and if it returns true, make the NIP consider them a provocateur */ 
+  if(!Call(this, "fighting_react_to_attack", \$attacker: \$actor)) 
+    return FALSE; 
+\} 
+ 
+/* This is a hurtful command. Make actor provocateur. */ 
+this."npc:fighting:provocateurs" = Arr(this."npc:fighting:provocateurs") + (\{ \$actor \}); 
+ 
+if (!this."npc:fighting:target") \{ 
+    this."npc:fighting:target" = \$actor; 
+\} 
+if (!this.in_a_fight) \{ 
+    ::fight_loop(); 
+\} 
+ 
+/* Is the actor in the middle of attacking? */ 
+if (\$actor."nip:is_attacking") \{ 
+    EmitTo(\$actor, "You're already in the middle of an attack. You can't attack twice simultaneously."); 
+    return FALSE; 
+\} 
+ 
+/* 
+ * Describe user attacking nipper. The nipper's fighting DB contains this information. 
+ * \$(desc) can be used to obtain "slash at" or "cut" etc. \$(actor) is the attacker. \$(npc) or \$(this) is the nipper. 
+ */ 
+\$actor."nip:is_attacking" = TRUE; 
+::behave(\$mood: "IS-ATTACKED"); 
+ 
+/* Hold... */ 
+\$delay(PAUSE_ATTACK, 0, "aaaa"); 
+\$actor."nip:is_attacking" = nil; 
+ 
+if (!ALIVE \|\| !IN_RANGE) return 0; 
+ 
+/* Get results. */ 
+    dc = Int(\$actor."skill:cutoffensive") + Int(\$actor."skill:cutoffensive") + Int(\$actor."skill:thrustoffensive"); 
+    rolling = Int(this."nip:trait:fighting:defence-roll"); 
+    if(rolling+Int(this."nip:trait:fighting:defence-bonus")\<dc)rolling = dc - Int(this."nip:trait:fighting:defence-bonus"); 
+    ATTACK_CALC = (random(rolling)+Int(this."nip:trait:fighting:attack-bonus") \<= dc); 
+ 
+ 
+if (ATTACK_CALC) \{ 
+    /* Success. Calculate wound. */ 
+    int w; 
+    w = WOUND_CALC; 
+    this."npc:wound-level" = Int(this."npc:wound-level") + w; 
+    if (!ALIVE) \{ 
+        /* We died! */ 
+        ::behave(\$mood: "DIED"); 
+        Act(this, "nip/die"); /* ::shutdown(); */ 
+        /* Check if there's a further death script in the NIP to run */ 
+        if(FindMerry( this, "lib", "fighting_die")) \{ 
+          /* There is. Run it */ 
+          Call(this, "fighting_die", \$attacker: \$actor); 
+        \} 
+    \} else \{ 
+        ::behave(\$mood: "WAS-WOUNDED"); 
+    \} 
+\} else \{ 
+    /* Failure. */ 
+    ::behave(\$mood: "EVADED"); 
+\} 
+/* 
+ * ChangeLog [ 
+ *    Change(Apr 25 12:23, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:fight_loop">
+         X[M] /* 
+ * D=The main fighting loop. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Apr 25 11:39, 2006 
+ * State:  EXPERIMENTAL 
+ */ 
+int dc, ATTACK_CALC, rolling; 
+constant PAUSE_ACT = \$fdmin + random(\$fdran); 
+constant PAUSE_ATTACK = \$admin + random(\$adran); 
+constant IN_RANGE = (\$target."base:environment" == this."base:environment"); 
+constant ALIVE = (Int(this."npc:wound-level") \< \$woundmax); 
+/*constant ATTACK_CALC = (random(20) \> this."nip:trait:fighting:attack-dc" + (sizeof(\$target."base:weapons") ? this."nip:trait:fighting:attack-weapon-dc-penalty" : 0));*/ 
+constant FIGHT_TIMED = (\$timer == this.in_a_fight); 
+ 
+\$debug = 1; 
+ 
+if (this."npc:state" == "asleep") \{ 
+    Call(this, "handler:state:awake"); 
+    \$delay(2 + random(3), 0, "0000"); 
+\} 
+ 
+if (this.in_a_fight) \{ 
+    /* Er? */ 
+    return 0; 
+\} 
+\$target   = this."npc:fighting:target"; 
+\$fdmin    = this."nip:trait:fighting:delay-min"; 
+\$fdran    = this."nip:trait:fighting:delay-max"-\$fdmin; 
+\$admin    = this."nip:trait:fighting:attack-time-min"; 
+\$adran    = this."nip:trait:fighting:attack-time-max"-\$admin; 
+\$woundmax = this."nip:trait:fighting:health"; 
+\$timer    = time(); 
+ 
+if (!\$target) \{ 
+    /* No target. */ 
+    return 0; 
+\} 
+this.in_a_fight = \$timer; 
+\$db = this."nip:behavior:fighting"; 
+ 
+while (IN_RANGE \&\& ALIVE \&\& FIGHT_TIMED\&\& IN_RANGE 
+       \&\& this.in_a_fight \&\& \$target \&\& \$target."udat:possessed") \{ 
+ 
+    /* So, we pause... */ 
+    \$delay(PAUSE_ACT, 0, "aaaa"); 
+ 
+    if (!IN_RANGE \|\| !ALIVE \|\| !\$target \|\| !\$target."udat:possessed") continue; 
+    /* ... and attack... */ 
+ 
+    /* Check if there's a further script in the NIP to run */ 
+    if(FindMerry( this, "lib", "fighting_attack")) \{ 
+      /* There is. Run it, and if it returns true, make the NIP attack */ 
+      if(!Call(this, "fighting_attack", \$attacker: this, \$target: \$target)) \{ 
+        this.in_a_fight = nil; 
+        continue; 
+      \} 
+    \} 
+ 
+    this."base:proximity" = \$target; 
+    ::behave(\$mood: "ATTACK-ATTEMPT", \$actor: \$target); 
+    /* ... and pause for attack time... */ 
+    \$delay(PAUSE_ATTACK, 0, "bbbb"); 
+    /* ... and conclude, based on attack result. */ 
+    dc = Int(\$target."skill:dodgedefensive") + Int(\$target."skill:fumbledefensive"); 
+    if(\$target."base:combat:weapon") dc = dc + Int(\$target."skill:advancedefensive") + Int(\$target."skill:attackingdefensive") + Int(\$target."skill:guarddefensive") + Int(\$target."skill:idledefensive") + Int(\$target."skill:recoverdefensive") + Int(\$target."skill:restdefensive") + Int(\$target."skill:retiredefensive") + Int(\$target."skill:salutedefensive"); 
+    rolling = Int(this."nip:trait:fighting:attack-roll"); 
+    if(rolling+Int(this."nip:trait:fighting:attack-bonus")\<dc)rolling = dc - Int(this."nip:trait:fighting:attack-bonus"); 
+    ATTACK_CALC = (random(rolling)+Int(this."nip:trait:fighting:attack-bonus") \>= dc); 
+ 
+    if (ATTACK_CALC) \{ 
+        /* Hit. */ 
+        ::behave(\$mood: "ATTACK-SUCCESS", \$actor: \$target); 
+ 
+        \$woundAmount = Flt(this."nip:trait:fighting:wounding"[0]) + (Flt(random(Int(this."nip:trait:fighting:wounding"[1] * 100.0))) / 100.0); 
+ 
+        if (!this."nip:trait:fighting:wounding"[2]) 
+            \$woundAmount = Flt(Int(\$woundAmount)); 
+ 
+        \$woundLocations = this."nip:trait:fighting:locations"; 
+        \$woundLocation  = \$woundLocations[random(sizeof(\$woundLocations))]; 
+ 
+        ::wound(\$victim: \$target); 
+    \} else \{ 
+        /* Miss. */ 
+        ::behave(\$mood: "ATTACK-FAILURE", \$actor: \$target); 
+    \} 
+\} 
+/* if target is dead, remove them from the list of provocateurs */ 
+if(this."npc:fighting:target" \&\& this."npc:fighting:target"."death:dead") 
+  this."npc:fighting:provocateurs" -= (\{ this."npc:fighting:target" \}); 
+/* and just for good measure */ 
+this."npc:fighting:provocateurs" -= (\{ nil \}); 
+this.in_a_fight = nil; 
+/* 
+ * ChangeLog [ 
+ *    Change(Apr 25 11:39, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:fighting-fake-abc:decide">
+         X[M] /* 
+ * D=Decide whether we attack anyone in the area or so. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Apr 25 11:01, 2006 
+ * State:  EXPERIMENTAL 
+ */ 
+object *inv, *provocateurs; 
+int i, ix; 
+ 
+\$debug = 0; 
+ 
+if (this.in_a_fight) \{ 
+    /* We're -already- doing something -- fighting. */ 
+    return 0; 
+\} 
+ 
+if (this."npc:state" == "asleep") \{ 
+    /* We're asleep. We WILL wake up if someone attacks us though. */ 
+    return 0; 
+\} 
+ 
+if(\$debug) 
+  Social(this, "say", nil, "Do I want to attack someone?"); 
+EmitTo(this, "Do I want to attack someone?"); 
+ 
+if (this."nip:trait:fighting:targeting-frequency" \&\& random(this."nip:trait:fighting:targeting-frequency") \&\& !\$fight_anyway) \{ 
+    /* We're apparently not paying attention right now. */ 
+    if(\$debug) 
+      Social(this, "say", nil, "Nope. I'm not feeling agressive."); 
+    EmitTo(this, "Nope. I'm not feeling agressive."); 
+    return 0; 
+\} 
+ 
+if(\$debug) 
+  Social(this, "say", nil, "Yes. I'll pick a target."); 
+EmitTo(this, "Yes. I'll pick a target."); 
+ 
+ 
+ 
+/* Do we attack when provoked? */ 
+if (this."nip:trait:fighting:attack-when-provoked" \&\& this."npc:fighting:provocateurs" \&\& sizeof(Arr(this."npc:fighting:provocateurs"))) \{ 
+    object target; 
+    this."npc:fighting:provocateurs" -= (\{ nil \}); 
+    provocateurs = Arr(this."npc:fighting:provocateurs"); 
+    ix = sizeof(provocateurs); 
+ 
+    if(\$debug) 
+      Social(this, "say", nil, "Do I see anyone that provoked me?"); 
+    EmitTo(this, "Do I see anyone that provoked me?"); 
+    while(ix) \{ 
+      target = provocateurs[random(sizeof(provocateurs))]; 
+      provocateurs -= (\{ target \}); 
+      ix = sizeof(provocateurs); 
+      if (!target."udat:possessed") target = nil; 
+      if (target \&\& target."base:environment" != this."base:environment") target = nil; 
+      /* Do we have a list of provocateurs? */ 
+      if (target) \{ 
+        /* We found someone who previously provoked us */ 
+        if(\$debug) 
+          Social(this, "say", nil, "I spotted "+dump_value(target)); 
+        EmitTo(this, "I spotted "+dump_value(target)); 
+        this."npc:fighting:target" = target; 
+        ::fight_loop(); 
+        return \$SIG_DONE; 
+      \} 
+    \} 
+\} 
+ 
+/* Do we attack everyone? */ 
+if (this."nip:trait:fighting:attack-everyone") \{ 
+    object target; 
+    inv          = this."base:environment"."base:inventory" - (\{ this \}); 
+    ix           = sizeof(inv); 
+ 
+    while (ix) \{ 
+        target = inv[random(ix)]; 
+        inv -= (\{ target \}); 
+        ix--; 
+        if (!target."udat:possessed") target = nil; 
+        if (target) \{ 
+            if(\$debug) 
+              Social(this, "say", nil, "I attack everyone, and spotted "+dump_value(target)); 
+            EmitTo(this, "I attack everyone, and spotted "+dump_value(target)); 
+            this."npc:fighting:target" = target; 
+            ::fight_loop(); 
+            return \$SIG_DONE; 
+        \} 
+    \} 
+\} 
+if(\$debug) 
+  Social(this, "say", nil, "I couldn't find a target"); 
+/* 
+ * ChangeLog [ 
+ *    Change(Apr 25 11:01, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:fighting-fake-marrach:decide">
+         X[M] /* 
+ * D=Decide whether we attack anyone in the area or so. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Apr 25 11:01, 2006 
+ * State:  EXPERIMENTAL 
+ */ 
+object *inv, *provocateurs; 
+int i, ix; 
+ 
+\$debug = 0; 
+ 
+if (this.in_a_fight) \{ 
+    /* We're -already- doing something -- fighting. */ 
+    return 0; 
+\} 
+ 
+if (this."npc:state" == "asleep") \{ 
+    /* We're asleep. We WILL wake up if someone attacks us though. */ 
+    return 0; 
+\} 
+ 
+if(\$debug) 
+  Social(this, "say", nil, "Do I want to attack someone?"); 
+EmitTo(this, "Do I want to attack someone?"); 
+ 
+if (this."nip:trait:fighting:targeting-frequency" \&\& random(this."nip:trait:fighting:targeting-frequency") \&\& !\$fight_anyway) \{ 
+    /* We're apparently not paying attention right now. */ 
+    if(\$debug) 
+      Social(this, "say", nil, "Nope. I'm not feeling agressive."); 
+    EmitTo(this, "Nope. I'm not feeling agressive."); 
+    return 0; 
+\} 
+ 
+if(\$debug) 
+  Social(this, "say", nil, "Yes. I'll pick a target."); 
+EmitTo(this, "Yes. I'll pick a target."); 
+ 
+ 
+ 
+/* Do we attack when provoked? */ 
+if (this."nip:trait:fighting:attack-when-provoked" \&\& this."npc:fighting:provocateurs" \&\& sizeof(Arr(this."npc:fighting:provocateurs"))) \{ 
+    object target; 
+    this."npc:fighting:provocateurs" -= (\{ nil \}); 
+    provocateurs = Arr(this."npc:fighting:provocateurs"); 
+    ix = sizeof(provocateurs); 
+ 
+    if(\$debug) 
+      Social(this, "say", nil, "Do I see anyone that provoked me?"); 
+    EmitTo(this, "Do I see anyone that provoked me?"); 
+    while(ix) \{ 
+      target = provocateurs[random(sizeof(provocateurs))]; 
+      provocateurs -= (\{ target \}); 
+      ix = sizeof(provocateurs); 
+      if (!target."udat:possessed") target = nil; 
+      if (target \&\& target."base:environment" != this."base:environment") target = nil; 
+      /* Do we have a list of provocateurs? */ 
+      if (target) \{ 
+        /* We found someone who previously provoked us */ 
+        if(\$debug) 
+          Social(this, "say", nil, "I spotted "+dump_value(target)); 
+        EmitTo(this, "I spotted "+dump_value(target)); 
+        this."npc:fighting:target" = target; 
+        ::fight_loop(); 
+        return \$SIG_DONE; 
+      \} 
+    \} 
+\} 
+ 
+/* Do we attack everyone? */ 
+if (this."nip:trait:fighting:attack-everyone") \{ 
+    object target; 
+    inv          = this."base:environment"."base:inventory" - (\{ this \}); 
+    ix           = sizeof(inv); 
+ 
+    while (ix) \{ 
+        target = inv[random(ix)]; 
+        inv -= (\{ target \}); 
+        ix--; 
+        if (!target."udat:possessed") target = nil; 
+        if (target) \{ 
+            if(\$debug) 
+              Social(this, "say", nil, "I attack everyone, and spotted "+dump_value(target)); 
+            EmitTo(this, "I attack everyone, and spotted "+dump_value(target)); 
+            this."npc:fighting:target" = target; 
+            ::fight_loop(); 
+            return \$SIG_DONE; 
+        \} 
+    \} 
+\} 
+if(\$debug) 
+  Social(this, "say", nil, "I couldn't find a target"); 
+/* 
+ * ChangeLog [ 
+ *    Change(Apr 25 11:01, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:fighting-fake:decide">
+         X[M] /* 
+ * D=Decide whether we attack anyone in the area or so. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Apr 25 11:01, 2006 
+ * State:  EXPERIMENTAL 
+ */ 
+object *inv, *provocateurs; 
+int i, ix; 
+ 
+Social(\$this, "say", nil, "I'm deciding if I should attack someone!"); 
+ 
+if (this.in_a_fight) \{ 
+    /* We're -already- doing something -- fighting. */ 
+    return 0; 
+\} 
+ 
+if (this."npc:state" == "asleep") \{ 
+    /* We're asleep. We WILL wake up if someone attacks us though. */ 
+    return 0; 
+\} 
+ 
+if (this."nip:trait:fighting:targeting-frequency" \&\& random(this."nip:trait:fighting:targeting-frequency")) \{ 
+    /* We're apparently not paying attention right now. */ 
+    return 0; 
+\} 
+ 
+inv          = this."base:environment"."base:inventory" - (\{ this \}); 
+ix           = sizeof(inv); 
+ 
+/* Do we attack when provoked? */ 
+if (this."nip:trait:fighting:attack-when-provoked") \{ 
+    provocateurs = Arr(this."npc:fighting:provocateurs") \& inv; 
+    this."npc:fighting:provocateurs" = provocateurs; 
+ 
+    /* Do we have a list of provocateurs? */ 
+    if (sizeof(provocateurs)) \{ 
+        /* We do we do. Target one at random. */ 
+        object target; 
+        target = provocateurs[random(sizeof(provocateurs))]; 
+        this."npc:fighting:target" = target; 
+        ::fight_loop(); 
+        return \$SIG_DONE; 
+    \} 
+\} 
+ 
+/* Do we attack everyone? */ 
+if (this."nip:trait:fighting:attack-everyone") \{ 
+    object target; 
+    while (ix) \{ 
+        target = inv[random(ix)]; 
+        inv -= (\{ target \}); 
+        ix--; 
+        if (!target."base:possessed") target = nil; 
+        if (target) \{ 
+            this."npc:fighting:target" = target; 
+            ::fight_loop(); 
+            return \$SIG_DONE; 
+        \} 
+    \} 
+\} 
+/* 
+ * ChangeLog [ 
+ *    Change(Apr 25 11:01, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:react:command-dob%nip-fighting">
+         X[M] return ::fight_command(\$desc: \$imperative);
+      </Core:Property>
+      <Core:Property property="merry:react:command-iob%nip-fighting">
+         X[M] return ::fight_command(\$desc: \$(iob:description));
+      </Core:Property>
+      <Core:Property property="property:map">
+         ([ "nip:trait:fighting:attack-dc":1, "nip:trait:fighting:attack-everyone":1, "nip:trait:fighting:attack-time-max":1, "nip:trait:fighting:attack-time-min":1, "nip:trait:fighting:attack-weapon-dc-penalty":1, "nip:trait:fighting:attack-when-provoked":1, "nip:trait:fighting:delay-max":1, "nip:trait:fighting:delay-min":1, "nip:trait:fighting:health":1, "nip:trait:fighting:hurtful-verbs":5, "nip:trait:fighting:locations":5, "nip:trait:fighting:require-weapon":1, "nip:trait:fighting:require-wielded":1, "nip:trait:fighting:targeting-frequency":1, "nip:trait:fighting:wound-max":1, "nip:trait:fighting:wound-min":1, "nip:trait:fighting:wounding":5 ])
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1191492477, "tonyd", "E", 1191493006, "tonyd", "P", 1191493589, "tonyd", "P", 1191493610, "tonyd", "P", 1191493816, "tonyd", "P", 1191493829, "tonyd", "P", 1191497975, "tonyd", "P", 1191499283, "tonyd", "P", 1191499626, "tonyd", "P", 1191500066, "tonyd", "P", 1191500432, "tonyd", "E", 1191500452, "tonyd", "E", 1191500626, "tonyd", "P", 1191500649, "tonyd", "P", 1191500701, "tonyd", "P", 1191500812, "tonyd", "P", 1191501010, "tonyd", "P", 1191501197, "tonyd", "P", 1191501255, "tonyd", "P", 1191501516, "tonyd", "P", 1191501575, "tonyd", "P", 1191501588, "tonyd", "P", 1191501606, "tonyd", "P", 1191501636, "tonyd", "P", 1191501701, "tonyd", "P", 1191501768, "tonyd", "P", 1191501787, "tonyd", "P", 1191501848, "tonyd", "P", 1191501900, "tonyd", "P", 1191501978, "tonyd", "P", 1191502336, "tonyd", "P", 1191502421, "tonyd", "P", 1191502453, "tonyd", "P", 1191502522, "tonyd", "P", 1191502560, "tonyd", "P", 1191503299, "tonyd", "P", 1191763563, "tonyd", "P", 1191838118, "tonyd", "P", 1191838204, "tonyd", "P", 1191838283, "tonyd", "P", 1191838495, "tonyd", "P", 1191838563, "tonyd", "P", 1191838714, "tonyd", "P", 1191838735, "tonyd", "P", 1191838763, "tonyd", "P", 1191838792, "tonyd", "P", 1191839038, "tonyd", "P", 1191839069, "tonyd", "P", 1191839209, "tonyd", "P", 1191839265, "tonyd", "P", 1191839275, "tonyd", "P", 1191839335, "tonyd", "P", 1191839360, "tonyd", "P", 1191839372, "tonyd", "P", 1191839628, "tonyd", "P", 1191839777, "tonyd", "P", 1191839790, "tonyd", "P", 1191839919, "tonyd", "E", 1191839966, "tonyd", "P", 1191840012, "tonyd", "P", 1191840163, "tonyd", "P", 1191840297, "tonyd", "P", 1191840702, "tonyd", "P", 1191840772, "tonyd", "P", 1191841105, "tonyd", "P", 1191841151, "tonyd", "P", 1191841272, "tonyd", "P", 1191841279, "tonyd", "P", 1191842014, "tonyd", "P", 1191842030, "tonyd", "P", 1191886858, "tonyd", "P", 1191888787, "tonyd", "P", 1191888817, "tonyd", "P", 1192789814, "tonyd", "P", 1192789911, "tonyd", "P", 1192789930, "tonyd", "P", 1192789942, "tonyd", "P", 1192790150, "tonyd", "P", 1192790422, "tonyd", "P", 1192790494, "tonyd", "P", 1192790647, "tonyd", "P", 1192790679, "tonyd", "P", 1192790827, "tonyd", "P", 1192791348, "tonyd", "P", 1192792957, "tonyd", "P", 1192793005, "tonyd", "P", 1192931049, "tonyd", "P", 1192931087, "tonyd", "P", 1192931151, "tonyd", "P", 1192931470, "tonyd", "P", 1192932622, "tonyd", "P", 1192932645, "tonyd", "P", 1192932659, "tonyd", "P", 1192932723, "tonyd", "P", 1192932735, "tonyd", "P", 1192932746, "tonyd", "P", 1192932763, "tonyd", "P", 1192932775, "tonyd", "P", 1192932836, "tonyd", "E", 1192933642, "tonyd", "P", 1192933961, "tonyd", "P", 1192934235, "tonyd", "P", 1192934270, "tonyd", "P", 1192934663, "tonyd", "P", 1192934694, "tonyd", "P", 1192934729, "tonyd", "P", 1192934822, "tonyd", "P", 1192934884, "tonyd", "P", 1192934923, "tonyd", "P", 1192934955, "tonyd", "P", 1192934990, "tonyd", "P", 1192941519, "tonyd", "E", 1192941771, "tonyd", "E", 1192941936, "tonyd", "P", 1192942572, "tonyd", "P", 1192942585, "tonyd", "P", 1192942603, "tonyd", "P", 1192951469, "tonyd", "P", 1192951493, "tonyd", "P", 1193052251, "tonyd", "X", 1193052264, "tonyd", "R", 1193056082, "tonyd", "E", 1193056093, "tonyd", "E", 1193056121, "tonyd", "E" \})
+      </Core:Property>
+      <Core:Property property="{author}">
+         "Kalle Alm modified by Tony Demetriou"
+      </Core:Property>
+      <Core:Property property="{email}">
+         "azrael@ironclaw.skotos.net kalle@marrach.skotos.net"
+      </Core:Property>
+      <Core:Property property="{rev}">1</Core:Property>
+      <Core:Property property="{sub_rev_stamp}">
+         1161177846
+      </Core:Property>
+      <Core:Property property="{sub_rev}">0</Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

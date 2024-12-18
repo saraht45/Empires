@@ -1,0 +1,1415 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="export:log:creator">
+         "Guild popup"
+      </Core:Property>
+      <Core:Property property="log:creator">
+         "Guild popup"
+      </Core:Property>
+      <Core:Property property="merry:lib:accept_sponsorship_offer">
+         X[M] int i;
+
+if(\$guildleader \|\| \$char."guild:guild_sponsorship") \{
+    \$offeringGuild = Obj(\$vars[0]);
+
+    \$guild.sponsor = \$offeringGuild;
+
+    \$guild."sponsor:offers:incoming" -= (\{ \$offeringGuild \});
+    if(!sizeof(\$guild."sponsor:offers:incoming")) \$guild."sponsor:offers:incoming" = nil;
+
+    if(!\$offeringGuild."sponsor:guilds") \$offeringGuild."sponsor:guilds" = (\{ \});
+    \$initiator = \$offeringGuild."sponsor:offers:outgoing"[\$guild][0];
+    \$terms = \$offeringGuild."sponsor:offers:outgoing"[\$guild][1];
+    \$offeringGuild."sponsor:guilds" += (\{ ([ "Guild":\$guild, "Time":time(), "Terms":\$terms, "Initiator":\$initiator ]) \});
+
+    \$offeringGuild."sponsor:offers:outgoing"[\$guild] = nil;
+
+    if(!map_sizeof(\$offeringGuild."sponsor:offers:outgoing")) \$offeringGuild."sponsor:offers:outgoing" = nil;
+
+    return "You accept the sponsorship offer from " + \$offeringGuild.fullname + ".";
+\}
+
+return "Error: You are not authorized to sponsor anyone.";
+      </Core:Property>
+      <Core:Property property="merry:lib:blacklist">
+         X[M] if(\$guildleader \|\| \$char."guild:guild_blacklist") \{
+
+    \$vars = explode(\$vars[0], "::");
+
+    if(\$vars[0] == "Person") \{ 
+        if(!common::lookup(\$name: \$vars[1])) return "That character does not exist.";
+        \$person = common::lookup(\$name: \$vars[1]);
+        \$name = proper(\$person."skotos:charname");
+
+        if(\$person.guild == \$guild) return "You can't blacklist a member of your own guild.";
+
+        \$blacklist = (\{ \});
+        if(Get(\$guild, "blacklisted_people")) \{
+            \$blacklist = Get(\$guild, "blacklisted_people");
+        \}
+
+        for(\$i = 0; \$i \< sizeof(\$blacklist); \$i++) \{
+            if(\$blacklist[\$i][0] == \$person) return \$name + " is already blacklisted.";
+        \}
+
+        if(!\$vars[2] \|\| \$vars[2] == "" \|\| \$vars[2] == " ") return "You must input a reason to blacklist " + \$name + ".";
+        \$blacklist += (\{ (\{ \$person, \$vars[2], \$char, time() \}) \});
+
+        Set(\$guild, "blacklisted_people", \$blacklist);
+
+        if(\$person.blacklistedby) \{
+            \$person.blacklistedby += (\{ \$guild \}); 
+        \} else \{
+            \$person.blacklistedby = (\{ \$guild \});
+        \}
+
+        sscanf(ctime(time()), "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+
+        \$body = "Let it be known that on this day " + Str(\$day) + " " + Str(\$month) + " " + Str(\$year-420) + ", " + Str(\$name) + " has been blacklisted by " + \$guild.fullname + " for the following reason: " + \$vars[2];
+
+    \} else \{
+        \$bguild = Obj("Allegory:Guilds:" + \$vars[1]);
+        \$name = \$bguild.fullname;
+
+        if(\$bguild == \$guild) return "You can't blacklist your own guild.";
+
+        \$blacklist = (\{ \});
+        if(Get(\$guild, "blacklisted_guilds")) \{
+            \$blacklist = Get(\$guild, "blacklisted_guilds");
+        \}
+        for(\$i = 0; \$i \< sizeof(\$blacklist); \$i++) \{
+            if(\$blacklist[\$i][0] == \$bguild) return \$name + " is arleady blacklisted.";
+        \}
+
+        if(!\$vars[2] \|\| \$vars[2] == "" \|\| \$vars[2] == " ") return "You must input a reason to blacklist " + \$name + ".";
+        \$blacklist += (\{ (\{ \$bguild, \$vars[2], \$char, time() \}) \});
+
+        Set(\$guild, "blacklisted_guilds", \$blacklist);
+
+        if(\$bguild.blacklistedby) \{
+            \$bguild.blacklistedby += (\{ \$guild \});
+        \} else \{
+            \$bguild.blacklistedby = (\{ \$guild \});
+        \}
+
+        sscanf(ctime(time()), "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+
+        \$body = "Let it be known that on this day " + Str(\$day) + " " + Str(\$month) + " " + Str(\$year-420) + ", " + Str(\$bguild.fullname) + " has been blacklisted by " + \$guild.fullname + " for the following reason: " + \$vars[2];
+
+        \$person = \$bguild.leader;
+    \}
+
+    if(\$person) allegory::sendscroll(\$writer: \$actor, \$addressee: \$person, \$text: \$body);
+
+    return \$name + " has been blacklisted!";
+\}
+
+return "Error: You are not authorized to blacklist anyone.";
+      </Core:Property>
+      <Core:Property property="merry:lib:cancel_sponsorship">
+         X[M] int i;
+
+if(\$guildleader) \{
+    \$vars = explode(\$vars[0], "::");
+    \$sponsoredGuild = Obj(\$vars[0]);
+    \$sponsor = Obj(\$vars[1]);
+
+    \$sponsoredGuild.sponsor = nil;
+
+    \$sponsoredGuilds = \$sponsor."sponsor:guilds";
+
+    for(i = 0; i \< sizeof(\$sponsoredGuilds); i++) \{
+        if(\$sponsoredGuilds[i]["Guild"] == \$sponsoredGuild) \{
+            \$sponsoredGuilds[i] = nil;
+        \}
+    \}
+
+    \$sponsoredGuilds -= (\{ nil \});
+
+    if(!sizeof(\$sponsoredGuilds)) \$sponsor."sponsor:guilds" = nil; else \$sponsor."sponsor:guilds" = \$sponsoredGuilds;
+
+    return "You cancel the sponsorship agreement between " + \$sponsoredGuild.fullname + " and " + \$sponsor.fullname + ".";
+\}
+
+return "Error: You are not authorized to sponsor anyone.";
+      </Core:Property>
+      <Core:Property property="merry:lib:cancel_sponsorship_offer">
+         X[M] int i;
+
+if(\$guildleader \|\| \$char."guild:guild_sponsorship") \{
+    \$sponsoredGuild = Obj(\$vars[0]);
+    \$sponsoredGuild."sponsor:offers:incoming" -= (\{ \$guild \});
+    if(!sizeof(\$sponsoredGuild."sponsor:offers:incoming")) \$sponsoredGuild."sponsor:offers:incoming" = nil;
+
+    \$guild."sponsor:offers:outgoing"[\$sponsoredGuild] = nil;
+
+    if(!map_sizeof(\$guild."sponsor:offers:outgoing")) \$guild."sponsor:offers:outgoing" = nil;
+
+    return "You revoke your offer of sponsorship from " + \$sponsoredGuild.fullname + ".";
+\}
+
+return "Error: You are not authorized to sponsor anyone.";
+      </Core:Property>
+      <Core:Property property="merry:lib:change_members_auth">
+         X[M] if(!\$guildrank) return FALSE;
+if(\$guildleader) return TRUE;
+if(\$actor."guild:authority") \{
+    if(member(\$setting, \$actor."guild:authority")) return TRUE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_alt_abuse">
+         X[M] \$accountsending = \$char."skotos:creator";
+\$members = Get(\$otherguild, "members");
+
+for(\$i = 0; \$i \< sizeof(\$members); \$i++) \{
+    \$accountreceiving = \$members[\$i]."skotos:creator";
+    if(\$accountsending == \$accountreceiving) \{
+        \$assisttext = "ALT ABUSE WARNING: " + proper(\$char."skotos:charname") + " transferred resources from " + Str(\$char.guild) + " to an alt's guild (" + proper(\$members[\$i]."skotos:charname") + "/" + Str(\$otherguild) + ")";
+        assist::dofileassist(\$data: \$\{Data:DB:assist:AssistGeneralDB\}, \$char: Str(\$\{Chatters:AE:to:topsy\}), \$queue: "guide", \$assisttext: \$assisttext, \$log: "[TAS]");
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:color_options">
+         X[M] \$allColors = (\{ "#000000", "#663300", "#996600", "#cc3300", "#993300", "#990000", "#800000", "#993333", "#990033", "#cc0000", "#ff0000", "#ff3300", "#cc6600", "#ff9900", "#cc9900", "#996633", "#999966", "#cccc00", "#ffff00", "#ffcc00", "#ff9933", "#ff6600", "#ff5050", "#cc0066", "#660033", "#993366", "#cc6699", "#ff0066", "#ff6666", "#ff9966", "#ffcc66", "#ffff66", "#ccff33", "#99cc00", "#666633", "#333300", "#669900", "#99ff33", "#ccff66", "#ffff99", "#ffcc99", "#ff9999", "#ff6699", "#ff3399", "#cc3399", "#990099", "#993399", "#cc0099", "#ff33cc", "#ff66cc", "#ff99cc", "#ffcccc", "#ffffcc", "#ccff99", "#99ff66", "#66ff33", "#009900", "#336600", "#003300", "#009933", "#33cc33", "#66ff66", "#99ff99", "#ccffcc", "#ffffff", "#ffccff", "#ff99ff", "#ff66ff", "#ff00ff", "#cc00cc", "#660066", "#9900cc", "#cc00ff", "#cc33ff", "#cc66ff", "#cc99ff", "#ccccff", "#ccffff", "#99ffcc", "#66ff99", "#00ff00", "#00cc00", "#006600", "#339933", "#00cc66", "#00ff99", "#66ffcc", "#66ffff", "#66ccff", "#99ccff", "#9999ff", "#9966ff", "#9933ff", "#9900ff", "#6600cc", "#6600ff", "#6666ff", "#6699ff", "#3399ff", "#33ccff", "#00ffff", "#00ffcc", "#00cc99", "#339966", "#669999", "#009999", "#33cccc", "#00ccff", "#0099ff", "#0066ff", "#3366ff", "#3333cc", "#666699", "#333399", "#3333ff", "#0000ff", "#0033cc", "#0066cc", "#0099cc", "#006699", "#006666", "#003366", "#336699", "#3366cc", "#003399", "#000099", "#0000cc", "#000066" \});
+
+if(\$color == "white") \{ \$color = "#ffffff"; \}
+if(\$color == "black") \{ \$color = "#000000"; \}
+
+\$output = "";
+for(\$i = 0; \$i \< sizeof(\$allColors); \$i++) \{
+    if(\$allColors[\$i] == \$color) \{
+        \$output += "\<option selected style='background-color: " + \$allColors[\$i] + ";' value='" + \$allColors[\$i] + "'/\>\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\</option\>";
+    \} else \{
+        \$output += "\<option style='background-color: " + \$allColors[\$i] + ";' value='" + \$allColors[\$i] + "'/\>\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\</option\>";
+    \}
+\}
+
+return \$output;
+      </Core:Property>
+      <Core:Property property="merry:lib:createguild">
+         X[M] int counter, i;
+string *guilds;
+object guild;
+
+/* who is creating the guild? */
+if(!\$creator \&\& \$actor)
+  \$creator = \$actor;
+
+if(!\$guild)
+  return "You need to fill out the name of this guild before I can accept the charter. [hint: use @compose my charter]";
+\$guild=lower_case(Str(\$guild));
+
+/* is this name already taken? (either by a player or guild) */
+if(Obj("Chatters:IC:" + \$guild[0..1] + ":" + \$guild))
+  return "That name is already taken by a player.";
+
+if(Obj("Chatters:AE:" + \$guild[0..1] + ":" + \$guild))
+  return "That name is already taken by a player.";
+
+if(Obj("Allegory:Guilds:"+\$guild))
+  return "That name is already taken by another guild.";
+
+if(Obj("Allegory:Guilds:"+\$guild))
+  return "That name is already taken by another guild.";
+
+/* create the new guild */
+catch(Call(\$\{Lib:objects\}, "create_of_type", \$name: "Allegory:Guilds:"+\$guild, \$type: "propcontainer"));
+
+\$spawn = Obj("Allegory:Guilds:"+\$guild);
+
+if(!\$spawn) \{ EmitTo(\$actor, "Guild creation failed. " + Str(\$guild)); \} else \{ EmitTo(\$actor, Str(\$spawn)); \}
+
+/* set properties in new guild */
+/* set parent object */
+\$spawn."core:ur:parent" = \$\{Allegory:Lib:Guilds:UrGuild\};
+/* set names */
+if(\$shortname \&\& \$shortname != "") \{
+  \$spawn.shortname = \$shortname;
+\} else \{
+  \$spawn.shortname = capitalize(\$guild);
+\}
+
+if(\$fullname \&\& \$fullname != "") \{
+  \$spawn.fullname = \$fullname;
+\} else \{
+  \$spawn.fullname = "the Guild of "+\$spawn.shortname;
+\}
+/* set crest */
+if(\$crest)
+  \$spawn.crest = \$crest;
+
+if(\$manifesto \&\& \$manifesto != "")
+  \$spawn.manifesto = \$manifesto;
+
+/* set the guild pages */
+\$newguildpage = Duplicate(\$\{Allegory:Guilds:Pages:new:default_page\});
+\$newguildpage."core:objectname" = "Allegory:Guilds:Pages:new:" + replace_strings(\$shortname, "'", "", "\\"", "", ":", "", "#", "", "@", "", "!", "", "\$", "", "^", "", "%", "", ".", "", "(", "", ")", "", "\{", "", "\}", "", "\\\\", "");
+
+return \$spawn;
+      </Core:Property>
+      <Core:Property property="merry:lib:discharge_member">
+         X[M] /* are we allowed to? */
+if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members.";
+
+/* check that this is a valid character */
+if(sizeof(\$vars) \< 1 \|\| strlen(\$vars[0]) \< 2) return "Unknown Character.";
+\$vars[0] = lower_case(\$vars[0]);
+\$victim = Obj("Chatters:AE:"+\$vars[0][0..1]+":"+\$vars[0]);
+if(!\$victim) return "Unknown Character: "+\$vars[0]+".";
+
+/* is \$victim a member of the guild? */
+if(\$victim.guild != \$guild) return capitalize(\$vars[0])+" is no longer a member of this guild.";
+
+if(\$vars[1] == "honorable") \{
+   Call(\$this, "leave_guild", \$member: \$victim, \$honorable: TRUE);
+   EmitTo(\$victim, "You have been honorably discharged from "+\$guild.fullname+".");
+   return capitalize(\$vars[0])+" has been honorably discharged from "+\$guild.fullname+".";
+\} else \{
+   Call(\$this, "leave_guild", \$member: \$victim);
+   EmitTo(\$victim, "You have been dishonorably discharged from "+\$guild.fullname+".");
+   return capitalize(\$vars[0])+" has been dishonorably discharged from "+\$guild.fullname+".";
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:edit_members">
+         X[M] /* EDIT GUILD MEMBERS */
+
+int i;
+string output;
+
+output = "";
+
+/* what guild member is this? */
+\$member = Obj(Str(\$vars[0]));
+if(!\$member) return "Error: Unknown character.";
+if(!\$member.guild \|\| \$member.guild != \$guild) return "Error: Character is not a member of this guild.";
+
+/* Allow them to change the position of the guild member */
+if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "position")) \{
+    if(\$guildleader) \{
+        output += "\<input type=\\"checkbox\\"";
+
+        if(member("position", Arr(\$member."guild:authority"))) output += " checked=\\"1\\"";
+
+        output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|position\|addarr\|guild:authority\|Authority to change job position descriptions granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|position\|subarr\|guild:authority\|Authority to change job position descriptions revoked.'); \}\\"/\>";
+    \}
+
+    output += "Guild Position \\n";
+    output += "\<input value=\\""+Str(\$member."guild:position")+"\\" onchange=\\"run_script('editmember_setval', 'position\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:position');\\"/\>\<br/\>\\n";
+\}
+
+/* Allow them to change the notes of the guild member */
+if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "notes")) \{
+    if(\$guildleader) \{
+        output += "\<input type=\\"checkbox\\"";
+
+        if(member("notes", Arr(\$member."guild:authority"))) output += " checked=\\"1\\"";
+
+        output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|notes\|addarr\|guild:authority\|Authority to change member notes granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|notes\|subarr\|guild:authority\|Authority to change member notes revoked.'); \}\\"/\>";
+    \}
+
+    output += "Change Notes \\n";
+    output += "\<input value=\\""+Str(\$member."guild:notes")+"\\" onchange=\\"run_script('editmember_setval', 'notes\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:notes');\\"/\>\<br/\>\\n";
+\}
+
+/* Allow them to change the daily payment of the guild member */
+/*
+if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment")) \{
+    if(\$guildleader) \{
+        output += "\<input type=\\"checkbox\\"";
+
+        if(member("daily_payment", Arr(\$member."guild:authority"))) output += " checked=\\"1\\"";
+
+        output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|daily_payment\|addarr\|guild:authority\|Authority to change members daily payment granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|daily_payment\|subarr\|guild:authority\|Authority to change members daily payment revoked.'); \}\\"/\>";
+    \}
+
+    output += "Change Daily Payment \\n";
+    \$max = Int(\$member."trait:income")+Int(\$member."trait:extraincome");
+    \$max = Str(\$max/100)+"."+Str(\$max%100);
+    output += "\<input value=\\""+Str(Int(\$member."guild:daily_payment")/100)+"."+Int(\$member."guild:daily_payment")%100+"\\" onchange=\\"run_script('editmember_setval', 'daily_payment\|"+name(\$member)+"\|'+this.value*100+'\|setint\|guild:daily_payment');\\"/\> (cannot be more than "+\$max+")\<br/\>\\n";
+\}*/
+
+
+/* Allow them to change the inventory access of the guild member */
+if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "inventory")) \{
+    if(\$guildleader) \{
+        output += "\<input type=\\"checkbox\\"";
+        if(member("inventory", Arr(\$member."guild:authority"))) output += " checked=\\"1\\"";
+        output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|inventory\|addarr\|guild:authority\|Authority to change inventory settings granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|inventory\|subarr\|guild:authority\|Authority to change inventory settings revoked.'); \}\\"/\>";
+    \}
+    output += "Access Guild Inventory? \\n";
+    output += "\<select NAME=\\"editmember_inventory\\" id=\\"editmember_inventory\\" onchange=\\"run_script('editmember_setval', 'inventory\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:inventory');\\"\>\\n";
+    output += "\<option value=\\"no access\\"";
+    if(\$member."guild:inventory" == "no access") output += " selected=\\"1\\"";
+    output += "\>No\</option\>\\n";
+    output += "\<option value=\\"access\\"";
+    if(\$member."guild:inventory" == "access") output += " selected=\\"1\\"";
+    output += "\>Yes\</option\>\\n";
+    output += "\</select\>\\n";
+    output += "\<br/\>\\n";
+\}
+
+/* Allow them to create new guild pages */
+if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "create_page")) \{
+    if(\$guildleader) \{
+        output += "\<input type=\\"checkbox\\"";
+        if(member("create_page", Arr(\$member."guild:authority"))) output += " checked=\\"1\\"";
+        output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|create_page\|addarr\|guild:authority\|Authority to create new guild pages granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|create_page\|subarr\|guild:authority\|Authority to create new guild pages revoked.'); \}\\"/\>";
+    \}
+    output += "Create new guild pages? \\n";
+    output += "\<select NAME=\\"editmember_create_page\\" id=\\"editmember_create_page\\" onchange=\\"run_script('editmember_setval', 'create_page\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:create_page');\\"\>\\n";
+    output += "\<option value=\\"nil\\"";
+    if(!\$member."guild:create_page") output += " selected=\\"1\\"";
+    output += "\>No\</option\>\\n";
+    output += "\<option value=\\"access\\"";
+    if(\$member."guild:create_page" == "access") output += " selected=\\"1\\"";
+    output += "\>Yes\</option\>\\n";
+    output += "\</select\>\\n";
+    output += "\<br/\>\\n";
+\}
+
+/* Allow them to recruit and dismiss members */
+output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_recruiting", \$message: "recruit and dismiss members");
+
+/* Allow them to use guild resources for lessons */
+output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_lessons", \$message: "pay NPC teacher from guild resources");
+
+/* Allow them to edit the motd */
+output += Call(this, "general_script", \$script: "edit_members_option", \$property: "edit_guildsettings_motd", \$message: "edit the MOTD");
+
+/* Allow them to blacklist people and guilds */
+output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_blacklist", \$message: "blacklist people and guilds");
+
+/* Allow them to give/revoke access to manor/guild hall */
+output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_seneschal", \$message: "give/revoke access to manor or guild hall");
+
+/* Allow them to bid on/import auctions */
+output += Call(this, "general_script", \$script: "edit_members_option", \$property: "trader", \$message: "bid on auctions and import items");
+
+/* Allow them to offer/revoke guild sponsorship */
+output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_sponsorship", \$message: "offer and revoke guild sponsorship");
+
+
+if(output == "") output += "You do not have authority to change any settings for the guild members.";
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:edit_members_option">
+         X[M] /* Allow them to change an option for the member */
+string output;
+output = "";
+
+if(Call(this, "general_script", \$script: "change_members_auth", \$setting: \$property)) \{
+    if(\$guildleader) \{
+        output += "\<input type=\\"checkbox\\"";
+
+        if(member(\$property, Arr(\$member."guild:authority"))) output += " checked=\\"1\\"";
+
+        output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|"+\$property+"\|addarr\|guild:authority\|Authority to choose who can "+Str(\$message)+" granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|"+\$property+"\|subarr\|guild:authority\|Authority to choose who can "+Str(\$message)+" revoked.'); \}\\"/\>";
+    \}
+
+    output += capitalize(Str(\$message))+" \\n";
+    output += "\<select NAME=\\"editmember_"+\$property+"\\" id=\\"editmember_"+\$property+"\\" onchange=\\"run_script('editmember_setval', '"+\$property+"\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:"+\$property+"\|Authority to "+Str(\$message)+" granted.');\\"\>\\n";
+    output += "\<option value=\\"nil\\"";
+    if(!Get(\$member, "guild:"+\$property)) output += " selected=\\"1\\"";
+    output += "\>No\</option\>\\n";
+    output += "\<option value=\\"access\\"";
+    if(Get(\$member, "guild:"+\$property) == "access") output += " selected=\\"1\\"";
+    output += "\>Yes\</option\>\\n";
+    output += "\</select\>\\n";
+    output += "\<br/\>\\n";
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:editmember_setval">
+         X[M] /*rank\|"+name(\$member)+"\|'+this.value+'\|setint\|guild:rank*/
+/* first, check we have authority to change this value */
+if(Call(this, "general_script", \$script: "change_members_auth", \$setting: \$vars[0])) \{
+    \$member = Obj(\$vars[1]);
+    if(!\$member) return "Error: Unknown character.";
+    if(!\$member.guild \|\| \$member.guild != \$guild) return "Error: Character is not a member of this guild.";
+    if(\$vars[2] == "nil") \$vars[2] = nil;
+
+    if(\$vars[3] == "setstring") \{
+        Set(\$member, \$vars[4], \$vars[2]);
+    \} else if(\$vars[3] == "setint") \{
+        Set(\$member, \$vars[4], Int(\$vars[2]));
+    \} else if(\$vars[3] == "addarr") \{
+        if(!(\$arr = Get(\$member, \$vars[4]))) \{
+            Set(\$member, \$vars[4], (\{ \}));
+            \$arr = Get(\$member, \$vars[4]);
+        \}
+
+        \$arr \|= Arr(\$vars[2]);
+        Set(\$member, \$vars[4], \$arr);
+    \} else if(\$vars[3] == "subarr") \{
+        if(!(\$arr = Get(\$member, \$vars[4]))) \{
+            Set(\$member, \$vars[4], (\{ \}));
+            \$arr = Get(\$member, \$vars[4]);
+        \}
+
+        \$arr -= Arr(\$vars[2]);
+        Set(\$member, \$vars[4], \$arr);
+    \}
+
+    if(sizeof(\$vars) \> 5) \{
+        \$message = capitalize(Str(\$vars[5]));
+        if(!\$vars[2]) \$message = replace_strings(\$message, "granted", "revoked");
+        return capitalize(\$message);
+    \}
+
+    if(!\$vars[2]) \$vars[2] = "nothing";
+    return capitalize(Str(\$vars[0]))+" has been set to "+Str(\$vars[2])+".";
+\}
+
+return "Error: You do not have authority to make this change.";
+      </Core:Property>
+      <Core:Property property="merry:lib:font_options">
+         X[M] \$allFonts = (\{ "Arial", "Helvetica", "Times New Roman", "Courier New", "Palatino", "Garamond", "Bookman", "Avant Garde", "Verdana", "Georgia", "Comic Sans MS", "Trebuchet MS", "Arial Black", "Impact" \});
+
+\$output = "";
+for(\$i = 0; \$i \< sizeof(\$allFonts); \$i++) \{
+    if(\$allFonts[\$i] == \$font) \{
+        \$output += "\<option selected style='font-family: " + \$allFonts[\$i] + ";' value='" + \$allFonts[\$i] + "'/\>" + \$allFonts[\$i] + "\</option\>";
+    \} else \{
+        \$output += "\<option style='font-family: " + \$allFonts[\$i] + ";' value='" + \$allFonts[\$i] + "'/\>" + \$allFonts[\$i] + "\</option\>";
+    \}
+\}
+
+return \$output;
+      </Core:Property>
+      <Core:Property property="merry:lib:forgive_member">
+         X[M] /* are we allowed to? */
+if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members.";
+
+/* check that this is a valid character */
+if(sizeof(\$vars) \< 1 \|\| strlen(\$vars[0]) \< 2) return "Unknown Character.";
+\$vars[0] = lower_case(\$vars[0]);
+\$victim = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]);
+if(!\$victim) return "Unknown Character: "+\$vars[0]+".";
+
+/* did \$victim betray the guild? */
+\$victim."guild:betrayed" = Arr(\$victim."guild:betrayed");
+\$victim."guild:betrayed" -= (\{ \$guild \});
+
+return "The guild records of "+capitalize(\$vars[0])+"'s dishonorable discharge have been removed.";
+      </Core:Property>
+      <Core:Property property="merry:lib:general_script">
+         X[M] /* run some initial code */
+string output;
+int i, sz, j, jx;
+::popup_initialize();
+
+\$az = Obj("Chatters:IC:az:azrael");
+
+/* get some information about this guild */
+if(\$guild \&\& typeof(\$guild) == T_STRING \&\& Obj("Allegory:Guilds:"+\$guild)) \{
+    \$guild = Obj("Allegory:Guilds:"+\$guild);
+\} else if(\$guild \&\& typeof(\$guild) == T_OBJECT) \{
+    /* do nothing. We already have \$guild */
+\} else if (\$actor.guild) \{
+    \$guild = \$actor.guild;
+\} else \{
+    return "Error: No guild information passed to script.";
+\}
+
+\$guildname = name(\$guild)[16..strlen(name(\$guild))-1];
+
+/* Check the players rank in this guild */
+\$guildrank = nil;
+if(\$actor.guild \&\& \$actor.guild == \$guild) \{
+    if(\$actor == \$guild.leader) \{
+        \$guildrank = 1;
+        \$guildleader = 1;
+    \} else \{
+        \$guildrank = 3;
+        if(\$actor."guild:rank") \$guildrank = \$actor."guild:rank";
+    \}
+\}
+
+\$guildleader = nil;
+if(\$actor == \$guild.leader) \$guildleader = 1;
+
+/* set variables (if any) */
+if(typeof(\$vars) != T_ARRAY) \$vars = explode(Str(\$vars), "\|");
+
+output = "";
+if(\$script == "change_members_auth") \{
+    /* only let members have access if they have authority */
+    return ::change_members_auth();
+
+\} else if(\$script == "list_members") \{
+    /* Output the members list. */
+    \$memlist = ::list_members();
+
+    if(!\$memlist) return FALSE;
+
+    return \$memlist;
+
+\} else if(\$script == "release_member") \{
+    /* Release a member from service */
+    return ::release_member();
+
+\} else if(\$script == "discharge_member") \{
+    /* Discharge a member from service */
+    return ::discharge_member();
+
+\} else if(\$script == "forgive_member") \{
+    /* Forgive someone for a past dishonorable discharge */
+    return ::forgive_member();
+
+\} else if(\$script == "recruit_member") \{
+    /* Recruit a member */
+    return ::recruit_member();
+
+\} else if(\$script == "edit_members") \{
+    /* Edit members */
+    return ::edit_members();
+
+\} else if(\$script == "edit_members_option") \{
+    /* Allow to change option for a member */
+    return ::edit_members_option();
+
+\} else if(\$script == "editmember_setval") \{
+    /* Change the option for a member */
+    return ::editmember_setval();
+
+\} else if(\$script == "show_guild_settings") \{
+    return ::show_guild_settings();
+
+\} else if(\$script == "set_motd") \{
+    return ::set_motd();
+
+\} else if(\$script == "set_header") \{
+    return ::set_header();
+
+\} else if(\$script == "set_footer") \{
+    return ::set_footer();
+
+\} else if(\$script == "list_tokens") \{
+    return ::list_tokens();
+
+\} else if(\$script == "show_auction") \{
+    return ::show_auction();
+
+\} else if(\$script == "show_import") \{
+    return ::show_import();
+
+\} else if(\$script == "customize_import") \{
+    return ::customize_import();
+
+\} else if(\$script == "show_trading_deals") \{
+    /* Show trading deals */
+    /* Note to self: need to clean up functions from here down */
+    return ::show_trading_deals();
+
+\} else if(\$script == "do_kitty_transfer") \{
+    return ::do_kitty_transfer();
+
+\} else if(\$script == "do_kitty_pc_transfer") \{
+    return ::do_kitty_pc_transfer();
+
+\} else if(\$script == "do_token_transfer") \{
+    return ::do_token_transfer();
+
+\} else if(\$script == "list_npc_teacher") \{
+    return  ::list_npc_teacher();
+
+\} else if(\$script == "list_imports") \{
+    return ::list_imports();
+
+\} else if(\$script == "add_npc_teacher_skills") \{
+    \$skills = ::add_npc_teacher_skills();
+    if(!\$skills) return FALSE;
+    return \$skills;
+
+\} else if(\$script == "confirm_adding_npc_teacher_skills") \{
+    return ::confirm_adding_npc_teacher_skills();
+
+\} else if(\$script == "confirm_add_npc_teacher_skills") \{
+    return ::confirm_add_npc_teacher_skills();
+
+\} else if(\$script == "add_import_auction") \{
+    return ::add_import_auction();
+
+\} else if(\$script == "list_npc_teacher_skills") \{
+    \$skills = ::list_npc_teacher_skills();
+    if(!\$skills) return FALSE;
+    return \$skills;
+
+\} else if(\$script == "confirm_npc_teacher_skills") \{
+    return ::confirm_npc_teacher_skills();
+
+\} else if(\$script == "teach_npc_teacher_skills") \{
+    return ::teach_npc_teacher_skills();
+
+\} else if(\$script == "check_learning_cost") \{
+    return ::check_learning_cost();
+
+\} else if(\$script == "count_tokens") \{
+    return ::count_tokens();
+
+\} else if(\$script == "charge_tokens") \{
+    return ::charge_tokens();
+
+\} else if(\$script == "do_working_token_conversion") \{
+    return ::do_working_token_conversion();
+
+\} else if(\$script == "list_inventory") \{
+    return ::list_inventory();
+
+\} else if(\$script == "take_inv_item") \{
+    return ::take_inv_item();
+
+\} else if(\$script == "take_import_item") \{
+    return ::take_import_item();
+
+\} else if(\$script == "voting_start") \{
+    return ::voting_start();
+
+\} else if(\$script == "voting_display") \{
+    return ::voting_display();
+
+\} else if(\$script == "voting_check_nomination") \{
+    return ::voting_check_nomination();
+
+\} else if(\$script == "voting_nominate") \{
+    return ::voting_nominate();
+
+\} else if(\$script == "voting_select") \{
+    return ::voting_select();
+
+\} else if(\$script == "show_tradehistory") \{
+    return ::show_tradehistory();
+
+\} else if(\$script == "color_options") \{
+    return ::color_options();
+
+\} else if(\$script == "font_options") \{
+    return ::font_options();
+\} else if(\$script == "blacklist") \{
+    return ::blacklist();
+\} else if(\$script == "unblacklist") \{
+    return ::unblacklist();
+\} else if(\$script == "select_type") \{
+    return ::select_type();
+\} else if(\$script == "offer_sponsorship") \{
+    return ::offer_sponsorship();
+\} else if(\$script == "cancel_sponsorship_offer") \{
+    return ::cancel_sponsorship_offer();
+\} else if(\$script == "cancel_sponsorship") \{
+    return ::cancel_sponsorship();
+\} else if(\$script == "accept_sponsorship_offer") \{
+    return ::accept_sponsorship_offer();
+\} else if(\$script == "reject_sponsorship_offer") \{
+    return ::reject_sponsorship_offer();
+\}
+
+if(output != "") return output;
+return "Error: Unknown script " + dump_value(\$script);
+      </Core:Property>
+      <Core:Property property="merry:lib:join_guild">
+         X[M] /* check if they are currently a member of this guild */  
+if(\$actor.guild \&\& \$actor.guild == \$par["guild"]) \{  
+  EmitTo(\$actor, "You have joined "+\$par["guild"].shortname+". Type @guild to gain access to the guild pages.");  
+  return TRUE;  
+\}  
+  
+  
+/* check they don't have an alt in the guild */  
+if(\$par["guild"].members \&\& sizeof(\$par["guild"].members)) \{  
+  \$bodies = Udat::query_bodies_in_roster(\$user: \$actor."udat:name");  
+  for(\$i=0;\$i\<sizeof(\$bodies);\$i++) \{  
+    /* check this isn't an alt */  
+    if(member(\$bodies[\$i], \$par["guild"].members)) \{  
+      EmitTo(\$actor, "You cannot join "+\$par["guild"].shortname+" as you already have an alt ("+capitalize(Str(\$bodies[\$i]."skotos:charname"))+") in that guild.");  
+      return TRUE;  
+    \}  
+  \}  
+\}  
+  
+/* accepted offer to join the guild */  
+EmitTo(\$actor, "You have joined "+\$par["guild"].fullname+". Type @guild to gain access to the guild pages.");  
+  
+/* remove old guild properties from their body */  
+Call(\$this, "leave_guild", \$member: \$actor);  
+  
+/* set the actor to be in the new guild */  
+\$actor.guild = \$par["guild"];  
+\$par["guild"].members += (\{ \$actor \});  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:join_guild_denied">
+         X[M] /* decide not to join the new guild */  
+if(\$actor.guild) \{  
+ EmitTo(\$actor, "You decide to stay loyal to "+\$actor.guild.fullname+" and not join "+\$par["guild"].fullname+".");    
+\} else \{  
+ EmitTo(\$actor, "You decide not to join "+\$par["guild"].fullname+".");    
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:join_guild_expire">
+         X[M] EmitTo(\$actor, Describe(\$par["sender"])+"'s offer to join "+\$par["guild"].fullname+" has expired.");    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:leave_guild">
+         X[M] /* run code for when someone leaves their guild */
+
+/* check the variables */
+if(!\$member) return FALSE;
+if(!\$member.guild) return TRUE;
+
+/* were they honorably released? */
+if(!\$honorable) \{
+ if(\$member."guild:betrayed") \{
+  \$member."guild:betrayed" \|= (\{ \$member.guild \});
+ \} else \{
+  \$member."guild:betrayed" = (\{ \$member.guild \});
+ \}
+\}
+
+/* remove their manor room */
+if(\$member.guild == \$\{Allegory:Guilds:france\}) \{
+    if(\$member."virtualhome:avoirdupois:member") \{
+        \$room = \$member."virtualhome:avoirdupois:member";
+    \} else if(\$member."virtualhome:avoirdupois:noble") \{
+        \$room = \$member."virtualhome:avoirdupois:noble";
+    \}
+\} else if(\$member.guild == \$\{Allegory:Guilds:scotland\}) \{
+    if(\$member."virtualhome:bisclavret:member") \{
+        \$room = \$member."virtualhome:bisclavret:member";
+    \} else if(\$member."virtualhome:bisclavret:noble") \{
+        \$room = \$member."virtualhome:bisclavret:noble";
+    \}
+\} else if(\$member.guild == \$\{Allegory:Guilds:germany\}) \{
+    if(\$member."virtualhome:doloreaux:member") \{
+        \$room = \$member."virtualhome:doloreaux:member";
+    \} else if(\$member."virtualhome:doloreaux:noble") \{
+        \$room = \$member."virtualhome:doloreaux:noble";
+    \}
+\} else if(\$member.guild == \$\{Allegory:Guilds:italy\}) \{
+    if(\$member."virtualhome:rinaldi:member") \{
+        \$room = \$member."virtualhome:rinaldi:member";
+    \} else if(\$member."virtualhome:rinaldi:noble") \{
+        \$room = \$member."virtualhome:rinaldi:noble";
+    \}
+\}
+
+if(\$room) \{
+    Call(\$\{Allegory:Props:Keys:BoardHouse:UrRentingKey\}, "do_delete", \$room: \$room, \$actor: \$member, \$discharged: 1);
+\}
+
+/* remove them from the guild */
+\$member.guild.members -= (\{ \$member \});
+\$member.guild = nil;
+
+/* remove guild properties */
+\$list = map_indices(prefixed_map(\$member."*", "guild:"));
+\$list -= (\{ "guild:betrayed" \});
+for(\$i=0;\$i\<sizeof(\$list);\$i++) \{
+  Set(\$member, \$list[\$i], nil);
+\}
+
+/* Remove tokens */
+\$list = map_indices(prefixed_map(\$member."*", "tokens:"));
+for(\$i=0;\$i\<sizeof(\$list);\$i++) \{
+  Set(\$member, \$list[\$i], nil);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:list_members">
+         X[M] string output;
+int i, j;
+
+/* only let them see the members list if they are in the guild */
+if(!\$guildrank) return FALSE;
+
+if(!sizeof(\$vars)) \$vars = (\{ "active" \});
+
+output =  "\<table width=\\"100%\\" border=\\"0\\"\>\\n";
+output += "    \<tr\>";
+output += "        \<td\>\<strong\>Name\</strong\>\</td\>";
+output += "        \<td\>\<strong\>Social Rank\</strong\>\</td\>";
+output += "        \<td\>\<strong\>Position\</strong\>\</td\>";
+output += "        \<td\>\<strong\>Notes\</strong\>\</td\>";
+
+/*
+if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment")) \{
+    output += "    \</td\> \<td\>\<strong\>Daily Payment\</strong\>\</td\>";
+\}
+*/
+
+output += "\</tr\>\\n";
+
+\$members = Arr(\$guild.members);
+\$members -= (\{ nil \});
+
+/* sort the members in terms of rank */
+j = \$members[0]."rank:rank";
+
+for(i=1;i\<sizeof(\$members);i++) \{
+    \$member = \$members[i];
+
+    if(\$member."rank:rank" \> j) \{
+        /* swap them */
+        \$members[i] = \$members[i-1];
+        \$members[i-1] = \$member;
+
+        if(i == 1) \{
+            j = \$member."rank:rank";
+            i = 0;
+        \} else \{
+            i -= 2;
+            j = \$members[i]."rank:rank";
+        \}
+    \} else \{
+        j = \$member."rank:rank";
+    \}
+\}
+
+\$guild.members = \$members;
+
+/* remove any members who are in the backup folder or who are not flagged as in your guild */
+for(i=0; i \< sizeof(\$members); i++) \{
+    if(explode(Str(\$members[i]), ":")[1] == "Backup") \{
+        \$guild.members -= (\{ \$members[i] \});
+    \}
+
+    if(\$members[i].guild != \$guild) \{
+        \$guild.members -= (\{ \$members[i] \});
+    \}
+\}
+
+for(i=0;i\<sizeof(\$members);i++) \{
+    \$member = \$members[i];
+
+    if(\$vars[0] != "active" \|\| Int(\$member."cdat:lastlogin")+60*60*24*5 \> time()) \{
+
+        /* display this character */
+        if(\$vars[0] == "edit") \{
+            output += "\<tr\>";
+            output += "    \<td\>";
+            output += "        \<u class=\\"clickable\\" onclick=\\"display_block('editmember"+Str(\$member."skotos:charname")+"', 'edit_members', '"+name(\$member)+"'); switch_block('editmember"+Str(\$member."skotos:charname")+"');\\"\>" + capitalize(Str(\$member."skotos:charname")) + "\</u\>";
+            output += "    \</td\>";
+        \} else \{
+            output += "\<tr\>";
+            output += "    \<td\>" + capitalize(Str(\$member."skotos:charname")) + "\</td\>";
+        \}
+
+        output += "        \<td\>" + Str(\$member."rank:name") + "\</td\>";
+        output += "        \<td\>" + Str(\$member."guild:position") + "\</td\>";
+        output += "        \<td\>" + Str(\$member."guild:notes") + "\</td\>";
+
+ /*
+        if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment")) \{
+            \$max = Int(\$member."trait:income")+Int(\$member."trait:extraincome");
+
+            if(\$member."guild:daily_payment" \&\& \$member."guild:daily_payment" \> \$max) \{
+                \$member."guild:daily_payment" = \$max;
+                output += "\<td\>" + Str(Flt(\$max)/100.0) + " florins \</td\>";
+            \} else \{
+                output += "\<td\>" + Str(Flt(\$member."guild:daily_payment")/100.0) + " florins \</td\>";
+            \}
+        \}
+*/
+
+        output += "\</tr\>\\n";
+
+        if(\$vars[0] == "edit") \{
+            output += "\<tr\>";
+            output += "    \<td colspan=3\>";
+            output += "        \<span id=\\"editmember" + Str(\$member."skotos:charname") + "\\" style=\\"display:none;\\"\>\</span\>";
+            output += "    \</td\>";
+            output += "\</tr\>\\n";
+        \}
+    \}
+\}
+
+output += "\</table\>\\n";
+
+/* recruit or release members */
+if((\$guildleader \|\| \$char."guild:guild_recruiting") \&\& \$guildrank) \{
+    output += "\<br/\>Recruit a new member: ";
+    output += "\<input onchange=\\"run_script('recruit_member', this.value);\\"/\>\<br/\>\\n";
+
+    output += "\<br/\>Release a member ";
+    output += "\<select id=\\"release_member_honor\\"\\"\>\\n";
+    output += "\<option value=\\"honorable\\" selected=\\"1\\"\>honorably\</option\>\\n";
+    output += "\<option value=\\"dishonorable\\"\>dishonorably\</option\>\\n";
+    output += "\</select\>\\n";
+    output += " from service: ";
+    output += "\<input onchange=\\"display_block('release_member_confirm', 'release_member', this.value+'\|'+document.getElementById('release_member_honor').value);\\"/\>\<br/\>\\n";
+    output += "\<div id=\\"release_member_confirm\\"\>\</div\>\<br/\>\\n";
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:offer_sponsorship">
+         X[M] int i;
+
+if(\$guildleader \|\| \$char."guild:guild_sponsorship") \{
+    \$vars = explode(\$vars[0], "::");
+
+    \$sponsorGuild = Obj("Allegory:Guilds:" + \$vars[0]);
+
+    if(\$sponsorGuild.type == "noble") return "Error: You cannot sponsor another noble guild.";
+    if(\$sponsorGuild.sponsor) return "Error: " + \$sponsorGuild.fullname + " already has a sponsor";
+
+    \$terms = \$vars[1];
+    \$timestamp = time();
+    \$initiator = \$actor;
+    \$quantity = 0;
+
+    if(\$guild."sponsor:guilds") \{
+        \$sponsoring = \$guild."sponsor:guilds";
+
+        for(i = 0; i \< sizeof(\$sponsoring); i++) \{
+            if(\$sponsoring[i]["name"] == \$sponsorGuild) \{
+                return "Error: You already sponsoring " + \$sponsorGuild.fullname + ".";
+            \}
+            \$quantity++;
+        \} 
+    \}
+
+    if(\$guild."sponsor:offers:outgoing") \{
+        \$outgoing = \$guild."sponsor:offers:outgoing";
+
+        if(\$outgoing[\$sponsorGuild]) \{
+            return "Error: You already offering sponsorship to " + \$sponsorGuild.fullname + ".";
+        \} 
+        \$quantity += map_sizeof(\$outgoing); 
+    \} else \{
+        \$guild."sponsor:offers:outgoing" = ([ ]);
+    \} 
+
+    if(\$quantity \>= 5)\{
+        return "Error: You are already sponsoring/offering sponsorship to 5 guilds.";
+    \}
+
+    \$guild."sponsor:offers:outgoing"[\$sponsorGuild] = (\{ \$initiator, \$terms, \$timestamp \});
+
+    if(!\$sponsorGuild."sponsor:offers:incoming") \$sponsorGuild."sponsor:offers:incoming" = (\{ \});
+
+    \$sponsorGuild."sponsor:offers:incoming" += (\{ \$guild \});
+
+    return "Offer of sponsorship has been submitted to " + \$sponsorGuild.fullname;
+\}
+
+return "Error: You are not authorized to sponsor anyone.";
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] /* checks the player isn't trying anything funny, and that we have all the information we need */
+/* returns the page we should look up */
+object *bodies;
+int i, sz;
+
+/* first basic sanity checks -- these should never happen */
+if (\$dat == nil) \{
+    error("page reached without a udat");
+\}
+if (\$name == nil) \{
+    error("page reached without a name");
+\}
+
+/* what is the character? */
+if(\$actor \&\& typeof(\$actor) == 3) \{
+    /* \$actor is a string. make it an object */
+    if(Obj(\$actor)) \{
+        \$actor = Obj(\$actor);
+    \} else \{
+        if(\$actor) \{
+            if(Obj("Chatters:AE:"+\$actor[0..1]+":"+\$actor))
+                \$actor = Obj("Chatters:AE:"+\$actor[0..1]+":"+\$actor);
+
+            if(typeof(\$actor) != 4 \&\& Obj("Chatters:IC:"+\$actor[0..1]+":"+\$actor))
+                \$actor = Obj("Chatters:IC:"+\$actor[0..1]+":"+\$actor);
+        \}
+    \}
+\}
+
+if(\$char \&\& typeof(\$char) == 3) \{
+    /* \$char is a string. make it an object */
+    if(Obj(\$char)) \{
+        \$char = Obj(\$char);
+    \} else \{
+        if(\$char) \{
+            if(Obj("Chatters:AE:"+\$char[0..1]+":"+\$char))
+                \$char = Obj("Chatters:AE:"+\$char[0..1]+":"+\$char);
+
+            if(typeof(\$char) !=4 \&\& Obj("Chatters:IC:"+\$char[0..1]+":"+\$char))
+                \$char = Obj("Chatters:IC:"+\$char[0..1]+":"+\$char);
+        \}
+    \}
+\}
+
+if(!\$char \&\& \$actor) \$char = \$actor;
+if(!\$actor \&\& \$char) \$actor = \$char;
+if (!\$char) error("No character specified");
+
+\$charname = name(\$char)[15..strlen(name(\$char))-1];
+
+
+/* what is the guild? */
+if(\$guild \&\& typeof(\$guild) == 3 \&\& Obj("Allegory:Guilds:"+\$guild)) \{
+  \$guildob = Obj("Allegory:Guilds:"+\$guild);
+\} else if(Get(\$char, "guild")) \{
+  \$guildob = \$char.guild;
+\} else \{
+  \$guildob = nil;
+\}
+
+if(\$guildob) \{
+  \$guildname = name(\$guildob)[16..strlen(name(\$guildob))-1];
+  \$guildpages = Obj("Allegory:Guilds:Pages:new:"+\$guildname);
+  if(!\$guildpages) \{
+    \$guildpages = Duplicate(\$\{Allegory:Guilds:Pages:new:default_page\});
+    \$guildpages."core:objectname" = "Allegory:Guilds:Pages:new:"+\$guildname;
+  \}
+\}
+
+
+/* Check the player isn't trying to access someone elses body */
+/* Check if the players roster of characters */
+bodies = Udat::query_bodies_in_roster(\$user: \$name);
+
+for(i = 0; i \< sizeof(bodies);) \{
+    if(bodies[i]."theatre:id" != "IC") \{
+        bodies -= (\{ \$bodies[i] \});
+    \} else \{
+        i++;
+    \}
+\}
+
+bodies \&= (\{ \$char \});
+
+if(sizeof(bodies) \< 1 \&\& \$name != "tonyd") \{
+  error("Body "+dump_value(\$char)+" for account "+dump_value(\$name)+" not found in character roster");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:recruit_member">
+         X[M] /* are they allowed to recruit? */
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to recruit members into this guild.";
+
+  /* are they recruiting a PC? */
+  if(!sizeof(\$vars)) return "Something went wrong when recruiting.";
+  \$vars[0] = lower_case(\$vars[0]);
+  \$recruitee = Obj("Chatters:AE:"+\$vars[0][0..1]+":"+\$vars[0]);
+  if(!\$recruitee) return "Unknown character: "+\$vars[0];
+
+  /* trying to recruit \$recruitee */
+  if(\$recruitee.guild == \$guild) return capitalize(\$vars[0])+" is already a member of this guild.";
+
+  /* slaves can't join guilds that aren't slavery guilds */
+  if(\$recruitee."trait:slave" \&\& !\$guild."trait:slave_trading_charter") return capitalize(\$vars[0])+" is a slave, and can only be traded to a guild with a slave trading charter.";
+
+  /* ask if they want to join */
+    /* EXTENSION: Make this work when they are offline as well */
+  if(!\$recruitee."udat:object") return capitalize(\$vars[0])+" is not logged into the game at the moment.";
+
+  if(\$recruitee.guild) \{
+    EmitTo(\$recruitee, capitalize(Str(\$char."skotos:charname"))+" invites you to join "+\$guild.fullname+".");
+    \$question = "Warning: You are currently a member of "+\$recruitee.guild.fullname+" - if you change guilds without first leaving your current guild, you will have forsaken your oaths of service. Do you want to join "+\$guild.fullname+"?";
+  \} else \{
+    \$question = capitalize(Str(\$char."skotos:charname"))+" invites you to join "+\$guild.fullname+". Would you like to join?";
+  \}
+  interaction::question(\$actor: \$recruitee, \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Allegory:Lib:Guilds:New\}, \$no_ob: \$\{Allegory:Lib:Guilds:New\}, \$expire_ob: \$\{Allegory:Lib:Guilds:New\}, \$yes_fun: "join_guild", \$no_fun: "join_guild_denied", \$expire_fun: "join_guild_expire", \$par: ([ "sender": \$char, "guild": \$guild]));
+
+  return "You invite "+capitalize(\$vars[0])+" to join "+\$guild.fullname+".";
+      </Core:Property>
+      <Core:Property property="merry:lib:reject_sponsorship_offer">
+         X[M] int i;
+
+if(\$guildleader \|\| \$char."guild:guild_sponsorship") \{
+    \$offeringGuild = Obj(\$vars[0]);
+    \$guild."sponsor:offers:incoming" -= (\{ \$offeringGuild \});
+    if(!sizeof(\$guild."sponsor:offers:incoming")) \$guild."sponsor:offers:incoming" = nil;
+
+    \$offeringGuild."sponsor:offers:outgoing"[\$guild] = nil;
+
+    if(!map_sizeof(\$offeringGuild."sponsor:offers:outgoing")) \$offeringGuild."sponsor:offers:outgoing" = nil;
+
+    return "You reject the sponsorship offer from " + \$offeringGuild.fullname + ".";
+\}
+
+return "Error: You are not authorized to sponsor anyone.";
+      </Core:Property>
+      <Core:Property property="merry:lib:release_member">
+         X[M] string output;
+
+/* are we allowed to? */
+if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members.";
+
+/* check that this is a valid character */
+if(sizeof(\$vars) \< 2) return "";
+if(strlen(\$vars[0]) \< 1) return "";
+if(strlen(\$vars[0]) \< 2) return "Unknown Character.";
+\$vars[0] = lower_case(\$vars[0]);
+\$victim = Obj("Chatters:AE:"+\$vars[0][0..1]+":"+\$vars[0]);
+if(!\$victim) return "Unknown Character: "+\$vars[0]+".";
+
+/* is \$victim a member of the guild? */
+if(\$victim.guild != \$guild) \{
+    /* Are we forgiving them for a previous dishonorable discharge? */
+    if(\$vars[1] == "honorable" \&\& member(\$guild, Arr(\$victim."guild:betrayed"))) \{
+        output = capitalize(\$vars[0])+" is not a member of "+\$guild.fullname+", but was previously a member, and was dishonorably discharged.\<br/\>";
+        output += "Did you want to forgive "+capitalize(\$vars[0])+" and inform the guild administrators to wipe the dishonorable discharge clean?\<br/\>";
+        output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'forgive_member', '"+\$vars[0]+"');\\"\>Forgive "+capitalize(\$vars[0])+"\</u\>]";
+        output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>DON'T forgive "+capitalize(\$vars[0])+"\</u\>]";
+        return output;
+    \} else \{
+        return capitalize(\$vars[0])+" is not a member of "+\$guild.fullname+".";
+    \}
+\}
+
+/* release the member */
+output = "Did you want to release "+capitalize(\$vars[0])+" from service";
+if(\$vars[1] == "dishonorable")
+    output += ", and inform the guild administrators that the discharge was dishonorable";
+
+output += "?\<br/\>";
+
+if(\$vars[1] == "dishonorable") \{
+    output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'discharge_member', '"+\$vars[0]+"\|"+\$vars[1]+"');\\"\>Dishonorably discharge "+capitalize(\$vars[0])+"\</u\>]";
+    output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>Leave "+capitalize(\$vars[0])+" as a member\</u\>]";
+\} else \{
+    output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'discharge_member', '"+\$vars[0]+"\|"+\$vars[1]+"');\\"\>Honorably discharge "+capitalize(\$vars[0])+"\</u\>]";
+    output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>Leave "+capitalize(\$vars[0])+" as a member\</u\>]";
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:select_type">
+         X[M] EmitTo(\$\{Chatters:AE:ro:roo\}, dump_value(args));
+if(\$guildleader) \{
+    \$type = \$vars[0];
+
+    if(\$guild."type:lastchanged") \{
+        \$lastchanged = \$guild."type:lastchanged";
+        \$days = Int((time() - \$lastchanged)/(60*60*24));
+        if(\$days \< 7) \{
+            return "Error: You must wait " + Str(Int(7-\$days)) + " more days before changing the guild type again.";
+        \}
+    \}
+
+    \$guild.type = \$type;
+    \$guild."type:lastchanged" = time();
+
+    return "Guild type has been changed to " + \$type + ".";
+
+\}
+
+return "Error: You are not authorized to change the guild type.";
+      </Core:Property>
+      <Core:Property property="merry:lib:set_footer">
+         X[M] if(\$guildleader) \{
+    if(Obj("Allegory:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2])) \{       
+        \$guildpage = Obj("Allegory:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2]);
+    \}     
+    \$footer = replace_strings(Str(\$vars[0]), "\\r\\n", "\<br\>", "\<hr\>", "\<hr/\>", "\<hr/\>\</hr\>", "\<hr/\>");
+    Set(\$guildpage, "footer", \$footer);
+    return "Guild page footer set";
+\}
+
+return "Error: You are not authorized to set the guild page footer.";
+      </Core:Property>
+      <Core:Property property="merry:lib:set_header">
+         X[M] if(\$guildleader \|\| \$char."guild:create_page") \{
+
+    if(Obj("Allegory:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2])) \{       
+        \$guildpage = Obj("Allegory:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2]);
+    \}     
+
+    \$vars = explode(\$vars[0], "::");
+
+    \$header = ([ ]);
+    if(Str(\$vars[0]) != " " \&\& Str(\$vars[0]) != "") \{ \$header["bgcolor"] = replace_strings(Str(\$vars[0]), " ", ""); \} else \{ \$header["bgcolor"] = "#ffffff"; \}
+    if(Str(\$vars[1]) != " " \&\& Str(\$vars[1]) != "") \{ \$header["bgimg1"] = replace_strings(Str(\$vars[1]), " ", ""); \} else \{ \$header["bgimg1"] = ""; \}
+    if(Str(\$vars[2]) != " " \&\& Str(\$vars[2]) != "") \{ \$header["bgcolor2"] = replace_strings(Str(\$vars[2]), " ", ""); \} else \{ \$header["bgcolor2"] = "#ffffff"; \}
+    if(Str(\$vars[3]) != " " \&\& Str(\$vars[3]) != "") \{ \$header["bgimg2"] = replace_strings(Str(\$vars[3]), " ", ""); \} else \{ \$header["bgimg2"] = ""; \}
+    if(Str(\$vars[4]) != " " \&\& Str(\$vars[4]) != "") \{ \$header["fonttype"] = Str(\$vars[4]); \} else \{ \$header["fonttype"] = "arial"; \}
+    if(Str(\$vars[5]) != " " \&\& Str(\$vars[5]) != "") \{ \$header["fontcolor"] = replace_strings(Str(\$vars[5]), " ", ""); \} else \{ \$header["fontcolor"] = "#000000"; \}
+    if(Str(\$vars[6]) != " " \&\& Str(\$vars[6]) != "") \{ \$header["h1type"] = Str(\$vars[6]); \} else \{ \$header["h1type"] = "arial"; \}
+    if(Str(\$vars[7]) != " " \&\& Str(\$vars[7]) != "") \{ \$header["h1color"] = replace_strings(Str(\$vars[7]), " ", ""); \} else \{ \$header["h1color"] = "#000000"; \}
+    if(Str(\$vars[8]) != " " \&\& Str(\$vars[8]) != "") \{ \$header["h2type"] = Str(\$vars[8]); \} else \{ \$header["h2type"] = "arial"; \}
+    if(Str(\$vars[9]) != " " \&\& Str(\$vars[9]) != "") \{ \$header["h2color"] = replace_strings(Str(\$vars[9]), " ", ""); \} else \{ \$header["h2color"] = "#000000"; \}
+    if(Str(\$vars[10]) != " " \&\& Str(\$vars[10]) != "") \{ \$header["h3type"] = Str(\$vars[10]); \} else \{ \$header["h3type"] = "arial"; \}
+    if(Str(\$vars[11]) != " " \&\& Str(\$vars[11]) != "") \{ \$header["h3color"] = replace_strings(Str(\$vars[11]), " ", ""); \} else \{ \$header["h1color"] = "#000000"; \}
+
+    Set(\$guildpage, "header", \$header);
+    return "Guild page header set";
+\}
+
+return "Error: You are not authorized to set the guild page header.";
+      </Core:Property>
+      <Core:Property property="merry:lib:set_motd">
+         X[M] if(\$guildleader \|\| \$char."guild:edit_guildsettings_motd") \{
+    \$guild.motd = replace_strings(Str(\$vars[0]), "\<", "\&lt;", "\>", "\&gt;");
+    return "Guild Message of the Day set.";
+\}
+
+return "Error: You are not authorized to set the guild Message of the Day.";
+      </Core:Property>
+      <Core:Property property="merry:lib:show_guild_settings">
+         X[M] string output;
+int i;
+
+output = "";
+output += "\<h2\>Guild Settings\</h2\>";
+
+if(\$guildleader \|\| \$char."guild:edit_guildsettings_type") \{
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_type');\\"\>\<strong\>\<u\>Guild Type\</u\>\</strong\>\</span\>";
+   output += "\<span id=\\"guild_type\\" style=\\"display:none;\\"\>";
+
+   if(\$guild.type) output += "\<p\>This is a \<b\>" + \$guild.type + "\</b\> guild.\</p\>";
+
+   if(\$guild.type != "noble") \{
+       \$guild_type_options = (\{ "merchant", "tradesman", "military" \});
+
+       output += "Change guild type to: \<select\>";
+       for(i = 0; i \< sizeof(\$guild_type_options); i++) \{
+           if(Str(\$guild.type) == \$guild_type_options[i]) \{
+               \$output += "\<option selected value='" + \$guild_type_options[i] + "'\>" + \$guild_type_options[i] + "\</option\>";
+           \} else \{
+               \$output += "\<option value='" + \$guild_type_options[i] + "'\>" + \$guild_type_options[i] + "\</option\>";
+           \}
+       \}
+       output += "\</select\>";
+       output += "(Once changed, you will not be able to change guild types again for another 7 days)";
+       output += "\<input type=\\"submit\\" value=\\"Submit\\" class=\\"clickable\\" onclick=\\"getElementById('guild_type').value += ' '; run_script('select_type', getElementById('guild_type').value);\\"/\>\</p\>";
+   \}
+
+   output += "\</span\>\<br/\>";
+\}
+
+if(\$guildleader \|\| \$char."guild:edit_guildsettings_motd") \{
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('motd');\\"\>\<strong\>\<u\>Message of the Day\</u\>\</strong\>\</span\>";
+   output += "\<span id=\\"motd\\" style=\\"display:none;\\"\>";
+   output += "\<p\>Guild members will see this message when they log into the game.\<br/\>";
+   output += "\<textarea id=\\"motd_text\\" rows=5 cols=80\>"+Str(\$guild.motd)+"\</textarea\>\<br/\>";
+   output += "\<input type=\\"submit\\" value=\\"Submit\\" class=\\"clickable\\" onclick=\\"getElementById('motd_text').value += ' '; run_script('set_motd', getElementById('motd_text').value);\\"/\>\</p\>";
+   output += "\</span\>\<br/\>";
+\}
+
+if(\$guildleader) \{
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_page_header');\\"\>\<strong\>\<u\>Page Header\</u\>\</strong\>\</span\>";
+   output += "\<span id=\\"guild_page_header\\" style=\\"display:none;\\"\>";
+   output += "\<zform actor='\$(actor)' guild='\$(guild)' guildpages='\$(guildpages)' charname='\$(charname)' guildname='\$(guildname)'\>";
+
+   \$header = "";
+   if(Obj("Allegory:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2])) \{
+       \$header = Str(Get(Obj("Allegory:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2]), "header"));
+   \} 
+
+   output += "\<textarea style='BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 200px' name='header'\>" + \$header + "\</textarea\>";
+
+   output += "\<input type='submit' value='Update Header' class='submit-buton'/\>";
+   output += "\<action\>";
+   output += "\$[\\"\\";";
+   output += "   Set(Obj(\\"" + "Allegory:Guilds:Pages:new:" + Str(explode(Str(\$char.guild), ":")[2]) + "\\"), \\"header\\", \$header);"; 
+   output += " ]";
+   output += "\<redirect base=\\"/SAM/Prop/Allegory:Lib:Guilds:GuildPage/index\\" actor=\\"\$(charname)\\" guild=\\"\$(guildname)\\" page=\\"guild_settings\\"/\>";
+   output += "\</action\>";
+   output += "\</zform\>";
+
+   output += "\</span\>\<br/\>";
+\}
+
+if(\$guildleader) \{
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_page_footer');\\"\>\<strong\>\<u\>Page Footer\</u\>\</strong\>\</span\>";
+   output += "\<span id=\\"guild_page_footer\\" style=\\"display:none;\\"\>";
+   output += "\<zform actor='\$(actor)' guild='\$(guild)' guildpages='\$(guildpages)' charname='\$(charname)' guildname='\$(guildname)'\>";
+
+   \$footer = "";
+   if(Obj("Allegory:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2])) \{
+       \$footer = Str(Get(Obj("Allegory:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2]), "footer"));
+   \} 
+
+   output += "\<textarea style='BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 200px' name='footer'\>" + \$footer + "\</textarea\>";
+
+   output += "\<input type='submit' value='Update Footer' class='submit-buton'/\>";
+   output += "\<action\>";
+   output += "\$[\\"\\";";
+   output += "   Set(Obj(\\"" + "Allegory:Guilds:Pages:new:" + Str(explode(Str(\$char.guild), ":")[2]) + "\\"), \\"footer\\", \$footer);"; 
+   output += " ]";
+   output += "\<redirect base=\\"/SAM/Prop/Allegory:Lib:Guilds:GuildPage/index\\" actor=\\"\$(charname)\\" guild=\\"\$(guildname)\\" page=\\"guild_settings\\"/\>";
+   output += "\</action\>";
+   output += "\</zform\>";
+
+   output += "\</span\>\<br/\>";
+\}
+
+if(output == "") output += "You do not have authority to change any settings for this guild.";
+
+return ParseXML(output);
+      </Core:Property>
+      <Core:Property property="merry:lib:unblacklist">
+         X[M] if(\$guildleader \|\| \$char."guild:guild_blacklist") \{
+
+    \$who = Obj(\$vars[0]);
+
+    if(\$who."skotos:charname") \{
+        \$name = proper(Str(\$who."skotos:charname"));
+
+        \$blacklist = Get(\$guild, "blacklisted_people");
+        for(\$i = 0; \$i \< sizeof(\$blacklist); \$i++) \{
+            if(\$blacklist[\$i][0] == \$who) \{
+                \$blacklist[\$i] = nil;
+            \}
+
+            \$blacklist -= (\{ nil \});
+        \}
+        Set(\$guild, "blacklisted_people", \$blacklist);
+
+        \$who.blacklistedby -= (\{ \$guild \});
+
+        \$person = \$who;
+ 
+        sscanf(ctime(time()), "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+
+        \$body = "Let it be known that on this day " + Str(\$day) + " " + Str(\$month) + " " + Str(\$year-420) + ", " + Str(\$name) + " is no longer blacklisted by " + \$guild.fullname + ".";
+    \} else \{
+        \$name = proper(\$who.fullname);
+
+        \$blacklist = Get(\$guild, "blacklisted_guilds");
+        for(\$i = 0; \$i \< sizeof(\$blacklist); \$i++) \{
+            if(\$blacklist[\$i][0] == \$who) \{
+                \$blacklist[\$i] = nil;
+            \}
+
+            \$blacklist -= (\{ nil \});
+        \}
+        Set(\$guild, "blacklisted_guilds", \$blacklist);
+
+        \$who.blacklistedby -= (\{ \$guild \});
+
+        \$person = \$who.leader;
+
+        sscanf(ctime(time()), "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+
+        \$body = "Let it be known that on this day " + Str(\$day) + " " + Str(\$month) + " " + Str(\$year-420) + ", " + Str(\$who.fullname) + " is no longer blacklisted by " + \$guild.fullname + ".";
+    \}
+
+    if(\$person) allegory::sendscroll(\$writer: \$actor, \$addressee: \$person, \$text: \$body);
+
+    return \$name + " has been forgiven!";
+\}
+
+return "Error: You are not authorized to forgive anyone.";
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1585277311, "jominey", "E", 1585277513, "jominey", "E", 1585277531, "jominey", "E", 1598106413, "jominey", "E", 1598106480, "jominey", "E", 1598106624, "jominey", "E", 1598106922, "jominey", "P", 1604358584, "jominey", "E", 1604358609, "jominey", "E", 1604358634, "jominey", "E", 1647740140, "ezralee", "E", 1719008256, "annemairi", "E", 1719098686, "annemairi", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

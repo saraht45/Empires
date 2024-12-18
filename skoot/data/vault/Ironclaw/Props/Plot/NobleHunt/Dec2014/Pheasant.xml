@@ -1,0 +1,211 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Props:Plot:NobleHunt:Dec2014:UrFightable)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="pheasant"/>
+            <Base:SName sname="bird"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="pheasants"/>
+            <Base:PName pname="birds"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.trait:meatless) | meatless | }gold and brown pheasant  {? | $(this.trait:dead) | corpse | }
+          </Base:Description>
+          <Base:Description type="examine">
+             A medium-sized bird reaching approximately 30 inches in length with a long, brown-streaked black tail, accounting for almost half of the total length. Its body plumage is barred bright gold and brown and features green, purple and white markings. The head is bottle green with a small crest and distinctive red wattle. It can be plucked when slain, and cut to harvest meat. {? | $(this.trait:meatless) | Someone appears to have already picked all the meat from this carcass. |}
+          </Base:Description>
+          <Base:Description type="look">
+             A medium-sized bird reaching approximately 30 inches in length with a long, brown-streaked black tail.{? | $(this.trait:meatless) | Someone appears to have already picked all the meat from this carcass. |}
+          </Base:Description>
+          <Base:Description type="pnmae">marquest</Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:agility">
+         1
+      </Core:Property>
+      <Core:Property property="export:trait:speed">1</Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] Set(\$this, "details:default:adjective:harvestable", TRUE);
+      </Core:Property>
+      <Core:Property property="merry:lib:take_combat_actions">
+         X[M] /* When the NPC is given a turn in combat, this is the script where they decide what to do */  
+int i;  
+  
+/* \$az = \$\{Chatters:IC:az:azrael\};  
+EmitTo(\$az, "Taking an action"); */  
+ 
+/* Is the enemy being offered a bribe? If so, take it. */ 
+if(\$char.combat \&\& \$char.combat["target"]) \{ 
+  \$target = \$char.combat["target"]; 
+  if(\$target.combat["status"]["bribing"]) \{ 
+    return Call(\$char, "fight_outcome_accept_bribe"); 
+  \} 
+\} 
+  
+switch(random(2)) \{  
+  case 0:  
+    Social(this, oneof("twitter", "chirp", "trill", "squawk"), oneof("frightenedly", "unsurely", "alertly")); break;  
+  case 1:  
+    Social(this, oneof("hop", "flap", "skip"), oneof("right", "left", "back-and-forth")); break;  
+  default:  
+    Social(this, oneof("twitter", "chirp", "trill", "squawk"), oneof("frightenedly", "unsurely", "alertly")); break;  
+\}  
+\$delay(2, TRUE, "52ac");  
+  
+\$actions = copy(this.combat["options"]);  
+\$actions -= (\{ nil \});  
+  
+/* Do we need a new target? */  
+if(!this.combat["target"])  
+  this.combat["target"] = ::find_target();  
+  
+if(!this.combat["target"]) \{  
+  /* We couldn't find a target. Remove ourselves from the fight. */  
+  ccombat::remove_from_combat(\$fighter: this);  
+  ccombat::end_turn(\$char: this);  
+  return TRUE;  
+\}  
+  
+if(!this.combat["target"].combat) \{  
+  ccombat::start_fight(\$attacker: this, \$target: this.combat["target"]);  
+  \$delay(0.1, TRUE, "64a5");  
+\}  
+  
+\$turn_id = random(1000000000);  
+\$params = ([ "char":this, "taking_action":TRUE, "turn_id":\$turn_id ]);  
+  
+  
+/* Can we attack? */ 
+/* 
+for(i=0;i\<sizeof(\$actions);i++) \{  
+  if(\$actions[i][0] == "attack") \{  
+    if( Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE) ) \{  
+      return Call(\$actions[i][1], \$actions[i][0], \$par: \$params);  
+    \}  
+  \}  
+\}  
+*/
+
+EmitIn(\$this."base:environment", Describe(\$this) + " flaps its wings frantically.");
+
+/* Couldn't attack. Can we do another action? */  
+for(i=0;i\<sizeof(\$actions);i++) \{  
+  if(\$actions[i][0] == "aim" \|\| \$actions[i][0] == "guard") \{  
+    if( Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE) ) \{  
+  
+      if(\$actions[i][0] == "aim") \{  
+        EmitIn(this."base:environment", Describe(this)+" shifts side to side, attempting to read the attack.");  
+      \} else if(\$actions[i][0] == "guard") \{  
+        EmitIn(this."base:environment", Describe(this)+" shifts side to side, attempting to read the attack.");  
+      \}  
+  
+      return Call(\$actions[i][1], \$actions[i][0], \$par: \$params);  
+    \}  
+  \}  
+\}  
+  
+/* Couldn't do anything. End the turn */  
+ccombat::end_turn(\$char: this); /* Because we return TRUE above during the delay, the script won't pass for us. So we need to tell it to pass */  
+return FALSE; /* This means we didn't complete our action, so the script will need to pass for us */
+      </Core:Property>
+      <Core:Property property="merry:react-pre:cut-dob">
+         X[M] if(!\$this."body:quantity") \{ 
+  \$this."body:quantity" = 4;
+\}
+
+
+/* check if bird has meat */
+if(\$this."trait:meat" == 1) 
+\{
+  EmitTo(\$actor, "Someone already tore off all the meat from the pheasant.");
+  return FALSE;
+\}
+
+/* emit cutting the meat */
+EmitTo(\$actor, "You cut into the flesh of the pheasant and retrieve a sizable hunk of meat.");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" cuts into the flesh of the pheasant and retrieves a sizable hunk of meat.", \$actor);
+
+/* spawn the meat, set counter */
+\$meat = Spawn(\$\{Ironclaw:Props:Plot:NobleHunt:Dec2014:RoastedPheasantHunk\});
+\$meat."base:environment" = \$actor;
+\$this."body:quantity" -= 1;
+if(\$this."body:quantity" == 0)
+\{
+  \$this."trait:meat" = 1;
+  \$this."trait:meatless" = 1;
+  \$this."details:default:adjective:harvestable" = nil;
+  Set(\$this, "details:default:adjective:meatless", TRUE);
+\} 
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:pluck-dob">
+         X[M] /* spawn the feather */
+object *pluckers;
+int i;
+
+pluckers = Arr(\$this."trait:plucked");
+for (i = 0; i \< sizeof(pluckers); i++) \{
+  if (pluckers[i] == \$actor) \{
+    EmitTo(\$actor, "You can only have one feather, you greedy bastard.");
+    return FALSE;
+  \}
+\}
+
+EmitTo(\$actor, "You pluck a feather from the fallen bird to celebrate your victory.");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" plucks a feather from the fallen bird to celebrate a successful hunt.", \$actor);
+   \$feather = Spawn(\$\{Ironclaw:Props:Plot:NobleHunt:Dec2014:PheasantFeather\});
+   \$feather."base:environment" = \$actor;
+
+\$this."trait:plucked" = (Arr(\$this."trait:plucked") - (\{ \$actor \})) + (\{ \$actor \});
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1263776745, "slurpeeslurp", "K", 1263776757, "slurpeeslurp", "E", 1263776803, "slurpeeslurp", "E", 1352053795, "slurpeeslurp", "K", 1352054384, "slurpeeslurp", "K", 1352055027, "slurpeeslurp", "E", 1352055201, "slurpeeslurp", "E", 1352055215, "slurpeeslurp", "E", 1352055413, "slurpeeslurp", "E", 1352055479, "slurpeeslurp", "E", 1417791095, "slurpeeslurp", "E", 1417791247, "slurpeeslurp", "E", 1417792060, "abigail", "E", 1417792737, "abigail", "E", 1417792803, "abigail", "E", 1417793278, "abigail", "E", 1417793360, "abigail", "E", 1417793547, "abigail", "E", 1417793792, "abigail", "E", 1417793992, "abigail", "E", 1417794019, "abigail", "E", 1417794062, "abigail", "E", 1417794083, "abigail", "E", 1417794112, "abigail", "E", 1417794255, "abigail", "E", 1417794302, "abigail", "E", 1417794309, "abigail", "E", 1417794314, "abigail", "E", 1417794327, "abigail", "E", 1417794508, "abigail", "E", 1417794595, "abigail", "E", 1417794717, "abigail", "E", 1417794823, "abigail", "E", 1417794849, "abigail", "E", 1417794859, "abigail", "E", 1417794870, "abigail", "E", 1417794906, "abigail", "E", 1417795513, "abigail", "E", 1417796577, "abigail", "E", 1417797052, "abigail", "E", 1417797624, "abigail", "E", 1417797668, "abigail", "E", 1417797680, "abigail", "E", 1417873556, "slurpeeslurp", "K", 1417877758, "slurpeeslurp", "R", 1417881636, "jominey", "E", 1417884437, "jominey", "E", 1417884944, "jominey", "K", 1417885054, "jominey", "E", 1453778596, "jominey", "E", 1453778621, "jominey", "E", 1453778705, "jominey", "E", 1453778733, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

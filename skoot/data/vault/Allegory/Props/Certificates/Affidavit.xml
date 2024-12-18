@@ -1,0 +1,174 @@
+<object clone="/base/obj/thing" owner="ezralee">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.0025" density="0.6"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="affidavit"/>
+            <Base:SName sname="document"/>
+            <Base:SName sname="form"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="affidavits"/>
+            <Base:PName pname="documents"/>
+            <Base:PName pname="contracts"/>
+            <Base:PName pname="forms"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.contract:terms) | | blank} affidavit
+          </Base:Description>
+          <Base:Description type="look">
+             A legally binding affidavit. {? | $(this.contract:terms) | <br/>[OOC: read my affidavit - to view the contents of the document]<br/>[OOC: erase my affidavit - to erase the affidavit including all signatures] | It has not been filled out yet. <br/>[OOC: write on my affidavit 'terms' - to fill out the body of the document.] } <br/><br/>{? | $[$this."contract:signatures"] | $[Call(${Ironclaw:Staff:Roo:props:contract}, "showsignatures", $what: ({ $this }))] | It is unsigned. <br/>[OOC: sign my affidavit 'signature (optional)' - to sign the affidavit] }
+          </Base:Description>
+          <Base:Description type="writing">
+             {? | $[NRefOb($what[0])."contract:terms"] | $[NRefOb($what[0])."contract:terms"] |}<br/><br/>{? | $[NRefOb($what[0])."contract:signatures"] | $[Call(${Ironclaw:Staff:Roo:props:contract}, "showsignatures")] | It is unsigned. }
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:showsignatures">
+         X[M] \$contract = NRefOb(\$what[0]);
+\$sigs = \$contract."contract:signatures";
+
+\$str = "The following signatures are listed below: \<br/\>";
+for(\$i = 0; \$i \< sizeof(\$sigs); \$i++) \{
+    if(\$sigs[\$i][0]) \{
+        \$str += \$sigs[\$i][0] + " by " + \$sigs[\$i][1] + "\<br/\>";
+    \} else \{
+        \$str += \$sigs[\$i][1] + "\<br/\>";
+    \}
+\}
+
+return ParseXML(\$str);
+      </Core:Property>
+      <Core:Property property="merry:react-pre:erase-what">
+         X[M] if(\$this."base:environment"."udat:possessed" \&\& \$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is not in your possession.");
+    return FALSE;
+\}
+
+\$this."contract:signatures" = nil;
+\$this."contract:terms" = nil;
+
+EmitTo(\$actor, "You erase " + Describe(\$this, nil, \$actor) + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " erases " + Describe(\$this, \$actor) + ".", nil, \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:read-what">
+         X[M] if(\$this."contract:terms") \{
+    return TRUE;
+\}
+
+EmitTo(\$actor, "There is nothing written on that.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:sign-what">
+         X[M] if(\$this."base:environment"."udat:possessed" \&\& \$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is not in your possession.");
+    return FALSE;
+\}
+
+if(!\$this."contract:terms") \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " has not been filled out yet.");
+    return FALSE;
+\}
+
+\$sigs = (\{ \});
+if(\$this."contract:signatures") \{
+    \$sigs = \$this."contract:signatures";
+\}
+
+if(\$evoke) \{
+    \$sig = \$evoke;
+\}
+
+for(\$i = 0; \$i \< sizeof(\$sigs); \$i++) \{
+    if(\$sigs[\$i][2] == \$actor) \{
+        EmitTo(\$actor, "You already signed " + Describe(\$this, nil, \$actor) + ".");
+        return FALSE;
+    \}
+\}
+
+\$sigs += (\{ (\{ \$sig, Describe(\$actor), \$actor \}) \});
+\$this."contract:signatures" = \$sigs;
+
+if(\$sig) \{
+    EmitTo(\$actor, "You sign " + Describe(\$this, nil, \$actor) + ", " + \$sig);
+\} else \{
+    EmitTo(\$actor, "You sign " + Describe(\$this, nil, \$actor) + ".");
+\}
+
+EmitIn(\$actor."base:environment", Describe(\$actor) + " signs " + Describe(\$this, \$actor) + ".", \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:write-what">
+         X[M] if(\$this."base:environment"."udat:possessed" \&\& \$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is not in your possession.");
+    return FALSE;
+\}
+
+if(\$this."contract:signatures") \{
+    EmitTo(\$actor, "You cannot modify the contents of an affidavit that has already been signed.");
+    return FALSE;
+\}
+
+\$terms = replace_strings(\$evoke, "\\"", "");
+
+if(\$this."contract:terms") \{
+    \$this."contract:terms" += "\\n" + \$terms;
+\} else \{
+    \$this."contract:terms" = \$terms;
+\}
+
+EmitTo(\$actor, "You write on " + Describe(\$this, nil, \$actor) + ", " + \$evoke);
+EmitIn(\$actor."base:environment", Describe(\$actor) + " writes on "+ Describe(\$this, \$actor) + ".", nil, \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1306291251, "jominey", "E", 1306291600, "jominey", "K", 1306291688, "jominey", "K", 1306291780, "jominey", "K", 1306291879, "jominey", "K", 1306291927, "jominey", "K", 1306292088, "jominey", "K", 1306292110, "jominey", "K", 1306292177, "jominey", "E", 1703647818, "ezralee", "K", 1703647855, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

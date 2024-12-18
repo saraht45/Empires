@@ -1,0 +1,510 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:NPC:UrNPC)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="teacher"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="teachers"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.guild.shortname) | $(this.guild.shortname) }teacher
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents>
+      <Base:ContentGroup group="noble-001">
+        <Base:ContentItem ix="pants" item="OBJ(Allegory:Props:Clothing:Pants:Generic)" wear="true"/>
+      </Base:ContentGroup>
+      <Base:ContentGroup group="noble-002">
+        <Base:ContentItem ix="shirt" item="OBJ(Allegory:Props:Clothing:Shirts:Shirts:Generic)" wear="true"/>
+      </Base:ContentGroup>
+      <Base:ContentGroup group="noble-003">
+        <Base:ContentItem ix="boots" item="OBJ(Allegory:Props:Clothing:Footwear:Shoes:Generic)" wear="true"/>
+      </Base:ContentGroup>
+    </Base:InitialContents>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:teaching:guildonly">
+         1
+      </Core:Property>
+      <Core:Property property="export:teaching:npc">
+         1
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "teacher"
+      </Core:Property>
+      <Core:Property property="merry:lib:add_topic">
+         X[M] int i, j; 
+ 
+/* check we have a topic */ 
+if(!\$topic) return FALSE; 
+ 
+/* check the topics that the NPC can teach */ 
+\$db = \$\{Ironclaw:Lib:Teaching:NPC_Teacher_Skills\}; 
+ 
+/* find all the topic groups we can add from */ 
+/* if the user already has a list */ 
+if(\$this."teaching:groups") \{ 
+  \$groups = \$this."teaching:groups"; 
+\} else \{ 
+  \$tmp = map_indices(prefixed_map(\$db."*", "group:")); 
+  \$groups = (\{ \}); 
+  for(i=0;i\<sizeof(\$tmp);i++) \{ 
+    if(sscanf(\$tmp[i], "group:%s", \$name) == 1) 
+      \$groups += (\{ \$name \}); 
+  \} 
+\} 
+ 
+/* make a new list of groups, for after we add this skill */ 
+\$newgroups = (\{ \}); 
+\$addskill = nil; 
+ 
+/* go through all the valid groups, checking for this skill */ 
+for(i=0;i\<sizeof(\$groups);i++) \{ 
+  \$thisgroup = Get(\$db, "group:"+\$groups[i]); 
+  for(j=0;\$thisgroup\&\&j\<sizeof(\$thisgroup);j++) \{ 
+    if(\$thisgroup[j][0] == \$topic) \{ 
+      /* We found the skill! */ 
+      \$newgroups += (\{ \$groups[i] \}); 
+      \$addskill = \$thisgroup[j]; 
+    \} 
+  \} 
+\} 
+ 
+if(\$addskill) \{ 
+  /* we have a skill to add */ 
+  /* check if the teacher is already teaching this skill */ 
+  for(i=0;\$this."teaching:skills"\&\&i\<sizeof(\$this."teaching:skills");i++) \{ 
+    if(\$this."teaching:skills"[i][0] == \$addskill[0]) \{ 
+      EmitTo(\$actor, Describe(\$this)+" is already teaching "+\$addskill[0]+"."); 
+      return TRUE; 
+    \} 
+  \} 
+  /* set the new groups listing */ 
+  \$this."teaching:groups" = \$newgroups; 
+  if(!\$this."teaching:skills") \$this."teaching:skills" = (\{ \}); 
+  \$this."teaching:skills" \|= (\{ (\{ \$addskill[0], \$addskill[1] \}) \}); 
+  /* increase the wage this npc gets paid by its guild */ 
+  if(!\$this."guild:cost") \$this."guild:cost" = 0; 
+  if(sizeof(\$addskill) \> 2) \{ 
+    \$this."guild:cost" += \$addskill[2]; 
+  \} else \{ 
+    \$this."guild:cost" += 100; 
+  \} 
+  EmitTo(\$actor, Describe(\$this)+" will now teach "+\$addskill[0]+". The guild is now paying "+Str(\$this."guild:cost"/100)+" denarii a day in wages."); 
+  return TRUE; 
+\} 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_money_cost">
+         X[M] if(!\$student) return nil; 
+ 
+if(\$this.guild \&\& \$student.guild \&\& \$this.guild == \$student.guild) \{ 
+  /* charge guild cost */ 
+  if(this."teaching:guildprice") return this."teaching:guildprice"; 
+\} else \{ 
+  /* charge other cost */ 
+  if(this."teaching:otherprice")\{ 
+    return this."teaching:otherprice"; 
+  \} else if(this."teaching:guildprice")\{ 
+    return this."teaching:guildprice"; 
+  \} 
+\} 
+ 
+/* charge nothing */ 
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:list_topics">
+         X[M] int i; 
+ 
+/* list the topics that the NPC can teach */ 
+\$db = \$\{Ironclaw:Lib:Teaching:NPC_Teacher_Skills\}; 
+\$output = ""; 
+ 
+/* if we're given a topic group, filter based on that */ 
+if(\$topic) \{ 
+  /* we have a topic group, so list topics for the group */ 
+  if(Get(\$db, "group:"+lower_case(\$topic))) \{ 
+    /* found the group. List skills */ 
+    \$output = "Topics in "+lower_case(\$topic)+":\\n"; 
+    \$group = Get(\$db, "group:"+lower_case(\$topic)); 
+    for(i=0;i\<sizeof(\$group);i++) \{ 
+      \$output += \$group[i][0]; 
+      if(i \< sizeof(\$group)-1) 
+        \$output += ", "; 
+    \} 
+    return \$output; 
+  \} 
+\} 
+ 
+/* we don't have a topic group, so list groups */ 
+\$groups = map_indices(prefixed_map(\$db."*", "group:")); 
+\$newgroups = (\{ \}); 
+for(i=0;i\<sizeof(\$groups);i++) \{ 
+  if(sscanf(\$groups[i], "group:%s", \$name) == 1) 
+    \$newgroups += (\{ \$name \}); 
+\} 
+\$output = "syntax: control npc 'view topics \<group\>\\n"; 
+\$output += "Valid teaching groups are: "; 
+for(i=0;i\<sizeof(\$newgroups);i++) \{ 
+  \$output += \$newgroups[i]; 
+  if(i \< sizeof(\$newgroups)-1) 
+    \$output += ", "; 
+\} 
+ 
+return \$output;
+      </Core:Property>
+      <Core:Property property="merry:lib:more_than_day_old">
+         X[M] /* set the creation time, if we know it */ 
+if(!\$this."skotos:creation_time") \{ 
+  if(\$this."spawn:creator") 
+    \$this."skotos:creation_time" = \$this."spawn:creator"[1]; 
+\} 
+ 
+if(\$this."skotos:creation_time") \{ 
+  /* if we're less than a day old */ 
+  if((\$this."skotos:creation_time"+60*60*24) \< time()) 
+    return TRUE; 
+\} else \{ 
+  \$this."skotos:creation_time" = time(); 
+\} 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:ask-dob">
+         X[M] string tmp, message;
+int i;
+
+if(!\$(about:words)) \{
+  if(!\$this.guild \|\| (\$actor.guild \&\& \$this.guild == \$actor.guild) \|\| !\$this."teaching:guildonly") \{
+    if(!\$this."teaching:skills" \|\| sizeof(\$this."teaching:skills") == 0) \{
+      message = "well, actually, I don't know anything useful. What's the chances of that";
+    \} else if(sizeof(\$this."teaching:skills") == 1) \{
+      sscanf(\$this."teaching:skills"[0], "%*s:%*s:%s", tmp);
+      message = tmp;
+    \} else \{
+      message = "";
+      for(i=0;i\<sizeof(\$this."teaching:skills");i++) \{
+        if(i==sizeof(\$this."teaching:skills")-1) \{
+          message += ", or ";
+        \} else if (i \> 0) \{
+          message += ", ";
+        \}
+        sscanf(\$this."teaching:skills"[i], "%*s:%*s:%s", tmp);
+        message += tmp;
+      \}
+    \}
+    Social(this, "answer", nil, "I can teach you about many topics. What do you know about...."+message+"?", nil, \$actor);
+  \} else \{
+    Social(this, "answer", nil, "You aren't in my guild, so sorry, but I'm not willing to teach you anything.", nil, \$actor);
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:ask-dob">
+         X[M] /* check if we want to teach the actor a lesson */
+string topic, tmp;
+int i, found;
+
+Social(this, "answer", nil, "Good to see you! I'm glad the teaching strike is over now, aren't you?", nil, \$actor);
+EmitTo(\$actor, "[OOC: To get lessons from an NPC teacher, type @newguild to open the new guild popup, look on the \\"Guild NPCs\\" page, and then click on \\"Guild Teacher\\".]");
+return FALSE;
+
+
+Social(this, "answer", nil, "Haven't you heard? All the teachers in the city are taking a few days break from teaching. It's to raise awareness about how everyone expects us to teach them stuff, but never strikes up a conversation or just drops by for a chat.", nil, \$actor);
+return FALSE;
+
+
+\$teaching = \$\{Systems:IC:Teaching:DefaultSettings\};
+
+if(!\$(about:words)) \{
+  return TRUE;
+\}
+
+if(\$this.guild \&\& (!\$actor.guild \|\| \$this.guild != \$actor.guild) \&\& \$this."teaching:guildonly") \{
+  return TRUE;
+\}
+
+/* check if we know anything about this */
+found = FALSE;
+topic = \$(about:words)[0];
+for(i=0;!found \&\& this."teaching:skills" \&\& i\<sizeof(this."teaching:skills");i++) \{
+  sscanf(this."teaching:skills"[i], "%*s:%*s:%s", tmp);
+  if(topic == tmp) \{
+    found = TRUE;
+    \$topic = topic;
+    \$topicprop = this."teaching:skills"[i];
+  \}
+\}
+
+if(!found)
+\{
+  /* teacher doesn't know anything about this */
+  return TRUE;
+\}
+
+/* make checks before teaching */
+\$teacher = \$this;
+/*\$topicprop = topic;*/
+
+/* Check if we are already teaching something else */
+if(\$teacher."teaching:topic" \&\& (\$teacher."teaching:topic" != \$topic) \&\& \$teacher."teaching:students" \&\& sizeof(\$teacher."teaching:students")\>0)
+\{
+  Social(this, "tell", nil, "I'm actually involved already in a lesson on a different topic. Try later?", nil, \$actor);
+  return FALSE;
+\}
+
+/* Check we are allowed to teach this many students */
+if(!Call(\$teaching, "check_number_of_students")) \{
+  Social(this, "tell", nil, "Sorry, I'm already in the middle of a lesson!", nil, \$actor);
+  return FALSE;
+\}
+
+/* set the teaching topic and time/lesson name */
+if(!\$teacher."teaching:topic" \|\| \$teacher."teaching:topic" != \$topic) \{
+  \$teacher."teaching:topic" = \$topic;
+  \$teacher."teaching:lesson_name" = time();
+\}
+
+/* tell the room that we're teaching */
+Social(this, "tell", nil, "Alright, I'll teach you about "+\$topic+".", nil, \$actor);
+EmitTo(\$teacher, "You offer to teach "+\$topic+" to "+Describe(\$actor)+".");
+
+/* consent not yet given, demand it */
+/* calculate the cost of learning this skill */
+\$cost = Call(\$teaching, "get_lesson_cost", \$student: \$actor);
+/* lessons from NPC's cost more */
+/*\$penalty = \$cost;
+\$cost = \$cost * 2;*/
+\$penalty = 0;
+if(\$cost \> 200) \$cost = 200;
+if(\$penalty \> 100) \$penalty = 100;
+/* if the student can affort to pay the penalty as well, just charge that now */
+if(\$actor."student:learningpoints" \>= \$cost+\$penalty) \{
+  \$cost = \$cost + \$penalty;
+  \$penalty = nil;
+\}
+
+/* check if there is a money cost associated */
+\$moneycost = Call(this, "get_money_cost", \$student: \$actor);
+
+\$message = Call(\$teaching, "get_lesson_cost_message", \$student: \$actor);
+
+/* Request consent to teach the skill */
+
+interaction::question(\$question: \$message, \$expires: 60, \$env: "TRUE", \$yes_ob: \$teaching, \$no_ob: \$teaching, \$expire_ob: \$teaching, \$yes_fun: "charge_money", \$no_fun: "teaching_decline", \$expire_fun: "teaching_expire", \$par: ([ "teacher": \$teacher, "topic": \$topic, "property": \$topicProp, "lesson_name":\$teacher."teaching:lesson_name", "cost": \$cost, "penalty": \$penalty, "moneycost": \$moneycost]));
+
+
+/*interaction::question(\$question: \$message, \$expires: 60, \$env: "TRUE", \$yes_ob: \$teaching, \$no_ob: \$teaching, \$expire_ob: \$teaching, \$yes_fun: "teaching_accept", \$no_fun: "teaching_decline", \$expire_fun: "teaching_expire", \$par: ([ "teacher": \$teacher, "topic": \$topic, "property": \$topicProp, "lesson_name":\$teacher."teaching:lesson_name", "cost": \$cost, "penalty": \$penalty, "moneycost": \$moneycost]));*/
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:control-dob">
+         X[M] int i;
+int found;
+/* tell the teacher who and what to teach */
+
+\$errormsg = "That is not a valid order for the teacher. Valid orders are: price \<price\>, follow, stay, dismiss.";
+
+if(!\$evoke) return TRUE;
+\$words = explode(\$evoke[1..strlen(\$evoke)-2], " ");
+
+/* check if we're allowed to order the teacher */
+if(!\$this.guild \|\| !\$actor.guild) \{
+  EmitTo(\$actor, "You are not an officer in my guild, so you can't control me.");
+  return FALSE;
+\}
+found = FALSE;
+for(i=0;i\<sizeof(\$actor."base:inventory");i++) \{
+  if(\$actor."base:inventory"[i]."guild:officer" \&\& \$actor."base:inventory"[i].guild \&\& \$actor."base:inventory"[i].guild == \$this.guild)
+    found = TRUE;
+\}
+if(!found) \{
+  EmitTo(\$actor, "You are not an officer in my guild, so you can't control me.");
+  return TRUE;
+\}
+
+/* check if this is a valid order */
+if(\$words[0] == "dismiss") \{
+  /* dismissing the NPC, how sad */
+  /* only level 1 and 2 members can dismiss the npc */
+  /* check if they have a guild ring */
+  found = FALSE;
+  /* loop through the inventory looking for the ring */
+  for(i=0;!found\&\&i\<sizeof(\$actor."base:deep-inventory");i++) \{
+    if(\$actor."base:deep-inventory"[i]."guild:rank" \&\& \$actor."base:deep-inventory"[i]."guild:rank" \<= 2 \&\& \$actor."base:deep-inventory"[i].guild \&\& \$this.guild \&\& \$actor."base:deep-inventory"[i].guild == \$this.guild)
+      found = TRUE;
+  \}
+  if(found) \{
+    /* dismiss the NPC */
+    EmitTo(\$actor, "[The teacher has been dismissed.]");
+    EmitIn(\$actor."base:environment", Describe(\$this)+" leaves.");
+    Slay(\$this);
+  \} else \{
+    /* can't dismiss the NPC */
+    EmitTo(\$actor, "[Only someone holding a gold or silver guild ring can dismiss this teacher.]");
+  \}
+\} else if(\$words[0] == "follow") \{
+  EmitTo(\$actor, Describe(this)+" will now follow you.");
+  this.follow = \$actor;
+  Social(this, "step", nil, nil, "to", \$actor );
+\} else if(\$words[0] == "stay") \{
+    EmitTo(\$actor, Describe(this)+ " will no longer follow you.");
+    this.follow = nil;
+\} else if(FALSE \&\& \$words[0] == "guild" \&\& sizeof(\$words) \> 1 \&\& \$words[1] == "only") \{
+  /* disabled */
+  if(!this."teaching:guildonly") \{
+    EmitTo(\$actor, Describe(this)+ " will now only teach guild members.");
+    this."teaching:guildonly" = 1;
+  \} else \{
+    EmitTo(\$actor, Describe(this)+ " will now teach anyone.");
+    this."teaching:guildonly" = nil;
+  \}
+\} else if(\$words[0] == "price" \&\& sizeof(\$words) \> 1) \{
+  if(sscanf(\$words[1], "%d", \$price) == 1) \{
+    if(\$price \< 0) \$price = 0;
+    if(\$price == 0) \{
+      \$price_str = "nothing";
+    \} else if(\$price == 1) \{
+      \$price_str = "1 denar";
+    \} else \{
+      \$price_str = Str(\$price)+" denarii";
+    \}
+    EmitTo(\$actor, Describe(this)+" will charge guild members "+\$price_str+" per lesson.");
+    this."teaching:guildprice" = Int(\$price)*100;
+  \} else \{
+    EmitTo(\$actor, \$errormsg);
+  \}
+\} else if(FALSE \&\& \$words[0] == "other" \&\& sizeof(\$words) \> 1) \{
+  /* disabled */
+  if(sscanf(\$words[1], "%d", \$price) == 1) \{
+    if(\$price == 0) \{
+      \$price_str = "nothing";
+    \} else if(\$price == 1) \{
+      \$price_str = "1 denar";
+    \} else \{
+      \$price_str = Str(\$price)+" denarii";
+    \}
+    EmitTo(\$actor, Describe(this)+" will charge non-guild members "+\$price_str+" per lesson.");
+    this."teaching:otherprice" = Int(\$price)*100;
+  \} else \{
+    EmitTo(\$actor, \$errormsg);
+  \}
+\} else if(FALSE \&\& sizeof(\$words) \> 2 \&\& \$words[0] == "add" \&\& \$words[1] == "topic") \{
+  /* disabled */
+  return FALSE;
+
+  /* want to add a new topic to be taught */
+
+  /* is this npc more than a day old? */
+  if(Call(this, "more_than_day_old")) \{
+    EmitTo(\$actor, "You may only add new topics to a teacher that's less than a day old.");
+    return FALSE;
+  \}
+  /* if this is a valid topic, add it to the list */
+  EmitTo(\$actor, "Adding topic of "+Str(\$words[2])+".");
+  if(!Call(this, "add_topic", \$topic: \$words[2])) \{
+    EmitTo(\$actor, "That is not a valid topic.");
+    EmitTo(\$actor, "Use the \\"view topics\\" command to see a list of available topics." );
+  \}
+\} else if(FALSE \&\& sizeof(\$words) \> 1 \&\& \$words[0] == "add" \&\& \$words[1] == "topic") \{
+  /* disabled */
+  return FALSE;
+
+  /* is this npc more than a day old? */
+  if(Call(this, "more_than_day_old")) \{
+    EmitTo(\$actor, "You may only add new topics to a teacher that's less than a day old.");
+    return FALSE;
+  \}
+  EmitTo(\$actor, "You must list a topic to teach.");
+  EmitTo(\$actor, "Format: control teacher 'add topic \<topic\>");
+  EmitTo(\$actor, "Use the \\"view topics\\" command to see a list of available topics." );
+\} else if(FALSE \&\& sizeof(\$words) \> 2 \&\& \$words[0] == "view" \&\& \$words[1] == "topics") \{
+  /* disabled */
+  return FALSE;
+  /* list the topics - just this group */
+  EmitTo(\$actor, Call(this, "list_topics", \$topic: \$words[2]));
+  /* is this npc more than a day old? */
+  if(Call(this, "more_than_day_old")) \{
+    EmitTo(\$actor, "As this teacher is more than a day old, you cannot add new skills to it.");
+  \}
+\} else if(FALSE \&\& sizeof(\$words) \> 1 \&\& \$words[0] == "view" \&\& \$words[1] == "topics") \{
+  /* disabled */
+  return FALSE;
+
+  /* list the topics - all groups */
+  EmitTo(\$actor, Call(this, "list_topics"));
+  /* is this npc more than a day old? */
+  if(Call(this, "more_than_day_old")) \{
+    EmitTo(\$actor, "As this teacher is more than a day old, you cannot add new skills to it.");
+  \}
+\} else \{
+  EmitTo(\$actor, \$errormsg);
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:guild">
+         X[M] string *words;
+int i;
+
+/* Sets the adjective based on the guild name */
+
+/* is this the right property */
+if(\$(hook-property) != "guild") return TRUE;
+
+if(!\$this.guild \|\| !\$this.guild.shortname) return TRUE;
+
+words = explode(\$this.guild.shortname, " ");
+
+for(i=0;i\<sizeof(words);i++) \{
+  Set(\$this, "details:default:adjective:"+words[i], TRUE);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1168657454, "tonyd", "X", 1168657564, "tonyd", "E", 1168657743, "tonyd", "E", 1169295172, "tonyd", "P", 1169295304, "tonyd", "S", 1169295360, "tonyd", "P", 1169295401, "tonyd", "P", 1169295428, "tonyd", "P", 1169295593, "tonyd", "P", 1169295629, "tonyd", "P", 1169295988, "tonyd", "P", 1169296023, "tonyd", "P", 1169296404, "tonyd", "P", 1169296436, "tonyd", "P", 1169296569, "tonyd", "P", 1169296724, "tonyd", "P", 1169296762, "tonyd", "P", 1169296784, "tonyd", "P", 1169296812, "tonyd", "P", 1169296832, "tonyd", "P", 1169296859, "tonyd", "P", 1169296899, "tonyd", "P", 1169296933, "tonyd", "P", 1169300690, "tonyd", "P", 1169300840, "tonyd", "P", 1169300978, "tonyd", "X", 1169301207, "tonyd", "E", 1182653813, "tonyd", "P", 1182653897, "tonyd", "P", 1182654051, "tonyd", "P", 1182654248, "tonyd", "P", 1224314767, "tonyd", "E", 1225709298, "tonyd", "P", 1225709334, "tonyd", "P", 1309488577, "rorschakovacs", "R", 1309504270, "rorschakovacs", "R", 1309505069, "rorschakovacs", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,233 @@
+<object clone="/obj/properties" owner="sendnoodlez">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:cancel">
+         X[M] \$found = \$par["found"];
+\$actor = \$par["actor"];
+\$npc = \$par["npc"];
+
+
+\$material = Get(\$npc, "temp:" + Str(\$actor) + ":material");
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$npc)) + " hands back " + Describe(\$material, nil, nil, STYLE_NONPOSS) + " to " + Describe(\$actor) + ", \\"Come see me again if you want something made.\\"", "social:third"), \$actor);
+EmitTo(\$actor, TAG(capitalize(Describe(\$npc)) + " hands back " + Describe(\$material, nil, nil, STYLE_NONPOSS) + " to you, \\"Come see me again if you want something made.\\"", "social:second"));
+
+\$material."base:environment" = \$actor;
+
+Set(\$npc, "temp:" + Str(\$actor), nil);
+Set(\$npc, "temp:" + Str(\$actor) + ":material", nil);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_match">
+         X[M] \$evoke = replace_strings(\$evoke, "\\"", "", ".", "");
+
+\$list = Get(\$this, "temp:" + Str(\$actor));
+
+for(\$i = 0; \$i \< sizeof(\$list) \&\& !\$found; \$i++) \{
+    if(\$evoke == \$list[\$i]["name"]) \{
+        \$found = \$list[\$i];
+    \}
+\}
+
+if(!\$found) \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " tells " + Describe(\$actor) + ", \\"I'm sorry but I am not able to make that.\\"", "social:third"), \$actor);
+    EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " tells you, \\"I'm sorry but I am not able to make that.\\"", "social:second"));
+    return FALSE;
+\}
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " tells " + Describe(\$actor) + ", \\"To make " + Describe(\$found["object"]) + " it will cost you " + Str(\$found["cost"]/100) + " denarii and it will use up " + \$found["quantity"]/10 + " yards of your material. Would you like me to begin work now?\\"", "social:third"), \$actor);
+EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " tells you, \\"To make " + Describe(\$found["object"]) + " it will cost you " + Str(\$found["cost"]/100) + " denarii and it will use up " + \$found["quantity"]/10 + " yards of your material. Would you like me to begin work now?\\"", "social:second"));
+
+interaction::question(\$expires: 10, \$env: "TRUE", \$no_ob: \$\{Ironclaw:Lib:NPC:DirectImportMerchant\}, \$no_fun: "cancel", \$expire_ob: \$\{Ironclaw:Lib:NPC:DirectImportMerchant\}, \$expire_fun: "cancel", \$yes_ob: \$\{Ironclaw:Lib:NPC:DirectImportMerchant\}, \$yes_fun: "make_item", \$par: ([ "found":\$found, "actor":\$actor, "npc":\$this ]));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:make_item">
+         X[M] \$found = \$par["found"];
+\$actor = \$par["actor"];
+\$npc = \$par["npc"];
+
+\$material = Get(\$npc, "temp:" + Str(\$actor) + ":material");
+
+if(Int(\$material."trait:quantity") \< \$found["quantity"]) \{
+    EmitTo(\$actor, "There is not enough material on " + Describe(\$material) + " to make that. You need " + \$found["quantity"] + " yards.");
+    return FALSE;
+\}
+
+if(\$actor."trait:money" \< \$found["cost"]) \{
+    EmitTo(\$actor, "You do not have enough money.");
+    return FALSE;
+\}
+
+\$item = Spawn(\$found["object"]);
+\$item."trait:color" = \$material."trait:color";
+\$item."trait:material" = \$material."trait:material";
+\$item."trait:quality" = \$material."trait:quality";
+
+\$material."trait:quantity" -= \$found["quantity"];
+
+if(!\$material) \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$npc)) + " tailors " + Describe(\$item, nil, nil, STYLE_NONPOSS) + ", using up all the material.", "social:third"), \$actor);
+\} else \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$npc)) + " tailors " + Describe(\$item, nil, nil, STYLE_NONPOSS) + " and hands back the remaining material.", "social:third"));
+    \$material."base:environment" = \$actor;
+\}
+
+\$delay(2, FALSE, "baff");
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$npc)) + " hands " + Describe(\$item, nil, nil, STYLE_NONPOSS) + " to " + Describe(\$actor) + ".", "social:third"), \$actor);
+EmitTo(\$actor, TAG(capitalize(Describe(\$npc)) + " hands " + Describe(\$item, nil, nil, STYLE_NONPOSS) + " to you.", "social:second"));
+\$item."base:environment" = \$actor;
+
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " pays " + \$found["cost"]/100 + " denarii to " + Describe(\$npc) + ".", "imp"), \$actor);
+EmitTo(\$actor, TAG("You pay " + \$found["cost"]/100 + " denarii to " + Describe(\$npc) + ".", "imp"));
+
+Set(\$actor, "trait:money", \$actor."trait:money" - \$found["cost"]);
+
+Set(\$npc, "temp:" + Str(\$actor), nil);
+Set(\$npc, "temp:" + Str(\$actor) + ":material", nil);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:evoke-dob%directimport">
+         X[M] if(Get(\$this, "temp:" + Str(\$actor))) \{
+    Call(\$this, "find_match");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:evoke-iob%directimport">
+         X[M] if(Get(\$this, "temp:" + Str(\$actor))) \{
+    Call(\$this, "find_match");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:ask-dob%directimport">
+         X[M] if(!\$this."directimport:list") \{
+    EmitTo(\$actor, Describe(\$this) + " can't make anything right now.");
+    return FALSE;
+\}
+
+EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " smile, \\"Hi! Would you like to have something made? All you need to do is provide the material and for a small labor fee, I'll do the rest.", "social:second"));
+
+\$db = \$this."directimport:list";
+\$importMap = structure_propmap(copy(\$db."*"))["import"];
+\$imports = map_indices(\$importMap);
+
+\$list = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$imports); \$i++) \{
+    \$temp = Get(\$db, "import:" + \$imports[\$i]);
+    \$list += (\{ \$temp \});
+\}
+
+\$rstr = "\\nAvailable options: \\n";
+
+for(\$i = 0; \$i \< sizeof(\$list); \$i++) \{
+    \$rstr += \$list[\$i]["name"] + " - " + \$list[\$i]["cost"]/100 + " denarii and " + \$list[\$i]["quantity"]/10 + " yards of material \\n";
+\}
+
+\$rstr += "\\n";
+
+EmitTo(\$actor, \$rstr);
+
+EmitTo(\$actor, PRE("[OOC Syntax:]\\n \\\> give MATERIAL to NPC \\n \\\> tell NPC \\"name of item\\" \\n"));
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:offer-who%directimport">
+         X[M] EmitIn(\$actor."base:environment", Describe(\$actor) + " offers " + Describe(\$what, nil, nil, STYLE_NONPOSS) + " to " + Describe(\$this) + ".", \$actor);
+EmitTo(\$actor, "You offer " + Describe(\$what, nil, \$actor) + " to " + Describe(\$this) + ".");
+
+\$delay(0.1, FALSE, "b026");
+
+if(!\$this."directimport:list") \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " shakes " + Str(\$this."base:possessive") + " head at " + Describe(\$actor) + ", \\"I can't do anything with that.\\"", "social:third"), \$actor);
+    EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " shakes " + Str(\$this."base:possessive") + " head at you, \\"I can't do anything with that.\\"", "social:second"));
+    return FALSE;
+\}
+
+if(sizeof(\$what) \> 1) \{
+   EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " tells " + Describe(\$actor) + ", \\"I can only work with one material at a time.\\"", "social:third"), \$actor);
+   EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " tells you, \\"I can only work with one material at a time.\\"", "social:second"));
+   return FALSE;
+\}
+
+\$material = NRefOb(\$what[0]);
+
+if(\$material."base:objecttype" != "cloth" \&\& Int(\$material."trait:quantity") == 0) \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " shakes " + Str(\$this."base:possessive") + " head at " + Describe(\$actor) + ", \\"I can't make anything with that.\\"", "social:third"), \$actor);
+    EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " shakes " + Str(\$this."base:possessive") + " head at you, \\"I can't make anything with that.\\"", "social:second"));
+    return FALSE;
+\}
+
+if(\$material."base:environment" != \$actor) \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " tells " + Describe(\$actor) + ", \\"You need to be holding " + Describe(\$material) + ".\\"", "social:third"), \$actor);
+    EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " tells you, \\"You need to be holding " + Describe(\$material) + ".\\"", "social:second"));
+    return FALSE;
+\}
+
+if(Get(\$this, "temp:" + Str(\$actor))) \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " tells " + Describe(\$actor) + ", \\"One order at a time, please.\\"", "social:third"), \$actor);
+    EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " tells you, \\"One order at a time, please.\\"", "social:second"));
+    return FALSE;
+\}
+
+\$db = \$this."directimport:list";
+\$importMap = structure_propmap(copy(\$db."*"))["import"];
+\$imports = map_indices(\$importMap);
+
+\$list = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$imports); \$i++) \{
+    \$temp = Get(\$db, "import:" + \$imports[\$i]);
+    \$list += (\{ \$temp \});
+\}
+
+
+if(!sizeof(\$list)) \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " tells " + Describe(\$actor) + ", \\"I'm sorry, there is nothing I can make for you.\\"", "social:third"), \$actor);
+    EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " tells you, \\"I'm sorry, there is nothing I can make for you.\\"", "social:second"));
+    return FALSE;
+\}
+
+
+\$material = NRefOb(\$what[0]);
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " collects " + Describe(\$material, nil, nil, STYLE_NONPOSS) + " and asks " + Describe(\$actor) + ", \\"What would you like to have made from this?\\"", "social:third"), \$actor);
+EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " collects " + Describe(\$material, nil, nil, STYLE_NONPOSS) + " and asks you, \\"What would you like to have made from this?\\"", "social:second"));
+
+\$material."base:environment" = \$this;
+
+\$rstr = "Available options: \<br/\>";
+
+for(\$i = 0; \$i \< sizeof(\$list); \$i++) \{
+    \$rstr += "\<acmd tag=\\"command\\" cmd=\\"tell seamstress '" + \$list[\$i]["name"] + "'\\"\>" + \$list[\$i]["name"] + "\</acmd\> - " + \$list[\$i]["cost"]/100 + " denarii and " + \$list[\$i]["quantity"]/10 + " yards of material\<br/\>";
+\}
+
+EmitTo(\$actor, UnSAM(ParseXML(\$rstr)));
+
+Set(\$this, "temp:" + Str(\$actor), \$list);
+Set(\$this, "temp:" + Str(\$actor) + ":material", \$material);
+
+\$delay(60, FALSE, "6394");
+
+if(Get(\$this, "temp:" + Str(\$actor))) \{
+    EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " eventually hands " + Describe(\$material, nil, nil, STYLE_NONPOSS) + " back to " + Describe(\$actor) + ", \\"Come see me again when you've made up your mind.\\"", "social:third"), \$actor);
+    EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " eventually hands " + Describe(\$material, nil, nil, STYLE_NONPOSS) + " back to you, \\"Come see me again when you've made up your mind.\\"", "social:second"));
+    \$material."base:environment" = \$actor;
+    Set(\$this, "temp:" + Str(\$actor), nil);
+    Set(\$this, "temp:" + Str(\$actor) + ":material", nil);
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1561218257, "jominey", "E", 1568484453, "sendnoodlez", "R", 1568484607, "sendnoodlez", "E", 1568484646, "sendnoodlez", "E", 1568484712, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

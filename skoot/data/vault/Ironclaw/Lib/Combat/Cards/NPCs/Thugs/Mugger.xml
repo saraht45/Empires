@@ -1,0 +1,292 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Combat:Cards:NPCs:UrFightingPerson)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="mugger"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="muggers"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:build) mugger
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:authorized:areas">
+         (\{ "docktown", "oldtown" \})
+      </Core:Property>
+      <Core:Property property="export:nip:trait:movement:frequency">
+         10
+      </Core:Property>
+      <Core:Property property="gimli:lib:find_target">
+         "E[G]\\n// When the NPC is looking for a target\\nint i;\\n\\n/* In this example, we want to target PCs */\\n\$options = Match(this.\\"base:environment\\", \\"pc\\");\\n\$preferred_options = (\{ \});\\n\\n// We need to convert the NRef's from the PC list into objects\\nfor(i=0; i\<sizeof(\$options); i++)\\n  \$options[i] = NRefOb(\$options[i]);\\n\\n// We prefer to target PCs that are already attacking us\\nfor(i=0; i\<sizeof(\$options); i++) \{\\n  if(\$options[i].\\"udat:object\\" \&\& \$options[i].combat \&\& \$options[i].combat[\\"target\\"] == this) \$preferred_options += (\{ \$options[i] \});\\n\}\\nif(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];\\n\\n// Next prefer to target PCs that are already in combat with us\\nfor(i=0; i\<sizeof(\$options); i++) \{\\n  if(\$options[i].\\"udat:object\\" \&\& \$options[i].combat) \$preferred_options += (\{ \$options[i] \});\\n\}\\nif(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];\\n\\n// Are we injured? Don't start a fight!\\n// Disabled - muggers start a fight when injured, and are slain if they lose (and a new, healthy mugger gets spawned)\\n// if(this.\\"status:hurt\\" \|\| this.\\"status:shaken\\" \|\| this.\\"status:injured\\") return nil;\\n\\n// Next prefer to target PCs that aren't dying or dead or injured\\nfor(i=0; i\<sizeof(\$options); i++) \{\\n  if(\$options[i].\\"udat:object\\" \&\& !\$options[i].\\"status:dying\\" \&\& !\$options[i].\\"status:dead\\" \&\& !\$options[i].\\"status:injured\\") \$preferred_options += (\{ \$options[i] \});\\n  else \{ \$options -= (\{ \$options[i] \}); i--; \}\\n\}\\nif(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];\\n\\n// Next prefer to target PCs that aren't dying or dead\\n// Disabled - Don't be a jerk and mug injured people\\n/*\\nfor(i=0; i\<sizeof(\$options); i++) \{\\n  if(\$options[i].\\"udat:object\\" \&\& !\$options[i].\\"status:dying\\" \&\& !\$options[i].\\"status:dead\\") \$preferred_options += (\{ \$options[i] \});\\n  else \{ \$options -= (\{ \$options[i] \}); i--; \}\\n\}\\nif(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];\\n*/\\n\\nreturn nil;\\n"
+      </Core:Property>
+      <Core:Property property="gimli:lib:give_combat_damage">
+         "E[G]\\nif(\$damage \>= 7) \{ // Enough to make them \\"dying\\" - Instead we'll just knock them out of combat and steal their money\\n  \$delay(0.5, FALSE, \\"30de\\");\\n  \$target.\\"tmp:combat:Mugger:defeated\\" = Int(\$target.\\"tmp:combat:Mugger:defeated\\")+1;\\n  if(Int(\$target.\\"trait:money\\") \> 1000) \{\\n    EmitTo(\$target, Describe(\$char)+\\" knocks you to the ground, and grabs your money pouch.\\");\\n    EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" knocks \\"+Describe(\$target)+\\" to the ground and grabs \\"+\$target.\\"base:possessive\\"+\\" money pouch.\\", \$target);\\n    if(Int(\$target.\\"trait:money\\")/20 \> 10)\\n      \$target.\\"trait:money\\" -= Int(\$target.\\"trait:money\\")/20;\\n    else\\n      \$target.\\"trait:money\\" -= 1000;\\n  \} else \{\\n    EmitTo(\$target, Describe(\$char)+\\" knocks you to the ground.\\");\\n    EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" knocks \\"+Describe(\$target)+\\" to the ground.\\", \$target);\\n    EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" swears, \\\\\\"You could have told me you have nothing to take!\\\\\\"\\");\\n  \}\\n\\n  \$char.combat[\\"target\\"] = nil;\\n  ccombat::remove_from_combat(\$fighter: \$target);\\n  ccombat::end_turn(\$char: \$char, \$no_loop_trigger: FALSE);\\n  return FALSE;\\n\}\\nreturn TRUE;\\n"
+      </Core:Property>
+      <Core:Property property="gimli:lib:mugging_deny">
+         "E[G]\\n//  interaction::question(\$actor: \$target, \$question: \\"Do you want to give 2 denarii to \\"+Describe(this)+\\"?\\", \$expires: 20, \$env: \\"TRUE\\", \$a: \\"Give \\"+Describe(this)+\\" 2 denarii.\\", \$a_ob: this, \$a_fun: \\"mugging_pay\\", \$b: \\"Don't give \\"+Describe(this)+\\" any money.\\", \$b_ob: this, \$b_fun: \\"mugging_deny\\", \$expire: \\"You stand around, unable to decide whether to give  \\"+Describe(this)+\\" any money.\\", \$expire_ob: this, \$expire_fun: \\"mugging_deny\\", \$par: ([ \\"victim\\":\$target, \\"mugger\\":\$this, \\"amount\\":\$amount, \\"location\\":\$location, \\"block_path_id\\":\$block_path_id ]));\\n\\nif(!\$par[\\"mugger\\"] \|\| !\$par[\\"victim\\"] \|\| \$par[\\"mugger\\"].\\"base:environment\\" != \$par[\\"victim\\"].\\"base:environment\\") return TRUE;\\n\\nEmitTo(\$actor, \\"You refuse to pay \\"+Describe(\$par[\\"mugger\\"])+\\".\\");\\nEmitIn(\$actor.\\"base:environment\\", Describe(\$actor)+\\" refuses to pay \\"+Describe(\$par[\\"mugger\\"])+\\".\\");\\n\\n\$delay(2, TRUE);\\nif(!\$par[\\"mugger\\"] \|\| !\$par[\\"victim\\"] \|\| \$par[\\"mugger\\"].\\"base:environment\\" != \$par[\\"victim\\"].\\"base:environment\\") return TRUE;\\nSocial(\$par[\\"mugger\\"], \\"glare\\", nil, nil, \\"at\\", \$par[\\"victim\\"]);\\nSocial(\$par[\\"mugger\\"], \\"tell\\", nil, \\"You'll regret that!\\", nil, \$par[\\"victim\\"]);\\n\\n\$delay(2, TRUE);\\nif(!\$par[\\"mugger\\"] \|\| !\$par[\\"victim\\"] \|\| \$par[\\"mugger\\"].\\"base:environment\\" != \$par[\\"victim\\"].\\"base:environment\\") return TRUE;\\nccombat::start_fight(\$attacker:\$par[\\"mugger\\"], \$target:\$par[\\"victim\\"]);\\n\\nironclaw::unset_prop(\$obj: \$actor, \$prop: \\"exit:blocked\\", \$id: \$par[\\"block_path_id\\"]);\\nironclaw::set_prop(\$obj: \$par[\\"mugger\\"], \$prop: \\"nip:trait:movement:frequency\\", \$value: 0, \$timer: 60*20); /* Don't move around while in combat... 20 mins should be enough */\\n\\nreturn TRUE;\\n"
+      </Core:Property>
+      <Core:Property property="gimli:lib:mugging_pay">
+         "E[G]\\n//  interaction::question(\$actor: \$target, \$question: \\"Do you want to give 2 denarii to \\"+Describe(this)+\\"?\\", \$expires: 20, \$env: \\"TRUE\\", \$a: \\"Give \\"+Describe(this)+\\" 2 denarii.\\", \$a_ob: this, \$a_fun: \\"mugging_pay\\", \$b: \\"Don't give \\"+Describe(this)+\\" any money.\\", \$b_ob: this, \$b_fun: \\"mugging_deny\\", \$expire: \\"You stand around, unable to decide whether to give  \\"+Describe(this)+\\" any money.\\", \$expire_ob: this, \$expire_fun: \\"mugging_deny\\", \$par: ([ \\"victim\\":\$target, \\"mugger\\":\$this, \\"amount\\":\$amount, \\"location\\":\$location, \\"block_path_id\\":\$block_path_id ]));\\n\\nironclaw::unset_prop(\$obj: \$actor, \$prop: \\"exit:blocked\\", \$id: \$par[\\"block_path_id\\"]);\\n\\n\$error = ironclaw::pay_money(\$from:\$par[\\"victim\\"], \$to:\$par[\\"mugger\\"], \$amount:\$par[\\"amount\\"], \$emit:TRUE, \$evoke:nil);\\nif(\$error) EmitTo(\$actor, \$error);\\n\\nreturn TRUE;\\n"
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] \$this."trait:build" = oneof("scruffy", "large", "brutish", "nasty", "stinking", "ugly"); 
+Set(\$this, "details:default:adjective:"+\$this."trait:build", TRUE); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:choice_jail">
+         X[M] /* PC chose to send the mugger to jail */ 
+ironclaw::set_prop(\$obj: \$actor, \$prop: "tmp:combat:Mugger:jailed", \$value: Int(\$actor."tmp:combat:Mugger:jailed")+1, \$timer: 60*60*24*30*2); 
+ 
+EmitIn(\$actor."base:environment", Describe(\$actor)+" whistles, and hands "+Describe(this)+" to a constable patrolman for delivery to jail."); 
+ 
+if(this."trait:money" \&\& Int(this."trait:money") \> 0) \{ 
+    \$actor."trait:money" = Int(\$actor."trait:money") + Int(\$this."trait:money"); 
+    EmitTo(\$actor, "You collect " + Str(this."trait:money"/100) + " denarii from " + Describe(this) + "."); 
+\} 
+ 
+Slay(this); 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:choice_kill">
+         X[M] /* PC chose to let the mugger escape */ 
+ironclaw::set_prop(\$obj: \$actor, \$prop: "tmp:combat:Mugger:killed", \$value: Int(\$actor."tmp:combat:Mugger:killed")+1, \$timer: 60*60*24*30*2); 
+ 
+EmitIn(\$actor."base:environment", Describe(\$actor)+" strikes "+Describe(this)+" again, ending the wretched mugger's life."); 
+ 
+if(this."trait:money" \&\& Int(this."trait:money") \> 0) \{ 
+    \$actor."trait:money" = Int(\$actor."trait:money") + Int(\$this."trait:money"); 
+    EmitTo(\$actor, "You collect " + Str(this."trait:money"/100) + " denarii from " + Describe(this) + "."); 
+\} 
+Slay(this); 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:choice_release">
+         X[M] /* PC chose to let the mugger escape */ 
+ironclaw::set_prop(\$obj: \$actor, \$prop: "tmp:combat:Mugger:released", \$value: Int(\$actor."tmp:combat:Mugger:released")+1, \$timer: 60*60*24*30*2); 
+ 
+EmitIn(\$actor."base:environment", Describe(\$actor)+" allows "+Describe(this)+" to flee."); 
+Slay(this); 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_target">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:find_target instead! */ 
+/* When the NPC is looking for a target */ 
+int i; 
+ 
+/* In this example, we want to target PCs */ 
+\$options = Match(this."base:environment", "pc"); 
+\$preferred_options = (\{ \}); 
+ 
+/* We need to convert the NRef's from the PC list into objects */ 
+for(i=0; i\<sizeof(\$options); i++) 
+  \$options[i] = NRefOb(\$options[i]); 
+ 
+/* We prefer to target PCs that are already attacking us */ 
+for(i=0; i\<sizeof(\$options); i++) \{ 
+  if(\$options[i]."udat:object" \&\& \$options[i].combat \&\& \$options[i].combat["target"] == this) \$preferred_options += (\{ \$options[i] \}); 
+\} 
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))]; 
+ 
+/* Next prefer to target PCs that are already in combat with us */ 
+for(i=0; i\<sizeof(\$options); i++) \{ 
+  if(\$options[i]."udat:object" \&\& \$options[i].combat) \$preferred_options += (\{ \$options[i] \}); 
+\} 
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))]; 
+ 
+/* Are we injured? Don't start a fight! */ 
+/* Disabled - muggers start a fight when injured, and are slain if they lose (and a new, healthy mugger gets spawned) */ 
+/* if(this."status:hurt" \|\| this."status:shaken" \|\| this."status:injured") return nil; */ 
+ 
+/* Next prefer to target PCs that aren't dying or dead or injured */ 
+for(i=0; i\<sizeof(\$options); i++) \{ 
+  if(\$options[i]."udat:object" \&\& !\$options[i]."status:dying" \&\& !\$options[i]."status:dead" \&\& !\$options[i]."status:injured") \$preferred_options += (\{ \$options[i] \}); 
+  else \{ \$options -= (\{ \$options[i] \}); i--; \} 
+\} 
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))]; 
+ 
+/* Next prefer to target PCs that aren't dying or dead */ 
+/* Disabled - Don't be a jerk and mug injured people */ 
+/* 
+for(i=0; i\<sizeof(\$options); i++) \{ 
+  if(\$options[i]."udat:object" \&\& !\$options[i]."status:dying" \&\& !\$options[i]."status:dead") \$preferred_options += (\{ \$options[i] \}); 
+  else \{ \$options -= (\{ \$options[i] \}); i--; \} 
+\} 
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))]; 
+*/ 
+ 
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_combat_damage">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:give_combat_damage instead! */ 
+if(\$damage \>= 7) \{ /* Enough to make them "dying" - Instead we'll just knock them out of combat and steal their money */ 
+  \$delay(0.5, FALSE, "30de"); 
+  \$target."tmp:combat:Mugger:defeated" = Int(\$target."tmp:combat:Mugger:defeated")+1; 
+  if(Int(\$target."trait:money") \> 2000) \{ 
+    EmitTo(\$target, Describe(\$char)+" knocks you to the ground, and grabs your money pouch."); 
+    EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" to the ground and grabs "+\$target."base:possessive"+" money pouch.", \$target); 
+    /* if(Int(\$target."trait:money")/20 \> 10) 
+      \$target."trait:money" -= Int(\$target."trait:money")/20; 
+    else 
+      \$target."trait:money" -= 2000; 
+    */ 
+     \$target."trait:money" -= 2000; 
+     \$char."trait:money" = Int(\$char."trait:money") + 2000; 
+  \} else \{ 
+    EmitTo(\$target, Describe(\$char)+" knocks you to the ground."); 
+    EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" to the ground.", \$target); 
+    EmitIn(\$char."base:environment", Describe(\$char)+" swears, \\"You could have told me you have nothing to take!\\""); 
+  \} 
+ 
+  \$char.combat["target"] = nil; 
+  ccombat::remove_from_combat(\$fighter: \$target); 
+  ccombat::end_turn(\$char: \$char, \$no_loop_trigger: FALSE); 
+  return FALSE; 
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:mugging_deny">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:mugging_deny instead! */ 
+/*  interaction::question(\$actor: \$target, \$question: "Do you want to give 2 denarii to "+Describe(this)+"?", \$expires: 20, \$env: "TRUE", \$a: "Give "+Describe(this)+" 2 denarii.", \$a_ob: this, \$a_fun: "mugging_pay", \$b: "Don't give "+Describe(this)+" any money.", \$b_ob: this, \$b_fun: "mugging_deny", \$expire: "You stand around, unable to decide whether to give  "+Describe(this)+" any money.", \$expire_ob: this, \$expire_fun: "mugging_deny", \$par: ([ "victim":\$target, "mugger":\$this, "amount":\$amount, "location":\$location, "block_path_id":\$block_path_id ])); */ 
+ 
+if(!\$par["mugger"] \|\| !\$par["victim"] \|\| \$par["mugger"]."base:environment" != \$par["victim"]."base:environment") return TRUE; 
+ 
+EmitTo(\$actor, "You refuse to pay "+Describe(\$par["mugger"])+"."); 
+EmitIn(\$actor."base:environment", Describe(\$actor)+" refuses to pay "+Describe(\$par["mugger"])+"."); 
+ 
+\$delay(2, TRUE, "de7d"); 
+if(!\$par["mugger"] \|\| !\$par["victim"] \|\| \$par["mugger"]."base:environment" != \$par["victim"]."base:environment") return TRUE; 
+Social(\$par["mugger"], "glare", nil, nil, "at", \$par["victim"]); 
+Social(\$par["mugger"], "tell", nil, "You'll regret that!", nil, \$par["victim"]); 
+ 
+\$delay(2, TRUE, "11a6"); 
+if(!\$par["mugger"] \|\| !\$par["victim"] \|\| \$par["mugger"]."base:environment" != \$par["victim"]."base:environment") return TRUE; 
+ccombat::start_fight(\$attacker: \$par["mugger"], \$target: \$par["victim"]); 
+ 
+ironclaw::unset_prop(\$obj: \$actor, \$prop: "exit:blocked", \$id: \$par["block_path_id"]); 
+ironclaw::set_prop(\$obj: \$par["mugger"], \$prop: "nip:trait:movement:frequency", \$value: 0, \$timer: 60*20); /* Don't move around while in combat... 20 mins should be enough */ 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:mugging_pay">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:mugging_pay instead! */ 
+/*  interaction::question(\$actor: \$target, \$question: "Do you want to give 2 denarii to "+Describe(this)+"?", \$expires: 20, \$env: "TRUE", \$a: "Give "+Describe(this)+" 2 denarii.", \$a_ob: this, \$a_fun: "mugging_pay", \$b: "Don't give "+Describe(this)+" any money.", \$b_ob: this, \$b_fun: "mugging_deny", \$expire: "You stand around, unable to decide whether to give  "+Describe(this)+" any money.", \$expire_ob: this, \$expire_fun: "mugging_deny", \$par: ([ "victim":\$target, "mugger":\$this, "amount":\$amount, "location":\$location, "block_path_id":\$block_path_id ])); */ 
+ 
+ironclaw::unset_prop(\$obj: \$actor, \$prop: "exit:blocked", \$id: \$par["block_path_id"]); 
+ 
+\$error = ironclaw::pay_money(\$from: \$par["victim"], \$to: \$par["mugger"], \$amount: \$par["amount"], \$emit: TRUE, \$evoke: nil); 
+if(\$error) EmitTo(\$actor, \$error); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_combat_damage_dying">
+         X[M] /* Script run when the NPC takes enough damage to be dying */ 
+\$char."tmp:combat:Mugger:won" = Int(\$char."tmp:combat:Mugger:won")+1; 
+EmitIn(\$char."base:environment", Describe(this)+" is knocked to the ground."); 
+ 
+ccombat::remove_from_combat(\$fighter: this); 
+ 
+\$delay(0.5, FALSE, "e6fc"); 
+ 
+interaction::question(\$actor: \$char, \$question: "What do you want to do with "+Describe(this)+"?", \$expires: 60, \$env: "TRUE", \$a: "I've made my point. Let him go.", \$a_ob: this, \$a_fun: "choice_release", \$b: "Kill him!", \$b_ob: this, \$b_fun: "choice_kill", \$c: "Send him to jail.", \$c_ob: this, \$c_fun: "choice_jail", \$expire_ob: this, \$expire_fun: "choice_release", \$par: ([ "char":\$char ])); 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-desc:examine">
+         X[M] EmitTo(\$actor, UnSAM(\$this."details:default:descriptions:look")); 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-desc:look">
+         X[M] EmitTo(\$actor, UnSAM(\$this."details:default:descriptions:look")); 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:witness-post:enter-from%mugging">
+         X[M] if(this.combat) return TRUE; 
+if(!\$actor."udat:object") return TRUE; 
+if(this."tmp:choosing_target") return TRUE; 
+this."tmp:choosing_target" = TRUE; 
+ 
+\$location = this."base:environment"; 
+ 
+ironclaw::set_prop(\$obj: \$actor, \$prop: "exit:blocked", \$value: "As you rush through, "+Describe(this)+" momentarily blocks your path.", \$timer: 3); 
+ironclaw::set_prop(\$obj: \$this, \$prop: "nip:trait:movement:frequency", \$value: 0, \$timer: 25); /* Don't move around while mugging someone... */ 
+\$delay(3, TRUE, "e14b"); 
+ 
+ 
+this."tmp:choosing_target" = nil; 
+ 
+\$target = ::find_target(); 
+/* \$target = \$\{Chatters:IC:az:azrael\}; */ 
+ 
+if(\$target \&\& !\$target.combat 
+\&\& this."base:environment" == \$location 
+\&\& \$target."base:environment" == \$location) \{ 
+  \$amount = 200; 
+  this."base:proximity" = NewNRef(\$target, "default"); 
+  \$verb = oneof("stagger", "walk", "strut"); 
+  \$emote = oneof("Hey, can you spare two denarii?", "Spare us some money, guv?", "Help out someone in need, just two denarii.", "You wanna give me two denarii, and keep everyone happy?"); 
+  Social(this, \$verb, nil, \$emote, "to", \$target); 
+ 
+  \$block_path_id = ironclaw::set_prop(\$obj: \$actor, \$prop: "exit:blocked", \$value: "You cannot leave while "+Describe(this)+" is in your way.", \$timer: 20); 
+  \$delay(0.01, TRUE, "6231"); 
+ 
+  interaction::question(\$actor: \$target, \$question: "Do you want to give 2 denarii to "+Describe(this)+"?", \$expires: 20, \$env: "TRUE", \$a: "Give "+Describe(this)+" 2 denarii.", \$a_ob: this, \$a_fun: "mugging_pay", \$b: "Don't give "+Describe(this)+" any money.", \$b_ob: this, \$b_fun: "mugging_deny", \$expire: "You stand around, unable to decide whether to give  "+Describe(this)+" any money.", \$expire_ob: this, \$expire_fun: "mugging_deny", \$par: ([ "victim":\$target, "mugger":\$this, "amount":\$amount, "location":\$location, "block_path_id":\$block_path_id ])); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1465545400, "tonyd", "E", 1465545508, "tonyd", "E", 1466303124, "jominey", "K", 1466303124, "jominey", "K", 1466303151, "jominey", "K", 1466303182, "jominey", "E", 1466303233, "jominey", "E", 1466303330, "jominey", "E", 1466303448, "jominey", "E", 1466303638, "jominey", "E", 1466303692, "jominey", "E", 1466303802, "jominey", "E", 1466303833, "jominey", "E", 1497398982, "zemkairk", "E", 1511305191, "jominey", "E", 1511305211, "jominey", "E", 1511305229, "jominey", "E", 1511305627, "jominey", "E", 1540856558, "jominey", "E", 1540856710, "jominey", "E", 1540856734, "jominey", "E", 1540856894, "jominey", "E", 1540856954, "jominey", "E", 1542593845, "jominey", "E", 1542593852, "jominey", "E", 1542593893, "jominey", "E", 1562172130, "sendnoodlez", "X", 1569808771, "sendnoodlez", "E", 1569808774, "sendnoodlez", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

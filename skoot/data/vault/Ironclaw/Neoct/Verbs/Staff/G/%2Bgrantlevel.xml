@@ -1,0 +1,70 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+grantlevel" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="true" raw="false" requirement="required" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] \$chatter = NRefOb(\$dob[0]);
+
+\$syntax = "+grantlevel \<chatter\> \\"skill:career:merchant\\"";
+
+if(!\$evoke) \{
+    EmitTo(\$actor, \$syntax);
+    return FALSE;
+\}
+
+\$input = explode(replace_strings(\$evoke, "\\"", "", ".", ""), ":");
+
+if(sizeof(\$input) != 3) \{
+    EmitTo(\$actor, \$syntax);
+\}
+
+if(\$input[1] == "career") \{
+    \$baselp = 10;
+    \$maxlp = 100;
+\} else \{
+    \$baselp = 5;
+    \$maxlp = 50;
+\}
+
+\$currentskill = Int(Get(\$chatter, \$input[0] + ":" + \$input[1] + ":" + \$input[2]));
+
+if(\$currentskill \>= 24) \{
+    EmitTo(\$actor, Describe(\$chatter) + " is already maxed.");
+    return FALSE;
+\}
+
+\$learningpoints = Get(\$chatter, "student:learningpoints");
+
+if(\$currentskill \>= 9) \{
+    \$nextlevel = \$maxlp;
+\} else \{
+    \$nextlevel = (\$currentskill+1) * \$baselp;
+\}
+
+if(\$nextlevel \> \$learningpoints) \{
+    EmitTo(\$actor, Describe(\$chatter) + " does not have enough learning points.");
+    return FALSE;
+\}
+
+Set(\$chatter, \$input[0] + ":" + \$input[1] + ":" + \$input[2], \$currentskill+1);
+\$chatter."student:learningpoints" -= \$nextlevel;
+
+EmitIn(\$actor."base:environment", "Increasing " + \$input[0] + ":" + \$input[1] + ":" + \$input[2] + " in " + Str(\$chatter) + " to " + Str(\$currentskill+1) + " for a cost of " + Str(\$nextlevel) + " learning points.");
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1562019119, "jominey", "E", 1562019149, "jominey", "E", 1562019818, "jominey", "E", 1562019999, "jominey", "E", 1562020060, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

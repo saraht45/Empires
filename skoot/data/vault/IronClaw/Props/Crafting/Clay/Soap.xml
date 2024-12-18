@@ -1,0 +1,147 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.02" density="2"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="soap"/>
+            <Base:SName sname="bar"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="soaps"/>
+            <Base:PName pname="bars"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="bar"/>
+          <Base:Adjective adjective="clay"/>
+          <Base:Adjective adjective="earthiness"/>
+          <Base:Adjective adjective="mellow"/>
+          <Base:Adjective adjective="soap"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) $(this.trait:material) soap
+          </Base:Description>
+          <Base:Description type="examine">
+             A bar of $(this.trait:color) creamy $(this.trait:material) soap. It is made from all natural ingredients and designed to absorb surface skin oils without being excessively drying.
+          </Base:Description>
+          <Base:Description type="glance">
+             A bar of $(this.trait:color) $(this.trait:material) soap.
+          </Base:Description>
+          <Base:Description type="look">
+             A bar of $(this.trait:color) $(this.trait:material) soap.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:alteration:add:default:oil">
+         "([ \\"adj-list-default\\":(\{ \\"set\\" \}), \\"adj-prop\\":(\{ \\"trait:smell\\", \\"trait:default:smell\\" \}), \\"properties\\": (\{ \\"trait:smell\\", \\"trait:default:smell\\" \}), (\{ \\"trait:smell\\", \\"trait:default:smell\\" \}) \}) ])"
+      </Core:Property>
+      <Core:Property property="export:trait:bathallow">
+         1
+      </Core:Property>
+      <Core:Property property="export:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="export:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         5
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "mellow earthiness"
+      </Core:Property>
+      <Core:Property property="merry:react-post:wash-iob">
+         X[M] int i;
+if(\$dob) \{
+  for(i=0;i\<sizeof(\$dob);i++) \{
+    if(NRefOb(\$dob[i])."trait:smells" \&\& NRefOb(\$dob[i])."trait:smells"[\$this."trait:smell"]) \{
+      NRefOb(\$dob[i])."trait:smells" = ([ ]);
+      NRefOb(\$dob[i])."trait:smells"[\$this."trait:smell"] = (\{ 15, time() \});
+    \} else \{
+      NRefOb(\$dob[i])."trait:smells" = ([ ]);
+      NRefOb(\$dob[i])."trait:smells"[\$this."trait:smell"] = (\{ 7, time() \});
+    \}
+    \$this."trait:quantity" -= 1;
+    if(\$this."trait:quantity" == 0) \{
+      Slay(\$this);
+    \}
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:wash-iob">
+         X[M] return TRUE;
+if(\$dob \&\& (sizeof(\$dob) == 1) \&\& (NRefOb(\$dob[0]) == \$actor)) \{
+EmitIn( \$actor."base:environment", Describe(\$actor)+" washes "+ NRefOb(\$dob[0])."trait:objective" + "self with " +Describe(this)+ ".", \$actor );
+EmitTo( \$actor, "You wash yourself with " +Describe(this)+ "." );
+\$actor."trait:smell" = \$this."trait:smell";
+\$actor."trait:taste" = "of " +\$this."trait:smell";
+\$this."trait:quantity" -= 1;
+if(\$this."trait:quantity" == 0) \{
+Slay(\$this);
+\}
+return FALSE;
+\} else if(\$dob \&\& (sizeof(\$dob) == 1) \&\& (NRefOb(\$dob[0]) != \$actor)) \{
+EmitTo( \$actor, Describe(this)+" is meant for personal use. Try washing  yourself." );
+return FALSE;
+\} else if(\$dob \&\& (sizeof(\$dob) \>= 1)) \{
+EmitIn( \$actor."base:environment", "You may only wash one thing at a time." );
+return FALSE;
+\} else \{
+EmitIn( \$actor."base:environment", "What do you intend to use " +Describe(this)+" on?" );
+return FALSE;
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:export:trait:smell">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:smell">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1127923051, "tunk_bodin", "X", 1127923345, "tunk_bodin", "X", 1127923680, "tunk_bodin", "X", 1127923815, "tunk_bodin", "X", 1127924823, "tunk_bodin", "X", 1127930010, "tunk_bodin", "X", 1127968158, "tunk_bodin", "X", 1127968319, "tunk_bodin", "X", 1127969815, "tunk_bodin", "X", 1127970910, "tunk_bodin", "X", 1127971673, "tunk_bodin", "E", 1127972052, "tunk_bodin", "X", 1128055962, "tunk_bodin", "X", 1129771506, "tunk_bodin", "S", 1129773651, "tunk_bodin", "S", 1132963658, "tunk_bodin", "X", 1136713456, "tunk_bodin", "X", 1136714170, "tunk_bodin", "X", 1136714242, "tunk_bodin", "X", 1136714340, "tunk_bodin", "X", 1136714549, "tunk_bodin", "X", 1136714603, "tunk_bodin", "X", 1136714678, "tunk_bodin", "X", 1136714763, "tunk_bodin", "X", 1136714855, "tunk_bodin", "X", 1136714918, "tunk_bodin", "X", 1136715056, "tunk_bodin", "X", 1136755784, "tunk_bodin", "X", 1136755867, "tunk_bodin", "X", 1137289782, "tunk_bodin", "X", 1137289916, "tunk_bodin", "X", 1137293661, "tunk_bodin", "X", 1146701748, "tunk_bodin", "X", 1167722652, "tonyd", "P", 1167722951, "tonyd", "P", 1167723144, "tonyd", "P", 1167723396, "tonyd", "P", 1168599985, "tonyd", "E", 1168601369, "tonyd", "E", 1168601421, "tonyd", "E", 1168601460, "tonyd", "E", 1168610575, "tonyd", "S", 1172083450, "tunk_bodin", "E", 1202780112, "haystack", "K", 1202780155, "haystack", "K", 1202780492, "haystack", "E", 1218646677, "rorschakovacs", "K", 1238206952, "morwenlorelie", "R", 1404673802, "slurpeeslurp", "K", 1404673876, "slurpeeslurp", "E", 1519341343, "lidiab", "E", 1519341530, "lidiab", "E", 1519341553, "lidiab", "E", 1519341579, "lidiab", "E", 1519341774, "lidiab", "E", 1519341981, "lidiab", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:quantity">5</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

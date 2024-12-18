@@ -1,0 +1,996 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="gimli:lib:check_promotion_military">
+         "E[G]\\nreturn ([ ]);\\n// Check if they can get this promotion\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// What is the name of this new rank?\\n\$tmp = ::get_rank_names_military(\$char:\$char, \$groupname:\$groupname, \$level:\$level+1);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n// Add the house name to the rankname\\nif(\$groupname != \\"\\" \&\& \$level != 2)\\n  \$rankname = capitalize(\$groupname)+\\" \\"+capitalize(\$rankname);\\nelse if(\$level == 2)\\n  \$rankname = \\"Freedman\\";\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) \{\\n  if(\$level \<= 2) \$level = -2;\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level+1 ]);\\n\}\\n\\n// Do they have a patron from this group?\\n\$has_patron = ::has_patron(\$char:\$char, \$groupname:\$groupname);\\n\$influence = Int(Get(\$char, \\"rank:influence:\\"+\$groupname));\\n\$promotion_valid = FALSE;\\n\$promotion_invalid = FALSE;\\n\\nif(!\$curr_level \|\| \$curr_level == 3) \{\\n  // Noble House privates need:\\n  // 2 influence and a patron\\n\\n  if(\$influence \>= 2 \&\& \$has_patron) \{\\n    // Valid, they have enough influence and a patron\\n    \$requirements = TAG(\\"Gather 2 points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= 2) \{\\n    // They have the influence, but not the patron\\n    \$requirements = TAG(\\"Gather 2 points of \\"+capitalize(\$groupname)+\\" influence,\\", \\"imp\\")+\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n  \} else if(\$has_patron) \{\\n    // They have the patron, but not the influence\\n    \$requirements = \\"Gather 2 points of \\"+capitalize(\$groupname)+\\" influence \\";\\n    if(\$influence)\\n      \$requirements += TAG(\\"(\\"+\$influence+\\"/2)\\", \\"imp\\");\\n    else\\n      \$requirements += \\"(0/2)\\";\\n    \$requirements += \\", \\"+TAG(\\"and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n  \} else \{\\n    // They have nothing\\n    \$requirements = \\"Gather 2 points of \\"+capitalize(\$groupname)+\\" influence \\";\\n    if(\$influence)\\n      \$requirements += TAG(\\"(\\"+\$influence+\\"/2)\\", \\"imp\\");\\n    else\\n      \$requirements += \\"(0/2)\\";\\n    \$requirements += \\", and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n  \}\\n  \\n  \\n\\n  \\n\} else \{\\n  // For now, make all other options invalid\\n  \$promotion_invalid = TRUE;\\n\\n\\n  // For now, they can get the Noble House social promotion if they have enough influence for the rank, and a sponsor loyal to that group\\n  \$requirements = \\"Spend \\"+Str(\$level+1)+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a patron equal or higher ranked than you and loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n\\n  // Do they have the influence?\\n  if(Int(Get(\$char, \\"influence:\\"+\$groupname)) \< \$level+1)\\n    return ([ \\"valid\\":FALSE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level+1 ]);\\n  // Do they have the patron?\\n    // NOT WRITTEN YET\\n    \\n  \$requirements = TAG(\$requirements, \\"imp\\");\\n\}\\n    \\n\\nreturn ([ \\"invalid\\":\$promotion_invalid, \\"valid\\":\$promotion_valid, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level+1 ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_promotion_noble">
+         "E[G]\\nreturn ([ ]);\\n// Check if they can get this promotion\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// What is the name of this new rank?\\n\$tmp = ::get_rank_names_noble(\$char:\$char, \$groupname:\$groupname, \$level:\$level+1);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n// Add the house name to the rankname\\nif(\$groupname != \\"\\" \&\& \$level != 2) \{\\n  if(\$groupname == \\"leplow\\")\\n    \$rankname = \\"LePlow \\"+capitalize(\$rankname);\\n  else\\n    \$rankname = capitalize(\$groupname)+\\" \\"+capitalize(\$rankname);\\n\} else if(\$level == 2)\\n  \$rankname = \\"Freedman\\";\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) \{\\n  if(\$level \<= 2) \$level = -2;\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level+1 ]);\\n\}\\n\\n// Do they have a patron from this group?\\n// \$has_patron = ::has_patron(\$char, \$groupname);\\n\$has_patron = ::has_patron(\$char:\$char, \$groupname:\$groupname);\\n\$influence = Int(Get(\$char, \\"rank:influence:\\"+\$groupname));\\n\$promotion_valid = FALSE;\\n\$promotion_invalid = FALSE;\\n\\nif(!\$curr_level \|\| \$curr_level == 3) \{\\n  // Noble House yeomen need:\\n  // 2 influence and a patron\\n  // or 6 influence\\n  if(\$influence \>= 6) \{\\n    // Valid, they have enough influence\\n    \$requirements = TAG(\\"Gather 6 points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= 2 \&\& \$has_patron) \{\\n    // Valid, they have enough influence and a patron\\n    \$requirements = TAG(\\"Gather 2 points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= 2) \{\\n    // They have the influence, but not the patron\\n    \$requirements = (\{TAG(\\"Gather 2 points of \\"+capitalize(\$groupname)+\\" influence,\\", \\"imp\\")+\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather 6 points of \\"+capitalize(\$groupname)+\\" influence.\\"\});\\n  \} else if(\$has_patron) \{\\n    // They have the patron, but not the influence\\n    \$requirements = (\{\\"Gather 2 points of \\"+capitalize(\$groupname)+\\" influence, \\"+TAG(\\"and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\"), \\"Gather 6 points of \\"+capitalize(\$groupname)+\\" influence.\\"\});\\n  \} else \{\\n    // They have nothing\\n    \$requirements = (\{\\"Gather 2 points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather 6 points of \\"+capitalize(\$groupname)+\\" influence.\\"\});\\n  \}\\n  \\n  \\n\\n  \\n\} else \{\\n  // For now, make all other options invalid\\n  \$promotion_invalid = TRUE;\\n\\n  // For now, they can get the Noble House social promotion if they have enough influence for the rank, and a sponsor loyal to that group\\n  \$requirements = \\"Gather \\"+Str(\$level+1)+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a patron equal or higher ranked than you and loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n\\n  // Do they have the influence?\\n  if(Int(Get(\$char, \\"influence:\\"+\$groupname)) \< \$level+1)\\n    return ([ \\"valid\\":FALSE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level+1 ]);\\n    \\n  // Do they have the patron?\\n    // NOT WRITTEN YET\\n    \\n  \$requirements = TAG(\$requirements, \\"imp\\");\\n\}\\n\\n\\n\\nreturn ([ \\"invalid\\":\$promotion_invalid, \\"valid\\":\$promotion_valid, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level+1 ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status">
+         "E[G]\\nint level, curr_level;\\n\\nif(!\$path) return ([\\"error\\":\\"No \$path value\\"]);\\nif(!\$char) \$char = \$actor;\\n\\nif(strlen(\$path) \> 12 \&\& \$path[..11] == \\"rank:status:\\") \{\\n  \$groupname = \$path[12..];\\n  \$path = \$path[5..];\\n\} else if(strlen(\$path) \> 7 \&\& \$path[..6] == \\"status:\\") \{\\n  \$groupname = \$path[7..]; // Probably\\n\} else \{\\n  \$groupname = \$path; // Probably\\n  \$path = \\"status:\\"+\$path;\\n\}\\n\\nlevel = Int(Get(\$char, \\"rank:\\"+\$path));\\ncurr_level = level;\\n\\n\$houses = (\{ \\"status:avoirdupois\\", \\"status:bisclavret\\", \\"status:doloreaux\\", \\"status:rinaldi\\", \\"status:ketos\\" \});\\n\$militaries = (\{ \\"status:avoirdupois_mil\\", \\"status:bisclavret_mil\\", \\"status:doloreaux_mil\\", \\"status:rinaldi_mil\\", \\"status:ketos_mil\\" \});\\n\\nif(!level \|\| level \< 1) \{\\n  if(member(\$path, \$houses)\\n  \|\| member(\$path, \$militaries)) \{\\n    level = 3;\\n  \} else \{\\n    level = 0;\\n  \}\\n\}\\n\\n// Are we actually checking for a demotion or promotion?\\nif(\$give_demotion) level = level-1;\\nif(\$give_promotion) level = level+1;\\n\\nif(member(\$path, \$houses)) \{\\n  // Check if they can get a promotion with this house\\n  return Call(this, \\"check_status_noble\\", \$char:\$char, \$path:\$path, \$groupname:\$groupname, \$level:level, \$curr_level:curr_level, \$give_promotion:\$give_promotion, \$give_demotion:\$give_demotion);\\n\} else if(member(\$path, \$militaries)) \{\\n  // Check if they can get a promotion with this house military\\n  return Call(this, \\"check_status_military\\", \$char:\$char, \$path:\$path, \$groupname:\$groupname[..strlen(\$groupname)-5], \$level:level, \$curr_level:curr_level, \$give_promotion:\$give_promotion, \$give_demotion:\$give_demotion);\\n\} else \{\\n  // Check if they can get a promotion with this group\\n  if(FindMerry(this, \\"lib\\", \\"check_status_\\"+\$groupname)) \{\\n    // A script exists for this group\\n    return Call(this, \\"check_status_\\"+\$groupname, \$char:\$char, \$path:\$path, \$groupname:\$groupname, \$level:level, \$curr_level:curr_level, \$give_promotion:\$give_promotion, \$give_demotion:\$give_demotion);\\n  \} else \{\\n    return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"This group has not been enabled for promotions yet - please @assist!\\" ]);\\n  \}\\n\}"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_income">
+         "E[G]\\n// What additional income should a PC at this rank get?\\nif(!\$rank) return 0;\\nswitch(\$rank) \{\\n  case 1:\\n  case 2:\\n  case 3:\\n    return 0;\\n  case 4:\\n    return 400;\\n  case 5:\\n  case 6:\\n    return 800;\\n  case 7:\\n    return 1200;\\n  case 8:\\n    return 1500;\\n  case 9:\\n    return 1800;\\n  case 10:\\n    return 2500;\\n  case 11:\\n    return 3500;\\n  case 12:\\n    return 4500;\\n  case 13:\\n    return 6000;\\n  case 14:\\n    return 7000;\\n  case 15:\\n    return 8000;\\n  case 16:\\n    return 9000;\\n  case 17:\\n    return 10000;\\n  default:\\n    break;\\n\}\\n\\nreturn 0;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:give_demotion">
+         "E[G]\\n// Gives a demotion\\nif(\$par[\\"info\\"])\\n  \$info = \$par[\\"info\\"];\\nelse\\n  \$info = \$par[\$key];\\n\\n\$char = \$par[\\"char\\"];\\n\\n// Sanity check the demotion level\\n\$curr_level = Int(Get(\$char, \\"rank:\\"+\$info[\\"path\\"]));\\nif(Int(\$info[\\"curr_level\\"]) == \$curr_level) \{\\n  // It's fine...\\n\} else if(\$info[\\"level\\"] != -1 \&\& \$info[\\"level\\"] != \$curr_level-1) \{\\n  EmitTo(\$actor, \\"Sorry, something went wrong when granting this demotion. Please @bug this!\\");\\n  return FALSE;\\n\}\\n\\n// Is this their highest rank? Are we dropping a rank?\\nif(\$char.\\"rank:rank\\" \<= \$curr_level) \{\\n  // What other paths do we have?\\n  \$found = FALSE;\\n  \$paths = prefixed_map(\$char.\\"*\\", \\"rank:status:\\");\\n  \$paths[\\"rank:\\"+\$info[\\"path\\"]] = nil;\\n  for(\$i=0;\$i\<sizeof(map_indices(\$paths));\$i++) \{\\n    if(\$paths[map_indices(\$paths)[\$i]] \>= \$char.\\"rank:rank\\") \{\\n      \$found = TRUE;\\n      // Do we need to change our rank name?\\n      if(\$char.\\"rank:name\\" == Get(\$char, \\"rankname:\\"+\$info[\\"path\\"])) \{\\n        // Get new rank name\\n        \$level = Get(\$char, map_indices(\$paths)[\$i]);\\n        \$rankname = Get(\$char, \\"rankname\\"+map_indices(\$paths)[\$i][4..]+\\":\\"+\$level);\\n        \$char.\\"rank:name\\" = \$rankname;\\n      \}\\n      break;\\n    \}\\n  \}\\n  if(!\$found) \{\\n    // We just demoted our highest rank! Drop a rank!\\n    \$char.\\"rank:rank\\"--;\\n    \$char.\\"rank:name\\" = \$info[\\"rankname\\"];\\n  \}\\n\}\\n// Reset their income\\n\$char.\\"trait:extraincome\\" = ::get_income(\$rank:Int(\$char.\\"rank:rank\\"));\\n\\n// Update the rest of the values\\nif(\$info[\\"level\\"] \> 0) \{\\n  Set(\$char, \\"rank:\\"+\$info[\\"path\\"], \$info[\\"level\\"]);\\n  Set(\$char, \\"rankname:\\"+\$info[\\"path\\"], \$info[\\"rankname\\"]);\\n\} else \{\\n  Set(\$char, \\"rank:\\"+\$info[\\"path\\"], nil);\\n  Set(\$char, \\"rankname:\\"+\$info[\\"path\\"], nil);\\n\}\\nSet(\$char, \\"rankname:\\"+\$info[\\"path\\"]+\\":\\"+\$curr_level, nil);\\nSet(\$char, \\"patron:\\"+\$info[\\"path\\"]+\\":\\"+\$curr_level, nil);\\n\\n// Sort out their titles\\n::reset_titles(\$char:\$char);\\n\\n// Inform the player\\nEmitTo(\$actor, Describe(\$char)+\\" is now a \\"+\$info[\\"rankname\\"]+\\"!\\");\\n\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:give_promotion">
+         "E[G]\\nint i;\\n// Gives a promotion\\nif(\$par[\\"info\\"])\\n  \$info = \$par[\\"info\\"];\\nelse\\n  \$info = \$par[\$key];\\n\\n\$char = \$par[\\"char\\"];\\n\\n// Sanity check the promotion level\\n\$curr_level = Int(Get(\$char, \\"rank:\\"+\$info[\\"path\\"]));\\nif(Int(\$info[\\"curr_level\\"]) == \$curr_level) \{\\n  // It's fine...\\n\} else if(\$info[\\"level\\"] != 4 \&\& \$info[\\"level\\"] != 1 \&\& \$info[\\"level\\"] != \$curr_level+1) \{\\n  EmitTo(\$actor, \\"Sorry, something went wrong when granting this promotion. Please @bug this!\\");\\n  return FALSE;\\n\}\\n\\nif(\$par[\\"stp_sponsor\\"]) \{\\n  \$patron = \$par[\\"stp_sponsor\\"];\\n\} else \{\\n  \$patron = \$char.\\"patron\\";\\n\}\\n\\n// Grant the promotion\\nif(!\$par[\\"staff_command\\"]) \$char.\\"promotion:lastgiven\\" = time(); // Make them wait a month for their next promotion, unless this was a staff promotion\\nSet(\$char, \\"rank:\\"+\$info[\\"path\\"], \$info[\\"level\\"]);\\nSet(\$char, \\"rankname:\\"+\$info[\\"path\\"], \$info[\\"rankname\\"]);\\nSet(\$char, \\"rankname:\\"+\$info[\\"path\\"]+\\":\\"+\$info[\\"level\\"], \$info[\\"rankname\\"]);\\nSet(\$char, \\"patron:\\"+\$info[\\"path\\"]+\\":\\"+\$info[\\"level\\"], \$patron);\\n\\n// Is this their highest rank?\\nif(\$info[\\"level\\"] \> Int(\$char.\\"rank:rank\\")) \{\\n  \$char.\\"rank:rank\\" = \$info[\\"level\\"];\\n  \$char.\\"rank:name\\" = \$info[\\"rankname\\"];\\n\}\\n// Reset their income\\n\$char.\\"trait:extraincome\\" = ::get_income(\$rank:Int(\$char.\\"rank:rank\\"));\\n\\n// Sort out their titles\\n::reset_titles(\$char:\$char);\\n\\n// Special code for slaves (since their rank can go below 3)\\nif(\$info[\\"groupname\\"] == \\"slaves\\") \{\\n  // Making someone a slave!\\n  // Are they being enslaved or freed?\\n  if(\$info[\\"level\\"] \>= 3) \{\\n    // Being freed - congratulations!\\n    // Clear all slave properties\\n    \$char.\\"rank:status:slaves\\" = nil;\\n    \$char.\\"rankname:status:slaves\\" = nil;\\n    \$char.\\"rankname:status:slaves:1\\" = nil;\\n    \$char.\\"rankname:status:slaves:2\\" = nil;\\n    \$char.\\"rankname:status:slaves:3\\" = nil;\\n    \$char.\\"patron:status:slaves:1\\" = nil;\\n    \$char.\\"patron:status:slaves:2\\" = nil;\\n    \$char.\\"patron:status:slaves:3\\" = nil;\\n  \} else \{\\n    // Being enslaved :(\\n    \$char.\\"rank:rank\\" = \$info[\\"level\\"];\\n    \$char.\\"rank:name\\" = \$info[\\"rankname\\"];\\n  \}\\n\}\\n\\n\\n// Only file assists, reward patrons \& proteges, and subtract points if this wasn't a +promote command by staff\\nif(!\$par[\\"staff_command\\"]) \{\\n  // File an assist\\n  \$assisttext = Describe(\$char)+\\" has been promoted to \\"+\$info[\\"rankname\\"]+\\"\\\\n\\\\n\\"+capitalize(\$char.\\"skotos:charname\\");\\n  if(\$char.\\"loyalty:name\\") \$assisttext += \\" of \\"+Str(\$char.\\"loyalty:name\\");\\n  if(\$par[\\"stp_sponsor\\"]) \{\\n    \$assisttext += \\", patroned by \\"+capitalize(\$par[\\"stp_sponsor\\"].\\"skotos:charname\\")+\\",\\";\\n  \} else \{\\n    if(\$char.\\"patron\\") \$assisttext += \\", protege of \\"+capitalize(\$char.\\"patron\\".\\"skotos:charname\\")+\\",\\";\\n  \}\\n  \$assisttext += \\" is elevated to the rank of \\"+\$info[\\"rankname\\"]+\\".\\";\\n  assist::dofileassist(\$data: \$\{Data:DB:assist:AssistGeneralDB\}, \$char: Str(\$char), \$queue: \\"new\\", \$assisttext: \$assisttext, \$log: \\"[TAS]\\", \$silence: TRUE);\\n\\n  // Subtract the appropriate points\\n  \$clear_properties = map_indices(prefixed_map(\$char.\\"*\\", \\"rank:influence:\\"));\\n  for(i = 0; i\<sizeof(\$clear_properties); i++) \{\\n    Set(\$char, \$clear_properties[i], nil);\\n  \}\\n  \\n  // Reward the patron\\n  if(!\$par[\\"stp_sponsor\\"] \&\& \$char.\\"patron\\") \{\\n    Set(\$char.\\"patron\\", \\"rank:influence:\\"+\$info[\\"groupname\\"], Int(Get(\$char.\\"patron\\", \\"rank:influence:\\"+\$info[\\"groupname\\"]))+4);\\n  \}\\n  \\n  // Reward the proteges\\n  if(\$char.\\"proteges\\" \&\& sizeof(\$char.\\"proteges\\")) \{\\n    \$char.\\"proteges\\" -= (\{ nil \});\\n    for(i=0; i\<sizeof(\$char.\\"proteges\\"); i++) \{\\n      Set(\$char.\\"proteges\\"[i], \\"rank:influence:\\"+\$info[\\"groupname\\"], Int(Get(\$char.\\"proteges\\"[i], \\"rank:influence:\\"+\$info[\\"groupname\\"]))+1);\\n    \}\\n  \}\\n\}\\n\\n// Inform the player\\nEmitTo(\$actor, Describe(\$char)+\\" is now a \\"+\$info[\\"rankname\\"]+\\"!\\");\\n\\nif(\$par[\\"stp_sponsor\\"] \&\& \$par[\\"stp_cost\\"] \&\& \$par[\\"stp_sponsor_account\\"]) \{\\n  \$char.\\"promotion:stp:lastgiven\\" = time();\\n  Call(\$\{SkotOS:API\}, \\"apply_storypoints\\", \$name: \$par[\\"stp_sponsor_account\\"], \$amount: (int) \$par[\\"stp_cost\\"], \$reason: \\"Bought promotion for \\"+capitalize(\$char.\\"skotos:charname\\")+\\" to \\"+\$info[\\"rankname\\"]+\\" (\\"+\$info[\\"level\\"]+\\")\\", \$theatre: \\"IC\\", \$call_obj: this, \$call_func: \\"paid_promotion\\");\\n  EmitTo(\$actor, \$par[\\"stp_cost\\"]+\\" storypoints have been charged to account \\"+\$par[\\"stp_sponsor_account\\"]);\\n\}\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:has_patron">
+         "E[G]\\nint rank;\\n// Check if they can get this promotion\\nif(!\$char) return nil;\\nif(!\$groupname) return nil;\\n\\n// Who is their patron?\\nif(!\$char.\\"patron\\") return nil;\\nif(\$char.\\"patron\\".\\"loyalty:group\\" != \$groupname) return nil;\\n\\n// Get their rank with this group\\nrank = Int(Get(\$char.\\"patron\\", \\"rank:status:\\"+\$groupname));\\nif(Int(Get(\$char.\\"patron\\", \\"rank:status:\\"+\$groupname+\\"_mil\\")) \> rank)\\n  rank = Int(Get(\$char.\\"patron\\", \\"rank:status:\\"+\$groupname+\\"_mil\\"));\\n\\nreturn (\{ \$char.\\"patron\\", rank \});"
+      </Core:Property>
+      <Core:Property property="gimli:lib:process_favour">
+         "E[G]\\n// Check Favour information from all the PCs, and give influence points as appropriate\\nobject char, target;\\nstring *indices, loyalty, char_string;\\nint rank, passed, change, free_favors, tmp;\\nmapping favor;\\n\\n// +to me ex return Call(\$\{Ironclaw:Lib:Characters:RankScripts\}, \\"process_favour\\");\\n\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\\nEmitTo(\$az, \\"Doing weekly favour update\\");\\n\\n\$loyalty_names = \$\{Ironclaw:Lib:Characters:Rank\}.\\"data:loyalty\\";\\n// Process favour from @favour\\n\$folder = \\"Chatters:IC\\";\\n\$folders = Call(\$\{/usr/System/sys/idd\}, \\"idd:get-folders\\");\\n\\nfor(\$charloop_i=0;\$charloop_i\<sizeof(\$folders);\$charloop_i++) \{\\n  \$delay(0.00001, TRUE, \\"cf6f\\");\\n  \$folder = \\"Chatters:IC:\\"+\$folders[\$charloop_i];\\n  \$characters = Call(\$\{/usr/System/sys/idd\}, \\"idd:get-objects\\");\\n\\n  for(\$charloop_j=0;\$charloop_j\<sizeof(\$characters);\$charloop_j++) \{\\n    char = Obj(\\"Chatters:IC:\\"+\$folders[\$charloop_i]+\\":\\"+\$characters[\$charloop_j]);\\n    if(char.\\"favor:giving\\" \&\& sizeof(map_indices(char.\\"favor:giving\\"))) \{\\n      if(!char.\\"loyalty:name\\" \|\| !\$loyalty_names[char.\\"loyalty:name\\"]) continue; // Unknown loyalty\\n      \\n      loyalty = \$loyalty_names[char.\\"loyalty:name\\"];\\n      rank = Int(char.\\"rank:rank\\");\\n      free_favors = rank - 3;\\n      indices = map_indices(char.\\"favor:giving\\");\\n      favor = char.\\"favor:giving\\";\\n      \\n      while(sizeof(indices)) \{\\n        char_string = indices[random(sizeof(indices))];\\n        indices -= (\{ char_string \});\\n        if(!Obj(char_string)) continue;\\n        target = Obj(char_string);\\n        change = 0;\\n      \\n        if(free_favors \> 0) \{\\n          // Don't roll, they're high enough rank to just distribute favor\\n          free_favors--;\\n\\n          if(favor[char_string] \> 0) \{\\n            change = 1;\\n          \} else if(favor[char_string] \< 0) \{\\n            change = -1;\\n          \} else \{\\n            change = 0;\\n            free_favors++; // Don't charge a free favor for this\\n          \}\\n        \} else \{\\n          // Gotta roll to see if this favor counts!\\n          passed = FALSE;\\n\\n          // Is this PC higher, lower, or equal ranked to the PC giving favor?\\n          if(Int(target.\\"rank:rank\\") \> rank) \{\\n            // Higher ranked. We have a 25% chance of our favor counting\\n            if(!random(4)) passed = TRUE;\\n          \} else if(Int(target.\\"rank:rank\\") == rank) \{\\n            // Equal ranked. We have a 33% chance of our favor counting\\n            if(!random(3)) passed = TRUE;\\n          \} else \{\\n            // Lower ranked. We have a 50% chance of our favor counting\\n            if(!random(2)) passed = TRUE;\\n          \}\\n\\n          if(passed) \{\\n            if(favor[char_string] \> 0) \{\\n              change = 1;\\n            \} else if(favor[char_string] \< 0) \{\\n              change = -1;\\n            \} else \{\\n              change = 0;\\n            \}\\n          \}\\n        \}\\n        \\n        if(change) \{\\n          Set(target, \\"rank:influence:\\"+loyalty, Int(Get(target, \\"rank:influence:\\"+loyalty))+change);\\n          EmitTo(\$az, \\"giving \\"+dump_value(change)+\\" to \\"+dump_value(target));\\n        \}\\n      \}\\n\\n      // And clear all the favours, so they can start collecting for next week!\\n      char.\\"favor:older4\\" = char.\\"favor:older3\\";\\n      char.\\"favor:older3\\" = char.\\"favor:older2\\";\\n      char.\\"favor:older2\\" = char.\\"favor:older\\";\\n      char.\\"favor:older\\" = char.\\"favor:giving\\";\\n      char.\\"favor:giving\\" = ([ ]);\\n    \}\\n  \}\\n\}\\n\\n\$allevents = (\{ \});\\n\\n// Loop through characters again, adding event favour and checking if they can get a promotion\\n\$folder = \\"Chatters:IC\\";\\n\$folders = Call(\$\{/usr/System/sys/idd\}, \\"idd:get-folders\\");\\nEmitTo(\$actor, dump_value(\$folders));\\nfor(\$charloop_i=0;\$charloop_i\<sizeof(\$folders);\$charloop_i++) \{\\n  \$delay(0.00001, TRUE);\\n  \$folder = \\"Chatters:IC:\\"+\$folders[\$charloop_i];\\n  \$characters = Call(\$\{/usr/System/sys/idd\}, \\"idd:get-objects\\");\\n  for(\$charloop_j=0;\$charloop_j\<sizeof(\$characters);\$charloop_j++) \{\\n    char = Obj(\\"Chatters:IC:\\"+\$folders[\$charloop_i]+\\":\\"+\$characters[\$charloop_j]);\\n    \\n    \\nif(TRUE) \{ // Don't check event stuff just for the moment...    \\n    // Check @event favour\\n    \$groupings = (\{ \\"all\\", \\"avoirdupois\\", \\"bisclavret\\", \\"church\\", \\"constables\\", \\"council\\", \\"doloreaux\\", \\"rinaldi\\", \\"underworld\\" \});\\n    if(char.\\"event:points\\" \&\& sizeof(map_indices(char.\\"event:points\\"))) \{\\n      // Store a record of the old event points\\n\\n      if(char.\\"event:points:5\\") char.\\"event:points:6\\" = char.\\"event:points:5\\";\\n      if(char.\\"event:points:4\\") char.\\"event:points:5\\" = char.\\"event:points:4\\";\\n      if(char.\\"event:points:3\\") char.\\"event:points:4\\" = char.\\"event:points:3\\";\\n      if(char.\\"event:points:2\\") char.\\"event:points:3\\" = char.\\"event:points:2\\";\\n      if(char.\\"event:points:1\\") char.\\"event:points:2\\" = char.\\"event:points:1\\";\\n      if(char.\\"event:points\\") char.\\"event:points:1\\" = char.\\"event:points\\";\\n\\n      // EmitTo(\$az, dump_value(char));\\n      // EmitTo(\$az, dump_value(char.\\"event:points\\"));\\n      \\n      \$eventpoints = ([ ]);\\n      for(tmp=0;tmp\<sizeof(\$groupings);tmp++) \$eventpoints[\$groupings[tmp]] = (\{ 0 \});\\n      // EmitTo(\$az, \\"\$eventpoints are: \\"+dump_value(\$eventpoints));\\n    \\n      \\n      \$i_index = map_indices(char.\\"event:points\\");\\n      // EmitTo(\$az, dump_value(\$i_index));\\n      for(\$i=0;\$i\<sizeof(\$i_index);\$i++) \{\\n        if(!member(\$i_index[\$i], \$groupings)) \{\\n          EmitTo(\$az, \\"Unknown grouping: \\"+\$i_index[\$i]);\\n          continue;\\n        \}\\n        \\n        if(typeof(char.\\"event:points\\"[\$i_index[\$i]]) == T_MAPPING) \{\\n          \$j_index = map_indices(char.\\"event:points\\"[\$i_index[\$i]]);\\n          // EmitTo(\$az, dump_value(\$i_index[\$i]));\\n          // EmitTo(\$az, dump_value(\$j_index));\\n\\n          // EmitTo(\$actor, \\"Recording \\"+\$i_index[\$i]+\\" points.\\");\\n          for(\$j=0;\$j\<sizeof(\$j_index);\$j++) \{\\n            // EmitTo(\$actor, \\"Recording points for \\"+\$j_index[\$j]+\\" event.\\");\\n\\n            // Do we have an idleness check value?\\n            if(sizeof(char.\\"event:points\\"[\$i_index[\$i]][\$j_index[\$j]]) \>= 3) \{\\n              \$idleness = Int(char.\\"event:points\\"[\$i_index[\$i]][\$j_index[\$j]][2]);\\n              if(\$idleness \> 8) \$idleness = 8;\\n            \} else \{\\n              \$idleness = 8; // No idleness value. This should not be a problem any more as all old events are cleared out.\\n            \}\\n            if(random(10) \< \$idleness) \{\\n              \$eventpoints[\$i_index[\$i]][0] = \$eventpoints[\$i_index[\$i]][0] + char.\\"event:points\\"[\$i_index[\$i]][\$j_index[\$j]][0];\\n              \$eventpoints[\$i_index[\$i]] += (\{ \\"YES \\"+\$j_index[\$j] \});\\n            \} else \{\\n              \$eventpoints[\$i_index[\$i]] += (\{ \\"NO \\"+\$j_index[\$j] \});\\n            \}\\n            // EmitTo(\$actor, \\"Giving2 \\"+\$i_index[\$i]+\\" for \\"+\$j_index[\$j]);\\n          \}\\n        \}\\n      \}\\n\\n\\n      // EmitTo(\$az, char.\\"skotos:charname\\"+\\" \\"+dump_value(\$eventpoints));\\n      char.\\"event:points:processed\\" = \$eventpoints;\\n      \$emitted = FALSE;\\n      if(\$eventpoints[\\"all\\"][0]) \{\\n        if(!\$emitted) \{\\n          EmitTo(\$az, \\"------------------------------------\\");\\n          EmitTo(\$az, char.\\"skotos:charname\\"+\\":\\");\\n          \$emitted = TRUE;\\n        \}\\n        EmitTo(\$az, \\"Current loyalty: \\"+dump_value(char.\\"loyalty:group\\")+\\" - \\"+\$eventpoints[\\"all\\"][0]+\\" because: \\"+implode(\$eventpoints[\\"all\\"][1..], \\", \\"));\\n        if(char.\\"loyalty:group\\") \{\\n          EmitTo(\$az, \\"Giving 'all' points to \\"+char.\\"loyalty:group\\"+\\": \\"+\$eventpoints[\\"all\\"][0]);\\n          if(Int(\$eventpoints[\\"all\\"][0]) \> 6) \$eventpoints[\\"all\\"][0] = 6;\\n          Set(char, \\"rank:influence:\\"+char.\\"loyalty:group\\", Int(Get(char, \\"rank:influence:\\"+char.\\"loyalty:group\\"))+Int(\$eventpoints[\\"all\\"][0]));\\n        \} else \{\\n          EmitTo(\$az, \\"No loyalty set!\\");\\n        \}\\n      \}\\n      \$eventpoints[\\"all\\"] = nil;\\n      for(\$i=0;\$i\<sizeof(map_indices(\$eventpoints));\$i++) \{\\n        \$index = map_indices(\$eventpoints)[\$i];\\n        if(\$eventpoints[\$index][0]) \{\\n          if(!\$emitted) \{\\n            EmitTo(\$az, \\"------------------------------------\\");\\n            EmitTo(\$az, char.\\"skotos:charname\\"+\\":\\");\\n            \$emitted = TRUE;\\n          \}\\n          EmitTo(\$az, capitalize(\$index)+\\": \\"+\$eventpoints[\$index][0]+\\" because: \\"+implode(\$eventpoints[\$index][1..], \\", \\"));\\n          EmitTo(\$az, \\"Giving \\"+\$index+\\": \\"+\$eventpoints[\$index][0]);\\n          if(Int(\$eventpoints[\$index][0]) \> 6) \$eventpoints[\$index][0] = 6;\\n          Set(char, \\"rank:influence:\\"+\$index, Int(Get(char, \\"rank:influence:\\"+\$index))+Int(\$eventpoints[\$index][0]));\\n        \}\\n      \}\\n      \\n      char.\\"event:points\\" = ([ ]);\\n      \\n    \}\\n\} // Don't check event points just for the moment\\n    \\n    // Make sure all influence is above 0\\n    // \$influence = prefixed_map( char.\\"*\\", \\"influence:\\");\\n    // for(\$j=0;\$j\<sizeof(map_indices(\$influence));\$j++) \{\\n    //   if(\$influence[map_indices(\$influence)[\$j]] \< 0) \{\\n    //     Set(char, map_indices(\$influence)[\$j], 0);\\n    //   \}\\n    // \}\\n    \$influence = prefixed_map( char.\\"*\\", \\"rank:influence:\\");\\n    for(\$j=0;\$j\<sizeof(map_indices(\$influence));\$j++) \{\\n      if(\$influence[map_indices(\$influence)[\$j]] \< 0) \{\\n        Set(char, map_indices(\$influence)[\$j], 0);\\n      \}\\n    \}\\n\\n    // Check for potential promotions\\n    \$statuses = map_indices(\$this.\\"data:paths\\");\\n    \\n    \$available = (\{ \});\\n    for(\$j=0; \$j \< sizeof(\$statuses); \$j++) \{\\n      \$result = ::check_status(\$char:char, \$path:\$statuses[\$j], \$give_promotion:TRUE);\\n      if(\$result[\\"valid\\"])\\n        \$available += (\{ \$result \});\\n    \}\\n    if(sizeof(\$available)) \{\\n      // EmitTo(\$az, dump_value(char));\\n      // EmitTo(\$az, dump_value(\$available));\\n      char.\\"promotions:available\\" = 1;\\n    \}\\n    \\n  \}\\n\}\\n\\nEmitTo(\$az, \\"Done!\\");\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:reset_titles">
+         "E[G]\\n// Recalculate the valid titles\\nint i;\\nstring *paths, *titles;\\nmixed info;\\n\\ntitles = (\{ \});\\n// Check all of their paths, in case they give titles\\npaths = map_indices(prefixed_map(\$char.\\"*\\", \\"rank:status:\\"));\\nfor(i=0;i\<sizeof(paths);i++) \{\\n  info = ::check_status(\$char:\$char, \$path:paths[i]);\\n  if(info[\\"titles\\"]) titles \|= info[\\"titles\\"];\\n\}\\n\\n\$char.\\"trait:titles:rank\\" = titles;\\nreturn titles;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:show_rank">
+         "E[G]\\nint i, j;\\nif(!\$char) \$char = \$actor;\\nif(\$line) \{\\n  \$params = explode(\$line, \\" \\");\\n  if(sizeof(\$params) \&\& lower_case(\$params[0]) == \\"list\\") \{\\n    \$list_promotions = TRUE;\\n    \$params -= (\{ \$params[0] \});\\n  \}\\n  if(sizeof(\$params) \&\& \$actor.\\"udat:host\\") \{\\n    \$newchar = common::lookup(\$name: lower_case(\$params[0]));\\n    if(\$newchar) \{\\n      \$char = \$newchar;\\n      \$params -= (\{ \$params[0] \});\\n    \}\\n  \}\\n\}\\n\\n\$rank = \$char.\\"rank:rank\\";\\nif(!\$rank) \$rank = 3;\\n\\nif(!\$list_promotions) \{\\n  // Display current status\\n  if(\$char.\\"loyalty:name\\") EmitTo(\$actor, Describe(\$char)+\\" is loyal to \\"+\$char.\\"loyalty:name\\"+\\".\\");\\n  if(\$char.\\"patron\\") EmitTo(\$actor, Describe(\$char)+\\"'s patron is \\"+capitalize(\$char.\\"patron\\".\\"skotos:charname\\")+\\".\\");\\n  \\n  \$ranks = prefixed_map(\$char.\\"*\\", \\"rank:status:\\");\\n  \$ranks_indices = map_indices(\$ranks);\\n\\n  if(sizeof(\$ranks_indices)) \{\\n    for(i=0;i\<sizeof(\$ranks_indices);i++) \{\\n      EmitTo(\$actor, Describe(\$char)+\\" is a \\"+Get(\$char, \\"rankname:\\"+\$ranks_indices[i][5..])+\\" (rank \\"+Get(\$char, \$ranks_indices[i])+\\")\\");\\n    \}\\n  \} else \{\\n    EmitTo(\$actor, Describe(\$char)+\\" is ranked as a freedman.\\");\\n  \}\\n\}\\n\\n// Disable the part that advertised promotions for now, unless they're listing them\\n// if(!\$list_promotions) return TRUE;\\n\\n// Are we entitled to any promotions?\\n\$available = (\{ \});\\n\$upcoming = (\{ \});\\n\\n\$statuses = map_indices(\$this.\\"data:paths\\");\\nfor(i=0; i \< sizeof(\$statuses); i++) \{\\n  // \$result = ::check_potential_promotion(\$char:\$char, \$path:\$statuses[i]);\\n  \$result = ::check_status(\$char:\$char, \$path:\$statuses[i], \$give_promotion:TRUE);\\n  if(\$result[\\"valid\\"])\\n      \$available += (\{ \$result \});\\n  else if(!\$result[\\"invalid\\"])\\n      \$upcoming += (\{ \$result \});\\n\}\\n\\nif(sizeof(\$available)) \{\\n  \$msg = \\"Available promotions:\\";\\n  if(Int(\$char.\\"promotion:lastgiven\\") + 60*60*24*30 \> time())\\n    \$msg += \\" (Not available for another \\"+(Int(\$char.\\"promotion:lastgiven\\")+60*60*24*31-time())/(60*60*24)+\\" days)\\";\\n  EmitTo(\$actor, \$msg);\\n\\n  for(i=0; i\<sizeof(\$available); i++) \{\\n    \$requirements = Arr(\$available[i][\\"requirements\\"]);\\n    for(j=0; j\<sizeof(\$requirements); j++)\\n      EmitTo(\$actor, \$available[i][\\"rankname\\"]+\\" (rank \\"+\$available[i][\\"level\\"]+\\") - \\"+\$requirements[j]);\\n  \}\\n\}\\n\\nif(\$list_promotions) \{\\n  // Show all upcoming promotions\\n  EmitTo(\$actor, \\"Possible future promotions:\\");\\n  for(i=0; i\<sizeof(\$upcoming); i++) \{\\n    \$requirements = Arr(\$upcoming[i][\\"requirements\\"]);\\n    for(\$j=0; \$j\<sizeof(\$requirements); \$j++) \{\\n      EmitTo(\$actor, \\"-\\"+\$upcoming[i][\\"rankname\\"]+\\" (rank \\"+\$upcoming[i][\\"level\\"]+\\") - \\"+\$requirements[\$j]);\\n    \}\\n  \}\\n\} else \{\\n  // Just show one random upcoming promotion\\n  if(sizeof(\$upcoming)) \{\\n    // Pick a promotion to display\\n    \$upcoming = \$upcoming[random(sizeof(\$upcoming))];\\n    \$requirements = Arr(\$upcoming[\\"requirements\\"]);\\n    if(sizeof(\$requirements)) EmitTo(\$actor, \\"Possible future promotion:\\"); // Don't emit for 'promotions' with no requirements, such as slavery\\n    for(j=0; j\<sizeof(\$requirements); j++) \{\\n      EmitTo(\$actor, \\"-\\"+\$upcoming[\\"rankname\\"]+\\" (rank \\"+\$upcoming[\\"level\\"]+\\") - \\"+\$requirements[j]);\\n    \}\\n    if(!sizeof(\$available))\\n      EmitTo(\$actor, \\"Type '@rank list' for a full listing of future promotions.\\");\\n  \}  \\n\}\\n\\n// Ask if they want to accept their promotion\\nif(sizeof(\$available) \&\& \$char == \$actor \&\& Int(\$char.\\"promotion:lastgiven\\")+60*60*24*30 \< time()) \{\\n  // Only offer 4 promotions at a time. If they are entitled to more, pick 4 randomly\\n  while(sizeof(\$available) \> 4) \{\\n    \$available -= (\{ \$available[random(sizeof(\$available))] \});\\n  \}\\n  \$par = ([ \\"char\\":\$char ]);\\n  if(sizeof(\$available) \> 0) \{\\n    \$b = \\"Promote \\"+Describe(\$char)+\\" to \\"+\$available[0][\\"rankname\\"];\\n    \$par[\\"b\\"] = \$available[0];\\n  \}\\n  if(sizeof(\$available) \> 1) \{\\n    \$c = \\"Promote \\"+Describe(\$char)+\\" to \\"+\$available[1][\\"rankname\\"];\\n    \$par[\\"c\\"] = \$available[1];\\n  \}\\n  if(sizeof(\$available) \> 2) \{\\n    \$d = \\"Promote \\"+Describe(\$char)+\\" to \\"+\$available[2][\\"rankname\\"];\\n    \$par[\\"d\\"] = \$available[2];\\n  \}\\n  if(sizeof(\$available) \> 3) \{\\n    \$e = \\"Promote \\"+Describe(\$char)+\\" to \\"+\$available[3][\\"rankname\\"];\\n    \$par[\\"e\\"] = \$available[3];\\n  \}\\n\\n  EmitTo(\$actor, \\"Note: Accepting a promotion clears all influence gathered for ALL groups.\\");\\n  interaction::question(\$question: \\"Do you want to accept a promotion?\\", \$expires: 30, \$env: FALSE,\\n  \$a:(\{\\"No promotion for \\"+Describe(\$char)+\\" just yet!\\", \\"OK!\\"\}),\\n  \$expire:\\"You can check @rank again whenever you want to accept your promotions.\\", \$b_ob:this, \$c_ob:this, \$d_ob:this, \$e_ob:this, \$b_fun:\\"give_promotion\\", \$c_fun:\\"give_promotion\\", \$d_fun:\\"give_promotion\\", \$e_fun:\\"give_promotion\\");\\n\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="merry:lib:check_promotion_military">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_promotion_military instead! */
+return ([ ]);
+/* Check if they can get this promotion */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* What is the name of this new rank? */
+\$tmp = ::get_rank_names_military(\$char: \$char, \$groupname: \$groupname, \$level: \$level+1);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+/* Add the house name to the rankname */
+if(\$groupname != "" \&\& \$level != 2)
+  \$rankname = capitalize(\$groupname)+" "+capitalize(\$rankname);
+else if(\$level == 2)
+  \$rankname = "Freedman";
+
+/* Is this actually a demotion? */
+if(\$give_demotion) \{
+  if(\$level \<= 2) \$level = -2;
+  return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level+1 ]);
+\}
+
+/* Do they have a patron from this group? */
+\$has_patron = ::has_patron(\$char: \$char, \$groupname: \$groupname);
+\$influence = Int(Get(\$char, "rank:influence:"+\$groupname));
+\$promotion_valid = FALSE;
+\$promotion_invalid = FALSE;
+
+if(!\$curr_level \|\| \$curr_level == 3) \{
+  /* Noble House privates need: */
+  /* 2 influence and a patron */
+
+  if(\$influence \>= 2 \&\& \$has_patron) \{
+    /* Valid, they have enough influence and a patron */
+    \$requirements = TAG("Gather 2 points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= 2) \{
+    /* They have the influence, but not the patron */
+    \$requirements = TAG("Gather 2 points of "+capitalize(\$groupname)+" influence,", "imp")+" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".";
+  \} else if(\$has_patron) \{
+    /* They have the patron, but not the influence */
+    \$requirements = "Gather 2 points of "+capitalize(\$groupname)+" influence ";
+    if(\$influence)
+      \$requirements += TAG("("+\$influence+"/2)", "imp");
+    else
+      \$requirements += "(0/2)";
+    \$requirements += ", "+TAG("and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+  \} else \{
+    /* They have nothing */
+    \$requirements = "Gather 2 points of "+capitalize(\$groupname)+" influence ";
+    if(\$influence)
+      \$requirements += TAG("("+\$influence+"/2)", "imp");
+    else
+      \$requirements += "(0/2)";
+    \$requirements += ", and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".";
+  \}
+  
+  
+
+  
+\} else \{
+  /* For now, make all other options invalid */
+  \$promotion_invalid = TRUE;
+
+
+  /* For now, they can get the Noble House social promotion if they have enough influence for the rank, and a sponsor loyal to that group */
+  \$requirements = "Spend "+Str(\$level+1)+" points of "+capitalize(\$groupname)+" influence, and have a patron equal or higher ranked than you and loyal to the "+capitalize(\$groupname)+".";
+
+  /* Do they have the influence? */
+  if(Int(Get(\$char, "influence:"+\$groupname)) \< \$level+1)
+    return ([ "valid":FALSE, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level+1 ]);
+  /* Do they have the patron? */
+    /* NOT WRITTEN YET */
+    
+  \$requirements = TAG(\$requirements, "imp");
+\}
+    
+
+return ([ "invalid":\$promotion_invalid, "valid":\$promotion_valid, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level+1 ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_promotion_noble">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_promotion_noble instead! */
+return ([ ]);
+/* Check if they can get this promotion */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* What is the name of this new rank? */
+\$tmp = ::get_rank_names_noble(\$char: \$char, \$groupname: \$groupname, \$level: \$level+1);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+/* Add the house name to the rankname */
+if(\$groupname != "" \&\& \$level != 2) \{
+  if(\$groupname == "leplow")
+    \$rankname = "LePlow "+capitalize(\$rankname);
+  else
+    \$rankname = capitalize(\$groupname)+" "+capitalize(\$rankname);
+\} else if(\$level == 2)
+  \$rankname = "Freedman";
+
+/* Is this actually a demotion? */
+if(\$give_demotion) \{
+  if(\$level \<= 2) \$level = -2;
+  return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level+1 ]);
+\}
+
+/* Do they have a patron from this group? */
+/* \$has_patron = ::has_patron(\$char, \$groupname); */
+\$has_patron = ::has_patron(\$char: \$char, \$groupname: \$groupname);
+\$influence = Int(Get(\$char, "rank:influence:"+\$groupname));
+\$promotion_valid = FALSE;
+\$promotion_invalid = FALSE;
+
+if(!\$curr_level \|\| \$curr_level == 3) \{
+  /* Noble House yeomen need: */
+  /* 2 influence and a patron */
+  /* or 6 influence */
+  if(\$influence \>= 6) \{
+    /* Valid, they have enough influence */
+    \$requirements = TAG("Gather 6 points of "+capitalize(\$groupname)+" influence.", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= 2 \&\& \$has_patron) \{
+    /* Valid, they have enough influence and a patron */
+    \$requirements = TAG("Gather 2 points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= 2) \{
+    /* They have the influence, but not the patron */
+    \$requirements = (\{TAG("Gather 2 points of "+capitalize(\$groupname)+" influence,", "imp")+" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather 6 points of "+capitalize(\$groupname)+" influence."\});
+  \} else if(\$has_patron) \{
+    /* They have the patron, but not the influence */
+    \$requirements = (\{"Gather 2 points of "+capitalize(\$groupname)+" influence, "+TAG("and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"), "Gather 6 points of "+capitalize(\$groupname)+" influence."\});
+  \} else \{
+    /* They have nothing */
+    \$requirements = (\{"Gather 2 points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather 6 points of "+capitalize(\$groupname)+" influence."\});
+  \}
+  
+  
+
+  
+\} else \{
+  /* For now, make all other options invalid */
+  \$promotion_invalid = TRUE;
+
+  /* For now, they can get the Noble House social promotion if they have enough influence for the rank, and a sponsor loyal to that group */
+  \$requirements = "Gather "+Str(\$level+1)+" points of "+capitalize(\$groupname)+" influence, and have a patron equal or higher ranked than you and loyal to the "+capitalize(\$groupname)+".";
+
+  /* Do they have the influence? */
+  if(Int(Get(\$char, "influence:"+\$groupname)) \< \$level+1)
+    return ([ "valid":FALSE, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level+1 ]);
+    
+  /* Do they have the patron? */
+    /* NOT WRITTEN YET */
+    
+  \$requirements = TAG(\$requirements, "imp");
+\}
+
+
+
+return ([ "invalid":\$promotion_invalid, "valid":\$promotion_valid, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level+1 ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status instead! */
+int level, curr_level;
+
+if(!\$path) return (["error":"No \$path value"]);
+if(!\$char) \$char = \$actor;
+
+if(strlen(\$path) \> 12 \&\& \$path[..11] == "rank:status:") \{
+  \$groupname = \$path[12..];
+  \$path = \$path[5..];
+\} else if(strlen(\$path) \> 7 \&\& \$path[..6] == "status:") \{
+  \$groupname = \$path[7..]; /* Probably */
+\} else \{
+  \$groupname = \$path; /* Probably */
+  \$path = "status:"+\$path;
+\}
+
+level = Int(Get(\$char, "rank:"+\$path));
+curr_level = level;
+
+\$houses = (\{ "status:avoirdupois", "status:bisclavret", "status:doloreaux", "status:rinaldi", "status:ketos" \});
+\$militaries = (\{ "status:avoirdupois_mil", "status:bisclavret_mil", "status:doloreaux_mil", "status:rinaldi_mil", "status:ketos_mil" \});
+
+if(!level \|\| level \< 1) \{
+  if(member(\$path, \$houses)
+  \|\| member(\$path, \$militaries)) \{
+    level = 3;
+  \} else \{
+    level = 0;
+  \}
+\}
+
+/* Are we actually checking for a demotion or promotion? */
+if(\$give_demotion) level = level-1;
+if(\$give_promotion) level = level+1;
+
+if(member(\$path, \$houses)) \{
+  /* Check if they can get a promotion with this house */
+  return Call(this, "check_status_noble", \$char: \$char, \$path: \$path, \$groupname: \$groupname, \$level: level, \$curr_level: curr_level, \$give_promotion: \$give_promotion, \$give_demotion: \$give_demotion);
+\} else if(member(\$path, \$militaries)) \{
+  /* Check if they can get a promotion with this house military */
+  return Call(this, "check_status_military", \$char: \$char, \$path: \$path, \$groupname: \$groupname[..strlen(\$groupname)-5], \$level: level, \$curr_level: curr_level, \$give_promotion: \$give_promotion, \$give_demotion: \$give_demotion);
+\} else \{
+  /* Check if they can get a promotion with this group */
+  if(FindMerry(this, "lib", "check_status_"+\$groupname)) \{
+    /* A script exists for this group */
+    return Call(this, "check_status_"+\$groupname, \$char: \$char, \$path: \$path, \$groupname: \$groupname, \$level: level, \$curr_level: curr_level, \$give_promotion: \$give_promotion, \$give_demotion: \$give_demotion);
+  \} else \{
+    return ([ "invalid":TRUE, "valid":FALSE, "requirements":"This group has not been enabled for promotions yet - please @assist!" ]);
+  \}
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:get_income">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_income instead! */
+/* What additional income should a PC at this rank get? */
+if(!\$rank) return 0;
+switch(\$rank) \{
+  case 1:
+  case 2:
+  case 3:
+    return 0;
+  case 4:
+    return 400;
+  case 5:
+  case 6:
+    return 800;
+  case 7:
+    return 1200;
+  case 8:
+    return 1500;
+  case 9:
+    return 1800;
+  case 10:
+    return 2500;
+  case 11:
+    return 3500;
+  case 12:
+    return 4500;
+  case 13:
+    return 6000;
+  case 14:
+    return 7000;
+  case 15:
+    return 8000;
+  case 16:
+    return 9000;
+  case 17:
+    return 10000;
+  default:
+    break;
+\}
+
+return 0;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_demotion">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:give_demotion instead! */
+/* Gives a demotion */
+if(\$par["info"])
+  \$info = \$par["info"];
+else
+  \$info = \$par[\$key];
+
+\$char = \$par["char"];
+
+/* Sanity check the demotion level */
+\$curr_level = Int(Get(\$char, "rank:"+\$info["path"]));
+if(Int(\$info["curr_level"]) == \$curr_level) \{
+  /* It's fine... */
+\} else if(\$info["level"] != -1 \&\& \$info["level"] != \$curr_level-1) \{
+  EmitTo(\$actor, "Sorry, something went wrong when granting this demotion. Please @bug this!");
+  return FALSE;
+\}
+
+/* Is this their highest rank? Are we dropping a rank? */
+if(\$char."rank:rank" \<= \$curr_level) \{
+  /* What other paths do we have? */
+  \$found = FALSE;
+  \$paths = prefixed_map(\$char."*", "rank:status:");
+  \$paths["rank:"+\$info["path"]] = nil;
+  for(\$i=0;\$i\<sizeof(map_indices(\$paths));\$i++) \{
+    if(\$paths[map_indices(\$paths)[\$i]] \>= \$char."rank:rank") \{
+      \$found = TRUE;
+      /* Do we need to change our rank name? */
+      if(\$char."rank:name" == Get(\$char, "rankname:"+\$info["path"])) \{
+        /* Get new rank name */
+        \$level = Get(\$char, map_indices(\$paths)[\$i]);
+        \$rankname = Get(\$char, "rankname"+map_indices(\$paths)[\$i][4..]+":"+\$level);
+        \$char."rank:name" = \$rankname;
+      \}
+      break;
+    \}
+  \}
+  if(!\$found) \{
+    /* We just demoted our highest rank! Drop a rank! */
+    \$char."rank:rank"--;
+    \$char."rank:name" = \$info["rankname"];
+  \}
+\}
+/* Reset their income */
+\$char."trait:extraincome" = ::get_income(\$rank: Int(\$char."rank:rank"));
+
+/* Update the rest of the values */
+if(\$info["level"] \> 0) \{
+  Set(\$char, "rank:"+\$info["path"], \$info["level"]);
+  Set(\$char, "rankname:"+\$info["path"], \$info["rankname"]);
+\} else \{
+  Set(\$char, "rank:"+\$info["path"], nil);
+  Set(\$char, "rankname:"+\$info["path"], nil);
+\}
+Set(\$char, "rankname:"+\$info["path"]+":"+\$curr_level, nil);
+Set(\$char, "patron:"+\$info["path"]+":"+\$curr_level, nil);
+
+/* Sort out their titles */
+::reset_titles(\$char: \$char);
+
+/* Inform the player */
+EmitTo(\$actor, Describe(\$char)+" is now a "+\$info["rankname"]+"!");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_promotion">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:give_promotion instead! */
+int i;
+/* Gives a promotion */
+if(\$par["info"])
+  \$info = \$par["info"];
+else
+  \$info = \$par[\$key];
+
+\$char = \$par["char"];
+
+/* Sanity check the promotion level */
+\$curr_level = Int(Get(\$char, "rank:"+\$info["path"]));
+if(Int(\$info["curr_level"]) == \$curr_level) \{
+  /* It's fine... */
+\} else if(\$info["level"] != 4 \&\& \$info["level"] != 1 \&\& \$info["level"] != \$curr_level+1) \{
+  EmitTo(\$actor, "Sorry, something went wrong when granting this promotion. Please @bug this!");
+  return FALSE;
+\}
+
+if(\$par["stp_sponsor"]) \{
+  \$patron = \$par["stp_sponsor"];
+\} else \{
+  \$patron = \$char.patron;
+\}
+
+/* Grant the promotion */
+if(!\$par["staff_command"]) \$char."promotion:lastgiven" = time(); /* Make them wait a month for their next promotion, unless this was a staff promotion */
+Set(\$char, "rank:"+\$info["path"], \$info["level"]);
+Set(\$char, "rankname:"+\$info["path"], \$info["rankname"]);
+Set(\$char, "rankname:"+\$info["path"]+":"+\$info["level"], \$info["rankname"]);
+Set(\$char, "patron:"+\$info["path"]+":"+\$info["level"], \$patron);
+
+/* Is this their highest rank? */
+if(\$info["level"] \> Int(\$char."rank:rank")) \{
+  \$char."rank:rank" = \$info["level"];
+  \$char."rank:name" = \$info["rankname"];
+\}
+/* Reset their income */
+\$char."trait:extraincome" = ::get_income(\$rank: Int(\$char."rank:rank"));
+
+/* Sort out their titles */
+::reset_titles(\$char: \$char);
+
+/* Special code for slaves (since their rank can go below 3) */
+if(\$info["groupname"] == "slaves") \{
+  /* Making someone a slave! */
+  /* Are they being enslaved or freed? */
+  if(\$info["level"] \>= 3) \{
+    /* Being freed - congratulations! */
+    /* Clear all slave properties */
+    \$char."rank:status:slaves" = nil;
+    \$char."rankname:status:slaves" = nil;
+    \$char."rankname:status:slaves:1" = nil;
+    \$char."rankname:status:slaves:2" = nil;
+    \$char."rankname:status:slaves:3" = nil;
+    \$char."patron:status:slaves:1" = nil;
+    \$char."patron:status:slaves:2" = nil;
+    \$char."patron:status:slaves:3" = nil;
+  \} else \{
+    /* Being enslaved :( */
+    \$char."rank:rank" = \$info["level"];
+    \$char."rank:name" = \$info["rankname"];
+  \}
+\}
+
+
+/* Only file assists, reward patrons \& proteges, and subtract points if this wasn't a +promote command by staff */
+if(!\$par["staff_command"]) \{
+  /* File an assist */
+  \$assisttext = Describe(\$char)+" has been promoted to "+\$info["rankname"]+"\\n\\n"+capitalize(\$char."skotos:charname");
+  if(\$char."loyalty:name") \$assisttext += " of "+Str(\$char."loyalty:name");
+  if(\$par["stp_sponsor"]) \{
+    \$assisttext += ", patroned by "+capitalize(\$par["stp_sponsor"]."skotos:charname")+",";
+  \} else \{
+    if(\$char.patron) \$assisttext += ", protege of "+capitalize(\$char.patron."skotos:charname")+",";
+  \}
+  \$assisttext += " is elevated to the rank of "+\$info["rankname"]+".";
+  assist::dofileassist(\$data: \$\{Data:DB:assist:AssistGeneralDB\}, \$char: Str(\$char), \$queue: "new", \$assisttext: \$assisttext, \$log: "[TAS]", \$silence: TRUE);
+
+  /* Subtract the appropriate points */
+  \$clear_properties = map_indices(prefixed_map(\$char."*", "rank:influence:"));
+  for(i = 0; i\<sizeof(\$clear_properties); i++) \{
+    Set(\$char, \$clear_properties[i], nil);
+  \}
+  
+  /* Reward the patron */
+  if(!\$par["stp_sponsor"] \&\& \$char.patron) \{
+    Set(\$char.patron, "rank:influence:"+\$info["groupname"], Int(Get(\$char.patron, "rank:influence:"+\$info["groupname"]))+0);
+    \$patron = \$char.patron;
+    if(\$patron \&\& \$info["groupname"] != "underworld" \&\& \$patron."loyalty:group" != "underworld") \{
+      if(\$patron."page:pending") \{
+        if(\$patron."page:pending"[nil /* defunct */]) \{
+            \$temp = \$patron."page:pending"[nil /* defunct */];
+            \$temp = \$temp[0..(strlen(\$temp)-3)];
+            \$patron."page:pending"[nil /* defunct */] = \$temp + "\\n\\n[" + short_time(time()) + "] A slim young fox runs up, eagerly begging for a moment of your time, \\"Do you have a comment to make on the recent promotion of your protege " + Describe(\$char) + "? Perhaps what they did to deserve such an honour?\\" (OOC - Please reply via assist c/o PROMOTIONS, with your characters full first AND last name. Thanks!)\\"";
+        \} else \{
+            \$patron."page:pending" += ([ nil /* defunct */:"\\"[" + short_time(time()) + "] A slim young fox runs up, eagerly begging for a moment of your time, \\"Do you have a comment to make on the recent promotion of your protege " + Describe(\$char) + "? Perhaps what they did to deserve such an honour?\\" (OOC - Please reply via assist c/o PROMOTIONS, with your characters full first AND last name. Thanks!)\\"" ]);
+        \}
+      \} else \{
+        \$patron."page:pending" = ([ nil /* defunct */:"\\"[" + short_time(time()) + "] A slim young fox runs up, eagerly begging for a moment of your time, \\"Do you have a comment to make on the recent promotion of your protege " + Describe(\$char) + "? Perhaps what they did to deserve such an honour?\\" (OOC - Please reply via assist c/o PROMOTIONS, with your characters full first AND last name. Thanks!)\\"" ]);
+      \}
+    \}
+  \}
+  
+  /* Reward the proteges */
+  if(\$char.proteges \&\& sizeof(\$char.proteges)) \{
+    \$char.proteges -= (\{ nil \});
+    for(i=0; i\<sizeof(\$char.proteges); i++) \{
+      Set(\$char.proteges[i], "rank:influence:"+\$info["groupname"], Int(Get(\$char.proteges[i], "rank:influence:"+\$info["groupname"]))+1);
+    \}
+  \}
+\}
+
+/* Inform the player */
+EmitTo(\$actor, Describe(\$char)+" is now a "+\$info["rankname"]+"!");
+\$delay(1, FALSE, "4e17");
+if(\$info["groupname"] != "underworld") \{
+    EmitTo(\$actor, TAG("A slim young fox runs up, eagerly requesting a moment of your time, \\"Congratulations on your recent promotion! Can you tell me to whom or what you owe this success? Perhaps a word as to the aid you received from your patron??\\" (OOC - Please reply via assist c/o PROMOTIONS with your character's full first AND last name. Thanks!!)", "imp"));
+\}
+
+if(\$par["stp_sponsor"] \&\& \$par["stp_cost"] \&\& \$par["stp_sponsor_account"]) \{
+  \$char."promotion:stp:lastgiven" = time();
+  Call(\$\{SkotOS:API\}, "apply_storypoints", \$name: \$par["stp_sponsor_account"], \$amount: (int) \$par["stp_cost"], \$reason: "Bought promotion for "+capitalize(\$char."skotos:charname")+" to "+\$info["rankname"]+" ("+\$info["level"]+")", \$theatre: "IC", \$call_obj: this, \$call_func: "paid_promotion");
+  EmitTo(\$actor, \$par["stp_cost"]+" storypoints have been charged to account "+\$par["stp_sponsor_account"]);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:has_patron">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:has_patron instead! */
+int rank;
+/* Check if they can get this promotion */
+if(!\$char) return nil;
+if(!\$groupname) return nil;
+
+/* Who is their patron? */
+if(!\$char.patron) return nil;
+if(\$char.patron."loyalty:group" != \$groupname) return nil;
+
+/* Get their rank with this group */
+rank = Int(Get(\$char.patron, "rank:status:"+\$groupname));
+if(Int(Get(\$char.patron, "rank:status:"+\$groupname+"_mil")) \> rank)
+  rank = Int(Get(\$char.patron, "rank:status:"+\$groupname+"_mil"));
+
+return (\{ \$char.patron, rank \});
+      </Core:Property>
+      <Core:Property property="merry:lib:ip_check">
+         X[M] /* This script will take two character names and compare ip addresses. Will return TRUE if there is a match. */
+/* \$char1 and \$char2 should be passed to this script as chatter objects */
+
+int i;
+
+/* Sanity check to make sure these are actual chatter bodies */
+if(!\$char1 \|\| !\$char1."skotos:creator") return FALSE;
+if(!\$char2 \|\| !\$char2."skotos:creator") return FALSE;
+
+/* Grab the ip data for char1 */
+\$data1 = udat::udat_ipdata(\$category: "text", \$name: \$char1."skotos:creator");
+
+/* More sanity checks to ensure the script doesn't crash */
+if(!\$data1) return FALSE;
+if(!sizeof(\$data1)) return FALSE;
+if(!sizeof(\$data1[0])) return FALSE;
+
+/* Convert the ip data into a condensed list and only take into account ip addresses used within the last 3 months */
+\$list1 = (\{ \});
+for(i = 0; i \< sizeof(\$data1); i++) \{
+    if((\$data1[i][2] - time()) \<= 7257600) \{
+        \$list1 \|= (\{ \$data1[i][0] \});
+    \}
+\}
+
+/* Grab the ip data for char2 */
+\$data2 = udat::udat_ipdata(\$category: "text", \$name: \$char2."skotos:creator");
+
+/* More sanity checks to ensure the script doesn't crash */
+if(!\$data2) return FALSE;
+if(!sizeof(\$data2)) return FALSE;
+if(!sizeof(\$data2[0])) return FALSE;
+
+/* Convert the ip data into a condensed list and only take into account ip addresses used within the last 3 months */
+\$list2 = (\{ \});
+for(i = 0; i \< sizeof(\$data2); i++) \{
+    if((\$data2[i][2] - time()) \<= 7257600) \{
+        \$list2 \|= (\{ \$data2[i][0] \});
+    \}
+\}
+
+
+\$list1 -= (\{ "23.239.4.223", "45.33.40.193" \});
+\$list2 -= (\{ "23.239.4.223", "45.33.40.193" \});
+
+/* Compare all the ip addresses in list1 with list2. Return TRUE if a match is found. */
+for(i = 0; i \< sizeof(\$list1); i++) \{
+    if(member(\$list1[i], \$list2)) return TRUE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:process_favour">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:process_favour instead! */
+/* Check Favour information from all the PCs, and give influence points as appropriate */
+object char, target;
+string *indices, loyalty, char_string;
+int rank, passed, change, free_favors, tmp;
+mapping favor;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+EmitTo(\$az, "Doing weekly favour update");
+
+\$loyalty_names = \$\{Allegory:Lib:Characters:Rank\}."data:loyalty";
+/* Process favour from @favour */
+\$folder = "Chatters:IC";
+\$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+
+for(\$charloop_i=0;\$charloop_i\<sizeof(\$folders);\$charloop_i++) \{
+  \$delay(0.00001, TRUE, "cf6f");
+  \$folder = "Chatters:IC:"+\$folders[\$charloop_i];
+  \$characters = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+
+  for(\$charloop_j=0;\$charloop_j\<sizeof(\$characters);\$charloop_j++) \{
+    char = Obj("Chatters:IC:"+\$folders[\$charloop_i]+":"+\$characters[\$charloop_j]);
+    if(char."favor:giving" \&\& sizeof(map_indices(char."favor:giving"))) \{
+      if(!char."loyalty:name" \|\| !\$loyalty_names[char."loyalty:name"]) continue; /* Unknown loyalty */
+      
+      loyalty = \$loyalty_names[char."loyalty:name"];
+      rank = Int(char."rank:rank");
+      free_favors = rank - 3;
+      indices = map_indices(char."favor:giving");
+      favor = char."favor:giving";
+      
+      while(sizeof(indices)) \{
+        char_string = indices[random(sizeof(indices))];
+        indices -= (\{ char_string \});
+        if(!Obj(char_string)) continue;
+        target = Obj(char_string);
+        change = 0;
+      
+        if(free_favors \> 0) \{
+          /* Don't roll, they're high enough rank to just distribute favor */
+          free_favors--;
+
+          if(favor[char_string] \> 0) \{
+            change = 1;
+          \} else if(favor[char_string] \< 0) \{
+            change = -1;
+          \} else \{
+            change = 0;
+            free_favors++; /* Don't charge a free favor for this */
+          \}
+        \} else \{
+          /* Gotta roll to see if this favor counts! */
+          passed = FALSE;
+
+          /* Is this PC higher, lower, or equal ranked to the PC giving favor? */
+          if(Int(target."rank:rank") \> rank) \{
+            /* Higher ranked. We have a 25% chance of our favor counting */
+            if(!random(4)) passed = TRUE;
+          \} else if(Int(target."rank:rank") == rank) \{
+            /* Equal ranked. We have a 33% chance of our favor counting */
+            if(!random(3)) passed = TRUE;
+          \} else \{
+            /* Lower ranked. We have a 50% chance of our favor counting */
+            if(!random(2)) passed = TRUE;
+          \}
+
+          if(passed) \{
+            if(favor[char_string] \> 0) \{
+              change = 1;
+            \} else if(favor[char_string] \< 0) \{
+              change = -1;
+            \} else \{
+              change = 0;
+            \}
+          \}
+        \}
+        
+        if(change) \{
+          Set(target, "rank:influence:"+loyalty, Int(Get(target, "rank:influence:"+loyalty))+change);
+          EmitTo(\$az, "giving "+dump_value(change)+" to "+dump_value(target));
+        \}
+      \}
+
+      /* And clear all the favours, so they can start collecting for next week! */
+      char."favor:older4" = char."favor:older3";
+      char."favor:older3" = char."favor:older2";
+      char."favor:older2" = char."favor:older";
+      char."favor:older" = char."favor:giving";
+      char."favor:giving" = ([ ]);
+    \}
+  \}
+\}
+
+\$allevents = (\{ \});
+
+/* Loop through characters again, adding event favour and checking if they can get a promotion */
+\$folder = "Chatters:IC";
+\$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+EmitTo(\$actor, dump_value(\$folders));
+for(\$charloop_i=0;\$charloop_i\<sizeof(\$folders);\$charloop_i++) \{
+  \$delay(0.00001, TRUE, "ddc2");
+  \$folder = "Chatters:IC:"+\$folders[\$charloop_i];
+  \$characters = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+  for(\$charloop_j=0;\$charloop_j\<sizeof(\$characters);\$charloop_j++) \{
+    char = Obj("Chatters:IC:"+\$folders[\$charloop_i]+":"+\$characters[\$charloop_j]);
+    
+    
+if(TRUE) \{ /* Don't check event stuff just for the moment...     */
+    /* Check @event favour */
+    \$groupings = (\{ "all", "avoirdupois", "bisclavret", "church", "constables", "council", "doloreaux", "rinaldi", "underworld" \});
+    if(char."event:points" \&\& sizeof(map_indices(char."event:points"))) \{
+      /* Store a record of the old event points */
+
+      if(char."event:points:5") char."event:points:6" = char."event:points:5";
+      if(char."event:points:4") char."event:points:5" = char."event:points:4";
+      if(char."event:points:3") char."event:points:4" = char."event:points:3";
+      if(char."event:points:2") char."event:points:3" = char."event:points:2";
+      if(char."event:points:1") char."event:points:2" = char."event:points:1";
+      if(char."event:points") char."event:points:1" = char."event:points";
+
+      /* EmitTo(\$az, dump_value(char)); */
+      /* EmitTo(\$az, dump_value(char."event:points")); */
+      
+      \$eventpoints = ([ ]);
+      for(tmp=0;tmp\<sizeof(\$groupings);tmp++) \$eventpoints[\$groupings[tmp]] = (\{ 0 \});
+      /* EmitTo(\$az, "\$eventpoints are: "+dump_value(\$eventpoints)); */
+    
+      
+      \$i_index = map_indices(char."event:points");
+      /* EmitTo(\$az, dump_value(\$i_index)); */
+      for(\$i=0;\$i\<sizeof(\$i_index);\$i++) \{
+        if(!member(\$i_index[\$i], \$groupings)) \{
+          EmitTo(\$az, "Unknown grouping: "+\$i_index[\$i]);
+          continue;
+        \}
+        
+        if(typeof(char."event:points"[\$i_index[\$i]]) == T_MAPPING) \{
+          \$j_index = map_indices(char."event:points"[\$i_index[\$i]]);
+          /* EmitTo(\$az, dump_value(\$i_index[\$i])); */
+          /* EmitTo(\$az, dump_value(\$j_index)); */
+
+          /* EmitTo(\$actor, "Recording "+\$i_index[\$i]+" points."); */
+          for(\$j=0;\$j\<sizeof(\$j_index);\$j++) \{
+            /* EmitTo(\$actor, "Recording points for "+\$j_index[\$j]+" event."); */
+
+            /* Do we have an idleness check value? */
+            if(sizeof(char."event:points"[\$i_index[\$i]][\$j_index[\$j]]) \>= 3) \{
+              \$idleness = Int(char."event:points"[\$i_index[\$i]][\$j_index[\$j]][2]);
+              if(\$idleness \> 8) \$idleness = 8;
+            \} else \{
+              \$idleness = 8; /* No idleness value. This should not be a problem any more as all old events are cleared out. */
+            \}
+            /*if(random(10) \< \$idleness) \{*/
+            if(TRUE) \{
+              \$eventpoints[\$i_index[\$i]][0] = \$eventpoints[\$i_index[\$i]][0] + char."event:points"[\$i_index[\$i]][\$j_index[\$j]][0];
+              \$eventpoints[\$i_index[\$i]] += (\{ "YES "+\$j_index[\$j] \});
+            \} else \{
+              \$eventpoints[\$i_index[\$i]] += (\{ "NO "+\$j_index[\$j] \});
+            \}
+            /* EmitTo(\$actor, "Giving2 "+\$i_index[\$i]+" for "+\$j_index[\$j]); */
+          \}
+        \}
+      \}
+
+
+      /* EmitTo(\$az, char."skotos:charname"+" "+dump_value(\$eventpoints)); */
+      char."event:points:processed" = \$eventpoints;
+      \$emitted = FALSE;
+      if(\$eventpoints["all"][0]) \{
+        if(!\$emitted) \{
+          EmitTo(\$az, "------------------------------------");
+          EmitTo(\$az, char."skotos:charname"+":");
+          \$emitted = TRUE;
+        \}
+        EmitTo(\$az, "Current loyalty: "+dump_value(char."loyalty:group")+" - "+\$eventpoints["all"][0]+" because: "+implode(\$eventpoints["all"][1..], ", "));
+        if(char."loyalty:group") \{
+          EmitTo(\$az, "Giving 'all' points to "+char."loyalty:group"+": "+\$eventpoints["all"][0]);
+          if(Int(\$eventpoints["all"][0]) \> 6) \$eventpoints["all"][0] = 6;
+          Set(char, "rank:influence:"+char."loyalty:group", Int(Get(char, "rank:influence:"+char."loyalty:group"))+Int(\$eventpoints["all"][0]));
+        \} else \{
+          EmitTo(\$az, "No loyalty set!");
+        \}
+      \}
+      \$eventpoints["all"] = nil;
+      for(\$i=0;\$i\<sizeof(map_indices(\$eventpoints));\$i++) \{
+        \$index = map_indices(\$eventpoints)[\$i];
+        if(\$eventpoints[\$index][0]) \{
+          if(!\$emitted) \{
+            EmitTo(\$az, "------------------------------------");
+            EmitTo(\$az, char."skotos:charname"+":");
+            \$emitted = TRUE;
+          \}
+          EmitTo(\$az, capitalize(\$index)+": "+\$eventpoints[\$index][0]+" because: "+implode(\$eventpoints[\$index][1..], ", "));
+          EmitTo(\$az, "Giving "+\$index+": "+\$eventpoints[\$index][0]);
+          if(Int(\$eventpoints[\$index][0]) \> 6) \$eventpoints[\$index][0] = 6;
+          /* Disable event points for now because abuse. Thanks Staci. */
+          /* Set(char, "rank:influence:"+\$index, Int(Get(char, "rank:influence:"+\$index))+Int(\$eventpoints[\$index][0])); */
+        \}
+      \}
+      
+      char."event:points" = ([ ]);
+      
+    \}
+\} /* Don't check event points just for the moment */
+    
+    /* Make sure all influence is above 0 */
+    /* \$influence = prefixed_map( char."*", "influence:"); */
+    /* for(\$j=0;\$j\<sizeof(map_indices(\$influence));\$j++) \{ */
+    /*   if(\$influence[map_indices(\$influence)[\$j]] \< 0) \{ */
+    /*     Set(char, map_indices(\$influence)[\$j], 0); */
+    /*   \} */
+    /* \} */
+    \$influence = prefixed_map( char."*", "rank:influence:");
+    for(\$j=0;\$j\<sizeof(map_indices(\$influence));\$j++) \{
+      if(\$influence[map_indices(\$influence)[\$j]] \< 0) \{
+        Set(char, map_indices(\$influence)[\$j], 0);
+      \}
+    \}
+
+    /* Check for potential promotions */
+    \$statuses = map_indices(\$this."data:paths");
+    
+    \$available = (\{ \});
+    for(\$j=0; \$j \< sizeof(\$statuses); \$j++) \{
+      \$result = ::check_status(\$char: char, \$path: \$statuses[\$j], \$give_promotion: TRUE);
+      if(\$result["valid"])
+        \$available += (\{ \$result \});
+    \}
+    if(sizeof(\$available)) \{
+      /* EmitTo(\$az, dump_value(char)); */
+      /* EmitTo(\$az, dump_value(\$available)); */
+      char."promotions:available" = 1;
+    \}
+    
+  \}
+\}
+
+EmitTo(\$az, "Done!");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:reset_titles">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:reset_titles instead! */
+/* Recalculate the valid titles */
+int i;
+string *paths, *titles;
+mixed info;
+
+titles = (\{ \});
+/* Check all of their paths, in case they give titles */
+paths = map_indices(prefixed_map(\$char."*", "rank:status:"));
+for(i=0;i\<sizeof(paths);i++) \{
+  info = ::check_status(\$char: \$char, \$path: paths[i]);
+  if(info["titles"]) titles \|= info["titles"];
+\}
+
+\$char."trait:titles:rank" = titles;
+return titles;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_rank">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:give_promotion instead! */
+/* This sets the specified rank in \$char */
+/* \$char = The character receiving the rank */
+/* \$path = \$char's loyalty */
+/* \$rank = The rank we are setting */
+/* \$rankname */
+
+int i;
+
+/* Grant the promotion */
+
+Set(\$char, "rank:"+\$path, \$rank);
+Set(\$char, "rankname:"+\$path, \$rankname);
+Set(\$char, "rankname:"+\$path+":"+Str(\$rank), \$rankname);
+
+\$char."rank:rank" = \$rank;
+\$char."rank:name" = \$rankname;
+
+/* Reset their income */
+\$char."trait:extraincome" = ::get_income(\$rank: Int(\$char."rank:rank"));
+
+/* Sort out their titles */
+::reset_titles(\$char: \$char);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_rank">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:show_rank instead! */
+int i, j;
+if(!\$char) \$char = \$actor;
+if(\$line) \{
+  \$params = explode(\$line, " ");
+  if(sizeof(\$params) \&\& lower_case(\$params[0]) == "list") \{
+    \$list_promotions = TRUE;
+    \$params -= (\{ \$params[0] \});
+  \}
+  if(sizeof(\$params) \&\& \$actor."udat:host") \{
+    \$newchar = common::lookup(\$name: lower_case(\$params[0]));
+    if(\$newchar) \{
+      \$char = \$newchar;
+      \$params -= (\{ \$params[0] \});
+    \}
+  \}
+\}
+
+\$rank = \$char."rank:rank";
+if(!\$rank) \$rank = 3;
+
+if(!\$list_promotions) \{
+  /* Display current status */
+  if(\$char."loyalty:name") EmitTo(\$actor, Describe(\$char)+" is loyal to "+\$char."loyalty:name"+".");
+
+  if(\$char.patron) \{
+    \$patron = \$char.patron;
+  
+    /* Make sure the patron is active */
+    if((time() - Int(\$patron."cdat:lastlogin")) \>= (60*60*24*7*4)) \{
+      \$char.patron = nil;
+      if(\$patron.proteges) \$patron.proteges -= (\{ \$char \});
+      if(\$patron."proteges:old") \{
+          \$patron."proteges:old" += (\{ \$char \});
+      \} else \{
+          \$patron."proteges:old" = (\{ \$char \});
+      \}
+    \} else \{
+      EmitTo(\$actor, Describe(\$char)+"'s patron is "+capitalize(\$char.patron."skotos:charname")+".");
+    \}
+  \}
+  
+  \$ranks = prefixed_map(\$char."*", "rank:status:");
+  \$ranks_indices = map_indices(\$ranks);
+
+  if(sizeof(\$ranks_indices)) \{
+    for(i=0;i\<sizeof(\$ranks_indices);i++) \{
+      EmitTo(\$actor, Describe(\$char)+" is a "+Get(\$char, "rankname:"+\$ranks_indices[i][5..])+" (rank "+Get(\$char, \$ranks_indices[i])+")");
+    \}
+  \} else \{
+    EmitTo(\$actor, Describe(\$char)+" is ranked as a freedman.");
+  \}
+\}
+
+/* Disable the part that advertised promotions for now, unless they're listing them */
+/* if(!\$list_promotions) return TRUE; */
+
+/* Are we entitled to any promotions? */
+\$available = (\{ \});
+\$upcoming = (\{ \});
+
+\$statuses = map_indices(\$this."data:paths");
+for(i=0; i \< sizeof(\$statuses); i++) \{
+  /* \$result = ::check_potential_promotion(\$char:\$char, \$path:\$statuses[i]); */
+  \$result = ::check_status(\$char: \$char, \$path: \$statuses[i], \$give_promotion: TRUE);
+  if(\$result["valid"])
+      \$available += (\{ \$result \});
+  else if(!\$result["invalid"])
+      \$upcoming += (\{ \$result \});
+\}
+
+if(sizeof(\$available)) \{
+  \$msg = "Available promotions:";
+  if(Int(\$char."promotion:lastgiven") + 60*60*24*30 \> time())
+    \$msg += " (Not available for another "+(Int(\$char."promotion:lastgiven")+60*60*24*31-time())/(60*60*24)+" days)";
+  EmitTo(\$actor, \$msg);
+
+  for(i=0; i\<sizeof(\$available); i++) \{
+    \$requirements = Arr(\$available[i]["requirements"]);
+    for(j=0; j\<sizeof(\$requirements); j++)
+      EmitTo(\$actor, \$available[i]["rankname"]+" (rank "+\$available[i]["level"]+") - "+\$requirements[j]);
+  \}
+\}
+
+if(\$list_promotions) \{
+  /* Show all upcoming promotions */
+  EmitTo(\$actor, "Possible future promotions:");
+  for(i=0; i\<sizeof(\$upcoming); i++) \{
+    \$requirements = Arr(\$upcoming[i]["requirements"]);
+    for(\$j=0; \$j\<sizeof(\$requirements); \$j++) \{
+      EmitTo(\$actor, "-"+\$upcoming[i]["rankname"]+" (rank "+\$upcoming[i]["level"]+") - "+\$requirements[\$j]);
+    \}
+  \}
+\} else \{
+  /* Just show one random upcoming promotion */
+  if(sizeof(\$upcoming)) \{
+    /* Pick a promotion to display */
+    \$upcoming = \$upcoming[random(sizeof(\$upcoming))];
+    \$requirements = Arr(\$upcoming["requirements"]);
+    if(sizeof(\$requirements)) EmitTo(\$actor, "Possible future promotion:"); /* Don't emit for 'promotions' with no requirements, such as slavery */
+    for(j=0; j\<sizeof(\$requirements); j++) \{
+      EmitTo(\$actor, "-"+\$upcoming["rankname"]+" (rank "+\$upcoming["level"]+") - "+\$requirements[j]);
+    \}
+    if(!sizeof(\$available))
+      EmitTo(\$actor, "Type '@rank list' for a full listing of future promotions.");
+  \}  
+\}
+
+/* Ask if they want to accept their promotion */
+if(sizeof(\$available) \&\& \$char == \$actor \&\& Int(\$char."promotion:lastgiven")+60*60*24*30 \< time()) \{
+  /* Only offer 4 promotions at a time. If they are entitled to more, pick 4 randomly */
+  while(sizeof(\$available) \> 4) \{
+    \$available -= (\{ \$available[random(sizeof(\$available))] \});
+  \}
+  \$par = ([ "char":\$char ]);
+  if(sizeof(\$available) \> 0) \{
+    \$b = "Promote "+Describe(\$char)+" to "+\$available[0]["rankname"];
+    \$par["b"] = \$available[0];
+  \}
+  if(sizeof(\$available) \> 1) \{
+    \$c = "Promote "+Describe(\$char)+" to "+\$available[1]["rankname"];
+    \$par["c"] = \$available[1];
+  \}
+  if(sizeof(\$available) \> 2) \{
+    \$d = "Promote "+Describe(\$char)+" to "+\$available[2]["rankname"];
+    \$par["d"] = \$available[2];
+  \}
+  if(sizeof(\$available) \> 3) \{
+    \$e = "Promote "+Describe(\$char)+" to "+\$available[3]["rankname"];
+    \$par["e"] = \$available[3];
+  \}
+
+  EmitTo(\$actor, "Note: Accepting a promotion clears all influence gathered for ALL groups.");
+  interaction::question(\$question: "Do you want to accept a promotion?", \$expires: 30, \$env: FALSE, \$a: (\{"No promotion for "+Describe(\$char)+" just yet!", "OK!"\}), \$expire: "You can check @rank again whenever you want to accept your promotions.", \$b_ob: this, \$c_ob: this, \$d_ob: this, \$e_ob: this, \$b_fun: "give_promotion", \$c_fun: "give_promotion", \$d_fun: "give_promotion", \$e_fun: "give_promotion");
+
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1416133034, "tonyd", "P", 1416133170, "tonyd", "P", 1416133183, "tonyd", "P", 1416133343, "tonyd", "P", 1416133464, "tonyd", "P", 1416133530, "tonyd", "P", 1416133610, "tonyd", "P", 1416133696, "tonyd", "P", 1416133882, "tonyd", "P", 1416133907, "tonyd", "P", 1416133933, "tonyd", "P", 1416133974, "tonyd", "P", 1416134037, "tonyd", "P", 1416134178, "tonyd", "P", 1416134253, "tonyd", "P", 1416134271, "tonyd", "P", 1416134318, "tonyd", "P", 1416134333, "tonyd", "P", 1416134489, "tonyd", "P", 1425357063, "tonyd", "P", 1425361311, "tonyd", "P", 1425361345, "tonyd", "P", 1425364285, "tonyd", "P", 1425364304, "tonyd", "P", 1425364332, "tonyd", "P", 1425364341, "tonyd", "P", 1425365233, "tonyd", "P", 1425365277, "tonyd", "P", 1425366208, "tonyd", "P", 1425366445, "tonyd", "P", 1425366468, "tonyd", "P", 1425366509, "tonyd", "P", 1425367106, "tonyd", "P", 1425367112, "tonyd", "P", 1425372695, "tonyd", "P", 1425372891, "tonyd", "P", 1425372992, "tonyd", "P", 1425373089, "tonyd", "P", 1425375761, "tonyd", "P", 1425375766, "tonyd", "P", 1425375806, "tonyd", "P", 1425900959, "tonyd", "P", 1425901131, "tonyd", "P", 1425901269, "tonyd", "P", 1426480962, "tonyd", "P", 1426480981, "tonyd", "P", 1426481110, "tonyd", "P", 1426481252, "tonyd", "P", 1426481287, "tonyd", "P", 1426481632, "tonyd", "P", 1426481672, "tonyd", "P", 1426481810, "tonyd", "P", 1426481825, "tonyd", "P", 1426481916, "tonyd", "P", 1426481927, "tonyd", "P", 1426481935, "tonyd", "P", 1426481948, "tonyd", "P", 1426481959, "tonyd", "P", 1426482022, "tonyd", "P", 1426482082, "tonyd", "P", 1427796610, "tonyd", "P", 1427796643, "tonyd", "P", 1427796660, "tonyd", "P", 1427796678, "tonyd", "P", 1427796704, "tonyd", "P", 1427796746, "tonyd", "P", 1427796771, "tonyd", "P", 1427796781, "tonyd", "P", 1427796991, "tonyd", "P", 1427797374, "tonyd", "P", 1427797452, "tonyd", "P", 1427797474, "tonyd", "P", 1427797534, "tonyd", "P", 1427799172, "tonyd", "P", 1427799224, "tonyd", "P", 1427799285, "tonyd", "P", 1427799309, "tonyd", "P", 1427799396, "tonyd", "P", 1427799505, "tonyd", "P", 1427799525, "tonyd", "P", 1427799591, "tonyd", "P", 1427799622, "tonyd", "P", 1427799698, "tonyd", "P", 1427799715, "tonyd", "P", 1427799729, "tonyd", "P", 1427799903, "tonyd", "P", 1427800082, "tonyd", "P", 1427800158, "tonyd", "P", 1427800188, "tonyd", "P", 1427800218, "tonyd", "P", 1427800235, "tonyd", "P", 1427800316, "tonyd", "P", 1427800354, "tonyd", "P", 1427800406, "tonyd", "P", 1427800435, "tonyd", "P", 1427800470, "tonyd", "P", 1427800511, "tonyd", "P", 1427800538, "tonyd", "P", 1427800737, "tonyd", "P", 1427800843, "tonyd", "P", 1427800944, "tonyd", "P", 1427800955, "tonyd", "P", 1427801174, "tonyd", "P", 1427801332, "tonyd", "P", 1427801350, "tonyd", "P", 1427801446, "tonyd", "P", 1427801494, "tonyd", "P", 1427801553, "tonyd", "P", 1427801572, "tonyd", "P", 1427801578, "tonyd", "P", 1427801696, "tonyd", "P", 1427801743, "tonyd", "P", 1427801806, "tonyd", "P", 1427801815, "tonyd", "P", 1427801966, "tonyd", "P", 1427802028, "tonyd", "P", 1427802070, "tonyd", "P", 1427802094, "tonyd", "P", 1427802122, "tonyd", "P", 1427802161, "tonyd", "P", 1427802266, "tonyd", "P", 1427802328, "tonyd", "P", 1427802366, "tonyd", "P", 1427802372, "tonyd", "P", 1427802636, "tonyd", "P", 1427802649, "tonyd", "P", 1427802667, "tonyd", "P", 1427802686, "tonyd", "P", 1427802721, "tonyd", "P", 1427805046, "tonyd", "P", 1427805222, "tonyd", "P", 1427805241, "tonyd", "P", 1427805388, "tonyd", "P", 1427806102, "tonyd", "P", 1427806290, "tonyd", "P", 1427806321, "tonyd", "P", 1427806350, "tonyd", "P", 1427806400, "tonyd", "P", 1427806520, "tonyd", "P", 1427806534, "tonyd", "P", 1427806569, "tonyd", "P", 1427806615, "tonyd", "P", 1427806630, "tonyd", "P", 1427806647, "tonyd", "P", 1427806686, "tonyd", "P", 1427806703, "tonyd", "P", 1427806767, "tonyd", "P", 1427806818, "tonyd", "P", 1427806869, "tonyd", "P", 1427806976, "tonyd", "P", 1427807054, "tonyd", "P", 1427807088, "tonyd", "P", 1427807105, "tonyd", "P", 1427807136, "tonyd", "P", 1427807303, "tonyd", "P", 1427807324, "tonyd", "P", 1427807354, "tonyd", "P", 1427807405, "tonyd", "P", 1427807457, "tonyd", "P", 1427807477, "tonyd", "P", 1427807546, "tonyd", "P", 1427807558, "tonyd", "P", 1427807582, "tonyd", "P", 1427807790, "tonyd", "P", 1427807816, "tonyd", "P", 1427807839, "tonyd", "P", 1427807916, "tonyd", "P", 1427807940, "tonyd", "P", 1427807983, "tonyd", "P", 1427808045, "tonyd", "P", 1428224989, "tonyd", "P", 1428225172, "tonyd", "P", 1428225319, "tonyd", "P", 1428225392, "tonyd", "P", 1428225416, "tonyd", "P", 1428225437, "tonyd", "P", 1428225478, "tonyd", "P", 1428225751, "tonyd", "P", 1428225791, "tonyd", "P", 1428225797, "tonyd", "P", 1428225801, "tonyd", "P", 1428225826, "tonyd", "P", 1428225908, "tonyd", "P", 1428226188, "tonyd", "P", 1428229922, "tonyd", "P", 1428230015, "tonyd", "P", 1428230977, "tonyd", "P", 1428231272, "tonyd", "P", 1428231298, "tonyd", "P", 1428231468, "tonyd", "P", 1428231527, "tonyd", "P", 1428231558, "tonyd", "P", 1428231727, "tonyd", "P", 1428231774, "tonyd", "P", 1428231818, "tonyd", "P", 1428231839, "tonyd", "P", 1428231880, "tonyd", "P", 1428232324, "tonyd", "P", 1428232341, "tonyd", "P", 1428232369, "tonyd", "P", 1428232406, "tonyd", "P", 1428232442, "tonyd", "P", 1428232603, "tonyd", "P", 1428232693, "tonyd", "P", 1428232729, "tonyd", "P", 1428232783, "tonyd", "P", 1428232843, "tonyd", "P", 1428232902, "tonyd", "P", 1428232975, "tonyd", "P", 1428233051, "tonyd", "P", 1428233147, "tonyd", "P", 1428233252, "tonyd", "P", 1428233274, "tonyd", "P", 1428233364, "tonyd", "P", 1428233444, "tonyd", "P", 1428233481, "tonyd", "P", 1428233649, "tonyd", "P", 1428233673, "tonyd", "P", 1428233710, "tonyd", "P", 1428233804, "tonyd", "P", 1428233826, "tonyd", "P", 1428233906, "tonyd", "P", 1428233948, "tonyd", "P", 1428233976, "tonyd", "P", 1428234091, "tonyd", "P", 1428234178, "tonyd", "P", 1428234516, "tonyd", "P", 1428234741, "tonyd", "P", 1428234823, "tonyd", "P", 1428234968, "tonyd", "P", 1428235125, "tonyd", "P", 1428235294, "tonyd", "P", 1428235319, "tonyd", "P", 1428235433, "tonyd", "P", 1428235448, "tonyd", "P", 1428235476, "tonyd", "P", 1428235484, "tonyd", "P", 1428235624, "tonyd", "P", 1428235970, "tonyd", "P", 1428236041, "tonyd", "P", 1428236057, "tonyd", "P", 1428236089, "tonyd", "P", 1428236101, "tonyd", "P", 1428236137, "tonyd", "P", 1428236198, "tonyd", "P", 1428236244, "tonyd", "P", 1428236306, "tonyd", "P", 1428236338, "tonyd", "P", 1428236445, "tonyd", "P", 1428236455, "tonyd", "P", 1428236462, "tonyd", "P", 1428236475, "tonyd", "P", 1428236485, "tonyd", "P", 1428236529, "tonyd", "P", 1428236537, "tonyd", "P", 1428236575, "tonyd", "P", 1428236623, "tonyd", "P", 1428236700, "tonyd", "P", 1428236730, "tonyd", "P", 1428236759, "tonyd", "P", 1428236788, "tonyd", "P", 1428236823, "tonyd", "P", 1428236841, "tonyd", "P", 1428236870, "tonyd", "P", 1428236966, "tonyd", "P", 1428236983, "tonyd", "P", 1428237002, "tonyd", "P", 1428237065, "tonyd", "P", 1428237072, "tonyd", "P", 1428237232, "tonyd", "P", 1428237277, "tonyd", "P", 1428237334, "tonyd", "P", 1428237423, "tonyd", "P", 1428237469, "tonyd", "P", 1428237473, "tonyd", "P", 1428237520, "tonyd", "P", 1428237536, "tonyd", "P", 1428237586, "tonyd", "P", 1428237674, "tonyd", "P", 1428237690, "tonyd", "P", 1428238016, "tonyd", "P", 1428238113, "tonyd", "P", 1428238136, "tonyd", "P", 1428238152, "tonyd", "P", 1428241620, "tonyd", "P", 1428241663, "tonyd", "P", 1428297695, "tonyd", "P", 1428297789, "tonyd", "P", 1428297811, "tonyd", "P", 1428297846, "tonyd", "P", 1428298564, "tonyd", "P", 1428298624, "tonyd", "P", 1428299230, "tonyd", "P", 1428299305, "tonyd", "P", 1428299378, "tonyd", "P", 1428299388, "tonyd", "P", 1428299421, "tonyd", "P", 1428299581, "tonyd", "P", 1428299679, "tonyd", "P", 1428300141, "tonyd", "P", 1428300286, "tonyd", "P", 1428300312, "tonyd", "P", 1428300368, "tonyd", "P", 1428300462, "tonyd", "P", 1428300489, "tonyd", "P", 1428300605, "tonyd", "P", 1428300729, "tonyd", "P", 1428300812, "tonyd", "P", 1428300839, "tonyd", "P", 1428301086, "tonyd", "P", 1428301197, "tonyd", "P", 1428301237, "tonyd", "P", 1428301243, "tonyd", "P", 1428301301, "tonyd", "P", 1428301362, "tonyd", "P", 1428301387, "tonyd", "P", 1428301440, "tonyd", "P", 1428301504, "tonyd", "P", 1428301544, "tonyd", "P", 1428301571, "tonyd", "P", 1428301667, "tonyd", "P", 1428301690, "tonyd", "P", 1428301711, "tonyd", "P", 1428302705, "tonyd", "P", 1428303111, "tonyd", "P", 1428304585, "tonyd", "P", 1428312329, "tonyd", "P", 1428312383, "tonyd", "P", 1428312427, "tonyd", "P", 1428312471, "tonyd", "P", 1428312496, "tonyd", "P", 1428312976, "tonyd", "P", 1428315158, "tonyd", "P", 1428315181, "tonyd", "P", 1428315257, "tonyd", "P", 1428315306, "tonyd", "P", 1428315388, "tonyd", "P", 1428376337, "tonyd", "P", 1428911299, "tonyd", "P", 1428911311, "tonyd", "P", 1428911719, "tonyd", "P", 1428912925, "tonyd", "P", 1428913076, "tonyd", "P", 1428913117, "tonyd", "P", 1428913140, "tonyd", "P", 1428913172, "tonyd", "P", 1428913252, "tonyd", "P", 1428913262, "tonyd", "P", 1428913288, "tonyd", "P", 1428913295, "tonyd", "P", 1428913394, "tonyd", "P", 1428913519, "tonyd", "P", 1428913581, "tonyd", "P", 1428913629, "tonyd", "P", 1428913656, "tonyd", "P", 1428913676, "tonyd", "P", 1428913708, "tonyd", "P", 1428913773, "tonyd", "P", 1428913777, "tonyd", "P", 1428913837, "tonyd", "P", 1428914007, "tonyd", "P", 1428914038, "tonyd", "P", 1428914122, "tonyd", "P", 1428914179, "tonyd", "P", 1428914226, "tonyd", "P", 1428914243, "tonyd", "P", 1428914325, "tonyd", "P", 1428914428, "tonyd", "P", 1428914491, "tonyd", "P", 1428914523, "tonyd", "P", 1428914546, "tonyd", "P", 1428914560, "tonyd", "P", 1428914720, "tonyd", "P", 1428914751, "tonyd", "P", 1428914761, "tonyd", "P", 1428914792, "tonyd", "P", 1428914830, "tonyd", "P", 1428914834, "tonyd", "P", 1428915186, "tonyd", "P", 1428915198, "tonyd", "P", 1428915231, "tonyd", "P", 1428915243, "tonyd", "P", 1428915263, "tonyd", "P", 1428915325, "tonyd", "P", 1428915332, "tonyd", "P", 1428915394, "tonyd", "P", 1428915412, "tonyd", "P", 1428915469, "tonyd", "P", 1428915563, "tonyd", "P", 1428915601, "tonyd", "P", 1428915623, "tonyd", "P", 1428915642, "tonyd", "P", 1428915648, "tonyd", "P", 1428915672, "tonyd", "P", 1428915689, "tonyd", "P", 1428915706, "tonyd", "P", 1428915748, "tonyd", "P", 1428915845, "tonyd", "P", 1428915867, "tonyd", "P", 1428915893, "tonyd", "P", 1428915949, "tonyd", "P", 1428915983, "tonyd", "P", 1428915995, "tonyd", "P", 1428916023, "tonyd", "P", 1428916039, "tonyd", "P", 1428916048, "tonyd", "P", 1428916066, "tonyd", "P", 1428916073, "tonyd", "P", 1428916094, "tonyd", "P", 1428916117, "tonyd", "P", 1428916137, "tonyd", "P", 1428916159, "tonyd", "P", 1428916170, "tonyd", "P", 1428916184, "tonyd", "P", 1428916222, "tonyd", "P", 1428916251, "tonyd", "P", 1428916269, "tonyd", "P", 1428916287, "tonyd", "P", 1428916319, "tonyd", "P", 1428916351, "tonyd", "P", 1428916379, "tonyd", "P", 1428916451, "tonyd", "P", 1428916638, "tonyd", "P", 1428916662, "tonyd", "P", 1428916670, "tonyd", "P", 1428916715, "tonyd", "P", 1428916807, "tonyd", "P", 1428916987, "tonyd", "P", 1428917045, "tonyd", "P", 1428917084, "tonyd", "P", 1428917199, "tonyd", "P", 1428917225, "tonyd", "P", 1428917259, "tonyd", "P", 1428917279, "tonyd", "P", 1428917339, "tonyd", "P", 1428917357, "tonyd", "P", 1428917414, "tonyd", "P", 1429923154, "tonyd", "P", 1429925517, "tonyd", "P", 1429925544, "tonyd", "P", 1429925666, "tonyd", "P", 1429925711, "tonyd", "P", 1429925748, "tonyd", "P", 1429925795, "tonyd", "P", 1429925847, "tonyd", "P", 1429925931, "tonyd", "P", 1429925967, "tonyd", "P", 1429925984, "tonyd", "P", 1429926285, "tonyd", "P", 1429926433, "tonyd", "P", 1429926631, "tonyd", "P", 1429926987, "tonyd", "P", 1429927065, "tonyd", "P", 1429927074, "tonyd", "P", 1429927101, "tonyd", "P", 1429927168, "tonyd", "P", 1429927236, "tonyd", "P", 1429927281, "tonyd", "P", 1429933683, "tonyd", "P", 1429933706, "tonyd", "P", 1429933786, "tonyd", "P", 1429933824, "tonyd", "P", 1429933853, "tonyd", "P", 1429933877, "tonyd", "P", 1429933884, "tonyd", "P", 1429933997, "tonyd", "P", 1429934039, "tonyd", "P", 1429934075, "tonyd", "P", 1429934108, "tonyd", "P", 1429934117, "tonyd", "P", 1429934157, "tonyd", "P", 1429934178, "tonyd", "P", 1429934207, "tonyd", "P", 1429934270, "tonyd", "P", 1429934304, "tonyd", "P", 1429934330, "tonyd", "P", 1429934902, "tonyd", "P", 1429934932, "tonyd", "P", 1429935617, "tonyd", "P", 1429935640, "tonyd", "P", 1429935674, "tonyd", "P", 1429935692, "tonyd", "P", 1429935764, "tonyd", "P", 1429935790, "tonyd", "P", 1429936220, "tonyd", "P", 1429936285, "tonyd", "P", 1429936318, "tonyd", "P", 1429936481, "tonyd", "P", 1429936526, "tonyd", "P", 1429936566, "tonyd", "P", 1429936612, "tonyd", "P", 1429936630, "tonyd", "P", 1429941642, "tonyd", "P", 1429941679, "tonyd", "P", 1429944295, "tonyd", "P", 1429944391, "tonyd", "P", 1429944437, "tonyd", "P", 1429944483, "tonyd", "P", 1429944503, "tonyd", "P", 1429948192, "tonyd", "P", 1429948388, "tonyd", "P", 1429948449, "tonyd", "P", 1429960236, "tonyd", "P", 1429961927, "tonyd", "P", 1429961973, "tonyd", "P", 1429962003, "tonyd", "P", 1429962013, "tonyd", "P", 1429962021, "tonyd", "P", 1429962047, "tonyd", "P", 1429962075, "tonyd", "P", 1429962086, "tonyd", "P", 1429962181, "tonyd", "P", 1429962244, "tonyd", "P", 1429962252, "tonyd", "P", 1429962317, "tonyd", "P", 1429962324, "tonyd", "P", 1430815599, "tonyd", "P", 1430815618, "tonyd", "P", 1430815667, "tonyd", "P", 1430815687, "tonyd", "P", 1430821141, "tonyd", "P", 1430821206, "tonyd", "P", 1430821238, "tonyd", "P", 1430821756, "tonyd", "P", 1430821823, "tonyd", "P", 1430821832, "tonyd", "P", 1430821990, "tonyd", "P", 1430822159, "tonyd", "P", 1430823157, "tonyd", "P", 1430824294, "tonyd", "P", 1430824415, "tonyd", "P", 1430824446, "tonyd", "P", 1433993059, "tonyd", "P", 1433993098, "tonyd", "P", 1433993357, "tonyd", "P", 1433993533, "tonyd", "P", 1433993556, "tonyd", "P", 1433993568, "tonyd", "P", 1433993743, "tonyd", "P", 1433993767, "tonyd", "P", 1433993812, "tonyd", "P", 1433993871, "tonyd", "P", 1433994069, "tonyd", "P", 1433994178, "tonyd", "P", 1433995344, "tonyd", "P", 1433995458, "tonyd", "P", 1433995771, "tonyd", "P", 1433996113, "tonyd", "P", 1433996135, "tonyd", "P", 1433997047, "tonyd", "P", 1433997657, "tonyd", "P", 1433998533, "tonyd", "P", 1433998560, "tonyd", "P", 1433998742, "tonyd", "P", 1433998803, "tonyd", "P", 1434000876, "tonyd", "P", 1434001121, "tonyd", "P", 1434001335, "tonyd", "P", 1434001432, "tonyd", "P", 1434001471, "tonyd", "P", 1434001478, "tonyd", "P", 1434001789, "tonyd", "P", 1434002131, "tonyd", "P", 1434002307, "tonyd", "P", 1434002442, "tonyd", "P", 1434003009, "tonyd", "P", 1434003149, "tonyd", "P", 1434003229, "tonyd", "P", 1434003567, "tonyd", "P", 1434003596, "tonyd", "P", 1434003659, "tonyd", "P", 1434003725, "tonyd", "P", 1434003771, "tonyd", "P", 1434007137, "tonyd", "P", 1434009173, "tonyd", "P", 1434009503, "tonyd", "P", 1434009529, "tonyd", "P", 1434009636, "tonyd", "P", 1434009690, "tonyd", "P", 1434009697, "tonyd", "P", 1434531028, "tonyd", "P", 1434531038, "tonyd", "P", 1434531389, "tonyd", "P", 1434531481, "tonyd", "P", 1434626096, "tonyd", "P", 1434626156, "tonyd", "P", 1434626359, "tonyd", "P", 1434626418, "tonyd", "P", 1435135268, "tonyd", "P", 1435135337, "tonyd", "P", 1435135367, "tonyd", "P", 1435135418, "tonyd", "P", 1435135429, "tonyd", "P", 1435135462, "tonyd", "P", 1435135506, "tonyd", "P", 1435135521, "tonyd", "P", 1435135537, "tonyd", "P", 1435135597, "tonyd", "P", 1435135637, "tonyd", "P", 1435135661, "tonyd", "P", 1435135692, "tonyd", "P", 1435135707, "tonyd", "P", 1435136013, "tonyd", "P", 1435136033, "tonyd", "P", 1435136074, "tonyd", "P", 1435136103, "tonyd", "P", 1435325169, "tonyd", "P", 1435325244, "tonyd", "P", 1435325280, "tonyd", "P", 1435325306, "tonyd", "P", 1435325363, "tonyd", "P", 1435325372, "tonyd", "P", 1436726023, "rorschakovacs", "E", 1437456031, "tonyd", "P", 1437456059, "tonyd", "P", 1437456678, "tonyd", "P", 1437456683, "tonyd", "P", 1437456744, "tonyd", "P", 1437456807, "tonyd", "P", 1437456837, "tonyd", "P", 1437456856, "tonyd", "P", 1437456877, "tonyd", "P", 1437456891, "tonyd", "P", 1437456938, "tonyd", "P", 1437456948, "tonyd", "P", 1437456967, "tonyd", "P", 1437457210, "tonyd", "P", 1437457221, "tonyd", "P", 1437457342, "tonyd", "P", 1437457829, "tonyd", "P", 1437796717, "tonyd", "P", 1437796812, "tonyd", "P", 1437796893, "tonyd", "P", 1437796933, "tonyd", "P", 1437797051, "tonyd", "P", 1437797082, "tonyd", "P", 1437797219, "tonyd", "P", 1437797379, "tonyd", "P", 1437797427, "tonyd", "P", 1437798625, "tonyd", "P", 1437798694, "tonyd", "P", 1437798745, "tonyd", "P", 1437798823, "tonyd", "P", 1437800770, "tonyd", "P", 1437801005, "tonyd", "P", 1437801295, "tonyd", "P", 1437801471, "tonyd", "P", 1437802590, "tonyd", "P", 1437802875, "tonyd", "P", 1437803042, "tonyd", "P", 1438229780, "tonyd", "P", 1438229803, "tonyd", "P", 1438674515, "tonyd", "P", 1438674534, "tonyd", "P", 1438674623, "tonyd", "P", 1438674654, "tonyd", "P", 1438674676, "tonyd", "P", 1438674724, "tonyd", "P", 1438674814, "tonyd", "P", 1438674820, "tonyd", "P", 1438674845, "tonyd", "P", 1438674872, "tonyd", "P", 1438674916, "tonyd", "P", 1438674959, "tonyd", "P", 1438675000, "tonyd", "P", 1438675075, "tonyd", "P", 1438675171, "tonyd", "P", 1438675241, "tonyd", "P", 1438675310, "tonyd", "P", 1438675442, "tonyd", "P", 1438675466, "tonyd", "P", 1438675488, "tonyd", "P", 1438675582, "tonyd", "P", 1438675708, "tonyd", "P", 1438675742, "tonyd", "P", 1438675788, "tonyd", "P", 1438675844, "tonyd", "P", 1438675918, "tonyd", "P", 1438676117, "tonyd", "P", 1438676176, "tonyd", "P", 1438676189, "tonyd", "P", 1438676209, "tonyd", "P", 1438676374, "tonyd", "P", 1438677917, "tonyd", "P", 1439020020, "tonyd", "P", 1439022549, "tonyd", "P", 1439022558, "tonyd", "P", 1439022676, "tonyd", "P", 1439022743, "tonyd", "P", 1439023050, "tonyd", "P", 1439023066, "tonyd", "P", 1439023117, "tonyd", "P", 1439023185, "tonyd", "P", 1439023248, "tonyd", "P", 1439023336, "tonyd", "P", 1439023357, "tonyd", "P", 1439023365, "tonyd", "P", 1439023421, "tonyd", "P", 1439023488, "tonyd", "P", 1439023498, "tonyd", "P", 1439023516, "tonyd", "P", 1439023615, "tonyd", "P", 1439023681, "tonyd", "P", 1439023755, "tonyd", "P", 1439023791, "tonyd", "P", 1439023831, "tonyd", "P", 1439023855, "tonyd", "P", 1439024728, "tonyd", "P", 1439024748, "tonyd", "P", 1439024829, "tonyd", "P", 1439025107, "tonyd", "P", 1439025219, "tonyd", "P", 1439025282, "tonyd", "P", 1439025376, "tonyd", "P", 1439025389, "tonyd", "P", 1439025445, "tonyd", "P", 1439025657, "tonyd", "P", 1439025748, "tonyd", "P", 1439025857, "tonyd", "P", 1439026050, "tonyd", "P", 1439026060, "tonyd", "P", 1439026127, "tonyd", "P", 1439026468, "tonyd", "P", 1439026554, "tonyd", "P", 1439026842, "tonyd", "P", 1439027006, "tonyd", "P", 1439027067, "tonyd", "P", 1439027355, "tonyd", "P", 1439027488, "tonyd", "P", 1439027542, "tonyd", "P", 1439027552, "tonyd", "P", 1439027561, "tonyd", "P", 1439027642, "tonyd", "P", 1439027656, "tonyd", "P", 1439027688, "tonyd", "P", 1439027738, "tonyd", "P", 1439027796, "tonyd", "P", 1439027848, "tonyd", "P", 1439027960, "tonyd", "P", 1439028126, "tonyd", "P", 1439028329, "tonyd", "P", 1440045995, "tonyd", "P", 1440046074, "tonyd", "P", 1440046191, "tonyd", "P", 1440046218, "tonyd", "P", 1440052287, "tonyd", "P", 1440052502, "tonyd", "P", 1440052583, "tonyd", "P", 1440052665, "tonyd", "P", 1440052740, "tonyd", "P", 1440052792, "tonyd", "P", 1440052807, "tonyd", "P", 1440052856, "tonyd", "P", 1440053013, "tonyd", "P", 1440053073, "tonyd", "P", 1440053187, "tonyd", "P", 1440053225, "tonyd", "P", 1440053268, "tonyd", "P", 1440053295, "tonyd", "P", 1440053478, "tonyd", "P", 1440053504, "tonyd", "P", 1440053523, "tonyd", "P", 1440053607, "tonyd", "P", 1440053661, "tonyd", "P", 1440053818, "tonyd", "P", 1440053973, "tonyd", "P", 1440054075, "tonyd", "P", 1440054152, "tonyd", "P", 1440054260, "tonyd", "P", 1440054312, "tonyd", "P", 1440060839, "tonyd", "P", 1440060884, "tonyd", "P", 1440060975, "tonyd", "P", 1440061076, "tonyd", "P", 1440061132, "tonyd", "P", 1440061162, "tonyd", "P", 1440061218, "tonyd", "P", 1440061340, "tonyd", "P", 1440061371, "tonyd", "P", 1440061479, "tonyd", "P", 1440061540, "tonyd", "P", 1440061591, "tonyd", "P", 1440061696, "tonyd", "P", 1440061740, "tonyd", "P", 1440061977, "tonyd", "P", 1440061983, "tonyd", "P", 1440062088, "tonyd", "P", 1440062183, "tonyd", "P", 1440062209, "tonyd", "P", 1440062264, "tonyd", "P", 1440062390, "tonyd", "P", 1440062405, "tonyd", "P", 1440062452, "tonyd", "P", 1440062495, "tonyd", "P", 1440062527, "tonyd", "P", 1440062783, "tonyd", "P", 1440062834, "tonyd", "P", 1440062901, "tonyd", "P", 1440062942, "tonyd", "P", 1440062951, "tonyd", "P", 1440062979, "tonyd", "P", 1440063007, "tonyd", "P", 1440063440, "tonyd", "P", 1440063817, "tonyd", "P", 1440064051, "tonyd", "P", 1440064165, "tonyd", "P", 1440064202, "tonyd", "P", 1440225019, "tonyd", "P", 1440225036, "tonyd", "P", 1440225042, "tonyd", "P", 1440225128, "tonyd", "P", 1440225209, "tonyd", "P", 1440225338, "tonyd", "P", 1440225377, "tonyd", "P", 1440225416, "tonyd", "P", 1440225579, "tonyd", "P", 1440225667, "tonyd", "P", 1442990609, "tonyd", "P", 1442990672, "tonyd", "P", 1442990818, "tonyd", "P", 1442990840, "tonyd", "P", 1442990866, "tonyd", "P", 1442990949, "tonyd", "P", 1442990956, "tonyd", "P", 1442991029, "tonyd", "P", 1442991069, "tonyd", "P", 1442991200, "tonyd", "P", 1442991316, "tonyd", "P", 1442991404, "tonyd", "P", 1442991455, "tonyd", "P", 1442991528, "tonyd", "P", 1442991543, "tonyd", "P", 1442991595, "tonyd", "P", 1442991608, "tonyd", "P", 1442991757, "tonyd", "P", 1442991772, "tonyd", "P", 1442991820, "tonyd", "P", 1442991843, "tonyd", "P", 1442991856, "tonyd", "P", 1442991861, "tonyd", "P", 1442991922, "tonyd", "P", 1442991937, "tonyd", "P", 1442991972, "tonyd", "P", 1442992034, "tonyd", "P", 1442992071, "tonyd", "P", 1442992128, "tonyd", "P", 1442992152, "tonyd", "P", 1442992258, "tonyd", "P", 1442992317, "tonyd", "P", 1442992349, "tonyd", "P", 1442992362, "tonyd", "P", 1442992403, "tonyd", "P", 1442992534, "tonyd", "P", 1442992593, "tonyd", "P", 1442992597, "tonyd", "P", 1442993017, "tonyd", "P", 1442993060, "tonyd", "P", 1442993093, "tonyd", "P", 1442993136, "tonyd", "P", 1442993356, "tonyd", "P", 1442993383, "tonyd", "P", 1442993413, "tonyd", "P", 1442993443, "tonyd", "P", 1442993482, "tonyd", "P", 1442993499, "tonyd", "P", 1442993506, "tonyd", "P", 1442993522, "tonyd", "P", 1442993531, "tonyd", "P", 1442993713, "tonyd", "P", 1442993726, "tonyd", "P", 1442993773, "tonyd", "P", 1442993783, "tonyd", "P", 1442993826, "tonyd", "P", 1449883760, "tonyd", "P", 1449883785, "tonyd", "P", 1449883987, "tonyd", "P", 1449884045, "tonyd", "P", 1449884115, "tonyd", "P", 1449884181, "tonyd", "P", 1449884219, "tonyd", "P", 1449884244, "tonyd", "P", 1449884271, "tonyd", "P", 1449884425, "tonyd", "P", 1449884551, "tonyd", "P", 1477008783, "jominey", "E", 1477009712, "jominey", "E", 1477009754, "jominey", "E", 1477010006, "jominey", "E", 1477010489, "jominey", "E", 1477105696, "jominey", "E", 1477106190, "jominey", "P", 1477106277, "jominey", "P", 1477106327, "jominey", "P", 1477106368, "jominey", "P", 1477106459, "jominey", "P", 1477106548, "jominey", "E", 1477106610, "jominey", "E", 1477106690, "jominey", "E", 1478481618, "jominey", "E", 1478481712, "jominey", "E", 1478482204, "jominey", "E", 1478483363, "jominey", "E", 1478483589, "jominey", "E", 1478483968, "jominey", "E", 1478484133, "jominey", "E", 1518921862, "jominey", "E", 1518922338, "jominey", "E", 1518922697, "jominey", "E", 1518924496, "jominey", "E", 1518924908, "jominey", "E", 1520802618, "jominey", "E", 1526438861, "jominey", "E", 1561869122, "jominey", "E", 1562100205, "jominey", "E", 1562100356, "jominey", "E", 1562100601, "jominey", "E", 1572148758, "jominey", "E", 1573582651, "jominey", "E", 1580439322, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,1257 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:cauterize">
+         X[M] int i, j;
+
+\$az = \$\{Chatters:AE:ka:kata\};
+EmitTo(\$az, "cauterizing");
+
+/* Check if any injuries need bandaging */
+\$cauterize_needed = (\{ \});
+
+\$injuries = Get(\$patient, "injuries:" + \$detail);
+
+if(\$injuries) \{
+    for(j=0; j\<sizeof(\$injuries); j++) \{
+        \$injury = \$injuries[j];
+        if(wounds::get_complication(\$wound: \$injury, \$complication: "bleeding freely") \|\| wounds::get_complication(\$wound: \$injury, \$complication: "bleeding")) \{
+            \$injury["adj"] = "";
+            \$injury["desc"] = "has been recently cauterized to stop the flow of blood";
+            \$injury["name"] = "cut";
+            \$injury["type"] = "cauterized cut";
+            \$cauterize_needed += (\{ \$injury \});
+            \$injury = wounds::clear_complication(\$wound: \$injury, \$complication: "bleeding freely");
+            \$injury = wounds::clear_complication(\$wound: \$injury, \$complication: "bleeding");
+        \}
+    \}
+\}
+
+if(!sizeof(\$cauterize_needed)) \{
+  EmitTo(\$actor, Describe(\$dob[0], nil, \$actor)+" doesn't need cauterized.");
+  return FALSE;
+\}
+
+EmitTo(\$healer, "You cauterize " + Describe(\$dob[0]) + "."); 
+EmitTo(\$patient, Describe(\$healer) + " cauterizes " + Describe(\$dob[0], \$patient) + ".");
+EmitIn(\$patient."base:environment", Describe(\$healer) + " cauterizes " + Describe(\$dob[0]) + ".", \$healer, \$patient);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_bandages">
+         X[M] /* Is there injuries info to remove? */
+int healer, level, i;
+\$info = Get(\$patient, "injuries:"+\$part);
+if(\$info) \{
+  /* Check if any of these details are bandaged */
+  for(i=0;i\<sizeof(\$info);i++) \{
+    if(!\$info[i]) continue;
+    if(\$info[i]["bandaged"]) \{
+      /* Remove this bandage */
+      level = \$info[i]["level"] ? \$info[i]["level"] : 1;
+      healer = \$info[i]["bandaged_skill"] ? \$info[i]["bandaged_skill"] : 1;
+
+      if(wounds::get_complication(\$wound: \$info[i], \$complication: "infected")) \{
+        if(\$info[i]["infected_treatment_time"]) \{
+          if(time() \> \$info[i]["infected_treatment_time"] + 60*60*20 * level/healer) \{
+              /* Remove infection */
+              \$info[i] = wounds::clear_complication(\$wound: \$info[i], \$complication: "infected");
+              \$info[i]["infected_treatement_time"] = nil;
+              \$info[i]["infected_treatment"] = nil;
+              \$info[i]["infected_treatment_skill"] = nil;
+          \}
+        \}
+      \}
+
+      if(time() \> \$info[i]["woundtime"] + 60*60*20 * level/healer
+      \&\& time() \> \$info[i]["bandaged_time"] + 60*60*6
+      \&\& (!\$info[i]["complications"] \|\| !sizeof(\$info[i]["complications"]))) \{
+        /* Wound is fully healed */
+        return TRUE;
+      \} else \{
+        return FALSE;
+      \}
+    \}
+  \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_treatment">
+         X[M] int i;
+string name;
+mapping wounds;
+mixed* needs;
+
+name = \$wound["name"];
+wounds = Get(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "remedies:wounds");
+needs = (\{ \});
+
+if(wounds[name]) \{
+    for(i = 0; i \< sizeof(wounds[name]); i++) \{
+        if(!\$wound[wounds[name][i]]) \{
+            needs += (\{ wounds[name][i] \});
+        \} 
+    \}
+\}
+
+if(sizeof(needs)) return needs; else return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:clean_wound">
+         X[M] string detail;
+object target;
+mixed* wounds;
+mapping remedies;
+int i;
+mixed* bandaged;
+mixed* list;
+
+target = NRefOb(\$target);
+detail = NRefDetail(\$target);
+
+if(detail == "default") return TRUE;
+
+wounds = wounds::get_wounds(\$target: target, \$detail: detail);
+remedies = wounds::get_remedies(\$type: "wounds");
+
+bandaged = (\{ \});
+list = (\{ \});
+
+for(i = 0; i \< sizeof(wounds); i++) \{
+    if(remedies[wounds[i]["name"]]
+       \&\& member("cleaned", remedies[wounds[i]["name"]])) \{
+        if(!wounds[i]["bandaged"]) \{
+            wounds[i]["cleaned"] = 1;
+            list += (\{ wounds[i]["name"] \});
+        \} else \{
+            bandaged += (\{ wounds[i]["name"] \});
+        \}
+    \}
+\}
+
+if(sizeof(list)) \{
+    if(\$actor == target) \{
+        EmitTo(\$actor, TAG("Your skin stings as you clean " + Describe(NewNRef(target, detail), nil, target) + ".", "social:first"));
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " cleans " + Describe(NewNRef(target, detail), \$actor) + ".", "social:third"), \$actor);
+        return FALSE;
+    \} else \{
+        EmitTo(\$actor, TAG("You clean " + Describe(NewNRef(target, detail)) + ".", "social:first"));
+        EmitTo(target, TAG("Your skin stings as " + Describe(\$actor) + " cleans " + Describe(NewNRef(target, detail), nil, target) + ".", "social:second"));
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " cleans " + Describe(NewNRef(target, detail)) + ".", "social:third"), \$actor, target);
+        return FALSE;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:clear_complication">
+         X[M] /* \$complication, \$wound */
+
+mixed * complications;
+int i;
+
+if(!\$wound["complications"]) return FALSE;
+if(!sizeof(\$wound["complications"])) return FALSE;
+
+complications = \$wound["complications"];
+
+for(i = 0; i \< sizeof(complications); i++) \{
+    if(typeof(complications[i]) == 3) \{
+        \$wound["complications"] -= (\{ \$complication \});
+    \} else \{ 
+        if(complications[i]["name"] \&\& complications[i]["name"] == \$complication) \{
+            \$wound["complications"][i] = nil;
+        \}
+    \}
+\}
+
+return \$wound;
+      </Core:Property>
+      <Core:Property property="merry:lib:diagnose">
+         X[M] /* \$healer, \$patient */
+
+\$conditions = (\{ "hunger", "energy", "health" \});
+
+if(!(\$effectsMap = structure_propmap(copy(\$patient."*"))["effect"])) \$effectsMap = ([ ]);
+\$effects = map_indices(\$effectsMap) - \$conditions;
+
+if(!(\$woundsMap = structure_propmap(copy(\$patient."*"))["injuries"])) \$woundsMap = ([ ]);
+\$wounds = map_indices(\$woundsMap);
+
+EmitTo(\$healer, "\\nYou begin to check overall health.");
+
+\$delay(3, FALSE, "197d");
+
+for(\$i = 0; \$i \< sizeof(\$conditions); \$i++) \{
+    \$db = Obj("Allegory:Effects:Status:" + capitalize(\$conditions[\$i]) + ":Data");
+    if(\$db) \{
+        \$state = Call(\$db, "generate_degree", \$severity: Int(Get(\$patient, "effect:" + \$conditions[\$i] + ":severity"))); 
+        EmitTo(\$healer, capitalize(\$conditions[\$i]) + "... " + TAG(Str(\$state), "assist-alert"));
+    \}
+\}
+
+\$delay(3, FALSE, "287f");
+
+EmitTo(\$healer, "\\nYou begin to check for sicknesses and complications.");
+\$list = (\{ \}); /* Needs treatement */
+\$list2 = (\{ \}); /* Sufficiently treated, still healing */
+\$list3 = (\{ \}); /* Sufficiently treated, done healing */
+for(\$i = 0; \$i \< sizeof(\$effects); \$i++) \{
+    \$source = Get(\$patient, "effect:" + \$effects[\$i] + ":source");
+    if(\$source) \{
+        \$severity = Call(\$\{Allegory:Lib:Characters:Effects\}, "get_severity", \$source: \$source, \$severity: Int(Get(\$patient, "effect:" + \$effects[\$i] + ":severity")));
+        if(\$source.name) \$name = \$source.name; else \$name = \$effects[\$i];
+        \$list += (\{ TAG(Str(\$severity) + " " + \$name, "assist-alert") \});
+    \}
+\}
+
+\$delay(3, FALSE, "c240");
+
+if(sizeof(\$list)) \{
+    EmitTo(\$healer, "You determine that " + Describe(\$patient) + " is inflicted with " + common::string_list(\$list: \$list) + ".");
+\} else \{
+    EmitTo(\$healer, "You determine that " + Describe(\$patient) + " is not suffering from any sicknesses or complications.");
+\}
+
+EmitTo(\$healer, "\\nYou begin to check for physical ailments.");
+\$list = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$wounds); \$i++) \{
+    \$allwounds = \$woundsMap[\$wounds[\$i]];
+    for(\$j = 0; \$j \< sizeof(\$allwounds); \$j++) \{
+        if(::check_treatment(\$wound: \$allwounds[\$j])) \{
+            \$list \|= (\{ TAG(Describe(NewNRef(\$patient, \$wounds[\$i]), nil, nil, STYLE_NONPOSS), "assist-alert") \});
+        \} else \{
+            if(wounds::check_bandages(\$patient: \$patient, \$part: \$wounds[\$i])) \{
+                \$list3 \|= (\{ TAG(Describe(NewNRef(\$patient, \$wounds[\$i]), nil, nil, STYLE_NONPOSS), "assist-alert") \});
+            \} else \{
+                \$list2 \|= (\{ TAG(Describe(NewNRef(\$patient, \$wounds[\$i]), nil, nil, STYLE_NONPOSS), "assist-alert") \});
+            \}
+        \}
+    \}
+\}
+
+\$delay(3, FALSE, "669f");
+
+if(sizeof(\$list)) \{
+    EmitTo(\$healer, "The following areas need to be diagnosed and treated on " + Describe(\$patient) + ": " + common::string_list(\$list: \$list) + ".");
+\} else \{
+    EmitTo(\$healer, "You determine that " + Describe(\$patient) + " is not suffering from any untreated physical ailments.");
+\}
+
+if(sizeof(\$list2)) \{
+    EmitTo(\$healer, "\\nThe following areas have received treatment and are still healing: " + common::string_list(\$list: \$list2) + ".");
+\}
+
+if(sizeof(\$list3)) \{
+    EmitTo(\$healer, "\\nThe following areas are done healing and need to have the bandages removed: " + common::string_list(\$list: \$list3) + ".");
+\}
+
+Call(\$this, "diagnose_end", \$healer: \$healer, \$patient: \$patient);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:diagnose_decline">
+         X[M] object healer, patient;
+
+healer = \$par["healer"];
+patient = \$par["patient"];
+
+EmitTo(healer, Describe(patient) + " declines your offer for a diagnosis.");
+EmitTo(patient, "You decline the offer of a diagnosis from " + Describe(healer) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:diagnose_end">
+         X[M] /* \$healer, \$patient */
+
+if(\$healer == \$patient) \{
+    EmitTo(\$healer, "\\nYou finish diagnosing yourself.");
+    EmitIn(\$healer."base:environment", Describe(\$healer) + " finishes diagnosing " + Str(\$healer."base:objective") + ".", \$healer);
+\} else \{
+    EmitTo(\$healer, "\\nYou finish diagnosing " + Describe(\$patient) + ".");
+    EmitTo(\$patient, Describe(\$healer) + " finishes diagnosing you.");
+    EmitIn(\$patient."base:environment", Describe(\$healer) + " finishes diagnosing " + Describe(\$patient) + ".", \$healer, \$patient);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:diagnose_part">
+         X[M] /* \$healer, \$patient, \$part */
+int j;
+
+\$woundRemedies = Get(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "remedies:wounds");
+\$complicationRemedies = Get(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "remedies:complications");
+\$remediesW = (\{ \});
+\$remediesC = (\{ \});
+if(\$woundsMap = structure_propmap(copy(\$patient."*"))["injuries"]) \{
+    if(\$woundsMap[\$part]) \{
+        \$list = (\{ \});
+        \$complications = (\{ \});
+        \$treated = (\{ \});
+
+        for(\$i = 0; \$i \< sizeof(\$woundsMap[\$part]); \$i++) \{
+            \$wound = \$woundsMap[\$part][\$i]["name"];
+            if(\$temp = ::check_treatment(\$wound: \$woundsMap[\$part][\$i])) \{ 
+                \$list += (\{ \$wound \});
+                if(\$temp) \$remediesW \|= \$temp;
+            \}
+
+            if(\$woundsMap[\$part][\$i]["complications"]) \{ 
+                \$woundsMap[\$part][\$i]["complications"] -= (\{ nil \});
+                for(\$j = 0; \$j \< sizeof(\$woundsMap[\$part][\$i]["complications"]); \$j++) \{
+                    if(typeof(\$woundsMap[\$part][\$i]["complications"][\$j]) == 3) \$woundsMap[\$part][\$i]["complications"][\$j] = ([ "name":\$woundsMap[\$part][\$i]["complications"][\$j], "severity":10, "type":"complication" ]);
+                    \$complication = \$woundsMap[\$part][\$i]["complications"][\$j]["name"];
+                    if(\$complication == "infected" \&\& \$woundsMap[\$part][\$i]["infected_treatment"]) \{
+                        /* infected complication has been treated */
+                    \} else \{
+                        \$complications \|= (\{ TAG(\$complication, "assist-alert") \});
+                        if(\$complicationRemedies[\$complication]) \$remediesC \|= \$complicationRemedies[\$complication];
+                    \}
+                \}
+            \}
+
+            if(!\$temp) \{
+                \$treated += (\{ TAG(common::aan(\$what: \$wound), "assist-alert") \}); 
+            \}
+        \}
+        \$delay(1, FALSE, "6570");
+
+        if(sizeof(\$list)) \{
+            \$set = allegory::arr_to_set(\$arr: \$list);
+            \$list = map_indices(\$set);
+            \$list2 = (\{ \});
+            for(j = 0; j \< sizeof(\$list); j++) \{
+                if(\$set[\$list[j]] \> 1) \{
+                    \$list2 += (\{ TAG(desc_cardinal(\$set[\$list[j]]) + " " + \$list[j] + "s", "assist-alert") \});
+                \} else \{
+                    \$list2 += (\{ TAG(common::aan(\$what: \$list[j]), "assist-alert") \});
+                \}
+            \}
+
+            EmitTo(\$healer, Describe(NewNRef(\$patient, \$part)) + " requires treatment for " + common::string_list(\$list: \$list2) + ".");
+            if(sizeof(\$complications)) \{
+                \$delay(1, FALSE, "af83");
+                EmitTo(\$healer, "You also note that it is " + implode(\$complications, ", ") + ".");
+            \}
+        \} else \{
+            if(sizeof(\$treated)) \{
+                if(!sizeof(\$remediesC)) \{
+                    if(wounds::check_bandages(\$patient: \$patient, \$part: \$part)) \{
+                        EmitTo(\$healer, Describe(NewNRef(\$patient, \$part)) + " has been sufficiently treated and the bandages are ready to be removed.");
+                    \} else \{
+                        EmitTo(\$healer, Describe(NewNRef(\$patient, \$part)) + " has been sufficiently treated.");
+                    \}
+                \} else \{
+                    EmitTo(\$healer, Describe(NewNRef(\$patient, \$part)) + " has been partially treated but still has complications that need attention.");
+                \}
+            \}
+        \}
+    \} else \{
+        \$delay(1, FALSE, "7627");
+        EmitTo(\$healer, Describe(NewNRef(\$patient, \$part)) + " does not appear to be injured.");
+    \}
+\} else \{
+    \$delay(1, FALSE, "c2f2");
+    EmitTo(\$healer, Describe(NewNRef(\$patient, \$part)) + " does not appear to be injured.");
+\}
+\$delay(3, FALSE, "64d4");
+\$rstr = "";
+if(sizeof(\$remediesW)) \{
+    \$rstr = "\\nAfter a thorough analysis, you determine that " + Describe(NewNRef(\$patient, \$part)) + " needs to be " + TAG(implode(\$remediesW, " and "), "assist-alert");
+
+    if(sizeof(\$remediesC)) \{
+        \$rstr += ", but first you should " + TAG(implode(\$remediesC, " and "), "assist-alert");
+    \}
+
+    if(wounds::check_bandages(\$patient: \$patient, \$part: \$part)) \{
+        \$rstr += ". You should also remove the old bandages before beginning further treatment";
+    \}
+
+    \$rstr += ".";
+\} else \{
+    if(sizeof(\$remediesC)) \{
+        \$rstr = "\\nAfter a thorough analysis of " + Describe(NewNRef(\$patient, \$part)) + " you determine that you should " + TAG(implode(\$remediesC, " and ") + ".", "assist-alert");
+    \}
+\}
+
+EmitTo(\$healer, \$rstr);
+
+Call(\$this, "diagnose_end", \$healer: \$healer, \$patient: \$patient);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:diagnose_start">
+         X[M] object healer, patient;
+string action, part;
+
+healer = \$par["healer"];
+patient = \$par["patient"];
+part = \$par["part"];
+
+if(\$par["accepted"]) \{
+    if(patient."healing:accepted") \{
+        patient."healing:accepted"[healer] = time();
+    \} else \{
+        patient."healing:accepted" = ([ healer:time() ]);
+    \}
+\}
+
+if(healer == patient) \{
+    EmitTo(healer, "You begin to diagnose yourself.");
+    EmitIn(healer."base:environment", Describe(healer) + " begins to diagnose " + Str(healer."base:objective") + "self.", healer);
+\} else \{
+    EmitTo(healer, "You begin to diagnose " + Describe(patient) + ".");
+    EmitTo(patient, Describe(healer) + " begins to diagnose you.");
+    EmitIn(patient."base:environment", Describe(healer) + " begins to diagnose " + Describe(patient) + ".", patient, healer);
+\}
+
+if(part != "default") \{
+    Call(\$this, "diagnose_part", \$healer: healer, \$patient: patient, \$part: part);
+\} else \{
+    Call(\$this, "diagnose", \$healer: healer, \$patient: patient);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_complication">
+         X[M] /* \$complication, \$wound */
+
+mixed * complications;
+int i;
+
+if(!\$wound["complications"]) return FALSE;
+if(!sizeof(\$wound["complications"])) return FALSE;
+
+complications = \$wound["complications"] -= (\{ nil \});
+
+for(i = 0; i \< sizeof(complications); i++) \{
+    if(typeof(complications[i]) == 3) \{
+        if(complications[i] == \$complication) return TRUE;
+    \} else \{
+        if(complications[i]["name"] \&\& complications[i]["name"] == \$complication) return TRUE;
+    \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_remedies">
+         X[M] if(\$type == "wounds") return \$this."remedies:wounds";
+if(\$type == "complications") return \$this."remedies:complications";
+
+return ([ ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_wound">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_wound instead! */
+/* Calculate wound information */
+/* ::get_wound(\$target_detail:\$target_detail, \$wound:"bruise", \$level:\$damage, \$par:([]) ); */
+string wound_name, wound_adjective, wound_desc, wound_type, *complications, wound_desc_extra;
+
+/* What is the maximum wound level the victim can take? */
+\$level = combat::max_damage(\$damage: Int(\$level), \$victim: \$target_detail);
+
+/* Default wound values, in case they don't get set */
+wound_name = dump_value(\$wound);
+wound_adjective = "injured";
+wound_desc = "has been injured";
+wound_type = "injury";
+
+complications = (\{ \});
+if(\$complications) complications = \$complications;
+
+/* Now we set the right wound values for this particular wound */
+if(\$wound == "bruise") \{
+    wound_name = "bruise";
+    wound_adjective = "bruised";
+    wound_desc = "has been bruised";
+    wound_type = "bruise";
+    if(\$level \<= 0) \{
+        wound_name = "slight bruise";
+        wound_adjective = nil;
+        wound_desc = "is marked with a " + oneof("slight", "light", "small") + " " + oneof("bruise", "contusion");
+        wound_desc_extra = "";
+    \} else if(\$level \> 0 \&\& \$level \<= 4) \{
+        wound_name = "small bruise";
+        wound_desc = "is marked with a " + oneof("bruise", "contusion");
+        wound_desc_extra = "The skin shows signs of faint blue bruising.";
+    \} else if(\$level \> 4 \&\& \$level \<= 14) \{
+        wound_name = "bruise";
+        wound_desc = "is colored dark blue and purple with a " + oneof("nasty", "deep", "swollen") + " " + oneof("bruise", "contusion");
+        wound_desc_extra = "The skin around the area is colored dark blue and purple.";
+    \} else if(\$level \> 14 \&\& \$level \<= 24) \{
+        wound_name = "severe bruise";
+        wound_desc = "is marked with a " + oneof("serious", "injurious", "blackened") + " " + oneof("bruise", "contusion") + " and is slightly swollen with dark black and blue coloration";
+        wound_desc_extra = "The area around the bruise is raised and shows dark black and blue coloration.";
+    \} else if(\$level \> 24) \{
+        wound_name = "grievous bruise";
+        wound_desc = "has a " + oneof("massive") + " " + oneof("bruise", "contusion") + " and is noticeably swollen. The area around the bruise is raised and distorted in shape, showing dark, angry discoloration in shades of black, blue, purple and red";
+        wound_desc_extra = "The area around the bruise is raised and distorted in shape, showing dark, angry discoloration in shades of black, blue, purple and red.";
+    \}
+\} else if(\$wound == "cut") \{
+    wound_name = "cut";
+    wound_adjective = "cut";
+    wound_desc = "has been cut";
+    wound_type = "cut";
+    if(!random(3)) complications \|= (\{ ([ "name":"infected", "severity":10, "type":"complication" ]) \});
+    if(\$level \<= 0) \{
+        wound_name = "shallow cut";
+        wound_adjective = nil;
+        wound_desc = "bears a " + oneof("slight", "light", "small", "shallow") + " " + oneof("cut", "scratch");
+        wound_desc_extra = "";
+    \} else if(\$level \> 0 \&\& \$level \<= 4) \{
+        wound_name = "small cut";
+        wound_desc = "bears a " + oneof("cut", "slice") + " that breaks through the top most layers of skin but is not seriously bleeding";
+        wound_desc_extra = "This small wound breaks through the top most layers of skin but is not seriously bleeding.";
+    \} else if(\$level \> 4 \&\& \$level \<= 14) \{
+        wound_name = "cut";
+        wound_desc = "bears a " + oneof("nasty", "deep", "severe") + " " + oneof("cut", "slice") + " that has torn into the skin";
+        wound_desc_extra = "This wound has torn into the skin and a small amount of blood seeps from the flesh.";
+        if(!random(3)) \{
+            complications \|= (\{ ([ "name":"bleeding", "severity":10, "type":"complication" ]) \});
+            wound_desc += " and " + oneof("is bleeding freely", "continually bleeds", "is oozing blood");
+        \}
+    \} else if(\$level \> 14 \&\& \$level \<= 24) \{
+        wound_name = "severe cut";
+        wound_desc = "bears a " + oneof("serious", "injurious", "deep") + " " + oneof("cut", "gash", "tear", "slice") + " deep in the flesh that is continually bleeding a substantial amount of blood";
+        wound_desc_extra = "This wound has cut deep into the flesh and is continually bleeding a substantial amount of blood.";
+        complications \|= (\{ ([ "name":"bleeding", "severity":10, "type":"complication" ]) \});
+    \} else if(\$level \> 24) \{
+        wound_name = "grievous cut";
+        wound_desc = "bears a " + oneof("grave") + " cut, the flesh hanging loose and profusely bleeding";
+        wound_desc_extra = "This wound has profoundly cut through the skin, the flesh hanging loose and profusely bleeding.";
+        complications \|= (\{ ([ "name":"bleeding", "severity":10, "type":"complication" ]) \});
+    \}
+\} else if(\$wound == "welt") \{
+    wound_name = "welt";
+    wound_adjective = "welted";
+    wound_desc = "has a welt";
+    wound_type = "welt";
+    if(\$level \<= 0) \{
+        wound_name = "slight welt";
+        wound_adjective = nil;
+        wound_desc = "is marked with a "+oneof("slight", "light", "small")+" welt";
+        wound_desc_extra = "";
+    \} else if(\$level \> 0 \&\& \$level \<= 4) \{
+        wound_name = "small welt";
+        wound_desc = "is marked with a welt";
+        wound_desc_extra = "The skin is raised and slightly red.";
+    \} else if(\$level \> 4 \&\& \$level \<= 14) \{
+        wound_name = "welt";
+        wound_desc = "is marked with a welt";
+        wound_desc_extra = "The skin is bright red and there is a noticeable welt across the flesh.";
+    \} else if(\$level \> 14 \&\& \$level \<= 24) \{
+        wound_name = "severe welt";
+        wound_desc = "is marked with a swollen welt";
+        wound_desc_extra = "The swelling of the welt is noticeable and colored white against the angry, red flesh surrounding it.";
+    \} else if(\$level \> 24) \{
+        wound_name = "grievous welt";
+        wound_desc = "is marked with a large and swollen welt";
+        wound_desc_extra = "Massively swollen and showing signs of bleeding under the skin, this welt is obvious as it stretches the skin taut with swelling.";
+    \}
+\} else if(\$wound == "puncture") \{
+    wound_name = "puncture";
+    wound_adjective = "punctured";
+    wound_desc = "has a puncture";
+    wound_type = "puncture";
+    if(!random(3)) complications \|= (\{ ([ "name":"infected", "severity":10, "type":"complication" ]) \});
+    if(\$level \<= 0) \{
+        wound_name = "slight scrape";
+        wound_adjective = nil;
+        wound_desc = "bears a " + oneof("slight", "light", "small") + " scrape";
+        wound_desc_extra = "";
+    \} else if(\$level \> 0 \&\& \$level \<= 4) \{
+        wound_name = "small puncture";
+        wound_desc = "bears a small puncture";
+        wound_desc_extra = "The wound pierces the flesh but is not terribly deep and not openly bleeding.";
+    \} else if(\$level \> 4 \&\& \$level \<= 14) \{
+        wound_name = "puncture";
+        wound_desc = "bears a puncture";
+        wound_desc_extra = "This wound has pierced the flesh and slowly seeps a small amount of blood.";
+    \} else if(\$level \> 14 \&\& \$level \<= 24) \{
+        wound_name = "severe puncture";
+        wound_desc = "bears a " + oneof("serious", "deep", "severe") + " puncture";
+        wound_desc_extra = "This deep puncture wound steadily oozes blood.";
+        complications \|= (\{ ([ "name":"bleeding", "severity":10, "type":"complication" ]) \});
+    \} else if(\$level \> 24) \{
+        wound_name = "gravely deep puncture";
+        wound_desc = "bears a gravely deep puncture";
+        wound_desc_extra = "This grievously deep puncture wound pierces deep into the flesh and steadily gushes blood.";
+        complications \|= (\{ ([ "name":"bleeding", "severity":10, "type":"complication" ]) \});
+    \}
+\} else if(\$wound == "burn") \{
+    wound_name = "burn";
+    wound_adjective = "burned";
+    wound_desc = "has a burn";
+    wound_type = "burn";
+    if(!random(3)) complications \|= (\{ ([ "name":"infected", "severity":10, "type":"complication" ]) \});
+    if(\$level \<= 0) \{
+        wound_name = "slight burn";
+        wound_adjective = nil;
+        wound_desc = "bears a " + oneof("slight", "light", "small") + " burn";
+        wound_desc_extra = "";
+    \} else if(\$level \> 0 \&\& \$level \<= 4) \{
+        wound_name = "small burn";
+        wound_desc = "bears a small burn that marks the flesh with bright red coloration";
+        wound_desc_extra = "The wound reddens the flesh but is not terribly deep and not blistering.";
+    \} else if(\$level \> 4 \&\& \$level \<= 14) \{
+        wound_name = "burn";
+        wound_desc = "bears a burn that shows risks of developing blisters";
+        wound_desc_extra = "This wound has irritated the flesh and shows the potential to develop blisters.";
+    \} else if(\$level \> 14 \&\& \$level \<= 24) \{
+        wound_name = "severe burn";
+        wound_desc = "bears a " + oneof("serious", "deep", "severe") + " burn accompanied by blistering of the surrounding flesh";
+        wound_desc_extra = "This deep burn wound shows distinct patterns of blistering.";
+    \} else if(\$level \> 24) \{
+        wound_name = "gravely deep burn";
+        wound_desc = "bears a gravely deep burn with scorched flesh, burst blisters, and steadily oozing blood";
+        wound_desc_extra = "This grievously deep burn wound scorches deep into the flesh and steadily gushes blood.";
+        complications \|= (\{ ([ "name":"bleeding", "severity":10, "type":"complication" ]) \});
+    \}
+\} else \{
+  error("Unknown woundtype "+dump_value(\$wound));
+\}
+
+return ([ "level":\$level, "name":wound_name, "adj":wound_adjective, "desc":wound_desc, "extra":wound_desc_extra, "type":wound_type, "complications":complications ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_wounds">
+         X[M] object * wounds;
+
+wounds = (\{ \});
+
+if(Get(\$target, "injuries:" + \$detail)) \{
+    wounds = Get(\$target, "injuries:" + \$detail);
+\}
+
+return wounds;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_wound">
+         X[M] int i, level;
+object victim;
+string detail, tmp;
+mixed *injuries;
+
+victim = NRefOb(\$target_detail);
+detail = NRefDetail(\$target_detail);
+
+\$az = \$\{Chatters:AE:ka:kata\};
+EmitTo(\$az, "Giving wound");
+EmitTo(\$az, dump_value(\$wound_info));
+
+if(!\$combat_data)
+  \$combat_data = combat::datafile(\$id: victim.combat["id"]);
+
+level = Int(\$wound_info["level"]);
+
+/* Save the wound to the PC */
+\$wound_info["woundtime"] = time();
+\$injuries = Arr(Get(victim, "injuries:"+detail));
+\$injuries += (\{ \$wound_info \});
+Set(victim, "injuries:"+detail, \$injuries);
+
+/* And check what adjective we should be using */
+\$adjs = (\{ \});
+for(i=0;i\<sizeof(\$injuries);i++) \{
+  \$adjs \|= (\{ \$injuries[i]["adj"] \});
+\}
+\$adjs -= (\{ nil \});
+if(sizeof(\$adjs)) Set(victim, "combat:injury:"+detail+":adjectives", implode(\$adjs, ", "));
+
+/* And set the new adjective for targetting */
+/* Set(victim, "details:"+detail+":adjective:"+\$wound_info["adj"], TRUE); */
+EmitTo(\$az, "Added "+dump_value(\$wound_info["adj"]));
+
+EmitTo(\$az, "Giving damage " + Str(level));
+
+/* Has this level of wound led to any status changes? */
+\$hp = Int(victim."effect:health:severity");
+\$hp += level;
+
+if(victim."status:health-max")
+    \$max = Int(victim."status:health-max");
+else
+    \$max = 100;
+
+if(\$hp \> \$max) \$hp = \$max; 
+victim."effect:health:severity" = \$hp;
+
+if(\$complications \&\& sizeof(\$complications)) \{
+    for(i = 0; i \< sizeof(\$complications); i++) \{
+        Call(\$\{Allegory:Lib:Characters:Effects\}, "apply_effect", \$data: \$complications[i], \$actor: victim);
+    \}
+\}
+
+if(\$hp \>= 90) \{
+  /* They are dying */
+  if(FindMerry(victim, "lib", "take_combat_damage_dying"))
+    if(!Call(victim, "take_combat_damage_dying", \$char: \$char)) return (\{ level, \$wound_info["name"] \});
+
+  EmitTo(\$az, "Killed (dying) "+dump_value(victim));
+  if(!victim."status:dying") victim."status:dying" = time();
+  EmitTo(victim, TAG("You are now UNCONSCIOUS.", "imp"));
+  EmitTo(victim, "(Don't worry, you aren't going to die unless you give explicit permission. Once you are treated, you will wake up within 24 hours. If left untreated, you will wake up in three days.)");
+
+  combat::remove_from_combat(\$fighter: victim);
+
+  Call(victim, "go_to_sleep");
+\}
+
+return (\{ level, \$wound_info["name"] \});
+      </Core:Property>
+      <Core:Property property="merry:lib:sew">
+         X[M] int i, j;
+
+\$az = \$\{Chatters:AE:ka:kata\};
+EmitTo(\$az, "sewing");
+
+/* Check if any injuries need bandaging */
+\$stitching_needed = (\{ \});
+
+\$injuries = Get(\$patient, "injuries:" + \$detail);
+
+if(\$injuries) \{
+    for(j=0; j\<sizeof(\$injuries); j++) \{
+        \$injury = \$injuries[j];
+        if(wounds::get_complication(\$wound: \$injury, \$complication: "bleeding freely") \|\| wounds::get_complication(\$wound: \$injury, \$complication: "bleeding")) \{
+            \$injury["adj"] = "";
+            \$injury["desc"] = "has been recently sewn shut to stop the flow of blood";
+            \$injury["name"] = "cut";
+            \$injury["type"] = "sewn cut";
+            \$stitching_needed += (\{ \$injury \});
+            \$injury = wounds::clear_complication(\$wound: \$injury, \$complication: "bleeding freely");
+            \$injury = wounds::clear_complication(\$wound: \$injury, \$complication: "bleeding");
+        \}
+    \}
+\}
+
+if(!sizeof(\$stitching_needed)) \{
+  EmitTo(\$actor, Describe(\$dob[0], nil, \$actor)+" doesn't need sewn.");
+  return FALSE;
+\}
+
+EmitTo(\$healer, "You sew " + Describe(\$dob[0]) + " with " + Describe(\$tool) + "."); 
+EmitTo(\$patient, Describe(\$healer) + " sews " + Describe(\$dob[0], \$patient) + " with " + Describe(\$tool) + ".");
+EmitIn(\$patient."base:environment", Describe(\$healer) + " sews " + Describe(\$dob[0]) + " with " + Describe(\$tool) + ".", \$healer, \$patient);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:unbandage">
+         X[M] /* set the body part to be unbandaged */
+object victim;
+string detail, *list;
+int i, j;
+
+/* sanity checking */
+if(!\$dob \|\| !sizeof(\$dob)) return TRUE;
+
+/* what are they unbandaging? */
+/* should we unbandage everything? */
+if(sizeof(\$dob) == 1 \&\& NRefDetail(\$dob[0]) == "default") \{
+  /* targetting the whole object. Check if they were bandaged */
+  victim = NRefOb(\$dob[0]);
+  \$tmp_map = map_indices(prefixed_map(Get(victim, "*"), "bandage:"));
+  list = (\{ \});
+  for(i=0;i\<sizeof(\$tmp_map);i++) \{
+    if(sscanf(\$tmp_map[i], "bandage:%s", \$tmp))
+      list \|= (\{ \$tmp \});
+  \}
+  if(sizeof(list)) \{
+    /* retarget \$dob to be the bandaged locations */
+    \$dob = (\{ \});
+    for(i=0;i\<sizeof(list);i++) \{
+      \$dob \|= (\{ NewNRef(victim, list[i]) \});
+    \}
+  \}
+\}
+
+/* loop through unbandaging each detail */
+for(i=0;i\<sizeof(\$dob);i++) \{
+  victim = NRefOb(\$dob[i]);
+  detail = NRefDetail(\$dob[i]);
+  /* check there is a bandage here */
+  \$bandage = Get(victim, "bandage:"+detail);
+
+  if(\$bandage) \{
+    /* remove the bandage */
+    Set(victim, "combat:injury:"+detail+":adjectives", nil);
+    /* EXTENSION - should be able to keep combat:injury:detail:adjectives after a bandage/unbandage */
+    for(j=0;j\<sizeof(Arr(\$bandage[0]));j++)
+     Set(victim, "details:"+detail+":adjective:"+Arr(\$bandage[0])[j], nil);
+    for(j=0;j\<sizeof(Arr(\$bandage[1]));j++)
+     Set(victim, "details:"+detail+":sname:"+Arr(\$bandage[1])[j], nil);
+    for(j=0;j\<sizeof(Arr(\$bandage[2]));j++)
+     Set(victim, "details:"+detail+":pname:"+Arr(\$bandage[2])[j], nil);
+
+    /* now set the injuries to not be bandaged anymore */
+    Set(victim, "bandage:"+detail, nil);
+    \$injury = Get(victim, "combat:injury:"+detail);
+    if(\$injury) \{
+     \$injury["bandaged"] = nil;
+     Set(victim, "combat:injury:"+detail, \$injury);
+    \}
+
+    /* and describe the injuries on this body part again */
+    /*Call(\$\{Ironclaw:Lib:Characters:Injuries\}, "describe-wound", \$detail: \$dob[i]);*/
+  \}
+\}
+
+return TRUE;
+
+EmitTo(\$actor, dump_value(\$dob));
+return TRUE;
+
+
+
+if(!\$injury) \$injury = ([ ]);
+\$injury["bandaged"] = (\{ i, \$this."trait:material", \$this."trait:color", "bandage" \});
+Set(NRefOb(\$iob[0]), "combat:injury:"+NRefDetail(\$iob[0]), \$injury);
+return TRUE;
+
+/* mark this detail as bandaged */
+/*Set(victim, "combat:injury:"+detail+":bandaged", i);
+Set(victim, "combat:injury:"+detail+":bandagename", Describe(\$this, nil, nil, STYLE_NONPOSS));
+Set(victim, "combat:injury:"+detail, "been bandaged with "+Describe(\$this, nil, nil, STYLE_NONPOSS));
+Set(victim, "combat:injury:"+detail+":adjectives", "bandaged");*/
+Set(victim, "details:"+detail+":adjective:bandaged", TRUE);
+Set(victim, "details:"+detail+":sname:bandage", TRUE);
+Set(victim, "details:"+detail+":pname:bandages", TRUE);
+
+Set(victim, "bandage:"+detail, (\{ "bandaged", "bandage", "bandages" \}) );
+
+
+
+
+/* loop through unbandaging each detail */
+for(i=0;i\<sizeof(\$dob);i++) \{
+  victim = NRefOb(\$dob[i]);
+  detail = NRefDetail(\$dob[i]);
+  /* check there is a bandage here */
+  if(typeof(Get(victim, "combat:injury:"+detail+":bandaged")) != T_NIL) \{
+    /* remove the bandage */
+    Set(victim, "combat:injury:"+detail+":bandaged", nil);
+    Set(victim, "combat:injury:"+detail+":bandagename", nil);
+    Set(victim, "details:"+detail+":adjective:grubby", nil);
+    Set(victim, "details:"+detail+":adjective:grubbily", nil);
+    Set(victim, "details:"+detail+":adjective:bandaged", nil);
+    Set(victim, "details:"+detail+":sname:bandage", nil);
+    Set(victim, "details:"+detail+":pname:bandages", nil);
+    /* now set the injuries to not be bandaged anymore */
+    if(victim."combat:injuries" \&\& victim."combat:injuries"[detail]) \{
+      for(j=0;j\<sizeof(victim."combat:injuries"[detail]);j++) \{
+        victim."combat:injuries"[detail][j]["bandaged"] = nil;
+      \}
+    \}
+    /* and describe the injuries on this body part again */
+    /*Call(\$\{Ironclaw:Lib:Characters:Injuries\}, "describe-wound", \$detail: \$dob[i]);*/
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:apply-dob">
+         X[M] object victim;
+int i, j;
+
+\$az = \$\{Chatters:AE:ka:kata\};
+EmitTo(\$az, "Applying maggots");
+
+/* check that they are applying the maggots to a valid target */
+if(\$this."base:environment" != \$actor) \{
+  EmitTo(\$actor, "You must be holding "+Describe(this, nil, \$actor)+" to use it.");
+  return FALSE;
+\}
+
+/* check that they are applying it to only one thing */
+if(!\$iob \|\| !sizeof(\$iob)) \{
+  EmitTo( \$actor, "What do you intend to apply " +Describe(this, nil, \$actor)+" to?" );
+  return FALSE;
+\} else if(\$iob \&\& sizeof(\$iob) \> 1) \{
+  EmitTo( \$actor, "You may only apply " +Describe(this, nil, \$actor)+" to one person at a time." );
+  return FALSE;
+\}
+
+/* check they are targeting a character */
+/*if(!NRefOb(\$iob[0])."udat:possessed") \{
+  EmitTo(\$actor, "You can't apply maggots to "+Describe(\$iob[0])+".");
+  return FALSE;
+\}*/
+
+\$victim = NRefOb(\$iob[0]);
+\$detail = NRefDetail(\$iob[0]);
+
+if(\$detail != "default") \{
+  \$details = (\{ "injuries:"+\$detail \});
+\} else \{
+  EmitTo(\$actor, "You must specify a body part to apply maggots to.");
+  return FALSE;
+\}
+
+/* Check if any injuries need maggot treatment */
+\$maggots_needed = (\{ \});
+for(i=0; i\<sizeof(\$details); i++) \{
+  \$detail = \$details[i];
+  \$injuries = Get(\$victim, \$detail);
+  
+  EmitTo(\$az, "Detail is: "+dump_value(\$detail));
+  EmitTo(\$az, "Injuries are: "+dump_value(\$injuries));
+
+  if(\$injuries) \{
+    for(j=0; j\<sizeof(\$injuries); j++) \{
+      \$injury = \$injuries[j];
+      \$adjs = (\{ \});
+      if(wounds::get_complication(\$complication: "infected", \$wound: \$injury)) \{
+        /* Needs Maggots */
+        \$maggots_needed \|= (\{ \$detail \});
+        \$injury["desc"] = "has been recently treated with maggots";
+        \$injury["infected_treatment_time"] = time();
+        \$injury["infected_treatment"] = "maggots";
+
+        /* Roll healer skill */
+        \$healer = 3;
+        \$injury["infected_treatment_skill"] = \$healer;
+      \}
+    \}
+  \}
+\}
+
+if(!sizeof(\$maggots_needed)) \{
+  EmitTo(\$actor, Describe(\$iob, nil, \$actor)+" doesn't need to be treated for infection.");
+  return FALSE;
+\}
+
+EmitTo(\$actor, "You strategically pour your maggots onto "+Describe(\$iob)+".");
+EmitIn(\$actor."base:environment", Describe(\$this)+" immediately goes to work on the flesh of "+Describe(\$iob)+".", \$actor);
+
+\$this."trait:quantity"--;
+
+if(\$this."trait:quantity" \<= 0) \{
+    EmitTo(\$actor, "You have used the last of " + Describe(\$this, nil, \$actor) + ".");
+    Slay(\$this);
+\}
+
+\$delay(30, TRUE, "4255");
+
+/* If wound has not been bandaged after applying maggots, remove maggots */
+\$bandaged = 1;
+for(i=0; i\<sizeof(\$details); i++) \{
+  \$detail = \$details[i];
+  \$injuries = Get(\$victim, \$detail);
+  if(\$injuries) \{
+    for(j=0; j\<sizeof(\$injuries); j++) \{
+      \$injury = \$injuries[j];
+      if(!\$injury["bandaged"]) \{
+        \$bandaged = 0;
+        \$injury["infected_treatment_time"] = nil;
+        \$injury["infected_treatment"] = nil;
+        \$injury["infected_treatment_skill"] = nil;
+      \}
+    \}
+  \}
+\}
+
+if(\$bandaged == 0) \{
+    EmitTo(\$victim, "After awhile, the maggots fall from " + Describe(\$iob, \$victim) + ".");
+    EmitIn(\$victim."base:environment", "After awhile, the maggots fall from " + Describe(\$iob) + ".", \$victim);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:compress-using">
+         X[M] object victim;
+int i, j;
+
+\$az = \$\{Chatters:AE:ka:kata\};
+EmitTo(\$az, "Applying poultice");
+
+/* check that they are applying the poultice to a valid target */
+if(\$this."base:environment" != \$actor) \{
+  EmitTo(\$actor, "You must be holding "+Describe(this, nil, \$actor)+" to use it.");
+  return FALSE;
+\}
+
+/* check that they are applying it to only one thing */
+if(!\$dob \|\| !sizeof(\$dob)) \{
+  EmitTo( \$actor, "What do you intend to use " +Describe(this, nil, \$actor)+" on?" );
+  return FALSE;
+\} else if(\$dob \&\& sizeof(\$dob) \> 1) \{
+  EmitTo( \$actor, "You may only use " +Describe(this, nil, \$actor)+" on one person at a time." );
+  return FALSE;
+\}
+
+/* check they are targeting a character */
+/*if(!NRefOb(\$dob[0])."udat:possessed") \{
+  EmitTo(\$actor, "You can't apply poultices to "+Describe(\$dob[0])+".");
+  return FALSE;
+\}*/
+
+\$victim = NRefOb(\$dob[0]);
+\$detail = NRefDetail(\$dob[0]);
+
+if(\$detail != "default") \{
+  \$details = (\{ "injuries:"+\$detail \});
+\} else \{
+  EmitTo(\$actor, "You must specify a body part to apply the poultice to.");
+  return FALSE;
+\}
+
+/* Check if any injuries need poultice treatment */
+\$poultice_needed = (\{ \});
+for(i=0; i\<sizeof(\$details); i++) \{
+  \$detail = \$details[i];
+  \$injuries = Get(\$victim, \$detail);
+  
+  EmitTo(\$az, "Detail is: "+dump_value(\$detail));
+  EmitTo(\$az, "Injuries are: "+dump_value(\$injuries));
+
+  if(\$injuries) \{
+    for(j=0; j\<sizeof(\$injuries); j++) \{
+      \$injury = \$injuries[j];
+      \$adjs = (\{ \});
+      if(wounds::get_complication(\$complication: "infected", \$wound: \$injury)) \{
+        /* Needs poultice */
+        \$poultice_needed \|= (\{ \$detail \});
+        \$injury["desc"] = "has been recently treated with a poultice";
+        \$injury["infected_treatment_time"] = time();
+        \$injury["infected_treatment"] = "poultice";
+
+        /* Roll healer skill */
+        \$healer = 3;
+        \$injury["infected_treatment_skill"] = \$healer;
+      \}
+    \}
+  \}
+\}
+
+if(!sizeof(\$poultice_needed)) \{
+  EmitTo(\$actor, Describe(\$dob, nil, \$actor)+" doesn't need to be treated for infection.");
+  return FALSE;
+\}
+
+EmitTo(\$actor, "You strategically press the compress onto "+Describe(\$dob)+".");
+EmitIn(\$actor."base:environment", Describe(\$this)+" completely covers the wound of "+Describe(\$dob)+".", \$actor);
+
+Slay(\$this);
+
+
+\$delay(30, TRUE, "4255");
+
+/* If wound has not been bandaged after applying poultice, remove poultice */
+\$bandaged = 1;
+for(i=0; i\<sizeof(\$details); i++) \{
+  \$detail = \$details[i];
+  \$injuries = Get(\$victim, \$detail);
+  if(\$injuries) \{
+    for(j=0; j\<sizeof(\$injuries); j++) \{
+      \$injury = \$injuries[j];
+      if(!\$injury["bandaged"]) \{
+        \$bandaged = 0;
+        \$injury["infected_treatment_time"] = nil;
+        \$injury["infected_treatment"] = nil;
+        \$injury["infected_treatment_skill"] = nil;
+      \}
+    \}
+  \}
+\}
+
+if(\$bandaged == 0) \{
+    EmitTo(\$victim, "After awhile, the poultice falls from " + Describe(\$dob, \$victim) + ".");
+    EmitIn(\$victim."base:environment", "After awhile, the poultice falls from " + Describe(\$dob) + ".", \$victim);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:unbandage-dob">
+         X[M] \$az = \$\{Chatters:AE:ka:kata\};
+\$az = nil;
+EmitTo(\$az, "Unbandaging");
+EmitTo(\$az, dump_value(\$target));
+
+EmitTo(\$az, dump_value( NRefOb(\$target) ));
+EmitTo(\$az, dump_value( NRefDetail(\$target) ));
+
+/* Remove bandaged adjective */
+Set(NRefOb(\$target), "details:"+NRefDetail(\$target)+":adjective:bandaged", nil);
+Set(NRefOb(\$target), "details:"+NRefDetail(\$target)+":sname:bandage", nil);
+Set(NRefOb(\$target), "details:"+NRefDetail(\$target)+":pname:bandages", nil);
+Set(NRefOb(\$target), "combat:injury:"+NRefDetail(\$target)+":adjectives", nil);
+
+/* Is there injuries info to remove? */
+\$info = Get(NRefOb(\$target), "injuries:"+NRefDetail(\$target));
+if(\$info) \{
+  /* Check if any of these details are bandaged */
+  for(\$i=0;\$i\<sizeof(\$info);\$i++) \{
+    if(!\$info[\$i]) continue;
+    EmitTo(\$az, dump_value(\$info[\$i]));
+    if(\$info[\$i]["bandaged"]) \{
+      /* Remove this bandage */
+      \$level = \$info[\$i]["level"] ? \$info[\$i]["level"] : 1; 
+      \$healer = \$info[\$i]["bandaged_skill"] ? \$info[\$i]["bandaged_skill"] : 1;
+
+      if(wounds::get_complication(\$wound: \$info[\$i], \$complication: "infected")) \{ 
+        if(\$info[\$i]["infected_treatment_time"]) \{
+          if(time() \> \$info[\$i]["infected_treatment_time"] + 60*60*20 * \$level/\$healer) \{
+              /* Remove infection */
+              \$info[\$i] = wounds::clear_complication(\$wound: \$info[\$i], \$complication: "infected");
+              \$info[\$i]["infected_treatement_time"] = nil;
+              \$info[\$i]["infected_treatment"] = nil;
+              \$info[\$i]["infected_treatment_skill"] = nil;
+          \}
+        \}
+      \}
+
+      if(time() \> \$info[\$i]["woundtime"] + 60*60*20 * \$level/\$healer
+      \&\& time() \> \$info[\$i]["bandaged_time"] + 60*60*6
+      \&\& (!\$info[\$i]["complications"] \|\| !sizeof(\$info[\$i]["complications"]))) \{ 
+        /* Wound is fully healed */
+        \$info[\$i] = nil;
+      \} else \{
+        /* Not fully healed yet */
+        \$info[\$i]["bandaged"] = nil;
+        \$info[\$i]["bandaged_time"] = nil;
+      \}
+    \}
+  \}
+  /* Just in case we removed any injuries, clear the array */
+  \$info -= (\{ nil \});
+  if(sizeof(\$info)) Set(NRefOb(\$target), "injuries:"+NRefDetail(\$target), \$info);
+  else Set(NRefOb(\$target), "injuries:"+NRefDetail(\$target), nil);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:bandage-using">
+         X[M] object victim;
+string detail, *details;
+int i, j;
+
+\$az = \$\{Chatters:AE:ka:kata\};
+EmitTo(\$az, "Bandaging");
+
+/* check that they are applying the bandage to a valid target */
+if(\$this."base:environment" != \$actor) \{
+  EmitTo(\$actor, "You must be holding "+Describe(this, nil, \$actor)+" to use it.");
+  return FALSE;
+\}
+
+/* check that they are applying it to only one thing */
+if(!\$dob \|\| !sizeof(\$dob)) \{
+  EmitTo( \$actor, "What do you intend to apply " +Describe(this, nil, \$actor)+" to?" );
+  return FALSE;
+\} else if(\$dob \&\& sizeof(\$dob) \> 1) \{
+  EmitTo( \$actor, "You may only apply " +Describe(this, nil, \$actor)+" to one person at a time." );
+  return FALSE;
+\}
+
+/* check they are targeting a character */
+/* if(!NRefOb(\$dob[0])."udat:possessed") \{
+  EmitTo(\$actor, "You can't apply a bandage to "+Describe(\$dob[0])+".");
+  return FALSE;
+\} */
+
+victim = NRefOb(\$dob[0]);
+detail = NRefDetail(\$dob[0]);
+
+if(detail != "default") \{
+  details = (\{ "injuries:"+detail \});
+\} else \{
+  EmitTo(\$actor, "You must specify a body part to bandage.");
+  return FALSE;
+\}
+
+/* Check if any injuries need bandaging */
+\$bandaging_needed = (\{ \});
+for(i=0; i\<sizeof(details); i++) \{
+  detail = details[i];
+  \$injuries = Get(victim, detail);
+
+  if(\$injuries) \{
+    for(j=0; j\<sizeof(\$injuries); j++) \{
+      \$injury = \$injuries[j];
+      \$adjs = (\{ \});
+      if(!\$injury["bandaged"] \|\| !\$injury["bandaged_time"]) \{
+        /* Needs bandaging */
+        \$bandaging_needed \|= (\{ detail \});
+        \$injury["bandaged_time"] = time();
+        \$injury["bandaged"] = Describe(NRefOb(\$using[0]), nil, nil, STYLE_NONPOSS);
+
+        /* Roll healer skill */
+        \$healer = 3;
+        \$injury["bandaged_skill"] = \$healer;
+
+        /* mark this detail as bandaged */
+        EmitTo(\$az, "Detail: "+dump_value( detail[9..] ));
+        Set(victim, "details:"+detail[9..]+":adjective:bandaged", TRUE);
+        Set(victim, "details:"+detail[9..]+":sname:bandage", TRUE);
+        Set(victim, "details:"+detail[9..]+":pname:bandages", TRUE);
+        Set(victim, "combat:injury:"+detail[9..]+":adjectives", "bandaged");
+
+        /* Roll for chance of infection if wound is not cleaned */
+        \$remedies = Get(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "remedies:wounds");
+        \$name = \$injury["name"];
+        if(\$remedies[\$name]) \{
+            if(member("cleaned", \$remedies[\$name]) \&\& !\$injury["cleaned"]) \{
+                if(!\$injury["level"]) \$level = 1; else \$level = \$injury["level"];
+                if(\$level == 1) \$num = random(10);
+                if(\$level == 2) \$num = random(20);
+                if(\$level \>= 3) \$num = random(30);
+
+                if(\$num \>= 10) \{
+                    if(\$injury["complications"]) \{
+                        \$injury["complications"] \|= (\{ ([ "name":"infected", "severity":10, "type":"complication" ]) \});
+                    \} else \{
+                        \$injury["complications"] = (\{ ([ "name":"infected", "severity":10, "type":"complication" ]) \});
+                    \}
+                    Call(\$\{Allegory:Lib:Characters:Effects\}, "apply_effect", \$data: ([ "name":"infected", "severity":10, "type":"complication" ]), \$actor: victim);
+                \}
+            \}
+        \}
+      \}
+    \}
+  \}
+\}
+
+if(!sizeof(\$bandaging_needed)) \{
+  EmitTo(\$actor, Describe(\$dob, nil, victim)+" doesn't need bandaging.");
+  return FALSE;
+\}
+
+if(!(\$woundsMap = structure_propmap(copy(victim."*"))["injuries"])) \$woundsMap = ([ ]);
+\$wounds = map_indices(\$woundsMap);
+
+
+/* If unconscious, check if this is the last wound */
+if(victim."combat:state") \{
+
+    \$list = (\{ \});
+    for(\$i = 0; \$i \< sizeof(\$wounds); \$i++) \{
+        \$allwounds = \$woundsMap[\$wounds[\$i]];
+        for(\$j = 0; \$j \< sizeof(\$allwounds); \$j++) \{
+            if(Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "check_treatment", \$wound: \$allwounds[\$j])) \{
+                \$list \|= (\{ \$wounds[\$i] \});
+            \}
+        \}
+    \}
+
+    if(!sizeof(\$list)) \{
+        Call(victim, "treated");
+    \}
+\}
+
+\$delay(0.01, TRUE, "86ec");
+
+Slay(\$this);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="remedies:complications">
+         ([ "bleeding":(\{ "try to stop the bleeding" \}), "bleeding freely":(\{ "try to stop the bleeding" \}), "broken":(\{ "stabilized with a splint" \}), "infected":(\{ "treat it for infection" \}) ])
+      </Core:Property>
+      <Core:Property property="remedies:wounds">
+         ([ "bruise":(\{ "bandaged" \}), "cut":(\{ "cleaned", "bandaged" \}), "deep cut":(\{ "cleaned", "bandaged" \}), "grave cut":(\{ "cleaned", "bandaged" \}), "gravely deep puncture":(\{ "cleaned", "bandaged" \}), "grievous bruise":(\{ "bandaged" \}), "grievous cut":(\{ "cleaned", "bandaged" \}), "grievous welt":(\{ "cleaned", "bandaged" \}), "puncture":(\{ "cleaned", "bandaged" \}), "severe bruise":(\{ "bandaged" \}), "severe cut":(\{ "cleaned", "bandaged" \}), "severe puncture":(\{ "cleaned", "bandaged" \}), "severe welt":(\{ "cleaned", "bandaged" \}), "shallow cut":(\{ "cleaned", "bandaged" \}), "slight bruise":(\{ "bandaged" \}), "slight scrape":(\{ "cleaned", "bandaged" \}), "slight welt":(\{ "bandaged" \}), "small bruise":(\{ "bandaged" \}), "small cut":(\{ "cleaned", "bandaged" \}), "small puncture":(\{ "cleaned", "bandaged" \}), "small welt":(\{ "bandaged" \}), "welt":(\{ "bandaged" \}) ])
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1569456237, "jominey", "E", 1569456394, "jominey", "E", 1569456539, "jominey", "E", 1569456585, "jominey", "E", 1569456616, "jominey", "E", 1569456810, "jominey", "E", 1569456997, "jominey", "P", 1569459844, "jominey", "P", 1569459930, "jominey", "P", 1569460900, "jominey", "E", 1569461138, "jominey", "E", 1569514333, "jominey", "E", 1569514512, "jominey", "E", 1569514526, "jominey", "E", 1569514538, "jominey", "E", 1569514610, "jominey", "E", 1569514765, "jominey", "P", 1569514803, "jominey", "E", 1569515673, "jominey", "E", 1569515733, "jominey", "E", 1569515853, "jominey", "E", 1569515884, "jominey", "P", 1569515891, "jominey", "E", 1569516049, "jominey", "E", 1569516235, "jominey", "P", 1569516304, "jominey", "E", 1569520204, "jominey", "E", 1569520218, "jominey", "E", 1569520294, "jominey", "E", 1569520304, "jominey", "E", 1569520393, "jominey", "E", 1569520507, "jominey", "E", 1569520567, "jominey", "E", 1569520725, "jominey", "E", 1569522081, "jominey", "E", 1569547172, "jominey", "E", 1569547339, "jominey", "P", 1569547368, "jominey", "P", 1570398715, "jominey", "E", 1570398909, "jominey", "E", 1579724604, "jominey", "E", 1579724706, "jominey", "P", 1579724781, "jominey", "P", 1579724994, "jominey", "E", 1583450317, "jominey", "E", 1589922232, "jominey", "E", 1589926616, "jominey", "E", 1589926812, "jominey", "P", 1589926971, "jominey", "E", 1589927026, "jominey", "E", 1589927156, "jominey", "E", 1591312134, "jominey", "E", 1591312144, "jominey", "E", 1591312161, "jominey", "E", 1591312161, "jominey", "E", 1591312173, "jominey", "E", 1591312183, "jominey", "E", 1591312196, "jominey", "E", 1593267460, "jominey", "E", 1593268312, "jominey", "E", 1593268432, "jominey", "E", 1593268517, "jominey", "P", 1597082048, "jominey", "E", 1696722438, "ezralee", "E", 1696732486, "ezralee", "E", 1696732527, "ezralee", "E", 1696732821, "ezralee", "E", 1696734902, "ezralee", "E", 1696736481, "ezralee", "E", 1696736705, "ezralee", "E", 1696737174, "ezralee", "E", 1702698420, "ezralee", "E", 1702700179, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

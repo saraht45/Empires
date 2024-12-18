@@ -1,0 +1,819 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="100" verb2="are carrying" verb3="is carrying"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:reset_details">
+         X[M] /*          
+This function will take a detail, and a list of whatever type is being reset (sname, pname, adjective), and replace all the details snames with the new list.*/          
+          
+/*EmitTo(\$actor, "here1");*/          
+          
+if(!\$detail \|\| !\$type \|\| !\$list \|\| (sizeof(\$list) \< 1)) return TRUE;          
+          
+/*          
+EmitTo(\$actor, "here2");          
+          
+EmitTo(\$actor, \$detail);          
+EmitTo(\$actor, \$type);          
+for(\$i = 0; \$i \< sizeof(\$list); \$i++)          
+\{          
+EmitTo(\$actor, "here2.1");          
+  EmitTo(\$actor, \$list[\$i]);          
+EmitTo(\$actor, "here2.2");          
+\}          
+          
+EmitTo(\$actor, "here2.5");          
+*/          
+          
+\$removelist = Get(\$body, "details:" + \$detail + ":" + \$type + "s");          
+\$removelist -= \$list;          
+\$addlist = Get(\$body, "details:" + \$detail + ":" + \$type + "s");          
+\$addlist -= \$removelist;          
+\$list -= \$addlist;          
+          
+/* list what's already in the detail */          
+/*EmitTo(\$actor, "remove:");*/          
+for(\$i = 0; \$i \< sizeof(\$removelist); \$i++)          
+\{          
+  /*EmitTo(\$actor, \$removelist[\$i]);*/          
+  Set(\$body, "details:" + \$detail + ":" + \$type + ":" + \$removelist[\$i], nil);          
+\}          
+          
+/*EmitTo(\$actor, "here2.6");*/          
+          
+/*EmitTo(\$actor, "add:");*/          
+for(\$i = 0; \$i \< sizeof(\$list); \$i++)          
+\{          
+  /*EmitTo(\$actor, \$list[\$i]);*/          
+  if(\$list[\$i])          
+    Set(\$body, "details:" + \$detail + ":" + \$type + ":" + \$list[\$i], 1);          
+\}          
+          
+/*EmitTo(\$actor, "here3");*/          
+          
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:updatedesc">
+         X[M] /*
+This function will build up a description for the character, depending on the values that have been set.*/
+
+string lookstring;
+string examinestring;
+return TRUE;
+/* not yet implemented fully */
+
+/*
+Look description:
+\<name\> is a/an \<height\>, \<build\> \<animal\> with \<fur length\>, \<fur texture\>  \<fur colour\> \<fur type\> and a head of \<type\> \<colour\> hair, \<length\> \<style\>.
+-----
+\<name\> is \$animal \$fur \$hair.
+\$animal: a/an \<height\>, \<build\> \<animal\>
+\$fur: with \<fur length\>, \<fur texture\>, \<fur colour\> \<fur type\>
+\$hair: and a head of \<type\> \<colour\> hair, \<length\> \<style\>
+*/
+/* find \$animal */
+
+if(!\$body) return FALSE;
+\$body = NRefOb(\$body);
+if(!\$body) return FALSE;
+
+if(\$body.no_description_reset) return TRUE;
+
+\$body.no_description_reset = TRUE;
+\$delay(2, TRUE, "8c40");
+\$body.no_description_reset = nil;
+
+\$az = nil;
+/* \$az = \$\{Chatters:IC:az:azrael\};   */
+EmitTo(\$az, "1");
+
+
+EmitTo(\$az, "2");
+
+\$animal = "";
+
+if (\$body."appearance:height" \&\& (\$body."appearance:height" != "ordinary") \&\& (\$body."appearance:height" != "average"))
+  \$animal += \$body."appearance:height" + " ";
+
+if (\$body."appearance:build" \&\& (\$body."appearance:build" != "ordinary") \&\& (\$body."appearance:build" != "average"))
+  \$animal += \$body."appearance:build" + " ";
+
+\$animal += \$body."trait:animal";
+
+/* put a "a" or a "an" before the description
+i.e. "AN athletic timber wolf" or "A petite timber wolf"
+*/
+if ((\$animal[..0] == "a") \|\| (\$animal[..0] == "e") \|\| (\$animal[..0] == "i") \|\| (\$animal[..0] == "o") \|\| (\$animal[..0] == "u"))\{
+    \$animal = "an " + \$animal;
+\} else \{
+    \$animal = "a " + \$animal;
+\}
+
+EmitTo(\$az, "3");
+
+/*find \$fur*/
+\$fur = "";
+if (\$body."appearance:furlength" \&\& (\$body."appearance:furlength" != "ordinary"))
+  \$fur = Get(\$body, "appearance:furlength") + ", ";
+
+if (\$body."appearance:furtexture" \&\& (\$body."appearance:furtexture" != "ordinary"))
+  \$fur += Get(\$body, "appearance:furtexture") + " ";
+
+if (\$body."appearance:furcolor" \&\& (\$body."appearance:furcolor" != "ordinary"))
+\$fur += Get(\$body, "appearance:furcolor") + " ";
+
+if (\$fur != "")
+\$fur += Get(\$body, "appearance:furtype");
+
+EmitTo(\$az, "4");
+
+/*find \$hair*/
+\$hair = "";
+\$hair_examine = "";
+
+if(\$body."appearance:hashair" \&\& (\$body."appearance:hashair" != "no"))
+\{
+  \$hair = "";
+
+  if(\$body."appearance:hairlength" \&\& (\$body."appearance:hairlength" != "ordinary"))
+    \$hair += \$body."appearance:hairlength" + " ";
+
+  if(\$body."appearance:hairtype" \&\& (\$body."appearance:hairtype" != "ordinary"))
+    \$hair += \$body."appearance:hairtype" + " ";
+
+  if(\$body."appearance:haircolor" \&\& (\$body."appearance:haircolor" != "ordinary"))
+    \$hair += \$body."appearance:haircolor" + " ";
+
+  \$hair_examine = \$hair;
+
+  if(\$hair != "")
+  \{
+    if(\$body."appearance:hairname") \{
+      \$hair += \$body."appearance:hairname";
+    \} else \{
+      \$hair += "hair";
+    \}
+    if(\$body."appearance:hairplural")
+      \$hair = "a "+\$hair;
+
+    if(\$body."appearance:hairstyle_string")
+      \$hair += \$body."appearance:hairstyle_string";
+
+    if(\$body."appearance:hairname") \{
+      \$hair_examine += \$body."appearance:hairname";
+    \} else \{
+      \$hair_examine += "hair";
+    \}
+    if(\$body."appearance:hairplural")
+      \$hair_examine = "a "+\$hair_examine;
+
+    if(\$body."appearance:hairstyle_examinestring") \{
+      \$hair_examine += \$body."appearance:hairstyle_examinestring";
+    \} else if(\$body."appearance:hairstyle_string") \{
+      \$hair_examine += \$body."appearance:hairstyle_string";
+    \}
+  \}
+\}
+
+EmitTo(\$az, "5");
+
+/* find look description */
+lookstring = "";
+if(!\$body."trait:brief" \|\| lower_case(\$body."trait:brief") == "someone") \{
+    lookstring += Describe(\$body, nil, nil, STYLE_NONPOSS);
+    /* Add the last name (if any) */
+    if(\$body."trait:lastname") lookstring += " "+\$body."trait:lastname";
+\} else \{
+    lookstring += \$body."trait:brief";
+\}
+
+EmitTo(\$az, "5.1");
+if(!\$body."details:default:definite:local") \{
+EmitTo(\$az, dump_value(lookstring));
+  if(!lookstring \|\| lookstring == "") lookstring = "person";
+  if (lookstring[..1] == "a ")\{
+    lookstring = lookstring[2..];
+  \} else if (lookstring[..2] == "an ")\{
+    lookstring = lookstring[3..];
+  \}
+  lookstring = "This "+lookstring;
+\}
+EmitTo(\$az, "5.1.2");
+lookstring += " is ";
+lookstring += \$animal;
+EmitTo(\$az, "5.3");
+lookstring = capitalize(lookstring);
+EmitTo(\$az, "5.4");
+if(\$fur != "")
+  lookstring += ", with ";
+lookstring += \$fur;
+EmitTo(\$az, "5.5");
+if(\$fur != "" \&\& \$hair != "")\{
+  lookstring += ", and ";
+\} else if (\$hair != "") \{
+  lookstring += " with ";
+\}
+EmitTo(\$az, "5.2");
+
+examinestring = lookstring;
+
+/*EmitTo(\$actor, "4.1");*/
+lookstring += \$hair;
+lookstring += ".";
+
+examinestring += \$hair_examine;
+examinestring += ".";
+
+EmitTo(\$az, "6");
+
+/* find facial hair */
+if(\$body."appearance:facialhair" \&\& (\$body."appearance:facialhair" != "none") \&\& (\$body."appearance:facialhair" != "no facial hair") \&\& (\$body."appearance:facialhair" != "ordinary"))
+\{
+EmitTo(\$az, "6.1");
+  \$facialhair = "";
+EmitTo(\$az, "6.2");
+/*
+  \$hairstyles = Get(\$\{IronClaw:Systems:Hairstyles\}, "hairstyles");
+  if(\$hairstyles[Get(\$body, "appearance:facialhair")])
+  \{
+    \$facialhair += \$hairstyles[Get(\$body, "appearance:facialhair")][0];
+    \$facialhair += " ";
+    if(\$body."appearance:faciallength" \&\& (\$body."appearance:faciallength" != "ordinary"))
+      \$facialhair += \$body."appearance:faciallength" + " ";
+    \$facialhair += \$hairstyles[Get(\$body, "appearance:facialhair")][1];
+  \} else \{
+    \$facialhair += \$body."appearance:facialhair";
+    if(\$body."appearance:faciallength" \&\& (\$body."appearance:faciallength" != "ordinary"))
+      \$facialhair += " which " +\$body."appearance:facialprep"+ " " + \$body."appearance:faciallength";
+  \}
+*/
+EmitTo(\$az, "6.3");
+  \$facialhair = \$body."appearance:facialhair";
+EmitTo(\$az, "6.4");
+  if(\$body."appearance:faciallength") \{
+    if(\$body."appearance:facialprep") \{
+      \$facialhair += " which " +\$body."appearance:facialprep"+ " "+\$body."appearance:faciallength";
+    \} else \{
+      \$facialhair += " which is "+\$body."appearance:faciallength";
+    \}
+  \}
+EmitTo(\$az, "6.5");
+  lookstring += " " + capitalize(\$body."trait:nominative") + " has " + \$facialhair + ".";
+EmitTo(\$az, "6.6");
+  examinestring += " " + capitalize(\$body."trait:nominative") + " has " + \$facialhair + ".";
+EmitTo(\$az, "6.7");
+\}
+
+EmitTo(\$az, "7");
+
+/* find \$eyes */
+\$eyes = "";
+if(\$body."appearance:eyeshape" \&\& (\$body."appearance:eyeshape" != "ordinary"))
+  \$eyes += \$body."appearance:eyeshape" + " ";
+if(\$body."appearance:eyecolor" \&\& (\$body."appearance:eyecolor" != "ordinary"))
+  \$eyes += \$body."appearance:eyecolor" + " ";
+if(\$eyes != "")
+  \$eyes += "eyes";
+
+EmitTo(\$az, "7.1");
+
+/* find \$nose */
+\$nose = "";
+if(\$body."appearance:noseshape" \&\& (\$body."appearance:noseshape" != "ordinary"))
+\{
+  \$nose = \$body."appearance:noseshape" + " nose";
+\}
+
+EmitTo(\$az, "7.2");
+
+/* find \$mouth */
+\$mouth = "";
+EmitTo(\$az, "7.2.1");
+if((\$body."appearance:mouthshape" \&\& (\$body."appearance:mouthshape" != "ordinary")) \|\| (\$body."appearance:lipshape" \&\& (\$body."appearance:lipshape" != "ordinary")))
+\{
+  if(\$body."appearance:mouthshape" \&\& (\$body."appearance:mouthshape" != "ordinary"))
+  \{
+    \$mouth = "a " + Str(\$body."appearance:mouthshape") + " mouth";
+    if(\$body."appearance:lipshape" \&\& \$body."appearance:lipshape" != "ordinary")
+      \$mouth += ", complete with " + \$body."appearance:lipshape" + " lips";
+  \} else \{
+    \$mouth = \$body."appearance:lipshape" + " lips";
+  \}
+\}
+
+EmitTo(\$az, "7.3");
+
+/* find \$face */
+\$face = "";
+if(\$eyes != "" \&\& \$nose == "" \&\& \$mouth == "")
+\{
+  \$face = " " + capitalize(\$body."base:pronoun") + " has " + \$eyes + ".";
+\} else if (\$eyes != "") \{
+  \$face += " " + capitalize(\$eyes) + " are set above a ";
+  \$face += \$nose;
+  if(\$nose != "" \&\& \$mouth != "") \$face += " and ";
+  \$face += \$mouth;
+  \$face += ".";
+\}
+
+EmitTo(\$az, "7.4");
+
+/* find \$hands */
+\$hands = "";
+if(\$body."appearance:clawlength" \&\& (\$body."appearance:clawlength" != "ordinary"))
+\{
+  \$hands = \$body."appearance:clawlength" + " ";
+\}
+if(\$body."appearance:clawapp" \&\& (\$body."appearance:clawapp" != "ordinary"))
+\{
+  \$hands += \$body."appearance:clawapp" + " ";
+\}
+EmitTo(\$az, "7.4.1");
+if(\$hands != "")
+\{
+  if(\$body."appearance:clawtype")
+  \{
+    \$hands += \$body."appearance:clawtype";
+  \} else \{
+    \$hands += "nails";
+  \}
+  if(\$body."appearance:hands" \&\& (\$body."appearance:hands" != "ordinary")) \$hands += ", on ";
+\}
+
+EmitTo(\$az, "7.5");
+
+if(\$body."appearance:hands" \&\& (\$body."appearance:hands" != "ordinary")) \$hands += \$body."appearance:hands" + " hands";
+if(\$body."appearance:feet" \&\& (\$body."appearance:feet" != "ordinary"))
+\{
+  if(\$hands != "") \$hands += ", and ";
+  \$hands += \$body."appearance:feet" + " ";
+  if(\$body."appearance:feettype")
+  \{
+    \$hands += \$body."appearance:feettype";
+  \} else \{
+    \$hands += "feet";
+  \}
+\}
+EmitTo(\$az, "7.6");
+if (\$hands != "")
+\{
+  \$hands = " " + capitalize(\$hands) + " are also visible.";
+\}
+
+EmitTo(\$az, "8 -- Death added the Call location here as it was showing defunct, the script was dying here.");
+
+/* find \$features */
+\$features = "";
+\$featurelist = Call(\$\{Ironclaw:Theatre:CreateCharacter\}, "grabchoices", \$choice: "features", \$animaltype: \$body."trait:animaltype", \$animalbreed: \$body."trait:animal");
+\$featurearr = (\{\});
+
+EmitTo(\$az, "8.1");
+/*EmitTo(\$actor, "Size of featurelist is " + sizeof(\$featurelist));*/
+
+EmitTo(\$az, "8.2");
+
+for(\$i = 0; \$i \< sizeof(\$featurelist); \$i++)
+\{
+EmitTo(\$az, "8.3");
+
+  \$features = "";
+  for(\$j = 0; \$j \< sizeof(\$featurelist[\$i][0]); \$j++)
+  \{
+EmitTo(\$az, "8.4");
+
+    if(Get(\$body, "appearance:" + \$featurelist[\$i][0][\$j]) \&\& (Get(\$body, "appearance:" + \$featurelist[\$i][0][\$j]) != "ordinary"))
+    \{
+EmitTo(\$az, "8.5");
+
+      \$features += Get(\$body, "appearance:" + \$featurelist[\$i][0][\$j]) + " ";
+EmitTo(\$az, "8.5.1");
+
+    \}
+  \}
+EmitTo(\$az, "8.6");
+  if(\$features != "") \$features += " " + \$featurelist[\$i][1];
+  if(\$features != "") \$featurearr += (\{ \$features \});
+EmitTo(\$az, "8.7");
+
+\}
+
+/* find extra \$features */
+if(\$body."appearance:extrafeatures")
+\{
+  \$featurelist = \$body."appearance:extrafeatures";
+  for(\$i = 0; \$i \< sizeof(\$featurelist); \$i++)
+  \{
+    \$features = "";
+    for(\$j = 0; \$j \< sizeof(\$featurelist[\$i][0]); \$j++)
+    \{
+      if(Get(\$body, "appearance:" + \$featurelist[\$i][0][\$j]) \&\& (Get(\$body, "appearance:" + \$featurelist[\$i][0][\$j]) != "ordinary"))
+      \{
+        \$features += Get(\$body, "appearance:" + \$featurelist[\$i][0][\$j]) + " ";
+      \}
+    \}
+    if(\$features != "") \$features += " " + \$featurelist[\$i][1];
+    if(\$features != "") \$featurearr += (\{ \$features \});
+  \}
+\}
+
+EmitTo(\$az, "9");
+
+\$features = "";
+if(sizeof(\$featurearr) \> 0)
+\{
+  \$features = " You also note " + \$body."base:possessive" + " ";
+  for(\$i = 0; \$i \< sizeof(\$featurearr); \$i++)
+  \{
+    \$features += \$featurearr[\$i];
+    if(\$i \< sizeof(\$featurearr) - 2) \$features += ", ";
+    if(\$i == sizeof(\$featurearr) - 2) \$features += " and ";
+    if(\$i == sizeof(\$featurearr) - 1) \$features += ".";
+  \}
+\}
+
+EmitTo(\$az, "10");
+
+/* find remainder of examine description */
+examinestring += \$face;
+examinestring += \$hands;
+examinestring += \$features;
+
+EmitTo(\$az, "11");
+
+/* find any additional descriptions */
+\$features = "";
+if(\$body."appearance:descriptions")
+\{
+  \$featurearr = \$body."appearance:descriptions";
+  \$features = " "+Describe(\$body)+" ";
+  for(\$i = 0; \$i \< sizeof(\$featurearr); \$i++)
+  \{
+    \$features += \$featurearr[\$i];
+    if(\$i \< sizeof(\$featurearr) - 2) \$features += ", ";
+    if(\$i == sizeof(\$featurearr) - 2) \$features += " and ";
+    if(\$i == sizeof(\$featurearr) - 1) \$features += ".";
+  \}
+\}
+lookstring += \$features;
+examinestring += \$features;
+
+/*
+\<name\> is a/an \<build\> \<animal\>.
+
+\<name\> is a/an \<height\>, \<build\> \<animal\> with \<fur length\> \<fur texture\>  \<fur colour\> \<fur type\> and a head of \<hair length\> \<hair colour\> hair, \<hair style\>.
+
+\<name\> is a/an \<height\>, \<build\> \<animal\> with \<fur length\> \<fur texture\>  \<fur colour\> \<fur type\> and a head of \<hair length\> \<hair colour\> hair, \<hair style\>. \<eye shape\> \<eyecolour\> eyes are set above a/n \<nose shape\> \<nose/muzzle\> and \<mouth set\> mouth, complete with \<lips shape\> lips. (\<claw length\>, \<claw appearance\> \<nails/claws\>, on \<hands appearance\> hands, and \<feet appearance\> \<feet/paws/hooves\> are visible.) (You also note \<his/her\> \<special attribute 1 desc1\>, \<special attribute 1 desc2\> \<special attribute 1\> and \<special attribute 2 desc1\>, \<special attribute 2 desc2\> \<special attribute 2\>.)
+
+body
+-build
+-height
+coat-pelt
+-markings
+fur
+-length
+-colour
+-texture
+hair
+-length
+-colour
+-style
+claws-nails
+-length
+-appearance
+hands
+-appearance
+paws-feet-hooves
+-appearance
+
+eyes
+-shape
+-colour
+eyebrows
+-shape
+mouth
+-set
+lips
+-shape
+muzzle-nose
+-appearance
+
+//special attributes
+*/
+
+/*
+EmitTo(\$actor, "Description is:");
+EmitTo(\$actor, lookstring);
+EmitTo(\$actor, "Examine is:");
+EmitTo(\$actor, examinestring);
+*/
+Set(\$body, "trait:look", lookstring);
+Set(\$body, "trait:examine", examinestring);
+Set(\$body, "export:trait:look", lookstring);
+Set(\$body, "export:trait:examine", examinestring);
+
+/* set detail descriptions */
+
+/* set the body height and build */
+Call(this, "reset_details", \$detail: "default", \$type: "adjective", \$list: (\{ \$body."appearance:height", \$body."appearance:build" \}));
+
+/* set the fur or skin */
+Call(this, "reset_details", \$detail: "fur", \$type: "sname", \$list: (\{ \$body."appearance:furtype" \}));
+Call(this, "reset_details", \$detail: "fur", \$type: "adjective", \$list: (\{ \$body."appearance:furlength", \$body."appearance:furtexture", \$body."appearance:furcolor" \}));
+
+/* set the facialhair - added by Angelo until it can be fully updated */
+/* See if they have facialhair and set the 1st sname */
+if(\$body."appearance:facialhair") \{
+\$body."details:facialhair:sname:facialhair:local" = 1;
+/* Check facialhair styles and add appropriate snames */
+if(\$body."appearance:facialhair" == "whiskers") \{
+\$body."appearance:facialprep" = "are";
+\$body."details:facialhair:sname:whiskers:local" = 1;
+\}
+if(\$body."appearance:facialhair" == "sideburns") \{
+\$body."appearance:facialprep" = "are";
+\$body."details:facialhair:sname:sideburns:local" = 1;
+\}
+if(\$body."appearance:facialhair" == "a beard") \{
+/* have to drop the 'a' and fix it in the main body */
+\$body."appearance:facialhair" = "beard";
+\$body."appearance:facialprep" = "is";
+\$body."details:facialhair:sname:beard:local" = 1;
+\}
+if(\$body."appearance:facialhair" == "a goatee") \{
+/* have to drop the 'a' and fix it in the main body */
+\$body."appearance:facialhair" = "goatee";
+\$body."appearance:facialprep" = "is";
+\$body."details:facialhair:sname:beard:local" = 1;
+\$body."details:facialhair:sname:goatee:local" = 1;
+\}
+if(\$body."appearance:facialhair" == "a van-dyke") \{
+/* have to drop the 'a' and fix it in the main body */
+\$body."appearance:facialhair" = "van-dyke";
+\$body."appearance:facialprep" = "is";
+\$body."details:facialhair:sname:beard:local" = 1;
+\$body."details:facialhair:sname:van-dyke:local" = 1;
+\$body."details:facialhair:sname:vandyke:local" = 1;
+\}
+if(\$body."appearance:facialhair" == "a mustache") \{
+/* have to drop the 'a' and fix it in the main body */
+\$body."appearance:facialhair" = "mustache";
+\$body."appearance:facialprep" = "is";
+\$body."details:facialhair:sname:mustache:local" = 1;
+\}
+if(\$body."appearance:facialhair" == "a mustache and goatee") \{
+/* have to drop the 'a' and fix it in the main body */
+\$body."appearance:facialhair" = "mustache and goatee";
+\$body."appearance:facialprep" = "are";
+\$body."details:facialhair:sname:mustache:local" = 1;
+\$body."details:facialhair:sname:beard:local" = 1;
+\$body."details:facialhair:sname:goatee:local" = 1;
+\}
+if(\$body."appearance:facialhair" == "a mustache and whiskers") \{
+/* have to drop the 'a' and fix it in the main body */
+\$body."appearance:facialhair" = "mustache and whiskers";
+\$body."appearance:facialprep" = "are";
+\$body."details:facialhair:sname:mustache:local" = 1;
+\$body."details:facialhair:sname:whiskers:local" = 1;
+\}
+\} else \{
+/* If all else fails, hide the facialhair detail */
+\$body."appearance:facialprep" = "is";
+\$body."details:facialhair:hidden:local" = 1;
+\$body."appearance:facialhair" = "none";
+\}
+
+/* set the hair */
+if(\$body."appearance:hairlength" != "none")
+\{
+  Call(this, "reset_details", \$detail: "hair", \$type: "sname", \$list: (\{ "hair", \$body."appearance:hairstyle" \}));
+\} else \{
+  Call(this, "reset_details", \$detail: "hair", \$type: "sname", \$list: (\{ \}));
+\}
+Call(this, "reset_details", \$detail: "hair", \$type: "adjective", \$list: (\{ \$body."appearance:hairlength", \$body."appearance:hairtype", \$body."appearance:haircolor", \$body."appearance:hairstyle" \}));
+
+/* Checking if a detail exists */
+/*
+if(arr_to_set( \$body."base:details" )["fur"])
+\{
+  EmitTo(\$actor, "fur exists");
+\} else \{
+  EmitTo(\$actor, "fur doesn't exist");
+\}
+
+if(arr_to_set( \$body."base:details" )["wgfgl"])
+\{
+  EmitTo(\$actor, "wgfgl exists");
+\} else \{
+  EmitTo(\$actor, "wgfgl doesn't exist");
+\}
+*/
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:updatehairdesc">
+         X[M] if(\$body.no_description_reset) return TRUE;         
+              
+if(\$body."appearance:hashair" \&\& (\$body."appearance:hashair" == "no")) \{         
+  \$body."details:hair:hidden:local" = 1;         
+\} else \{         
+  \$body."details:hair:hidden:local" = nil;         
+\}   
+ 
+if(\$action == "hashair") \{         
+    return Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$body);         
+\} else if(\$action == "hairstyle") \{                
+         
+    if(!\$body."appearance:hairstyle" \|\| (\$body."appearance:hairstyle" == "ordinary")) \{         
+        \$body."appearance:hairstyle_string" = nil;         
+        return Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$body);         
+    \}         
+         
+    \$body.no_hairstyle_reset = 1;         
+    \$hairobj = \$\{Allegory:Lib:UrPeople:Hairstyles\};
+   
+    /* check our current hair length is valid */         
+    if(Get(\$hairobj, \$body."appearance:hairstyle"+":invalid_lengths") \&\& (\$array = Get(\$hairobj, \$body."appearance:hairstyle"+":invalid_lengths"))) \{         
+        for(\$i = 0; \$i \< sizeof(\$array); \$i++) \{         
+            if(\$body."appearance:hairlength" == \$array[\$i])         
+            \$body."appearance:hairlength" = "ordinary";         
+        \}         
+    \}         
+         
+    /* set the hair description */         
+    if(Get(\$hairobj, \$body."appearance:hairstyle"+":description")) \{         
+        \$body."appearance:hairstyle_string" = Get(\$hairobj, \$body."appearance:hairstyle"+":description");         
+    \} else \{         
+        \$body."appearance:hairstyle_string" = ", worn in "+\$body."appearance:hairstyle";         
+    \}         
+         
+    if(Get(\$hairobj, \$body."appearance:hairstyle"+":description-examine")) \{         
+        \$body."appearance:hairstyle_examine" = Get(\$hairobj, \$body."appearance:hairstyle"+":description-examine");         
+    \} else \{         
+        \$body."appearance:hairstyle_examine" = nil;         
+    \} 
+         
+    \$body.no_hairstyle_reset = nil;         
+    return Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$body);         
+\} else if(\$action == "hairlength") \{               
+    if(\$body.no_hairstyle_reset)         
+        return TRUE;         
+                
+    if(!\$body.no_hairlength_reset) \{   
+
+        \$lengths = (\{ "floor-length", "ankle-length", "knee-length", "thigh-length", "hip-length", "waist-length", "long", "shoulder-length", "medium", "nape-length", "chin-length", "cheek-length", "short", "trimmed", "ear-length", "close-cropped", "shaved", "none" \});
+
+        \$indexOld = index(\$(hook-oldvalue), \$lengths);
+        \$indexNew = index(\$body."appearance:hairlength", \$lengths);
+
+        if(\$indexOld \>= 0 \&\& \$indexNew \>= 0) \{
+            if(\$indexOld != \$indexNew) \{
+                if(Int(\$indexOld-1) \> Int(\$indexNew)) \{
+                    \$badhair = 1;
+                \}
+            \}
+        \}
+
+/*
+        switch(\$body."appearance:hairlength") \{         
+            case "floor-length":      
+                if(\$(hook-oldvalue) != "ankle-length") \$badhair = 1;     
+                break;    
+            case "ankle-length":         
+                if(\$(hook-oldvalue) != "knee-length" \&\& \$(hook-oldvalue) != "floor-length") \$badhair = 1;          
+                break;        
+            case "knee-length":         
+                if(\$(hook-oldvalue) != "thigh-length" \&\& \$(hook-oldvalue) != "ankle-length") \$badhair = 1;        
+                break;          
+            case "thigh-length":         
+                if(\$(hook-oldvalue) != "hip-length" \&\& \$(hook-oldvalue) != "knee-length") \$badhair = 1;          
+                break;        
+            case "hip-length":         
+                if(\$(hook-oldvalue) != "waist-length" \&\& \$(hook-oldvalue) != "thigh-length") \$badhair = 1;        
+                break;          
+            case "waist-length":         
+                if(\$(hook-oldvalue) != "long" \&\& \$(hook-oldvalue) != "hip-length") \$badhair = 1;              
+                break;    
+            case "long":         
+                if(\$(hook-oldvalue) != "shoulder-length" \&\& \$(hook-oldvalue) != "waist-length") \$badhair = 1;          
+                break;        
+            case "shoulder-length":         
+                if(\$(hook-oldvalue) != "lopsided" \&\& \$(hook-oldvalue) != "long") \$badhair = 1;           
+                break;               
+            case "nape-length":         
+                if(\$(hook-oldvalue) != "chin-length" \&\& \$(hook-oldvalue) != "lopsided") \$badhair = 1;        
+                break;          
+            case "chin-length":         
+                if(\$(hook-oldvalue) != "short" \&\& \$(hook-oldvalue) != "nape-length") \$badhair = 1;           
+                break;       
+            case "short":         
+                if(\$(hook-oldvalue) != "trimmed" \&\& \$(hook-oldvalue) != "chin-length") \$badhair = 1;         
+                break;         
+            case "trimmed":         
+                if(\$(hook-oldvalue) != "ear-length" \&\& \$(hook-oldvalue) != "short") \$badhair = 1;       
+                break;           
+            case "ear-length":         
+                if(\$(hook-oldvalue) != "butchered" \&\& \$(hook-oldvalue) != "trimmed") \$badhair = 1;        
+                break;                 
+            case "close-cropped":         
+                if(\$(hook-oldvalue) != "shaved" \&\& \$(hook-oldvalue) != "butchered") \$badhair = 1;              
+                break;    
+            case "shaved":         
+            case "none":         
+            default:         
+                break;         
+        \}       
+*/  
+         
+    \}         
+         
+         
+    if(\$badhair) \{   
+        if(!\$body.reset_hair) \{
+            \$body.reset_hair = 1;
+            \$body."appearance:hairlength" = \$(hook-oldvalue);
+            \$delay(0.3, FALSE, "ebac");
+            EmitIn(\$body."base:environment", "Hair cannot be cut LONGER than it already is.");  
+            \$body.reset_hair = nil;
+        \} else \{
+            \$body.reset_hair = nil;
+        \}   
+        return FALSE;         
+    \}         
+         
+    if(\$body."appearance:hairlength" == "none") \{         
+        \$body."appearance:hashair" = "no";         
+        \$body."appearance:hairlength" = "none";     
+        Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$body);     
+        return TRUE;         
+    \}         
+         
+    /* Set the new hairstyle since the hair was cut */         
+    if(!\$body."appearance:hairstyle") \{         
+        /* set no hairstyle if shaved, otherwise set loose hair */         
+        if(\$body."appearance:hairlength" != "shaved")         
+            \$body."appearance:hairstyle" = "loose";         
+        \} else if((\$body."appearance:hairstyle" != "loose") \&\& (\$body."appearance:hairstyle" != "mussed") \&\& 
+                  (\$body."appearance:hairstyle" != "tangled") \&\& (\$body."appearance:hairstyle" != "tousled") \&\& 
+                  (\$body."appearance:hairstyle" != "uncombed") \&\& (\$body."appearance:hairstyle" != "windblown")) \{         
+            /* set no hairstyle if shaved, otherwise set loose hair */         
+            if(\$body."appearance:hairlength" != "shaved") \{         
+                \$body."appearance:hairstyle" = nil;         
+            \} else \{         
+                \$body."appearance:hairstyle" = "loose";         
+            \}         
+        \} else \{         
+            return Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$body);         
+        \}         
+    \} else if((\$action == "hairtype") \|\| (\$action == "haircolor")) \{         
+        if(!\$body."appearance:hairstyle") \{         
+            \$body."appearance:hairstyle" = "loose";         
+        \} else if((\$body."appearance:hairstyle" != "loose") \&\& (\$body."appearance:hairstyle" != "mussed") \&\& 
+                  (\$body."appearance:hairstyle" != "tangled") \&\& (\$body."appearance:hairstyle" != "tousled") \&\& 
+                  (\$body."appearance:hairstyle" != "uncombed") \&\& (\$body."appearance:hairstyle" != "windblown")) \{         
+            \$body."appearance:hairstyle" = "loose";         
+        \} else \{         
+            return Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$body);         
+    \}         
+\}         
+         
+Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$body); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1603030248, "jominey", "E", 1603030977, "jominey", "E", 1603031003, "jominey", "E", 1603031235, "jominey", "E", 1603031847, "jominey", "E", 1603031943, "jominey", "E", 1603031999, "jominey", "E", 1603032150, "jominey", "E", 1603032255, "jominey", "E", 1603032368, "jominey", "P", 1603032510, "jominey", "E", 1603032588, "jominey", "E", 1603032605, "jominey", "E", 1603032819, "jominey", "E", 1603032862, "jominey", "E", 1603032906, "jominey", "E", 1603033050, "jominey", "E", 1603033120, "jominey", "E", 1603033488, "jominey", "E", 1603033602, "jominey", "E", 1603033703, "jominey", "E", 1603033783, "jominey", "E", 1603033826, "jominey", "E", 1603033859, "jominey", "E", 1603033891, "jominey", "E", 1603033984, "jominey", "E", 1603034039, "jominey", "E", 1603034221, "jominey", "E", 1603034632, "jominey", "E", 1603036354, "jominey", "E", 1603036437, "jominey", "E", 1603036586, "jominey", "E", 1603036633, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

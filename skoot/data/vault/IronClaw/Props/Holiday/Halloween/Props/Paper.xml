@@ -1,0 +1,196 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="paper"/>
+            <Base:SName sname="roll"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="papers"/>
+            <Base:PName pname="rolls"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="paper"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) roll of paper
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.trait:color) roll of paper, normally applied to any unwitting building on the Halloween holiday.
+A mischievous person need only apply the paper to the room.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="body"/>
+      <Base:SingleWear value="true"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:nip:item:cost">
+         200
+      </Core:Property>
+      <Core:Property property="merry:react:apply-dob">
+         X[M] /* stick the paper up around this room */
+
+if(\$dob \&\& sizeof(\$dob) == 1 \&\& NRefOb(\$dob[0])."base:environment" == \$actor) \{
+
+ if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+  EmitTo(\$actor, "You are already busy "+\$message+".");
+  return FALSE;
+ \}
+ \$room = \$actor."base:environment";
+
+ EmitTo(\$actor, "You begin to stick "+Describe(\$this, nil, \$actor)+" around "+Describe(\$room)+".");
+ EmitIn(\$room, Describe(\$actor)+" begins to stick "+Describe(\$this, \$actor)+" around "+Describe(\$room)+".", \$actor);
+
+ \$id = ironclaw::busy_start(\$character: \$actor, \$action: "papering an area");
+
+ \$timer = 60*5;
+ while(\$timer \> 0) \{
+  \$timer -= 60;
+  \$delay(60, FALSE, "52a6");
+  if(\$actor."busy:id" != \$id) \{
+    /* they @stopped sticking up the paper. Just exit */
+    return FALSE;
+  \}
+  /* check that they are still in the room */
+  if(\$actor."base:environment" != \$room) \{
+    EmitTo(\$actor, "You will have to stay in one place if you want to cover the area with paper.");
+    /* mark them as not busy */
+    ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+    return FALSE;
+  \}
+  if(!\$dob[0]) \{
+    /* the paper object was deleted */
+    ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+    return FALSE;
+  \}
+  if(NRefOb(\$dob[0])."base:environment" != \$actor) \{
+    /* the paper object was deleted */
+    ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+    return FALSE;
+  \}
+  switch(random(3)) \{
+   case 2:
+    EmitTo(\$actor, "You lick "+Describe(\$this, nil, \$actor)+" to make sure it'll be really hard to remove once it dries.");
+    EmitIn(\$room, Describe(\$actor)+" licks "+Describe(\$this, \$actor)+" before gluing it around "+Describe(\$room)+".", \$actor);
+    break;
+   case 1:
+    EmitTo(\$actor, "You strew "+Describe(\$this, nil, \$actor)+" around "+Describe(\$room)+" with wild abandon.");
+    EmitIn(\$room, Describe(\$actor)+" strews "+Describe(\$this, \$actor)+" around "+Describe(\$room)+" with wild abandon.", \$actor);
+    break;
+   default:
+    EmitTo(\$actor, "You keep sticking "+Describe(\$this, nil, \$actor)+" up around "+Describe(\$room)+".");
+    EmitIn(\$room, Describe(\$actor)+" keeps sticking "+Describe(\$this, \$actor)+" up around "+Describe(\$room)+".", \$actor);
+  \}
+ \}
+
+ /* mark them as not busy */
+ ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+
+ EmitTo(\$actor, "You finish covering "+Describe(\$room)+" with "+Describe(\$this, nil, \$actor)+".");
+ EmitIn(\$room, Describe(\$actor)+" finishes covering "+Describe(\$room)+" with "+Describe(\$this, \$actor)+".", \$actor);
+
+ Slay(\$this);
+ \$spawn = Spawn(\$\{IronClaw:Props:Holiday:Halloween:Props:Paper-applied\});
+ \$spawn."base:environment" = \$room;
+ if(!\$spawn."base:environment")\{
+  /* something went wrong */
+  Slay(\$spawn);
+  return FALSE;
+ \}
+ \$spawn."base:immobile" = 1;
+
+ return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:wrap-iob">
+         X[M] if(!\$dob) return TRUE;
+if(!sizeof(\$dob)) return TRUE;
+if(sizeof(\$dob) \> 1) return TRUE;
+
+\$victim = NRefOb(\$dob[0]);
+
+if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You must be holding that.");
+    return FALSE;
+\}
+
+if(\$victim == \$actor) \{
+    EmitTo(\$actor, "You can't wrap yourself.");
+    return FALSE;
+\}
+
+if(!\$victim."udat:possessed") \{
+    EmitTo(\$actor, "You can't wrap " + Describe(\$victim) + ".");
+    return FALSE;
+\}
+
+if(\$this.wrapping) \{
+    EmitTo(\$actor, Describe(\$this) + " is already being used.");
+    return FALSE;
+\}
+
+\$this.wrapping = \$actor;
+EmitTo(\$actor, "You begin wrapping " + Describe(\$victim) + " with " + Describe(\$this, nil, \$actor) + " from head to toe.");
+EmitTo(\$victim, Describe(\$actor) + " begins wrapping you with " + Describe(\$this, \$actor) + " from head to toe.");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " begins wrapping " + Describe(\$victim) + " with " + Describe(\$this, \$actor) + " from head to toe.", \$actor, \$victim);
+
+\$speed = Int(\$actor."trait:speed");
+\$x = 20 - random(\$speed);
+
+\$delay(\$x*3, FALSE, "58c1");
+
+EmitTo(\$actor, "You finish wrapping " + Describe(\$victim) + " with " + Describe(\$this, nil, \$actor) + ".");
+EmitTo(\$victim, Describe(\$actor) + " finishes wrapping you with " + Describe(\$this, \$actor) + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " finishes wrapping " + Describe(\$victim) + " with " + Describe(\$this, \$actor) + ".", \$actor, \$victim);
+
+\$this."base:environment" = \$victim;
+Act(\$victim, "wear", \$articles: (\{ \$this \}));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1223145059, "morwenlorelie", "K", 1223145084, "morwenlorelie", "E", 1223145105, "morwenlorelie", "X", 1223145153, "morwenlorelie", "E", 1223145469, "morwenlorelie", "E", 1223503031, "morwenlorelie", "E", 1223503322, "morwenlorelie", "R", 1224851618, "tonyd", "E", 1224851675, "tonyd", "P", 1224851694, "tonyd", "E", 1224851711, "tonyd", "E", 1224851784, "tonyd", "P", 1224851808, "tonyd", "P", 1224851917, "tonyd", "P", 1224852393, "tonyd", "P", 1224852425, "tonyd", "P", 1224852438, "tonyd", "P", 1224852492, "tonyd", "P", 1224852541, "tonyd", "P", 1224852672, "tonyd", "P", 1224852762, "tonyd", "P", 1224852836, "tonyd", "P", 1224852878, "tonyd", "P", 1224852892, "tonyd", "P", 1224853924, "tonyd", "P", 1224854761, "tonyd", "P", 1224858683, "tonyd", "E", 1414556364, "jominey", "E", 1414557195, "jominey", "E", 1414557320, "jominey", "E", 1414557403, "jominey", "E", 1414557582, "jominey", "E", 1414557659, "jominey", "E", 1414557847, "jominey", "E", 1414557920, "jominey", "E", 1414557930, "jominey", "E", 1414557937, "jominey", "E", 1414557944, "jominey", "X", 1414557980, "jominey", "E", 1446230828, "dmwtst", "E", 1446230860, "dmwtst", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

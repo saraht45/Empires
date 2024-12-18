@@ -1,0 +1,118 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tonyd">
+  <SkotOS:MerAcHa action_id="identify">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-post:action">
+         X[M] int i, j, k;
+string tmp_str;
+object obj;
+
+if(!\$dob) return TRUE;
+
+/* get a mapping of academics skills */
+\$skillmap = prefixed_map(\$actor."*", "skill:academics");
+\$tmp = prefixed_map(\$actor."*", "career:academics");
+/* combine the career skills with the normal skills */
+for(i=0;i\<sizeof(map_indices(\$tmp));i++)\{
+  tmp_str = map_indices(\$tmp)[i][7..strlen(map_indices(\$tmp)[i])-1];
+  if(\$skillmap["skill:"+tmp_str]) \{
+    \$skillmap["skill:"+tmp_str] += \$tmp["career:"+tmp_str];
+  \} else \{
+    \$skillmap["skill:"+tmp_str] = \$tmp["career:"+tmp_str];
+  \}
+\}
+
+/* now check each item */
+for(j=0;j\<sizeof(\$dob);j++) \{
+  obj = NRefOb(\$dob[j]);
+  for(i=0;i\<sizeof(map_indices(\$skillmap));i++)\{
+    tmp_str = map_indices(\$skillmap)[i][16..strlen(map_indices(\$skillmap)[i])-1];
+    /* does the item have something that this skill can identify? */
+    if(\$settings = Get(obj, "identify:"+tmp_str)) \{
+      /* we can identify it. Do we have the skill? */
+      if(!\$settings["skill_level"] \|\| \$settings["skill_level"] \<= \$skillmap["skill:academics:"+tmp_str]) \{
+        /* we can identify it */
+        /* for use in sam tags */
+        \$obj = obj;
+        /* has this been identified before? */
+        if(Get(obj, "identified:"+tmp_str)) \{
+          /* already been identified */
+
+          /* are there properties that get set *every* time this is identified? */
+          if(\$settings["repeat_properties"]) \{
+            for(k=0;k\<sizeof(Arr(\$settings["repeat_properties"]));k++) \{
+              \$tmp = Arr(Arr(\$settings["repeat_properties"])[k]);
+              /* make sure we have a property and value */
+              if(sizeof(\$tmp) \> 1) \{
+                Set(obj, \$tmp[0], \$tmp[random(sizeof(\$tmp)-1)+1]);
+              \}
+            \}
+          \}
+          if(\$settings["repeat_sam_properties"]) \{
+            for(k=0;k\<sizeof(Arr(\$settings["repeat_sam_properties"]));k++) \{
+              \$tmp = Arr(Arr(\$settings["repeat_sam_properties"])[k]);
+              /* make sure we have a property and value */
+              if(sizeof(\$tmp) \> 1) \{
+                Set(obj, \$tmp[0], UnSAM(ParseXML(\$tmp[random(sizeof(\$tmp)-1)+1])));
+              \}
+            \}
+          \}
+          /* output message about it being identified */
+          if(\$settings["message"]) \{
+            EmitTo(\$actor, UnSAM(ParseXML(\$settings["message"])));
+          \}
+          /* output message to witnesses */
+          if(\$settings["witness_message"]) \{
+            EmitIn(\$actor."base:environment", UnSAM(ParseXML(\$settings["witness_message"])), \$actor);
+          \}
+        \} else \{
+          /* hasn't been identified yet */
+
+          /* set any properties */
+          if(\$settings["properties"]) \{
+            for(k=0;k\<sizeof(Arr(\$settings["properties"]));k++) \{
+              \$tmp = Arr(Arr(\$settings["properties"])[k]);
+              /* make sure we have a property and value */
+              if(sizeof(\$tmp) \> 1) \{
+                Set(obj, \$tmp[0], \$tmp[random(sizeof(\$tmp)-1)+1]);
+              \}
+            \}
+          \}
+          if(\$settings["sam_properties"]) \{
+            for(k=0;k\<sizeof(Arr(\$settings["sam_properties"]));k++) \{
+              \$tmp = Arr(Arr(\$settings["sam_properties"])[k]);
+              /* make sure we have a property and value */
+              if(sizeof(\$tmp) \> 1) \{
+                Set(obj, \$tmp[0], UnSAM(ParseXML(\$tmp[random(sizeof(\$tmp)-1)+1])));
+              \}
+            \}
+          \}
+          /* do we have an identify message to print? */
+          if(\$settings["first_message"]) \{
+            EmitTo(\$actor, UnSAM(ParseXML(\$settings["first_message"])));
+          \} else if(\$settings["message"]) \{
+            EmitTo(\$actor, UnSAM(ParseXML(\$settings["message"])));
+          \} else \{
+            EmitTo(\$actor, "Using your "+tmp_str+" skill, you notice something about "+Describe(\$dob[j], nil, \$actor)+".");
+          \}
+          /* output message to witnesses */
+          if(\$settings["first_witness_message"]) \{
+            EmitIn(\$actor."base:environment", UnSAM(ParseXML(\$settings["first_witness_message"])), \$actor);
+          \} else if(\$settings["witness_message"]) \{
+            EmitIn(\$actor."base:environment", UnSAM(ParseXML(\$settings["witness_message"])), \$actor);
+          \}
+          /* mark it as identified */
+          Set(obj, "identified:"+tmp_str, TRUE);
+        \}
+      \}
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1053708676, "zwoc", "E", 1134100436, "tunk_bodin", "X", 1134100787, "tunk_bodin", "X", 1134100857, "tunk_bodin", "X", 1134100898, "tunk_bodin", "X", 1134101362, "tunk_bodin", "X", 1134102438, "tunk_bodin", "X", 1134102475, "tunk_bodin", "X", 1134102886, "tunk_bodin", "X", 1134103565, "tunk_bodin", "X", 1134103611, "tunk_bodin", "X", 1134104005, "tunk_bodin", "X", 1134104053, "tunk_bodin", "X", 1134104103, "tunk_bodin", "X", 1134104165, "tunk_bodin", "X", 1134168572, "tonyd", "P", 1134168706, "tonyd", "P", 1134168863, "tonyd", "P", 1134168908, "tonyd", "P", 1134168949, "tonyd", "P", 1134169002, "tonyd", "P", 1134169028, "tonyd", "P", 1134169062, "tonyd", "P", 1134169226, "tonyd", "P", 1134169267, "tonyd", "P", 1134169313, "tonyd", "P", 1134169674, "tonyd", "P", 1134169799, "tonyd", "P", 1134169970, "tonyd", "P", 1134169994, "tonyd", "P", 1134170024, "tonyd", "P", 1134171093, "tonyd", "P", 1134171127, "tonyd", "P", 1134171160, "tonyd", "P", 1134171194, "tonyd", "P", 1134171256, "tonyd", "P", 1134171301, "tonyd", "P", 1134171486, "tonyd", "P", 1134172182, "tonyd", "P", 1134172221, "tonyd", "P", 1134173155, "tonyd", "P", 1134173665, "tonyd", "P", 1134173766, "tonyd", "P", 1134173881, "tonyd", "P", 1134173961, "tonyd", "P", 1134174011, "tonyd", "P", 1134174065, "tonyd", "P", 1134174394, "tonyd", "P", 1134174484, "tonyd", "P", 1134174727, "tonyd", "P", 1134174743, "tonyd", "P", 1134175050, "tonyd", "P", 1134178588, "tonyd", "P", 1134178613, "tonyd", "P", 1134178645, "tonyd", "P", 1134178801, "tonyd", "P", 1134178882, "tonyd", "P", 1134179009, "tonyd", "P", 1134179024, "tonyd", "P", 1134179035, "tonyd", "P", 1134179213, "tonyd", "P", 1134179229, "tonyd", "P", 1134180970, "tonyd", "P", 1134181032, "tonyd", "P", 1134181258, "tonyd", "P", 1134181436, "tonyd", "P", 1134181533, "tonyd", "P", 1134181683, "tonyd", "P", 1134181780, "tonyd", "P", 1134181930, "tonyd", "P", 1134182153, "tonyd", "P", 1134182178, "tonyd", "P", 1134182425, "tonyd", "P", 1134182437, "tonyd", "P", 1134189576, "tunk_bodin", "X", 1134189619, "tunk_bodin", "X", 1134193903, "tunk_bodin", "X", 1135909760, "tonyd", "E", 1173187845, "librarysage", "R", 1174535345, "tunk_bodin", "X", 1183537424, "tonyd", "E", 1183538289, "tonyd", "P", 1183538387, "tonyd", "P", 1183538428, "tonyd", "P", 1183538552, "tonyd", "P", 1183538661, "tonyd", "P", 1183538727, "tonyd", "P", 1183538758, "tonyd", "P", 1183538777, "tonyd", "P", 1183538987, "tonyd", "P", 1183539007, "tonyd", "P", 1183539027, "tonyd", "P", 1183539041, "tonyd", "P", 1183539119, "tonyd", "P", 1183539191, "tonyd", "P", 1183539669, "tonyd", "P", 1183539687, "tonyd", "P", 1183539697, "tonyd", "P", 1183540060, "tonyd", "P", 1183540155, "tonyd", "P", 1183540173, "tonyd", "P", 1183540246, "tonyd", "P", 1183540303, "tonyd", "P", 1183540322, "tonyd", "P", 1183540376, "tonyd", "P", 1183540389, "tonyd", "P", 1183540397, "tonyd", "P", 1183540442, "tonyd", "P", 1183540500, "tonyd", "P", 1183540551, "tonyd", "P", 1183540657, "tonyd", "P", 1183546886, "tonyd", "P", 1183547182, "tonyd", "P", 1183547250, "tonyd", "P", 1183547270, "tonyd", "P", 1183547382, "tonyd", "P", 1183547427, "tonyd", "P", 1183547533, "tonyd", "P", 1183547564, "tonyd", "P", 1183547691, "tonyd", "P", 1183547711, "tonyd", "P", 1183547828, "tonyd", "P", 1183547888, "tonyd", "P", 1183547959, "tonyd", "P", 1183548385, "tonyd", "P", 1183548793, "tonyd", "P", 1183549043, "tonyd", "P", 1183549293, "tonyd", "P", 1183549377, "tonyd", "P", 1183550536, "tonyd", "P", 1183551405, "tonyd", "P", 1183552096, "tonyd", "P", 1183552196, "tonyd", "P", 1183552728, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

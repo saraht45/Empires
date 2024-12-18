@@ -1,0 +1,69 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:cleaning_start">
+         X[M] object *things;
+object *trash;
+int counter;
+
+if(!\$cleaner) return FALSE;
+if(\$cleaner.stopcleaning) return FALSE;
+
+/* set the delay clock */
+if(\$cleaner.cleaning_delay)
+\{
+  EmitIn(\$cleaner."base:environment", "I'm already cleaning!");
+  return FALSE;
+\} else \{
+  \$cleaner.cleaning_delay = 10;
+\}
+
+while(\$cleaner.cleaning_delay)
+\{
+  things = \$cleaner."base:environment"."base:inventory";
+  trash = (\{ \});
+  if(sizeof(things))
+  \{
+    EmitIn(\$cleaner."base:environment", "There are things in this room");
+    for(counter = 0; counter \< sizeof(things); counter++)
+    \{
+      if(!(things[counter]."base:volition") \&\& !(things[counter]."base:integration") \&\& !(things[counter]."base:immobile") \&\& (things[counter]."misc:lastdropped") \&\& !(things[counter]."trait:nottrash"))
+      \{
+        if((time()-Int(things[counter]."misc:lastdropped")) \> 30)
+        \{
+          EmitIn(\$cleaner."base:environment", Describe(things[counter]) +" has been cleaned up.");
+          things[counter]."base:environment" = \$\{Ironclaw:World:DockTown:Commons:Props:DonationBox\};
+          trash += (\{ things[counter] \});
+        \}
+      \}
+    \}
+  \}
+
+  if(sizeof(trash))
+  \{
+    EmitIn(\$cleaner."base:environment", "Taking the trash.");
+  \} else \{
+    EmitIn(\$cleaner."base:environment", "Nothing more to clean, lets explore.");
+    Call(\$\{IronClaw:Lib:UrPeople:Movement\}, "move_rooms", \$character: \$cleaner);
+  \}
+
+  \$delay(\$cleaner.cleaning_delay, TRUE, "0657");
+
+  if(\$cleaner.stopcleaning)
+  \{
+    \$cleaner.cleaning_delay = nil;
+    \$cleaner.stopcleaning = nil;
+  \}
+\}
+
+EmitIn(\$cleaner."base:environment", "Cleaner has stopped");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1109471487, "tonyd", "P", 1109471940, "tonyd", "P", 1109471974, "tonyd", "P", 1109472018, "tonyd", "P", 1110079658, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

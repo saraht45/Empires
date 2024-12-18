@@ -1,0 +1,328 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="teach" second="teach" third="teaches" evoke="forbidden" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="about" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="about"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="false" requirement="required" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* teach another character a skill or career */
+mapping map;
+object ob;
+int counter;
+
+/* are they already busy? */
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+ EmitTo(\$actor, "You can't teach a new student while you are already busy "+\$message+".");
+ return FALSE;
+\}
+
+if(sizeof(\$dob) \> 1) \{
+ EmitTo(\$actor, "Please only teach one person at a time.");
+ return FALSE;
+\}
+\$student = NRefOb(\$dob[0]);
+if(!\$student."base:volition") \{
+ EmitTo(\$actor, "You cannot teach "+Describe(\$student, nil, \$actor)+" anything.");
+ return FALSE;
+\}
+
+if(!\$(about:words)) \{
+  EmitTo(\$actor, "What skill would you like to teach "+Describe(\$student, \$actor, \$actor)+" about?");
+  return FALSE;
+\}
+
+/* set the topic */
+\$topic = implode(\$(about:words), " ");
+map = ([ ]);
+map += prefixed_map(\$actor."*", "skill:");
+map += prefixed_map(\$actor."*", "career:");
+for (ob = \$actor."core:ur:parent"; ob; ob = ob."core:ur:parent") \{
+    map = prefixed_map(ob."*", "export:skill:") + map;
+    map = prefixed_map(ob."*", "export:career:") + map;
+\}
+
+\$list = map_indices(map);
+
+/* Search through for this skill */
+for (counter = 0; counter \< sizeof(\$list); counter++)\{
+ if(sscanf(\$list[counter], "skill:%s:"+\$topic+"%s", \$category, \$extra) == 2 \&\& \$extra==""
+  \|\| sscanf(\$list[counter], "export:skill:%s:"+\$topic+"%s", \$category, \$extra) == 2 \&\& \$extra==""
+  \|\| sscanf(\$list[counter], "career:%s:"+\$topic+"%s", \$category, \$extra) == 2 \&\& \$extra==""
+  \|\| sscanf(\$list[counter], "export:career:%s:"+\$topic+"%s", \$category, \$extra) == 2 \&\& \$extra=="")
+  break;
+\}
+
+if(!\$category) \{
+  EmitTo(\$actor, "Unknown skill.");
+  EmitTo(\$actor, "Format: Teach \<pc\> about \<skill\>");
+  EmitTo(\$actor, "E.g. \\"Teach bob about sword\\"");
+  return FALSE;
+\}
+
+\$topicname = "skill:"+\$category+":"+\$topic;
+
+if(\$actor."teaching:forbidden" \&\& sizeof(\$actor."teaching:forbidden")) \{
+    for(\$i = 0; \$i \< sizeof(\$actor."teaching:forbidden"); \$i++) \{
+        if(\$topic == \$actor."teaching:forbidden"[\$i]) \{
+            EmitTo(\$actor, "You are not allowed to teach that.");
+            return FALSE;
+        \}
+    \}
+\}
+
+\$value = Int(Get(\$actor, "career:"+\$category+":"+\$topic));
+if(Int(Get(\$actor, \$topicname)) \> \$value)
+  \$value = Int(Get(\$actor, \$topicname));
+
+/* check if the student can learn anything */
+if(Int(Get(\$student, \$topicname)) \>= \$value \|\| Int(Get(\$student, \$topicname)) \>= 24) \{
+  EmitTo(\$actor, "There is nothing you can teach "+Describe(\$student, \$actor, \$actor)+" about "+\$topic+".");
+  return FALSE;
+\}
+
+\$value = Int(Get(\$student, \$topicname))+1;
+/* what is the cost to the student? */
+\$cost = Call(\$\{Ironclaw:Lib:Teaching:TeachingLib\}, "get_skill_cost", \$category: \$category, \$level: \$value);
+
+if(\$actor."udat:object" \&\& \$student."udat:object" \&\& \$actor."udat:object" == \$student."udat:object") \{
+ if(\$actor == \$student) \{
+  \$cost = Int(Flt(\$cost)*1.1);
+ \} else \{
+  EmitTo(\$actor, "Because "+Describe(\$student)+" is your alt, the lesson will cost four times the usual cost.");
+  \$cost = \$cost*4;
+ \}
+\}
+
+/* offer the lesson to the student */
+\$message = Describe(\$actor)+" offers to teach you "+\$topic+". This will cost "+Str(\$cost)+" learning points.\\nDo you wish to learn "+\$topic+"?";
+
+/* if we are teaching ourselves, give a different message */
+if(\$student == \$actor) \{
+ \$message = "To learn "+\$topic+" will cost "+Str(\$cost)+" learning points. Because you are teaching yourself, the lesson may cost slightly more than if you studied by practicing with another PC.\\nDo you wish to learn "+\$topic+"?";
+\} else \{
+ EmitTo(\$actor, "You offer to teach "+Describe(\$student)+" level "+Str(\$value)+" in "+\$topic+".");
+\}
+
+/* mark them as busy */
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "teaching "+Describe(\$student, \$actor, \$actor));
+
+/* Request consent to teach the skill */
+interaction::question(\$actor: \$student, \$question: \$message, \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "teaching_accept", \$no_fun: "teaching_decline", \$expire_fun: "teaching_expire", \$par: ([ "teacher": \$actor, "topic": \$topic, "topicname":\$topicname, "level":\$value, "id":\$id ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_accept">
+         X[M] /* accept the lesson */
+
+/* can they accept the lesson? */
+\$teacher = \$par["teacher"];
+\$topic = \$par["topic"];
+\$topicname = \$par["topicname"];
+\$level = \$par["level"];
+
+/* are they already busy? */
+if((\$teacher != \$actor) \&\& (\$message = ironclaw::busy_check(\$character: \$actor))) \{
+ EmitTo(\$actor, "You can't accept a lesson while you are already busy "+\$message+".");
+ ::teaching_decline();
+ return FALSE;
+\}
+
+/* is the teacher still offering? */
+if(\$teacher."busy:id" != \$par["id"]) \{
+ EmitTo(\$actor, capitalize(Describe(\$teacher))+" has stopped offering a lesson.");
+ return FALSE;
+\}
+
+/* check if the student should be learning this level */
+if(Int(Get(\$actor, \$topicname)) != \$level-1) \{
+ EmitTo(\$actor, "Something went wrong. It seems you must have just learned a level of this skill suddenly, or something weird. Oh well, try the lesson again.");
+ ::teaching_decline();
+ return FALSE;
+\}
+
+/* what is the cost to the student? */
+\$category = explode(\$topicname, ":")[1];
+\$cost = Call(\$\{Ironclaw:Lib:Teaching:TeachingLib\}, "get_skill_cost", \$category: \$category, \$level: \$level);
+/* Check if they are teaching themselves or an alt */
+if(\$actor."udat:object" \&\& \$teacher."udat:object" \&\& \$actor."udat:object" == \$teacher."udat:object") \{
+ if(\$actor == \$teacher) \{
+  \$cost = Int(Flt(\$cost)*1.1);
+ \} else \{
+  \$cost = \$cost*4;
+ \}
+\}
+
+if(\$cost \< 0) \{
+  EmitTo(\$actor, "Something went wrong. Please @bug this, and let us know what you were learning and who from.");
+  ::teaching_decline();
+  return FALSE;
+\}
+
+/* check that the student doesn't have too many levels of careers */
+if(TRUE \|\| \$category == "career") \{
+ /* temporarily do this check even if they aren't learning a career. Until all \>48 level people have dropped down to the right number of careers. */
+ int count, i;
+ string *list;
+ list = map_indices(prefixed_map(\$actor."*", "skill:career:"));
+ count = 0;
+ for(i=0;i\<sizeof(list);i++) \{
+  count += Int(Get(\$actor, list[i]));
+ \}
+ /*if(count \>= 48) \{*/
+ if((\$category == "career" \&\& count \>= 48) \|\| (count \> 48)) \{
+  EmitTo(\$actor, "You have too many careers to learn anything more. You may only have 48 ranks of careers (although you may have any number of skills).");
+  EmitTo(\$actor, "You will be unable to learn any more skills until you reduce the number of careers you have down to 48.");
+  if(count \> 48)
+   EmitTo(\$actor, "Please @assist and let staff know which career levels to refund.");
+  ::teaching_decline();
+  return FALSE;
+ \}
+\}
+
+if(\$cost \> Int(\$actor."student:learningpoints")) \{
+ EmitTo(\$actor, "You cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost "+Str(\$cost)+" learning points, and you only have "+Str(Int(\$actor."student:learningpoints"))+".");
+ ::teaching_decline();
+ return FALSE;
+\}
+
+/* check they are in the same room */
+if(!\$actor."base:environment" \|\| !\$teacher."base:environment" \|\| \$actor."base:environment" != \$teacher."base:environment") \{
+ EmitTo(\$actor, "You must be in the same room as the teacher to accept a lesson.");
+ EmitTo(\$teacher, "Your student must be in the same room as you to accept a lesson.");
+ ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+ return FALSE;
+\}
+
+/* emit about the lesson starting */
+EmitTo(\$teacher, "You begin to teach "+Describe(\$actor, \$teacher, \$teacher)+" about "+\$topic+".");
+if(\$teacher != \$actor) \{
+ EmitTo(\$actor, Describe(\$teacher)+" begins to teach you about "+\$topic+".");
+ EmitIn(\$actor."base:environment", Describe(\$teacher)+" begins to teach "+Describe(\$actor)+" about "+\$topic+".", \$actor, \$teacher);
+\} else \{
+ EmitIn(\$actor."base:environment", Describe(\$teacher)+" begins to teach "+\$actor."base:objective"+"self about "+\$topic+".", \$actor);
+\}
+
+/* mark the student as busy */
+if(\$teacher != \$actor) \{
+ \$sid = ironclaw::busy_start(\$character: \$actor, \$action: "learning from "+Describe(\$teacher, \$actor, \$actor));
+\} else \{
+ \$sid = 0;
+\}
+
+/* delay */
+\$delay(60*5, TRUE, "f8c5");
+
+/* are they both still doing the lesson? */
+/* is the teacher still teaching? */
+if(\$teacher."busy:id" != \$par["id"]) \{
+ if(\$teacher != \$actor) \{
+  ironclaw::busy_stop(\$character: \$actor, \$id: \$sid);
+  EmitTo(\$actor, capitalize(Describe(\$teacher))+" has stopped teaching the lesson.");
+ \}
+ return FALSE;
+\}
+
+/* is the student still learning? */
+if(\$teacher != \$actor \&\& \$actor."busy:id" != \$sid) \{
+ ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+ EmitTo(\$teacher, capitalize(Describe(\$actor))+" has stopped studying your lesson.");
+ return FALSE;
+\}
+
+/* mark the student and teacher as back */
+ironclaw::busy_stop(\$character: \$actor, \$id: \$sid);
+ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+
+/* re-check skill level */
+if(Int(Get(\$actor, \$topicname)) != \$level-1) \{
+ EmitTo(\$actor, "Something went wrong with your lesson. It seems you must have just learned a level of this skill suddenly, or something weird. Oh well, try the lesson again.");
+ EmitTo(\$teacher, "Something went wrong with your student's lesson. It seems they must have just learned a level of the skill suddenly, or something weird. Oh well, try the lesson again.");
+ return FALSE;
+\}
+
+/* re-check learning points */
+if(\$cost \> Int(\$actor."student:learningpoints")) \{
+ EmitTo(\$actor, "You cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost "+Str(\$cost)+" learning points, and you only have "+Str(Int(\$actor."student:learningpoints"))+".");
+ EmitTo(\$teacher, Describe(\$actor)+" cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost too many learning points.");
+ return FALSE;
+\}
+
+
+/* emit about the lesson ending */
+/* pass or fail? */
+/* EXTENSION: Make a skill roll so they can fail the lesson */
+if(TRUE) \{
+ /* pass */
+ EmitTo(\$teacher, "You finish teaching "+Describe(\$actor, \$teacher, \$teacher)+" about "+\$topic+".");
+ if(\$teacher != \$actor) \{
+  EmitTo(\$actor, Describe(\$teacher)+" finishes teaching you about "+\$topic+".");
+  EmitIn(\$actor."base:environment", Describe(\$teacher)+" finishes teaching "+Describe(\$actor)+" about "+\$topic+".", \$actor, \$teacher);
+ \} else \{
+  EmitIn(\$actor."base:environment", Describe(\$teacher)+" finishes teaching " + Str(\$actor."base:objective") + "self about "+\$topic+".", \$actor);
+ \}
+
+ /* grant skill level and subtract learning points */
+ Set(\$actor, \$topicname, \$level);
+ \$actor."student:learningpoints" -= \$cost;
+\} else \{
+ /* fail */
+ /* NOT FINISHED YET */
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_decline">
+         X[M] /* decide not to accept the lesson */ 
+if(\$par["teacher"] == \$actor) \{ 
+ ironclaw::busy_stop(\$character: \$par["teacher"], \$id: \$par["id"]); 
+ EmitTo(\$par["teacher"], "You decide not to study "+\$par["topic"]+"."); 
+ return FALSE; 
+\} 
+ 
+ 
+EmitTo(\$actor, "You decline "+Describe(\$par["teacher"])+"'s offer to teach you "+\$par["topic"]+"."); 
+ 
+if(\$par["teacher"]."busy:id" != \$par["id"]) 
+ return FALSE; 
+ironclaw::busy_stop(\$character: \$par["teacher"], \$id: \$par["id"]); 
+ 
+EmitTo(\$par["teacher"], Describe(\$actor)+" declines your offer to teach "+\$par["topic"]+"."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_expire">
+         X[M] /* they took too long to decide if they want this lesson */ 
+if(\$par["teacher"] == \$actor) \{ 
+ if(\$par["teacher"]."busy:id" != \$par["id"]) 
+  return FALSE; 
+ ironclaw::busy_stop(\$character: \$par["teacher"], \$id: \$par["id"]); 
+ EmitTo(\$par["teacher"], "Your offer to teach yourself "+\$par["topic"]+" has expired."); 
+ return FALSE; 
+\} 
+ 
+EmitTo(\$actor, Describe(\$par["teacher"])+"'s offer to teach you "+\$par["topic"]+" has expired."); 
+ 
+if(\$par["teacher"]."busy:id" != \$par["id"]) 
+ return FALSE; 
+ironclaw::busy_stop(\$character: \$par["teacher"], \$id: \$par["id"]); 
+ 
+EmitTo(\$par["teacher"], "Your offer to teach "+Describe(\$actor)+" "+\$par["topic"]+" has expired."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1113806114, "tonyd", "E", 1113806168, "tonyd", "E", 1113806228, "tonyd", "E", 1113806449, "tonyd", "E", 1113806633, "tonyd", "P", 1113806710, "tonyd", "P", 1113806720, "tonyd", "P", 1113806735, "tonyd", "P", 1113807028, "tonyd", "P", 1113807110, "tonyd", "P", 1113807163, "tonyd", "P", 1113807231, "tonyd", "P", 1113808209, "tonyd", "P", 1113808349, "tonyd", "P", 1113808386, "tonyd", "P", 1113810050, "tonyd", "P", 1113810147, "tonyd", "P", 1113810388, "tonyd", "P", 1113810530, "tonyd", "P", 1114317666, "tonyd", "E", 1114318739, "tonyd", "P", 1114394340, "tonyd", "P", 1114497548, "tonyd", "P", 1114497979, "tonyd", "P", 1114569022, "tonyd", "P", 1114569353, "tonyd", "P", 1114569744, "tonyd", "P", 1114569786, "tonyd", "P", 1114569825, "tonyd", "P", 1114569848, "tonyd", "P", 1114569935, "tonyd", "P", 1114569985, "tonyd", "P", 1114570075, "tonyd", "P", 1114572261, "tonyd", "P", 1114572321, "tonyd", "P", 1114572398, "tonyd", "P", 1114572483, "tonyd", "P", 1114572540, "tonyd", "P", 1114572575, "tonyd", "P", 1114572597, "tonyd", "P", 1114572627, "tonyd", "P", 1114572656, "tonyd", "P", 1114572677, "tonyd", "P", 1114572716, "tonyd", "P", 1114573341, "tonyd", "P", 1114573512, "tonyd", "P", 1114573957, "tonyd", "P", 1114574125, "tonyd", "P", 1118626282, "tonyd", "P", 1118626573, "tonyd", "P", 1118626608, "tonyd", "P", 1118626648, "tonyd", "P", 1118627066, "tonyd", "P", 1118627171, "tonyd", "P", 1118627405, "tonyd", "P", 1118627444, "tonyd", "P", 1118627532, "tonyd", "P", 1118627559, "tonyd", "P", 1118627580, "tonyd", "P", 1118628069, "tonyd", "P", 1118628087, "tonyd", "P", 1118628477, "tonyd", "P", 1118628534, "tonyd", "P", 1118630582, "tonyd", "P", 1121423768, "tonyd", "P", 1121581063, "tonyd", "P", 1121587200, "tonyd", "P", 1121587355, "tonyd", "P", 1121588340, "tonyd", "P", 1121588446, "tonyd", "P", 1121590177, "tonyd", "P", 1126329515, "tonyd", "P", 1126330029, "tonyd", "P", 1126330266, "tonyd", "P", 1126330388, "tonyd", "P", 1126330414, "tonyd", "P", 1126330534, "tonyd", "P", 1126330560, "tonyd", "P", 1126330577, "tonyd", "P", 1126330650, "tonyd", "P", 1126330778, "tonyd", "P", 1126330817, "tonyd", "P", 1126330973, "tonyd", "P", 1126331288, "tonyd", "P", 1126331442, "tonyd", "P", 1126331500, "tonyd", "P", 1126331889, "tonyd", "P", 1126332047, "tonyd", "P", 1126332108, "tonyd", "P", 1126484776, "tonyd", "P", 1126484911, "tonyd", "P", 1126486518, "tonyd", "P", 1126503390, "tonyd", "P", 1126504204, "tonyd", "P", 1126509014, "tonyd", "P", 1126509169, "tonyd", "P", 1126509335, "tonyd", "P", 1126509573, "tonyd", "P", 1126509642, "tonyd", "P", 1126509708, "tonyd", "P", 1126509788, "tonyd", "P", 1126509904, "tonyd", "P", 1126510611, "tonyd", "P", 1139311007, "tonyd", "P", 1139311076, "tonyd", "P", 1139311280, "tonyd", "P", 1139311406, "tonyd", "P", 1139311467, "tonyd", "P", 1141187976, "tonyd", "P", 1145758482, "tonyd", "P", 1145758718, "tonyd", "P", 1145758750, "tonyd", "P", 1145758836, "tonyd", "P", 1145758949, "tonyd", "P", 1145759209, "tonyd", "P", 1145759249, "tonyd", "P", 1145759996, "tonyd", "P", 1145760096, "tonyd", "P", 1145760328, "tonyd", "P", 1145767220, "tonyd", "E", 1146116771, "tonyd", "E", 1224394090, "tonyd", "P", 1224394259, "tonyd", "P", 1224394343, "tonyd", "P", 1224394405, "tonyd", "P", 1224394413, "tonyd", "P", 1224394449, "tonyd", "P", 1224394458, "tonyd", "P", 1224394511, "tonyd", "P", 1224394527, "tonyd", "P", 1224394556, "tonyd", "P", 1224394567, "tonyd", "P", 1224394620, "tonyd", "P", 1224395163, "tonyd", "P", 1224395194, "tonyd", "P", 1224395201, "tonyd", "P", 1224395243, "tonyd", "P", 1224395271, "tonyd", "P", 1224395813, "tonyd", "P", 1224395929, "tonyd", "P", 1224395981, "tonyd", "P", 1224396079, "tonyd", "P", 1224396114, "tonyd", "P", 1224396194, "tonyd", "P", 1224397301, "tonyd", "P", 1224397335, "tonyd", "P", 1224397385, "tonyd", "P", 1224397494, "tonyd", "P", 1224397497, "tonyd", "P", 1224397870, "tonyd", "P", 1224398010, "tonyd", "P", 1224398159, "tonyd", "P", 1224398217, "tonyd", "P", 1224398390, "tonyd", "P", 1224398441, "tonyd", "P", 1224398485, "tonyd", "P", 1224399177, "tonyd", "P", 1224399294, "tonyd", "P", 1224399403, "tonyd", "P", 1224399827, "tonyd", "P", 1224399876, "tonyd", "P", 1224399920, "tonyd", "P", 1224400049, "tonyd", "P", 1224400102, "tonyd", "P", 1224400166, "tonyd", "P", 1224400230, "tonyd", "P", 1224400334, "tonyd", "P", 1224400374, "tonyd", "P", 1224400410, "tonyd", "P", 1224400470, "tonyd", "P", 1224400511, "tonyd", "P", 1224400539, "tonyd", "P", 1224400646, "tonyd", "P", 1224400660, "tonyd", "P", 1224400693, "tonyd", "P", 1224400706, "tonyd", "P", 1224400731, "tonyd", "P", 1224400852, "tonyd", "P", 1224400889, "tonyd", "P", 1224400947, "tonyd", "P", 1224400964, "tonyd", "P", 1224401063, "tonyd", "P", 1224401140, "tonyd", "P", 1224401163, "tonyd", "P", 1224401350, "tonyd", "P", 1224401359, "tonyd", "P", 1224401367, "tonyd", "P", 1224401384, "tonyd", "P", 1224401535, "tonyd", "P", 1224401667, "tonyd", "P", 1224401958, "tonyd", "P", 1224401999, "tonyd", "P", 1224402034, "tonyd", "P", 1224402216, "tonyd", "P", 1224402517, "tonyd", "P", 1224402647, "tonyd", "P", 1224402714, "tonyd", "P", 1224402727, "tonyd", "P", 1224402750, "tonyd", "P", 1224402858, "tonyd", "P", 1224402950, "tonyd", "P", 1224403081, "tonyd", "P", 1224403101, "tonyd", "P", 1224403119, "tonyd", "P", 1224403139, "tonyd", "P", 1224403294, "tonyd", "P", 1224403328, "tonyd", "P", 1224403366, "tonyd", "P", 1224403379, "tonyd", "P", 1224403456, "tonyd", "P", 1224403483, "tonyd", "P", 1224403584, "tonyd", "P", 1224403642, "tonyd", "P", 1224403666, "tonyd", "P", 1224403688, "tonyd", "P", 1224403731, "tonyd", "P", 1224403742, "tonyd", "P", 1224403748, "tonyd", "P", 1224403858, "tonyd", "P", 1224403963, "tonyd", "P", 1224404055, "tonyd", "P", 1224404078, "tonyd", "P", 1224404167, "tonyd", "P", 1224404287, "tonyd", "P", 1224404411, "tonyd", "P", 1224404551, "tonyd", "P", 1224404563, "tonyd", "P", 1224404651, "tonyd", "P", 1224404755, "tonyd", "P", 1224405023, "tonyd", "P", 1224461614, "tonyd", "P", 1224461977, "tonyd", "P", 1224462063, "tonyd", "P", 1224462199, "tonyd", "P", 1224462504, "tonyd", "P", 1224462523, "tonyd", "P", 1224465713, "tonyd", "P", 1224465927, "tonyd", "P", 1224473558, "tonyd", "P", 1224485183, "tonyd", "P", 1224485204, "tonyd", "P", 1224485232, "tonyd", "P", 1224485768, "tonyd", "P", 1224485892, "tonyd", "P", 1224486023, "tonyd", "P", 1224486221, "tonyd", "P", 1224486479, "tonyd", "P", 1224486514, "tonyd", "P", 1224492074, "tonyd", "P", 1225634896, "tonyd", "P", 1225635252, "tonyd", "P", 1228065752, "tunk_bodin", "X", 1228789249, "tonyd", "E", 1235545344, "jominey", "E", 1261977613, "tonyd", "P", 1261978492, "tonyd", "P", 1261978816, "tonyd", "P", 1261978850, "tonyd", "P", 1261978874, "tonyd", "P", 1261978897, "tonyd", "P", 1261978932, "tonyd", "P", 1261979191, "tonyd", "P", 1261979228, "tonyd", "P", 1261979321, "tonyd", "P", 1261979465, "tonyd", "P", 1261980072, "tonyd", "P", 1261980198, "tonyd", "P", 1261980261, "tonyd", "P", 1261980357, "tonyd", "P", 1283796101, "jominey", "E", 1341775670, "jominey", "E", 1376251790, "vandringar", "E", 1420351759, "tonyd", "P", 1420351773, "tonyd", "P", 1420351797, "tonyd", "P", 1420351818, "tonyd", "P", 1420352847, "tonyd", "P", 1420352934, "tonyd", "P", 1420352969, "tonyd", "P", 1420352979, "tonyd", "P", 1420353112, "tonyd", "P", 1420353125, "tonyd", "P", 1420353446, "tonyd", "P", 1420409627, "tonyd", "P", 1420409765, "tonyd", "P", 1420409895, "tonyd", "P", 1420409952, "tonyd", "P", 1475163659, "jominey", "E", 1475163983, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

@@ -1,0 +1,202 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Makeup:UrMakeup)"/>
+    <Base:Bulk immobile="false" mass="0.05" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="warpaint"/>
+            <Base:SName sname="paint"/>
+            <Base:SName sname="jar"/>
+            <Base:SName sname="makeup"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="warpaints"/>
+            <Base:PName pname="paints"/>
+            <Base:PName pname="jars"/>
+            <Base:PName pname="makeups"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="makeup"/>
+          <Base:Adjective adjective="paint"/>
+          <Base:Adjective adjective="war"/>
+          <Base:Adjective adjective="warpaint"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) jar of war paint
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.trait:material) $(this.trait:color) jar of war paint.<sbr/> A dye or paint applied to various parts of the body for decorative purposes during war.  Vibrant and thick, this paint can be smeared upon the body in any number of patterns with your fingertips or a sponge. There appears to be $(this.trait:quantity) application left.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:makeup:duration">
+         172800
+      </Core:Property>
+      <Core:Property property="export:makeup:result">
+         \<Ironclaw:Staff:Cake:Test:Bodypaint-Applied\>
+      </Core:Property>
+      <Core:Property property="export:nip:item:cost">
+         1200
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         1
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] \$this."trait:color" = oneof("crimson", "blood red", "brick red", "maroon", "cerise", "wine-colored", "sanguine", "raspberry", "fiery red", "rust red", "alizarin", "burgundy", "cardinal red", "carmine", "rose madder", "sangria red", "vivid red", "bright red", "vibrant red"); return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:apply-dob">
+         X[M] /* apply the makeup to a PC */   
+int i, sz, j, jx, denied;   
+object *object_list;   
+   
+\$victim = NRefOb(\$iob[0]);   
+   
+/* do we have a makeup "clothing item" to create */   
+if(this."makeup:result") \{   
+  /* apply it */   
+  \$spawn = Spawn(this."makeup:result");   
+  /* set any properties */   
+  \$spawn."trait:material" = this."trait:material";   
+  \$spawn."trait:color" = this."trait:color";   
+  /* move the spawn to the victim */   
+  \$spawn."base:environment" = \$victim;   
+   
+  /* are they using an adverb? */   
+  if(\$adverb) \{   
+    /* can only use adverbs if this is covering other makeup */   
+    denied = FALSE;   
+    sz = sizeof(\$spawn."base:parts-covered");   
+    for(i=0;i\<sz\&\&!denied;i++) \{   
+      if(!\$victim."base:clothes-worn" \|\| !\$victim."base:clothes-worn"[\$spawn."base:parts-covered"[i]]) \{   
+        denied = TRUE;   
+      \} else \{   
+        object_list = \$victim."base:clothes-worn"[\$spawn."base:parts-covered"[i]];   
+        denied = TRUE;   
+        jx = sizeof(object_list);   
+        for(j=0;j\<jx;j++) \{   
+          if(object_list[j]."core:ur:parent" \&\& object_list[j]."core:ur:parent" != \$spawn."core:ur:parent")   
+            denied = FALSE;   
+        \}   
+      \}   
+    \}   
+    if(!denied) \{   
+      \$spawn."trait:adverb" = \$adverb;   
+      Set(\$spawn, "details:default:adjective:"+\$adverb+":local", TRUE);   
+    \}   
+  \}   
+   
+  /* sanity check that it went to the victim (they weren't holding too much etc.) */   
+  if(\$spawn."base:environment" != \$victim) \{   
+    EmitTo(\$actor, "Error: Something went wrong and the makeup couldn't be created. Perhaps your target is carrying too much?");   
+    Slay(\$spawn);   
+    return FALSE;   
+  \}   
+  /* make them wear this */   
+  \$spawn."base:worn-by" = \$victim;   
+   
+  /* just in case we need to know who is wearing the makeup */   
+  \$spawn."makeup:worn-by" = \$victim;   
+   
+  /* make any body changes */   
+  if(\$spawn."makeup:setprops") \{   
+    \$spawn."makeup:changed_properties" = (\{ \});   
+    for(i=0;i\<sizeof(\$spawn."makeup:setprops");i++) \{   
+      \$spawn."makeup:changed_properties" += (\{ (\{ \$spawn."makeup:setprops"[i][0], ironclaw::set_prop(\$obj: \$victim, \$prop: \$spawn."makeup:setprops"[i][0], \$value: Get(this, \$spawn."makeup:setprops"[i][1])) \}) \});   
+    \}   
+  \}   
+\}   
+   
+/* do we reduce the quantity */   
+if(this."trait:quantity" \&\& this."trait:quantity" != -1) \{   
+  this."trait:quantity"--;   
+  if(this."trait:quantity" \< 1) \{   
+    this."trait:quantity" = 0;   
+    this."trait:empty" = TRUE;   
+    this."details:default:adjective:empty" = TRUE;   
+  \}   
+\}   
+   
+if(\$spawn) \{   
+  /* how long does the makeup last? */   
+  \$spawn."makeup:duration" = time()+Int(this."makeup:duration");   
+  if(FindMerry(\$spawn, "lib", "autodestroy"))   
+    Call(\$spawn , "autodestroy");   
+\}   
+   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:apply-dob">
+         X[M] /* apply the makeup to a PC */   
+if(\$actor != this."base:environment") \{   
+  EmitTo(\$actor, "You cannot use "+Describe(\$this, nil, \$actor)+" unless you are holding it.");   
+  return FALSE;   
+\}   
+   
+if(!\$this."trait:quantity") \{   
+  EmitTo(\$actor, Describe(\$this, nil, \$actor)+" has run out.");    
+  return FALSE;   
+\}   
+   
+if(!\$iob) \{   
+  EmitTo(\$actor, "What are you planning to apply "+Describe(\$this, nil, \$actor)+" to?");   
+  return FALSE;   
+\}   
+if(sizeof(\$iob) != 1) \{   
+  EmitTo(\$actor, "You can only apply "+Describe(\$this, nil, \$actor)+" to one thing at a time.");   
+  return FALSE;   
+\}   
+   
+if(!NRefOb(\$iob[0])."details:default:sname:person") \{   
+  EmitTo(\$actor, "You can only apply "+Describe(\$this, nil, \$actor)+" to people.");   
+  return FALSE;   
+\}   
+   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1202376149, "tonyd", "E", 1202376186, "tonyd", "P", 1202376403, "tonyd", "P", 1202376634, "tonyd", "P", 1202376645, "tonyd", "P", 1202376701, "tonyd", "P", 1202376732, "tonyd", "P", 1202376819, "tonyd", "P", 1202376836, "tonyd", "P", 1202377157, "tonyd", "P", 1202382092, "tonyd", "P", 1202382128, "tonyd", "P", 1202382341, "tonyd", "P", 1202382410, "tonyd", "P", 1202385515, "tonyd", "P", 1202385590, "tonyd", "P", 1202386958, "tonyd", "P", 1202387214, "tonyd", "P", 1202387282, "tonyd", "P", 1202387305, "tonyd", "P", 1202387371, "tonyd", "P", 1202387556, "tonyd", "P", 1202387684, "tonyd", "P", 1202387714, "tonyd", "P", 1202387760, "tonyd", "P", 1202387831, "tonyd", "P", 1202387889, "tonyd", "P", 1202388504, "tonyd", "P", 1213426456, "tonyd", "P", 1213426498, "tonyd", "P", 1213426952, "tonyd", "P", 1213427083, "tonyd", "P", 1213429137, "tonyd", "E", 1219643386, "tonyd", "E", 1219726776, "tonyd", "P", 1219726858, "tonyd", "P", 1219727834, "tonyd", "P", 1225764378, "morwenlorelie", "X", 1225764440, "morwenlorelie", "E", 1304787031, "arrianna", "E", 1304787332, "arrianna", "X", 1304787467, "arrianna", "X", 1304787505, "arrianna", "E", 1304787569, "arrianna", "X", 1304787961, "arrianna", "X", 1304788067, "arrianna", "E", 1304788219, "arrianna", "X", 1304789656, "arrianna", "X", 1304790202, "arrianna", "X", 1304790796, "arrianna", "X", 1308775820, "slurpeeslurp", "E", 1379519009, "slurpeeslurp", "K", 1379519124, "slurpeeslurp", "K", 1379519326, "slurpeeslurp", "E", 1379519332, "slurpeeslurp", "E", 1379519357, "slurpeeslurp", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

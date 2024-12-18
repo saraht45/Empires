@@ -1,0 +1,167 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Clothing:Regional:France:BodiceLockLace)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="black"/>
+          <Base:Adjective adjective="crushed"/>
+          <Base:Adjective adjective="shadow"/>
+          <Base:Adjective adjective="superb"/>
+          <Base:Adjective adjective="velvet"/>
+        </Base:Adjectives>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="base:initialcontents"/>
+      <Core:Property property="export:trait:color">
+         "shadow black"
+      </Core:Property>
+      <Core:Property property="export:trait:material">
+         "crushed velvet"
+      </Core:Property>
+      <Core:Property property="export:trait:quality">
+         8
+      </Core:Property>
+      <Core:Property property="merry:react-post:sheathe-iob">
+         X[M] string *names;
+int i;
+
+/* check they aren't still wielding the weapon */
+if(NRefOb(\$dob[0])."base:wielded-by") \{
+  \$delay(0.5, TRUE, "7dda");
+  if(NRefOb(\$dob[0])."base:wielded-by") \{
+    EmitTo(\$actor, "You can't sheathe "+Describe(\$dob[0], nil, \$actor)+" while you are wielding it.");
+    return FALSE;
+  \}
+\}
+
+/* move the actual weapon to the void */
+\$this.sheathed = NRefOb(\$dob[0]);
+NRefOb(\$dob[0])."base:environment" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:sheathe-iob">
+         X[M] if(\$this.sheathed) \{
+  EmitTo(\$actor, Describe(\$this, nil, \$actor)+" already contains "+Describe(\$this.sheathed)+".");
+  return FALSE;
+\}
+
+if(sizeof(\$dob) \> 1) \{
+  EmitTo(\$actor, "You can only sheathe one thing in "+Describe(\$this, nil, \$actor)+".");
+  return FALSE;
+\}
+
+/* unwield the sword if it's wielded */
+if(NRefOb(\$dob[0])."base:wielded-by") \{
+  Act(\$actor, "unwield", \$article: NRefOb(\$dob[0]));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unsheathe-dob">
+         X[M] string *names;
+int i;
+
+if(!\$this.sheathed) return TRUE;
+
+/* give the weapon to the player */
+\$weapon = \$this.sheathed;
+\$weapon."base:environment" = \$actor;
+\$this.sheathed = nil;
+\$this."trait:brief" = nil;
+
+/* display the player unsheathing the weapon */
+\$(adverb:position) = "pv";
+Social( \$actor, "unsheathe", \$adverb, \$evoke, nil, \$weapon, "from", \$this);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:sheathe-iob">
+         X[M] if(\$this."trait:sheathaccepts") \{
+  \$accepts = Arr(\$this."trait:sheathaccepts");
+  /* easier way to write this code
+  for(\$i=0;\$i\<sizeof(\$accepts);\$i++) \{
+    if(NRefOb(\$dob[0])."trait:sheathtype" == \$accepts[\$i])
+      return TRUE;
+  \}*/
+  if(member(NRefOb(\$dob[0])."trait:sheathtype", \$accepts))
+    return TRUE;
+  \$message = "";
+  if(sizeof(\$accepts) == 1) \{
+    \$message = " a "+\$accepts[0];
+  \} else if(sizeof(\$accepts) == 2) \{
+    \$message = " a "+\$accepts[0]+" or a "+\$accepts[1];
+  \} else \{
+    for(\$i=0;\$i\<sizeof(\$accepts);\$i++) \{
+      if(\$i == sizeof(\$accepts)-1) \{
+        \$message += " or a ";
+      \} else \{
+        \$message += " a ";
+      \}
+      \$message += \$accepts[\$i];
+      if(\$i \< sizeof(\$accepts)-2)
+        \$message += ",";
+    \}
+  \}
+\} else \{
+  return TRUE;
+\}
+EmitTo(\$actor, "You can only sheathe"+\$message+" in "+Describe(\$this, nil, \$actor)+".");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="misc:lastdropped">
+         "1581299748 /usr/SkotOS/merry/2bfb8f3a9ac5886548b27853f3628ff3"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1583891478, "jominey", "E", 1583891504, "jominey", "E", 1583891534, "jominey", "E", 1583891569, "jominey", "E", 1583891628, "jominey", "E", 1583891650, "jominey", "E", 1583891664, "jominey", "E", 1585700660, "sendnoodlez", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:color">
+         "shadow black"
+      </Core:Property>
+      <Core:Property property="trait:material">
+         "crushed velvet"
+      </Core:Property>
+      <Core:Property property="trait:quality">8</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,175 @@
+<object clone="/obj/properties" owner="tunk_bodin">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:picklock_door_check">
+         X[M] if(sizeof(\$dob) == 1) \{         
+  if(Get(NRefOb(\$dob[0]), "details:"+NRefDetail(\$dob[0])+":exit:door") )  \{     
+  if(NRefOb(\$dob[0])."safe:combination" ) \{      
+    return Call(\$this, "picklock_objects");      
+\} else \{      
+    return Call(\$this, "picklock_tool_check");       
+  \}  \}    
+  EmitTo( \$actor, "You may only lockpick doors and other objects with locks.");         
+\} else \{         
+  EmitTo( \$actor, "You may only lockpick one thing at a time.");         
+\}         
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:picklock_objects">
+         X[M] if(\$actor.isbusy)\{                           
+  EmitTo(\$actor, "You are in the middle of something. Please wait for your current action to complete before attempting something new.");                           
+  return FALSE;                           
+\}                           
+                           
+if(\$actor.lastlockpick \&\& (\$actor.lastlockpick+60 \> time()))\{                           
+  EmitTo(\$actor, "Give your nimble fingers a rest and try again later.");                           
+  return FALSE;                           
+\}                           
+                                 
+\$target = NRefOb(\$dob[0]);                             
+\$detail = NRefDetail(\$dob[0]);          
+/* EmitTo(\$actor, dump_value(args));  */     
+if (!\$target."detail:exit:closed")  \{       
+/* if(!\$target."details:" +\$detail+ ":exit:closed")  \{    */             
+  EmitTo(\$actor, Describe(\$dob[0])+ " is not closed, why are you trying to pick the lock?");                           
+  return FALSE;                           
+\}                       
+/* Check if the actor has a lockpick -- EDIT: Not for this as its safes and vaults with dials.                        
+\$inv = \$actor."base:inventory";                           
+for( \$i = 0; \$i \< sizeof( \$inv ); \$i++ )\{                           
+  if( \$inv[\$i]."trait:objecttype" == "lockpick" ) \$foundpick = \$inv[\$i];                           
+  break;                           
+\}   */                        
+                           
+/* If we didn't find a lockpick, give error message, and return false                           
+if( !\$foundpick )\{                           
+  EmitTo( \$actor, "You need lockpicks to unlock " + Describe( \$target ) + "." );                           
+  return FALSE;                           
+\}         */                   
+                           
+/* Okay, we've got the tools and a target. Begin the action. */                           
+\$actor.isbusy = 1;                           
+\$actor.workenv = \$actor."base:environment";                           
+                           
+EmitTo(\$actor, "You begin picking the lock of "+Describe(\$target)+".");                           
+EmitIn(\$actor."base:environment", Describe(\$actor)+" starts fiddling with the lock of "+Describe(\$target)+".", \$actor);                           
+                           
+\$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:dex", \$actor."skill:thief:lock-picking", \$actor."career:thief:lock-picking" \}));                           
+                           
+/* delay based on how good their roll was */                           
+\$delay(60-(\$result*3), FALSE, "1660");                           
+                           
+\$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:dex", \$actor."skill:thief:lock-picking", \$actor."career:thief:lock-picking" \}));                           
+                           
+                           
+if(\$actor."base:environment" != \$actor.workenv)                           
+\{                           
+  EmitTo(\$actor, "Your lockpicking attempt was aborted due to movement.");                           
+  \$actor.isbusy = nil;                           
+  \$actor.workenv = nil;                           
+  return TRUE;                           
+\} else \{                           
+  /* We need to roll at least a 7 to earn something */                           
+  if(\$result \< 7)                           
+  \{                             
+    EmitTo(\$actor, "You lower your eyes, a failure.");                           
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" stops fiddling with the lock of " +Describe(\$target)+ ".", \$actor);                           
+  \} else \{                           
+/* Not for safes -                     
+    Set(NRefOb(\$target), "details:"+\$detail+":exit:locked", 0);   */                      
+\$combo = sizeof(\$target."safe:combination");                       
+\$combo = random(\$combo);                    
+    EmitTo(\$actor, "You hear an audible click at the number " +Str(\$target."safe:combination"[\$combo])+ ".");                           
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" appears successful.", \$actor);                           
+  \}                           
+\}                           
+\$actor.lastlockpick = time();                           
+\$actor.isbusy = nil;                           
+\$actor.workenv = nil;                           
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:picklock_tool_check">
+         X[M] if(\$actor.isbusy)\{        
+  EmitTo(\$actor, "You are in the middle of something. Please wait for your current action to complete before attempting something new.");        
+  return FALSE;        
+\}        
+        
+if(\$actor.lastlockpick \&\& (\$actor.lastlockpick+60 \> time()))\{        
+  EmitTo(\$actor, "Give your nimble fingers a rest and try again later.");        
+  return FALSE;        
+\}        
+        
+/* Check if the actor has a lockpick */        
+\$target = NRefOb(\$dob[0]);        
+\$detail = NRefDetail(\$dob[0]);   
+if (!\$target."detail:exit:closed")  \{       
+/* if(!\$target."details:" +\$detail+ ":exit:closed")  \{    */             
+  EmitTo(\$actor, Describe(\$dob[0])+ " is not closed, why are you trying to pick the lock?");                           
+  return FALSE;                           
+\}       
+\$inv = \$actor."base:inventory";        
+for( \$i = 0; \$i \< sizeof( \$inv ); \$i++ )\{        
+  if( \$inv[\$i]."trait:objecttype" == "lockpick" ) \$foundpick = \$inv[\$i];        
+  break;        
+\}        
+        
+/* If we didn't find a lockpick, give error message, and return false */        
+if( !\$foundpick )\{        
+  EmitTo( \$actor, "You need lockpicks to unlock " + Describe( \$target ) + "." );        
+  return FALSE;        
+\}        
+        
+        
+/* Not sure what this code is for */        
+/*        
+  if( \\\$foundpick )\\\{ \\\$found = TRUE; \\\$i = sizeof( \\\$inv ); \\\}        
+\\\}        
+if( !\\\$found )\\\{ EmitTo( \\\$actor, "You need lockpicks to unlock " + Describe( \\\$target ) + "." ); return FALSE; \\\}        
+*/        
+        
+/* Okay, we've got the tools and a target. Begin the action. */        
+\$actor.isbusy = 1;        
+\$actor.workenv = \$actor."base:environment";        
+        
+EmitTo(\$actor, "You begin picking the lock of "+Describe(\$target)+".");        
+EmitIn(\$actor."base:environment", Describe(\$actor)+" starts fiddling with the lock of "+Describe(\$target)+".", \$actor);        
+        
+\$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:dex", \$actor."skill:thief:lock-picking", \$actor."career:thief:lock-picking" \}));        
+        
+/* delay based on how good their roll was */        
+\$delay(60-(\$result*3), FALSE, "1660");        
+        
+\$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:dex", \$actor."skill:thief:lock-picking", \$actor."career:thief:lock-picking" \}));        
+        
+        
+if(\$actor."base:environment" != \$actor.workenv)        
+\{        
+  EmitTo(\$actor, "Your lockpicking attempt was aborted due to movement.");        
+  \$actor.isbusy = nil;        
+  \$actor.workenv = nil;        
+  return TRUE;        
+\} else \{        
+  /* We need to roll at least a 7 to unlock something */        
+  if(\$result \< 7)        
+  \{        
+    EmitTo(\$actor, "You lower your lockpicks, a failure.");        
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" stops fiddling with the lock of " +Describe(\$target)+ ".", \$actor);        
+  \} else \{        
+    Set(NRefOb(\$target), "details:"+\$detail+":exit:locked", 0);        
+    EmitTo(\$actor, "You successfully unlock " +Describe(\$target)+ ".");        
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" successfully unlocks " +Describe(\$target)+ ".", \$actor);        
+  \}        
+\}        
+\$actor.lastlockpick = time();        
+\$actor.isbusy = nil;        
+\$actor.workenv = nil;        
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1133224374, "tunk_bodin", "X", 1133225385, "tunk_bodin", "X", 1133225605, "tonyd", "P", 1133225918, "tonyd", "P", 1133226927, "tonyd", "P", 1133227082, "tonyd", "P", 1133227141, "tonyd", "P", 1133227214, "tonyd", "P", 1133227277, "tonyd", "P", 1133227295, "tonyd", "P", 1133227320, "tonyd", "P", 1133227484, "tonyd", "P", 1133227718, "tonyd", "P", 1133227831, "tonyd", "P", 1133227867, "tonyd", "P", 1133227912, "tonyd", "P", 1133227964, "tonyd", "P", 1133228011, "tonyd", "P", 1133228228, "tonyd", "P", 1133228356, "tonyd", "P", 1133228603, "tonyd", "P", 1133228761, "tonyd", "P", 1133229177, "tonyd", "P", 1133229747, "tunk_bodin", "X", 1133230007, "tunk_bodin", "X", 1133230389, "tunk_bodin", "X", 1133230679, "tunk_bodin", "X", 1133230727, "tunk_bodin", "X", 1133231646, "tunk_bodin", "X", 1133231761, "tunk_bodin", "X", 1133231840, "tunk_bodin", "X", 1133235295, "tonyd", "P", 1133235392, "tonyd", "P", 1133319847, "tunk_bodin", "P", 1133320064, "tunk_bodin", "P", 1133320268, "tunk_bodin", "P", 1133320392, "tunk_bodin", "P", 1133321810, "tonyd", "P", 1133321921, "tonyd", "P", 1133323594, "tunk_bodin", "X", 1133323818, "tunk_bodin", "X", 1133324371, "tunk_bodin", "X", 1133324497, "tunk_bodin", "X", 1133324848, "tunk_bodin", "X", 1133325110, "tunk_bodin", "X", 1133325288, "tunk_bodin", "X", 1133327416, "tunk_bodin", "X", 1133328297, "tonyd", "P", 1133328362, "tonyd", "P", 1133329183, "tonyd", "P", 1133329694, "tunk_bodin", "X", 1133330196, "tunk_bodin", "X", 1133330583, "tunk_bodin", "X", 1133331011, "tunk_bodin", "X", 1133332428, "tunk_bodin", "X", 1133332559, "tunk_bodin", "X", 1133332793, "tunk_bodin", "X", 1133397255, "tunk_bodin", "X", 1133398290, "tunk_bodin", "X", 1133399410, "tunk_bodin", "X", 1133399631, "tunk_bodin", "X", 1133399731, "tunk_bodin", "X", 1133399806, "tunk_bodin", "X", 1133401601, "tunk_bodin", "X", 1133402195, "tonyd", "P", 1133402524, "tunk_bodin", "X", 1133402812, "tunk_bodin", "X", 1133413928, "tunk_bodin", "X", 1136483477, "tunk_bodin", "X", 1136484684, "tunk_bodin", "X", 1136538029, "tunk_bodin", "X", 1136656687, "tunk_bodin", "X", 1136657628, "tunk_bodin", "X", 1136659972, "tunk_bodin", "X", 1136661665, "tunk_bodin", "X", 1136662014, "tunk_bodin", "X", 1136662405, "tunk_bodin", "X", 1136662583, "tunk_bodin", "X", 1136662677, "tunk_bodin", "X", 1136662745, "tunk_bodin", "X", 1137090578, "tunk_bodin", "X", 1137480593, "tonyd", "P", 1137480988, "tonyd", "P", 1137481021, "tonyd", "P", 1137481037, "tonyd", "P", 1137481725, "tonyd", "P", 1137481797, "tonyd", "P", 1137481946, "tonyd", "P", 1137482390, "tonyd", "P", 1137482765, "tonyd", "P", 1137527169, "tunk_bodin", "X", 1137527364, "tunk_bodin", "X", 1163915285, "tunk_bodin", "X", 1163915636, "tunk_bodin", "X", 1163915822, "tunk_bodin", "X", 1163916040, "tunk_bodin", "X", 1163916348, "tunk_bodin", "X", 1163916541, "tunk_bodin", "X", 1163916550, "tunk_bodin", "X", 1163916958, "tunk_bodin", "X", 1163917030, "tunk_bodin", "X", 1163917067, "tunk_bodin", "X", 1163918310, "tunk_bodin", "X", 1163918862, "tunk_bodin", "X", 1163918950, "tunk_bodin", "X", 1163919277, "tunk_bodin", "X", 1163920112, "tunk_bodin", "X", 1163920334, "tunk_bodin", "X", 1163920954, "tunk_bodin", "X", 1163920998, "tunk_bodin", "X", 1163921234, "tunk_bodin", "X", 1163921309, "tunk_bodin", "X", 1163921367, "tunk_bodin", "X", 1163921549, "tunk_bodin", "X", 1163964419, "tunk_bodin", "X", 1163964548, "tunk_bodin", "X", 1163964567, "tunk_bodin", "X", 1163964606, "tunk_bodin", "X", 1163964697, "tunk_bodin", "X", 1163964781, "tunk_bodin", "X", 1163964824, "tunk_bodin", "X", 1163964898, "tunk_bodin", "X", 1163964939, "tunk_bodin", "X", 1163964956, "tunk_bodin", "X", 1163965313, "tunk_bodin", "X", 1163965366, "tunk_bodin", "X", 1163966204, "tunk_bodin", "X", 1163966260, "tunk_bodin", "X", 1163966274, "tunk_bodin", "X" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,155 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="databases">
+         ([ "burn":\<Ironclaw:Staff:Az:test:InjuriesBurn\>, "cut":\<Ironclaw:Staff:Az:test:InjuriesCut\> ])
+      </Core:Property>
+      <Core:Property property="merry:lib:set_wound">
+         X[M] /* Gives a wound to a PC */
+
+/* Expects \$location, \$woundtype and \$amount */
+if(!\$location) return FALSE;
+if(!\$woundtype) return FALSE;
+if(!\$amount) return FALSE;
+
+/* First check if the \$location is on a PC or object that can be injuried */
+/* NOT WRITTEN YET */
+
+
+\$pc = NRefOb(\$location);
+\$location = NRefDetail(\$location);
+
+EmitTo(\$pc, "Giving you a wound on your "+\$location+".");
+EmitTo(\$pc, "Injury is "+\$woundtype+".");
+
+/* Check if that body part already has an injury */
+if(!\$pc."combat:injuries") \$pc."combat:injuries" = ([ ]);
+if(!\$pc."combat:injuries"[\$location]) \$pc."combat:injuries"[\$location] = ([ ]);
+if(!\$pc."combat:injuries"[\$location]["treatment_needed"]) \$pc."combat:injuries"[\$location]["treatment_needed"] = (\{ \});
+if(!\$pc."combat:injuries"[\$location]["treatment_given"]) \$pc."combat:injuries"[\$location]["treatment_given"] = (\{ \});
+
+/* Is this the largest damage done so far? */
+if(!\$pc."combat:injuries"[\$location]["amount"] \|\| \$pc."combat:injuries"[\$location]["amount"] \< \$amount) \{
+  /* This wound increases the damage to this location */
+  \$pc."combat:injuries"[\$location]["amount"] = \$amount;
+\}
+
+/* Is this the largest damage of this type done so far? */
+if(!\$pc."combat:injuries"[\$location][\$woundtype]) \$pc."combat:injuries"[\$location][\$woundtype] = ([ ]);
+
+if(!\$pc."combat:injuries"[\$location][\$woundtype]["amount"]
+\|\| !\$pc."combat:injuries"[\$location][\$woundtype]["amount"] \< \$amount) \{
+  /* This wound increases the damage to this location */
+  \$pc."combat:injuries"[\$location][\$woundtype]["amount"] = \$amount;
+
+  /* Since we're increasing the damage, we also need to add the description of the wound values */
+  \$pc."combat:injuries"[\$location][\$woundtype]["description"] = \$amount;
+  \$pc."combat:injuries"[\$location][\$woundtype]["description_level"] = \$amount;
+  
+  /* And we need to add the adjective */
+  /* NOT FINISHED YET - This should get the right adjective based on the type of injury */
+  \$pc."combat:injuries"[\$location][\$woundtype]["adjective"] = "burnt";
+  if(!\$pc."combat:injuries"[\$location]["adjectives"]) \$pc."combat:injuries"[\$location]["adjectives"] = (\{ \});
+  \$pc."combat:injuries"[\$location]["adjectives"] \|= (\{ "burnt" \});
+\}
+
+/* If this body part had been treated, we need to remove that so it gets treated again */
+switch(\$woundtype) \{
+  case "burn":
+    \$pc."combat:injuries"[\$location]["treatment_needed"] \|= (\{ "burn" \});
+    \$pc."combat:injuries"[\$location]["treatment_given"] -= (\{ "burn_ointment" \});
+    break;
+  default:
+    break;
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_wound">
+         X[M] /* Displays a wound on a PC */
+string output, description, *indices;
+object db;
+int i, desc, desc_level;
+output = "";
+
+/* Expects \$location, \$looker and \$level */
+if(!\$location \|\| !\$looker \|\| !\$level) return output;
+
+\$pc = NRefOb(\$location);
+\$detail = NRefDetail(\$location);
+
+/* EmitTo(\$pc, "Checking for a wound on your "+\$detail+"."); */
+
+/* Check if that body part already has an injury */
+if(!\$pc."combat:injuries" \|\| !\$pc."combat:injuries"[\$detail]) return output;
+
+\$info = \$pc."combat:injuries"[\$detail];
+
+/* How badly injured is this body part? */
+output = Describe(\$location, \$looker, \$looker)+" is ";
+if(Int(\$info["amount"]) \>= 7) \{
+    output += "seriously injured";
+\} else if(Int(\$info["amount"]) \>= 5) \{
+    output += "badly injured";
+\} else if(Int(\$info["amount"]) \>= 3) \{
+    output += "injured";
+\} else \{
+    output += "slightly injured";
+\}
+output += ".";
+
+/* OK, now describe the specific wound(s) */
+indices = map_indices(\$info);
+indices -= (\{ "amount", "treatment_given", "treatment_needed" \});
+for(i=0;i\<sizeof(indices);i++) \{
+  if(typeof(\$info[indices[i]]) == T_MAPPING) \{
+    desc = \$info[indices[i]]["description"];
+    desc_level = \$info[indices[i]]["description_level"];
+    /* Load the right database */
+    db = this.databases[indices[i]];
+    if(db) \{
+      /* Searching for this description number */
+      indices = (\{ \});
+      while(!sizeof(indices) \&\& desc \>= 0 \&\& desc_level \>= 0) \{
+        indices = map_indices(prefixed_map(db."*", "desc-"+Str(desc)+"-"));
+        if(!sizeof(indices)) \{
+          /* There is no description with this number. Try with a lower number */
+          desc--;
+          continue;
+        \} else \{
+          /* We have a description with this number. Find the best match for the level */
+          indices = (\{ \});
+          while(!sizeof(indices) \&\& desc_level \>= 0) \{
+            indices = map_indices(prefixed_map(db."*", "desc-"+Str(desc)+"-"+Str(desc_level)));
+            if(!sizeof(indices)) \{
+              /* There is no description with this level. Try with a lower number */
+              desc_level--;
+              continue;
+            \} else \{
+              /* Found a description that we'll use */
+              description = Get(db, "desc-"+Str(desc)+"-"+Str(desc_level));
+              output += " "+UnSAM(ParseXML(description));
+              desc_level = -1; /* Set this so the loops end */
+              continue;
+            \}
+          \}
+        \}
+      \}
+    \}
+  \}
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1350785285, "tonyd", "E", 1350788159, "tonyd", "P", 1350788480, "tonyd", "P", 1350788505, "tonyd", "P", 1350788542, "tonyd", "P", 1350788724, "tonyd", "P", 1350788745, "tonyd", "P", 1350788786, "tonyd", "P", 1350788800, "tonyd", "P", 1350788947, "tonyd", "P", 1350789131, "tonyd", "P", 1350789158, "tonyd", "P", 1350789178, "tonyd", "P", 1350789193, "tonyd", "P", 1350789282, "tonyd", "P", 1350789556, "tonyd", "P", 1350789619, "tonyd", "P", 1350789713, "tonyd", "P", 1350789837, "tonyd", "P", 1350789856, "tonyd", "P", 1350789979, "tonyd", "P", 1350790034, "tonyd", "P", 1350790071, "tonyd", "P", 1350790076, "tonyd", "P", 1350873238, "tonyd", "P", 1350873329, "tonyd", "P", 1350873775, "tonyd", "P", 1350873809, "tonyd", "P", 1350873822, "tonyd", "P", 1350873945, "tonyd", "P", 1350873967, "tonyd", "P", 1350874105, "tonyd", "P", 1350874476, "tonyd", "P", 1350874500, "tonyd", "P", 1350874526, "tonyd", "P", 1350874614, "tonyd", "P", 1350874640, "tonyd", "P", 1350874699, "tonyd", "P", 1350874707, "tonyd", "P", 1350874714, "tonyd", "P", 1350874724, "tonyd", "P", 1350874734, "tonyd", "P", 1350874808, "tonyd", "P", 1350874942, "tonyd", "P", 1350874986, "tonyd", "E", 1350875502, "tonyd", "E", 1350875536, "tonyd", "E", 1350875572, "tonyd", "P", 1350875583, "tonyd", "P", 1350875638, "tonyd", "E", 1350875654, "tonyd", "E", 1350875672, "tonyd", "E", 1350875726, "tonyd", "P", 1350875741, "tonyd", "P", 1350876057, "tonyd", "P", 1350876343, "tonyd", "P", 1350876378, "tonyd", "P", 1350876440, "tonyd", "P", 1350876480, "tonyd", "P", 1350876516, "tonyd", "P", 1350876677, "tonyd", "P", 1350876747, "tonyd", "P", 1350876764, "tonyd", "P", 1350876769, "tonyd", "P", 1350876818, "tonyd", "P", 1350876969, "tonyd", "P", 1350877011, "tonyd", "P", 1350877040, "tonyd", "P", 1350877071, "tonyd", "P", 1350877117, "tonyd", "P", 1350877209, "tonyd", "P", 1350878158, "tonyd", "E", 1350879690, "tonyd", "P", 1350879764, "tonyd", "P", 1350879834, "tonyd", "P", 1350972961, "tonyd", "E", 1350976980, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

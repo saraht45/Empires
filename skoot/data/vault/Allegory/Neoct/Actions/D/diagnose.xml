@@ -1,0 +1,52 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="SkotOS">
+  <SkotOS:MerAcHa action_id="diagnose">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-pre:action">
+         X[M] object healer, patient, lib;
+string action, part, description;
+
+if(!\$dob) return TRUE;
+if(!sizeof(\$dob)) return TRUE;
+if(sizeof(\$dob) \> 1) return TRUE;
+
+healer = \$actor;
+patient = NRefOb(\$dob[0]);
+part = NRefDetail(\$dob[0]);
+
+if(Str(healer."trait:class1") != "healer" \&\& Str(healer."trait:class2") != "healer") \{
+    EmitTo(\$actor, "You aren't sure how to do that. You should seek a medical professional.");
+    return FALSE;
+\}
+
+lib = \$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\};
+
+if(part == "default") \{
+    description = "diagnose you for physical injuries and illnesses";
+\} else \{
+    description = "diagnose " + Describe(\$dob[0], nil, patient);
+\}
+
+\$previouslyaccepted = nil;
+if(patient."healing:accepted") \{
+    if(\$healingaccepted = patient."healing:accepted"[healer]) \{
+        if((time() - \$healingaccepted) \<= 3600) \{
+            \$previouslyaccepted = 1;
+        \}
+    \}
+\}
+
+if(patient."udat:possessed" \&\& patient != healer \&\& !\$previouslyaccepted) \{
+    EmitTo(healer, "Asking " + Describe(patient) + " for permission.");
+    interaction::question(\$actor: patient, \$question: Describe(healer) + " wants to " + description + ". Do you want to allow it?", \$expires: 60, \$env: "FALSE", \$no_ob: lib, \$no_fun: "diagnose_decline", \$expire_ob: lib, \$expire_fun: "diagnose_decline", \$yes_ob: lib, \$yes_fun: "diagnose_start", \$par: ([ "patient":patient, "healer":healer, "part":part, "accepted":TRUE ]));
+\} else \{
+    Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "diagnose_start", \$par: ([ "patient":patient, "healer":healer, "part":part ]));
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1567998943, "jominey", "E", 1567999332, "jominey", "E", 1567999359, "jominey", "E", 1568836114, "jominey", "E", 1573330715, "jominey", "E", 1573330986, "jominey", "E", 1573499552, "jominey", "E", 1573499616, "jominey", "E", 1579725169, "jominey", "E", 1579725239, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

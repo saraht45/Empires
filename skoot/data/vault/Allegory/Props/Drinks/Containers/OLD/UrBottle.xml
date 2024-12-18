@@ -1,0 +1,137 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="false" under="false" on="false" inside="false" near="true" over="false" behind="false" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="wine"/>
+            <Base:SName sname="bottle"/>
+            <Base:SName sname="drink"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="wines"/>
+            <Base:PName pname="bottles"/>
+            <Base:PName pname="drinks"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="of"/>
+          <Base:Adjective adjective="wine"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? equal | $(this.trait:quantity) | 0 | empty wine bottle | bottle of $(this.trait:liquid) }
+          </Base:Description>
+          <Base:Description type="examine">
+             {? equal | $(this.trait:quantity) | 0 | An empty wine bottle. | {? | $(target.detail:exit:closed) |  $(this.trait:examine-closed)| $(this.trait:examine-open)}  There are about $[desc_cardinal($this."trait:quantity")] servings left. [OOC: tilt the bottle to pour a glass.]}
+          </Base:Description>
+          <Base:Description type="look">
+             {? equal | $(this.trait:quantity) | 0 | An empty wine bottle. | {? | $(target.detail:exit:closed) |  $(this.trait:examine-closed)| $(this.trait:examine-open)}  There are about $[desc_cardinal($this."trait:quantity")] servings left. [OOC: tilt the bottle to pour a glass.]}
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="true" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="liquid" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="liquid"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="liquids"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="wine"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             bottle's $(this.trait:liquid)
+          </Base:Description>
+          <Base:Description type="look">
+             $(this.trait:liquid) fills this bottle.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:quantity">
+         10
+      </Core:Property>
+      <Core:Property property="export:trait:trash">1</Core:Property>
+      <Core:Property property="merry:react-post:tilt-dob">
+         X[M] \$glass = \$\{IronClaw:Props:Drinks:Potable:Newest:Wine:UrFlute\};
+\$wine = \$this."trait:liquid";
+\$quantity = \$this."trait:quantity";
+
+
+EmitTo(\$actor, "Grabbing a delicate glass flute you pour some wine into the glass.");
+EmitIn(\$actor."base:environment", "Grabbing a delicate glass flute, " +Describe(\$actor)+ ", pours some wine into the glass.", \$actor);
+\$drink = Spawn(\$glass);
+\$drink."trait:liquid" = \$this."trait:liquid";
+\$drink."trait:smell" = \$this."trait:smell";
+\$drink."emote:taste" = \$this."trait:taste";
+\$drink."emote:savour" = \$this."trait:taste";
+\$drink."emote:sip" = \$this."trait:taste";
+\$drink."emote:drink" = \$this."trait:taste";
+\$drink."base:environment" = \$actor;
+
+\$quantity--;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:tilt-dob">
+         X[M] if(\$this."detail:exit:closed") \{
+EmitTo(\$actor, "Your " +Describe(\$this)+ " is closed, try openning it before pouring a drink.");
+return FALSE;
+\}
+
+\$quantity = \$this."trait:quantity";
+if(\$quantity == 0)\{
+EmitTo(\$actor, "The bottle is empty. You can't get even a single drop out of it.");
+\$this."trait:empty" = 1;
+return FALSE;
+\}
+
+\$this."trait:quantity" = \$this."trait:quantity" - 1;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1179426680, "necate", "E", 1179426806, "necate", "K", 1179426852, "necate", "E", 1179427168, "necate", "R", 1179427425, "necate", "K", 1179427751, "necate", "E", 1179427877, "necate", "E", 1179427903, "necate", "E", 1179427972, "necate", "E", 1179428028, "necate", "E", 1179428033, "necate", "E", 1179428122, "necate", "P", 1179428174, "necate", "P", 1179428196, "necate", "P", 1179428321, "necate", "P", 1179428346, "necate", "P", 1179428397, "necate", "P", 1179428418, "necate", "P", 1179428482, "necate", "P", 1179428699, "necate", "P", 1179428963, "necate", "P", 1179428987, "necate", "P", 1179429010, "necate", "P", 1179429030, "necate", "P", 1179429035, "necate", "P", 1179429274, "necate", "K", 1179429426, "necate", "K", 1179429794, "necate", "P", 1179429826, "necate", "P", 1179429914, "necate", "K", 1179430562, "necate", "P", 1179432158, "mqqwa", "E", 1179432206, "mqqwa", "E", 1179432281, "mqqwa", "E", 1179432388, "mqqwa", "E", 1179432715, "mqqwa", "E", 1179432998, "mqqwa", "E", 1179433152, "mqqwa", "E", 1179802525, "necate", "K", 1179818710, "necate", "K", 1179818932, "necate", "E", 1179906479, "necate", "E", 1214089621, "random1377", "E", 1269557539, "jominey", "K", 1431620138, "slurpeeslurp", "R", 1573687098, "sendnoodlez", "E", 1573687160, "sendnoodlez", "E", 1573687468, "sendnoodlez", "E", 1573687496, "sendnoodlez", "E", 1573694626, "jominey", "E", 1576682058, "sendnoodlez", "R", 1586307804, "sendnoodlez", "K", 1593880002, "sendnoodlez", "E", 1600621890, "jominey", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

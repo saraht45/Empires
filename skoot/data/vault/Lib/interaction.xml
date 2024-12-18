@@ -1,0 +1,398 @@
+<object clone="/obj/properties" owner="TextIF">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:abort_question">
+         X[M] /*
+
+  D=Abort a question.
+
+  Required arguments:
+    \$actor    (object): The user.
+
+*/
+
+\$actor."question:question" = nil;
+\$actor."question:env" = nil;
+\$actor."question:par" = nil;
+\$actor."question:yes_ob" = nil;
+\$actor."question:yes_fun" = nil;
+\$actor."question:yes" = nil;
+\$actor."question:yes_act" = nil;
+\$actor."question:no_ob" = nil;
+\$actor."question:no_fun" = nil;
+\$actor."question:no" = nil;
+\$actor."question:no_act" = nil;
+
+\$actor."question:a_ob" = nil;
+\$actor."question:a_fun" = nil;
+\$actor."question:a" = nil;
+\$actor."question:a_act" = nil;
+\$actor."question:b_ob" = nil;
+\$actor."question:b_fun" = nil;
+\$actor."question:b" = nil;
+\$actor."question:b_act" = nil;
+\$actor."question:c_ob" = nil;
+\$actor."question:c_fun" = nil;
+\$actor."question:c" = nil;
+\$actor."question:c_act" = nil;
+\$actor."question:d_ob" = nil;
+\$actor."question:d_fun" = nil;
+\$actor."question:d" = nil;
+\$actor."question:d_act" = nil;
+\$actor."question:e_ob" = nil;
+\$actor."question:e_fun" = nil;
+\$actor."question:e" = nil;
+\$actor."question:e_act" = nil;
+
+\$actor."question:id" = nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:ask_pending_question">
+         X[M] /*
+
+  D=Allows asking the questions that were stored while they were offline.
+
+*/
+
+if(!\$actor) return FALSE;
+
+/* is the actor online? If so, send them the question immediately */
+if(sizeof(Arr(\$actor."questions:pending")) \&\& !\$actor."question:question" \&\& \$actor."udat:possessed") \{
+ args = \$actor."questions:pending"[0];
+ \$actor."question:offline_question" = time();
+ return ::question();
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:oquestion">
+         X[M] /*
+
+  D=Allows asking the question whether they are online or not. If online, it'll ask immediately, otherwise it'll queue.
+
+*/
+
+/* Clean-up. */
+if (typeof(\$yes) == T_INT) \$yes = nil;
+if (typeof(\$no)  == T_INT) \$no  = nil;
+
+/* Save the question to be asked later */
+if(!\$actor."questions:pending") \$actor."questions:pending" = (\{ \});
+\$actor."questions:pending" += (\{ copy(args) \});
+
+/* is the actor online? If so, send them the question immediately */
+if(\$actor."questions:pending" \&\& \$actor."udat:possessed") \{
+ /*EmitTo(\$actor, dump_value(args));*/
+ /*return ::question();*/
+ return ::ask_pending_question();
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question">
+         X[M] /*
+
+  D=Ask a question, and send us further depending on if we say yes or no.
+
+  Required arguments:
+    \$actor    (object): The user.
+    \$question (string): The question to ask.
+
+  Supported arguments:
+    \$yes_ob   (object): If we answer 'yes', call a function in \$yes_ob.
+    \$yes_fun  (string): Namely, this function.
+    \$yes      (string): Alternatively, emit this message and exit.
+    \$yes_act  (string): Action to perform if 'yes'.
+    \$no_ob    (object): If we say 'no', cafi \$no_ob
+    \$no_fun   (string): Namely, this.
+    \$no       (string): Alternatively, emit this message and exit.
+    \$no_act   (string): Action to perform if 'no'.
+    \$par      (mixed):  Parameter to pass to the function called.
+    ----
+    \$env      (bool):   Is this question bound to the current environment?
+    \$expires  (int):    Number of seconds before question expires.
+    \$expire_ob (object): Object in which function exists to handle expired questions.
+    \$expire_fun (string): Function name.
+    \$expire (string):   Message to emit when question expired.
+
+*/
+
+/* Clean-up. */
+if (typeof(\$yes) == T_INT) \$yes = nil;
+if (typeof(\$no)  == T_INT) \$no  = nil;
+
+if(\$a) \{
+  /* asking @a, @b, @c */
+  /* EmitTo( \$actor, \$question + "\\n" + TAG( "Type one of the below choices:", "imp" )); */
+  EmitTo( \$actor, TAG( \$question, "imp" ));
+  if(\$a)
+   EmitTo( \$actor, TAG("@A", "imp")+" - "+Str(Arr(\$a)[0]) );
+  if(\$b)
+   EmitTo( \$actor, TAG("@B", "imp")+" - "+Str(Arr(\$b)[0]) );
+  if(\$c)
+   EmitTo( \$actor, TAG("@C", "imp")+" - "+Str(Arr(\$c)[0]) );
+  if(\$d)
+   EmitTo( \$actor, TAG("@D", "imp")+" - "+Str(Arr(\$d)[0]) );
+  if(\$e)
+   EmitTo( \$actor, TAG("@E", "imp")+" - "+Str(Arr(\$e)[0]) );
+\} else \{
+  /* asking @yes or @no */
+  EmitTo( \$actor, Str(\$question) + "\\n" + TAG( "Type @YES or @NO to respond to this question.", "imp" ));
+\}
+
+if( \$env )
+  \$actor."question:env" = \$actor."base:environment";
+else
+  \$actor."question:env" = nil;
+
+\$actor."question:question" = \$question;
+\$actor."question:par" = \$par;
+\$actor."question:yes_ob" = \$yes_ob;
+\$actor."question:yes_fun" = \$yes_fun;
+\$actor."question:yes" = \$yes;
+\$actor."question:yes_act" = \$yes_act;
+\$actor."question:no_ob" = \$no_ob;
+\$actor."question:no_fun" = \$no_fun;
+\$actor."question:no" = \$no;
+\$actor."question:no_act" = \$no_act;
+
+\$actor."question:a_ob" = \$a_ob;
+\$actor."question:a_fun" = \$a_fun;
+\$actor."question:a" = \$a;
+\$actor."question:a_act" = \$a_act;
+\$actor."question:b_ob" = \$b_ob;
+\$actor."question:b_fun" = \$b_fun;
+\$actor."question:b" = \$b;
+\$actor."question:b_act" = \$b_act;
+\$actor."question:c_ob" = \$c_ob;
+\$actor."question:c_fun" = \$c_fun;
+\$actor."question:c" = \$c;
+\$actor."question:c_act" = \$c_act;
+\$actor."question:d_ob" = \$d_ob;
+\$actor."question:d_fun" = \$d_fun;
+\$actor."question:d" = \$d;
+\$actor."question:d_act" = \$d_act;
+\$actor."question:e_ob" = \$e_ob;
+\$actor."question:e_fun" = \$e_fun;
+\$actor."question:e" = \$e;
+\$actor."question:e_act" = \$e_act;
+
+/* The question was getting reset if another question was asked shortly afterwards
+i.e. asked and answered a question that expires in 60 seconds. Then asked a second question - after the 60 seconds, the first question expired and cleared the question. Possibly because they both had the ID of 1 - setting a random id to avoid this */
+/* \$qid = Int( \$actor."question:id" ) + 1; */
+\$qid = random(100000000) + 1;
+
+\$actor."question:id" = \$qid;
+
+if( \$expires )
+\{
+  \$delay(\$expires, FALSE, "21fa");
+  if (!\$actor) \{
+    return FALSE;
+  \}
+  if (\$actor."question:id" == \$qid \&\&
+       ( \$actor."question:yes_ob" \|\|
+         \$actor."question:no_ob" \|\|
+         \$actor."question:yes" \|\|
+         \$actor."question:no" \|\|
+         \$actor."question:yes_act" \|\|
+         \$actor."question:no_act" \|\|
+         \$actor."question:a" )) \{
+    if (\$expire_ob \|\| \$expire) \{
+      if (\$expire) \{
+        EmitTo(\$actor, \$expire);
+      \}
+      if (\$expire_ob \&\& \$expire_fun) \{
+        Call(\$expire_ob, \$expire_fun, \$par: \$actor."question:par");
+      \}
+    \} else \{
+      EmitTo( \$actor, "The query has expired." );
+    \}
+
+    \$actor."question:question" = nil;
+    \$actor."question:par" = nil;
+    \$actor."question:yes_ob" = nil;
+    \$actor."question:yes_fun" = nil;
+    \$actor."question:yes" = nil;
+    \$actor."question:yes_act" = nil;
+    \$actor."question:no_ob" = nil;
+    \$actor."question:no_fun" = nil;
+    \$actor."question:no" = nil;
+    \$actor."question:no_act" = nil;
+
+    \$actor."question:a_ob" = nil;
+    \$actor."question:a_fun" = nil;
+    \$actor."question:a" = nil;
+    \$actor."question:a_act" = nil;
+    \$actor."question:b_ob" = nil;
+    \$actor."question:b_fun" = nil;
+    \$actor."question:b" = nil;
+    \$actor."question:b_act" = nil;
+    \$actor."question:c_ob" = nil;
+    \$actor."question:c_fun" = nil;
+    \$actor."question:c" = nil;
+    \$actor."question:c_act" = nil;
+    \$actor."question:d_ob" = nil;
+    \$actor."question:d_fun" = nil;
+    \$actor."question:d" = nil;
+    \$actor."question:d_act" = nil;
+    \$actor."question:e_ob" = nil;
+    \$actor."question:e_fun" = nil;
+    \$actor."question:e" = nil;
+    \$actor."question:e_act" = nil;
+
+    \$actor."question:id" = 0;
+
+    \$actor."question:offline_question" = nil;
+  \}
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:question_clear">
+         X[M] /*
+  D=Remove all question-related props in \$actor.
+*/
+
+\$actor."question:question" = nil;
+\$actor."question:par" = nil;
+\$actor."question:yes_ob" = nil;
+\$actor."question:yes_fun" = nil;
+\$actor."question:yes" = nil;
+\$actor."question:yes_act" = nil;
+\$actor."question:no_ob" = nil;
+\$actor."question:no_fun" = nil;
+\$actor."question:no" = nil;
+\$actor."question:no_act" = nil;
+
+\$actor."question:a_ob" = nil;
+\$actor."question:a_fun" = nil;
+\$actor."question:a" = nil;
+\$actor."question:a_act" = nil;
+\$actor."question:b_ob" = nil;
+\$actor."question:b_fun" = nil;
+\$actor."question:b" = nil;
+\$actor."question:b_act" = nil;
+\$actor."question:c_ob" = nil;
+\$actor."question:c_fun" = nil;
+\$actor."question:c" = nil;
+\$actor."question:c_act" = nil;
+\$actor."question:d_ob" = nil;
+\$actor."question:d_fun" = nil;
+\$actor."question:d" = nil;
+\$actor."question:d_act" = nil;
+\$actor."question:e_ob" = nil;
+\$actor."question:e_fun" = nil;
+\$actor."question:e" = nil;
+\$actor."question:e_act" = nil;
+
+\$actor."question:id" = 0;
+
+/* remove the pending question */
+if(sizeof(Arr(\$actor."questions:pending")) \&\& \$actor."question:offline_question") \{
+ \$actor."question:offline_question" = nil;
+ \$actor."questions:pending"[0] = nil;
+ \$actor."questions:pending" -= (\{ nil \});
+ /* and ask the next question */
+ interaction::ask_pending_question();
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:step">
+         X[M] /* 
+ * D=Take a step in a series of steps to trigger something. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Dec  5 09:51, 2005 
+ * State:  EXPERIMENTAL 
+ * Syntax: boolean interaction::step(\$name: \<string\>, \$base: \<object\>, \$step: \<int\>[, \$timeout: \<int\>]) 
+ * 
+ * Summary [ 
+ *    An example of how this system can be used is in "secret rooms" which are opened by performing a series of specific actions. 
+ *    The actions themselves are caught by the coder, and all the interaction::step code really does is make sure they were triggered 
+ * in the correct order. If a secret entrance is opened by 1) lighting the lamp, 2) tilting the torch and 3) rubbing the knob, the coder 
+ * would create three react scripts in the appropriate objects, 
+ *    merry:react:light-dob 
+ *    X[M] 
+ *    \$base = this; (the room that serves as the "central location" for this secret entrance; must be the same for all steps) 
+ *    if (interaction::step(\$name: "my-secret-entrance", \$step: 1)) \{ 
+ *        EmitTo(\$actor, "You fidget with the lamp for awhile and hear a faint click from behind a wall."); 
+ *        EmitIn(\$base,  Describe(\$actor) + " fidgets with the lamp for awhile."); 
+ *    \} else return TRUE; 
+ * 
+ *    merry:react:tilt-dob 
+ *    X[M] 
+ *    \$base = this; 
+ *    if (interaction::step(\$name: "my-secret-entrance", \$step: 2)) \{ 
+ *        EmitTo(\$actor, "You tilt the torch and hear a scraping sound from behind a wall."); 
+ *        EmitIn(\$base,  Describe(\$actor) + " tilts the torch."); 
+ *    \} else return TRUE; 
+ * 
+ *    merry:react:rub-dob 
+ *    X[M] 
+ *    \$base = this; 
+ *    if (interaction::step(\$name: "my-secret-entrance", \$step: 3)) \{ 
+ *        this."details:secret-entrance:exit:closed" = FALSE; 
+ *        \$delay(5); 
+ *        this."details:secret-entrance:exit:closed" = TRUE; 
+ *    \} else return TRUE; 
+ * 
+ *    If you want to trigger a callback for when a step expires, set \$expireob and \$expirefun. 
+ *    If you do not set \$expireob (but do set \$expirefun), it will call the script in \$base. 
+ * ] 
+ */ 
+constant FAILURE = FALSE; 
+constant SUCCESS = TRUE; 
+int i; 
+ 
+if (typeof(\$name) != T_STRING) error("\$name (string) missing in call to interaction::step()"); 
+if (typeof(\$base) != T_OBJECT) error("\$base (object) missing in call to interaction::step()"); 
+if (typeof(\$step) != T_INT)    error("\$step (int) missing in call to interaction::step()"); 
+ 
+/* Check if the previous steps were set. */ 
+for (i = 1; i \< \$step; i++) \{ 
+    if (!Get(\$base, "sys:interaction:" + \$name + ":step-" + i)) \{ 
+        /* Found a previous step that was unset. Clear the previous ones and exit. */ 
+        for (; i \> 0; i--) \{ 
+            Set(\$base, "sys:interaction:" + \$name + ":step-" + i, nil); 
+        \} 
+        return FAILURE; 
+    \} 
+\} 
+ 
+/* Set step and return success. */ 
+Set(\$base, "sys:interaction:" + \$name + ":step-" + i, TRUE); 
+\$delay((typeof(\$timeout) == T_INT ? \$timeout : 5), SUCCESS, "7fef"); 
+ 
+/* Timed out. Was the next step triggered? */ 
+if (!Get(\$base, "sys:interaction:" + \$name + ":step-" + (\$step+1))) \{ 
+    /* is thie current step still triggered? */ 
+      if (!Get(\$base, "sys:interaction:" + \$name + ":step-" + (\$step))) return FALSE; 
+    /* No, it wasn't, so unset everything. */ 
+    for (i = \$step; i \> 0; i--) \{ 
+        Set(\$base, "sys:interaction:" + \$name + ":step-" + i, nil); 
+    \} 
+    /* Expire callback? */ 
+    if (\$expirefun) Call(\$expireob ? \$expireob : \$base, \$expirefun); 
+\} 
+/* 
+ * ChangeLog [ 
+ *    Change(Dec  5 09:51, 2005; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1097726432, "zwoc", "P", 1097726468, "zwoc", "P", 1097726478, "zwoc", "P", 1097726958, "zwoc", "P", 1097881507, "zwoc", "P", 1122697314, "zwoc", "P", 1122849388, "zwoc", "P", 1122849410, "zwoc", "X", 1133794884, "???", "P", 1133799126, "???", "P", 1133799645, "???", "P", 1133800326, "???", "P", 1133800432, "???", "P", 1133800453, "???", "P", 1133800481, "???", "P", 1133800528, "???", "P", 1133820446, "???", "P", 1133988604, "???", "P", 1213417863, "tonyd", "E", 1289019149, "tonyd", "P", 1289019182, "tonyd", "P", 1289019190, "tonyd", "P", 1289019201, "tonyd", "P", 1289019658, "tonyd", "P", 1289019680, "tonyd", "P", 1289019867, "tonyd", "P", 1289019916, "tonyd", "P", 1289020252, "tonyd", "P", 1289020604, "tonyd", "P", 1289020995, "tonyd", "P", 1289022007, "tonyd", "P", 1289022060, "tonyd", "P", 1289023517, "tonyd", "P", 1289023714, "tonyd", "P", 1289024813, "tonyd", "P", 1289024898, "tonyd", "P", 1289024939, "tonyd", "P", 1289024964, "tonyd", "P", 1289024979, "tonyd", "P", 1289025033, "tonyd", "P", 1289091698, "tonyd", "P", 1289091738, "tonyd", "P", 1289092016, "tonyd", "P", 1289092061, "tonyd", "P", 1289092074, "tonyd", "P", 1289092088, "tonyd", "P", 1289092149, "tonyd", "P", 1289092652, "tonyd", "P", 1289092762, "tonyd", "P", 1289092810, "tonyd", "P", 1289092840, "tonyd", "P", 1289092880, "tonyd", "P", 1289093136, "tonyd", "P", 1289094933, "tonyd", "P", 1289095188, "tonyd", "P", 1289095877, "tonyd", "P", 1289096049, "tonyd", "P", 1289096079, "tonyd", "P", 1289096358, "tonyd", "P", 1289096396, "tonyd", "P", 1289096430, "tonyd", "P", 1289096468, "tonyd", "P", 1289096537, "tonyd", "P", 1289096621, "tonyd", "P", 1289096672, "tonyd", "P", 1289096719, "tonyd", "P", 1315458072, "tonyd", "E", 1315458146, "tonyd", "E", 1315458325, "tonyd", "P", 1315458384, "tonyd", "P", 1315458420, "tonyd", "P", 1315458473, "tonyd", "P", 1315458483, "tonyd", "P", 1387782126, "tonyd", "P", 1387782269, "tonyd", "P", 1458976522, "tonyd", "P", 1458976535, "tonyd", "P", 1458976589, "tonyd", "P", 1459657233, "tonyd", "E", 1524017896, "jominey", "P", 1524017954, "jominey", "P", 1524017977, "jominey", "P", 1524018101, "jominey", "P" \})
+      </Core:Property>
+      <Core:Property property="sys:sync:clearing">0</Core:Property>
+      <Core:Property property="sys:sync:idpsource">
+         "ironclaw"
+      </Core:Property>
+      <Core:Property property="sys:sync:igdipro">
+         "ignore"
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,178 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(orcsuit:Lib:newvp)"/>
+    <Core:PCProperties>
+      <Core:Property property="data:exit:directions">
+         (\{ "north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest" \})
+      </Core:Property>
+      <Core:Property property="data:exit:pathadjectives">
+         (\{ "winding", "straight", "crooked", "twisted", "long", "short", "narrow", "wide", "faint", "animal", "cart" \})
+      </Core:Property>
+      <Core:Property property="data:exit:pathnames">
+         (\{ "path", "trail", "track", "pathway" \})
+      </Core:Property>
+      <Core:Property property="data:tree:agegroups">
+         ([ 0:"sprout", 1:"sapling", 10:"young", 30:"medium", 50:"mature", 100:"old", 200:"ancient" ])
+      </Core:Property>
+      <Core:Property property="data:tree:species">
+         (\{ "oak", "birch", "elm", "dutch elm", "English oak", "sycamore", "beech", "fir", "pine", "blackwood", "walnut", "pecan", "mulberry" \})
+      </Core:Property>
+      <Core:Property property="db:locationobjects">
+         (\{ (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}), (\{ nil, nil, nil, nil, nil, nil, nil, nil, nil, nil \}) \})
+      </Core:Property>
+      <Core:Property property="db:placeinventory">
+         (\{ (\{ (\{  \}), (\{ nil \}), (\{  \}), (\{  \}), (\{ nil \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}) \}), (\{ (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}) \}), (\{ (\{  \}), (\{  \}), (\{  \}), nil, (\{  \}), (\{  \}), (\{  \}), (\{  \}), nil, nil \}), (\{ (\{  \}), (\{  \}), nil, (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), nil, nil \}), (\{ (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), nil, nil \}), (\{ (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), nil, (\{  \}), (\{  \}), nil \}), (\{ (\{  \}), (\{  \}), nil, (\{  \}), (\{  \}), (\{  \}), nil, (\{  \}), (\{  \}), nil \}), (\{ (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), nil \}), (\{ nil, (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), (\{  \}), nil \}), (\{ nil, nil, nil, nil, nil, (\{  \}), nil, (\{  \}), (\{  \}), (\{  \}) \}) \})
+      </Core:Property>
+      <Core:Property property="merry:lib:vp_setup_place">
+         X[M] /*  
+** Sets the details for a place in Orcsuit's Virtual Forest  
+**  
+** Arguments:  
+**  
+**  \$id - The object that is to be set up.  Should have virtualplace:id.  
+*/  
+  
+/*This example is one that has a static (not randomly changing) area, that  
+**derives all data about a place by doing some math on the location data.  
+**This method allows for _huge_ worlds without having to set or store huge  
+**amounts of data.  A disadvantage of this method is that one cannot set  
+**individual details by this method alone.  
+**  
+**Another way to do the world would be to have data stored in a database, that  
+**contains values that are used to determine information about each detail.  
+**Like a value of 1 could mean 'tree', 2 could mean 'rock', and then as a  
+**a subest for tree, 1 could mean 'oak', 2 could mean 'elm', etc, for different  
+**properties.  One database holds the values for each place, a second contains  
+**info that each value stands for.  This method allows people to set individual  
+**details, but is limited in   
+**  
+**To combine the two methods detailed above, there would be default values  
+**determined by doing math, but these could be overriden by values in a  
+**database that does not contain data about every single place, but just those  
+**that are customized.  
+**  
+**A third method would be to store actual values for each individual place.  
+**This is not recommended, as it'll result in a very, very large database.  
+**And if you store entire briefs, it can be difficult to have a widesweeping  
+**change, such as seasons, or a sudden fire or a flooding, take place without  
+**doing lots of individual setting of things.  
+**  
+**The above method might be combined with the two others -- maybe for a very  
+**few places, you might want a unique detail (and not have the unique thing be  
+**a full object).  
+**  
+**Whatever method(s) are used, it shouldn't be too hard to have implement a  
+**large-scale change to many details; either a set values that this function  
+**looks for, or modify this function itself.  Also, keep in mind that SAM for  
+**descriptions can make some things much easier.  
+*/  
+  
+int a,b,c,i,j;  
+float f, x, y;  
+string s,t;  
+object what;  
+string *d_trees, *d_exits;  
+  
+if (!\$id)\{  
+ error("virtual place - " + Str(this) + "(set_details): Expected \$id");\}  
+if (typeof(\$id) != T_ARRAY)\{  
+ error("virtual place - " + Str(this) + "(set_details): \$id is not an array");\}  
+  
+what = Call(this, "vp_id_to_ob");  
+  
+if (typeof(what) != T_OBJECT)\{  
+ error("virtual place - " + Str(this) + "(set_details): \$id does not have an object.");\}  
+  
+/*We use the coordinates for the math to determine what to put where.  Since  
+**most merry math funtions require floats, we'll go ahead and work with them.*/  
+x=Flt(\$id[0]);  
+y=Flt(\$id[1]);  
+  
+/*How many trees are there?  This formula has more trees in the center, with 12  
+**at (5,5) and 2 at the corners.*/  
+a = 12 - Int( fabs(5.0-x) + fabs(5.0-y) );  
+  
+  
+/*Create the trees*/  
+d_trees = (\{\});  
+for(i=0;i\<12;i++)  
+\{  
+ if(i\<a)  
+ \{  
+  /*This formula allows for both mixed areas and groves of similar species;  
+  **these groupings go beyond just one room*/  
+  b = Int( sin(x)+cos(y)+sin(tan(Flt(i))) )+3;  
+  /*This randomizes tree age, with younger ones (0-61 years) at the corners and  
+  **older ones (0-360 years) in the center, again allowing for groups and mixes*/  
+  c = Int( (sin(y) + cos(x) + sin(tan(Flt(i))) + 3.0) * 5.0 * Flt(a) + 1.0);  
+  Set(what, "details:vtree"+Str(i)+":snames:tree", "trees");  
+  Set(what, "details:vtree"+Str(i)+":snames:" + this."data:tree:species"[b], Call(\$\{orcsuit:Lib:general\}, "pluralize", \$noun: this."data:tree:species"[b]));  
+  j=c;  
+  while(!this."data:tree:agegroups"[j] \&\& j\>=0)\{  
+   j--;\}  
+  Set(what, "details:vtree"+Str(i)+":snames:" + this."data:tree:agegroups"[j], Call(\$\{orcsuit:Lib:general\}, "pluralize", \$noun: this."data:tree:agegroups"[j]));  
+  Set(what, "details:vtree"+Str(i)+":description:brief", this."data:tree:agegroups"[j] + " " + this."data:tree:species"[b] + " tree");  
+  Set(what, "details:vtree"+Str(i)+":description:pbrief", this."data:tree:species"[b] + " trees");  
+  Set(what, "details:vtree"+Str(i)+":description:look", "This tree is about " +Str(Int(log(x+1.0)+(x+4.0)/3.0))+ " feet tall; it looks to be about " +Str(c) + " years old.  There really should be a better description for " + Describe(NewNRef(what, "vtree"+Str(i))) + " here, but there isn't one yet.");  
+  Set(what, "details:vtree"+Str(i)+":adjectives:"+ this."data:tree:species"[b], 1);  
+  Set(what, "details:vtree"+Str(i)+":adjectives:"+ this."data:tree:agegroups"[j], 1);  
+  Set(what, "details:vtree"+Str(i)+":hidden", 0);  
+  d_trees += (\{NewNRef(what, "vtree"+Str(i))\});  
+ \}  
+ else  
+ \{  
+  Set(what, "details:vtree"+Str(i)+":hidden", 1);  
+ \}  
+\}  
+if(j\<5)\{  
+ Set(what, "details:default:description:brief", "sparse forest");\}  
+if(j\>4\&\&j\<9)\{  
+ Set(what, "details:default:description:brief", "dense forest");\}  
+if(j\>8)\{  
+ Set(what, "details:default:description:brief", "ancient forest");\}  
+  
+/*We need paths!*/  
+d_exits=(\{\});  
+for(i=0;i\<8;i++)  
+\{  
+ if( !( (x==0.0\&\&i\>4) \|\| (x==9.0\&\&(i\>0\&\&i\<4)) \|\| (y==0.0\&\&(i\>2\&\&i\<6)) \|\| (y==0.0\&\&(i\>2\&\&i\<6)) \|\| (y==9.0\&\&(i\<2\|\|i==7)) ) )  
+ \{  
+  /*Find out what kind of exit it is*/  
+  b = Int(floor(fmod( x + y + Flt(i)*3.2, 4.0)));  
+  /*And the adjective it gets*/  
+  c = Int(floor(fmod(x*5.4 + y/1.1 + Flt(i*5), 11.0)));  
+  Set(what, "details:vexit"+Str(i)+":snames:exit", "exits");  
+  Set(what, "details:vexit"+Str(i)+":snames:" + this."data:exit:pathnames"[b], Call(\$\{orcsuit:Lib:general\}, "pluralize", \$noun: this."data:exit:pathnames"[b]));  
+  Set(what, "details:vexit"+Str(i)+":adjectives:"+ this."data:exit:pathadjectives"[c], 1);  
+  Set(what, "details:vexit"+Str(i)+":description:brief", this."data:exit:pathadjectives"[c] + " " + this."data:exit:pathnames"[b]);  
+  Set(what, "details:vexit"+Str(i)+":description:look", Describe(NewNRef(what, "vexit"+Str(i))) );  
+  Set(what, "details:vexit"+Str(i)+":description:pbrief", this."data:exit:pathnames"[b]);  
+  Set(what, "details:vexit"+Str(i)+":hidden", 0);  
+  d_exits += (\{NewNRef(what, "vexit"+Str(i))\});  
+ \}  
+ else  
+ \{  
+  Set(what, "details:vexit"+Str(i)+":hidden", 1);  
+ \}  
+\}  
+  
+/*Create the place's look*/  
+Set(what, "details:default:description:look", "There are " + Describe(d_trees) + " nearby.  You can leave by one of " + Describe(d_exits) + ".  There should be more to this place, but hasn't been implemented.");  
+Set(what, "details:default:description:glance", "There are " + Describe(d_trees) + " nearby.  You can leave by one of " + Describe(d_exits) + ".");  
+  
+/*Is it the keepable (1,1)?*/  
+if(x==1.0\&\&y==1.0)\{  
+ what."virtualplace:permanantplace" = 1;\}
+      </Core:Property>
+      <Core:Property property="nextprocess">152</Core:Property>
+      <Core:Property property="placeparent">
+         \<orcsuit:Lib:vp:testing:swamp_room\>
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1064836412, "orcsuit", "E", 1065185388, "orcsuit", "E", 1065399595, "orcsuit", "E", 1065616307, "orcsuit", "E", 1065616340, "orcsuit", "E", 1065645839, "orcsuit", "E", 1065646114, "orcsuit", "E", 1065646225, "orcsuit", "E", 1065747506, "orcsuit", "E", 1065760072, "orcsuit", "E", 1065989825, "orcsuit", "E", 1071687877, "orcsuit", "E", 1071688001, "orcsuit", "E", 1071688006, "orcsuit", "E", 1071688064, "orcsuit", "E", 1071688115, "orcsuit", "E", 1071691868, "orcsuit", "E", 1071697315, "orcsuit", "E", 1071699824, "orcsuit", "E", 1071699913, "orcsuit", "E", 1071700064, "orcsuit", "E", 1071700107, "orcsuit", "E", 1071701253, "orcsuit", "E", 1071701383, "orcsuit", "E", 1071701396, "orcsuit", "E", 1071701493, "orcsuit", "E", 1071701493, "orcsuit", "E", 1071701838, "orcsuit", "E", 1071712461, "orcsuit", "E", 1071712639, "orcsuit", "E", 1071715341, "orcsuit", "E", 1071731424, "orcsuit", "E", 1071731944, "orcsuit", "E", 1071732761, "orcsuit", "E", 1071733168, "orcsuit", "E", 1071733411, "orcsuit", "E", 1074051190, "orcsuit", "E", 1074051395, "orcsuit", "E", 1074052137, "orcsuit", "E", 1074052207, "orcsuit", "E", 1074052347, "orcsuit", "E", 1074052357, "orcsuit", "E", 1074052907, "orcsuit", "E", 1074053245, "orcsuit", "E", 1074058655, "orcsuit", "E", 1074058893, "orcsuit", "E", 1074064557, "orcsuit", "E", 1074065106, "orcsuit", "E", 1074120037, "orcsuit", "E", 1074461878, "orcsuit", "E", 1076017553, "orcsuit", "E", 1076021388, "orcsuit", "E", 1076021996, "orcsuit", "E", 1076022029, "orcsuit", "E", 1091196113, "orcsuit", "E", 1264332975, "tonyd", "X", 1264333632, "tonyd", "X" \})
+      </Core:Property>
+      <Core:Property property="runprocess">152</Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

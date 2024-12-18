@@ -1,0 +1,260 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:power:total">
+         20
+      </Core:Property>
+      <Core:Property property="export:state:emits:decay">
+         X[S] \{ THIS becomes visibly weaker. \}
+      </Core:Property>
+      <Core:Property property="export:state:emits:delay">
+         300
+      </Core:Property>
+      <Core:Property property="export:state:emits:empty">
+         X[S] \{ THIS briefly flares before going out completely. \}
+      </Core:Property>
+      <Core:Property property="export:state:emits:full">
+         X[S] \{ THIS roars continuously, illuminating the area. \}
+      </Core:Property>
+      <Core:Property property="export:state:emits:grow">
+         X[S] \{ The heat of the flames burgeons outward warming your fur. \| The bonfire blazes upward as new fuel is tossed upon it. \| Sizzling and crackling comes from the bonfire as it feeds upon itself. \| I like fish. \}
+      </Core:Property>
+      <Core:Property property="export:state:emits:low">
+         X[S] \{ The light from THIS begins to wane, becoming visibly weaker. \}
+      </Core:Property>
+      <Core:Property property="export:state:emits:normal">
+         X[S] \{ THIS crackles peacefully. \}
+      </Core:Property>
+      <Core:Property property="export:state:luminosity:empty">
+         0
+      </Core:Property>
+      <Core:Property property="export:state:luminosity:full">
+         10
+      </Core:Property>
+      <Core:Property property="export:state:luminosity:low">
+         5
+      </Core:Property>
+      <Core:Property property="export:state:luminosity:normal">
+         10
+      </Core:Property>
+      <Core:Property property="export:states">
+         ([ 0:"low", 25:"normal", 75:"full" ])
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "firesource"
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] this."details:light:hidden" = TRUE; 
+this."trait:power" = this."power:total";  
+this."trait:on" = nil;  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:changestate">
+         X[M] int mod, oldp, newp, delay, luminosity;  
+string newstate, oldstate, emit;  
+  
+/* Stop the timer and clear the handler */  
+if(this."handler:decay") \{  
+    Stop(this."handler:decay");  
+    Set(this, "handler:decay", nil);  
+\}  
+
+/* Are we increasing power or decreasing power? */  
+if(\$value \|\| \$value == 0) \{  
+    mod = \$value;  
+\} else \{  
+    mod = 1;  
+\}  
+  
+if(\$type == "decay") \{  
+    mod = mod * -1;  
+\}  
+  
+oldp = this."trait:power";  
+oldstate = ::getstate(\$power: oldp);  
+newp = oldp + mod;  
+newstate = ::getstate(\$power: newp);  
+  
+/* Check for a state change */  
+if(newstate != "empty") \{  
+    if(oldstate != newstate) \{  
+        /* The state has changed. Show decay or grow emit. */  
+        emit = UnSAM(Get(this, "state:emits:" + \$type));  
+        luminosity = Get(this, "state:luminosity:" + newstate); 
+    \} else \{  
+        if(\$type == "grow") \{ 
+            emit = UnSAM(Get(this, "state:emits:" + \$type)); 
+        \} else \{ 
+            /* No state change. Just show emit based on current state. */  
+            emit = UnSAM(Get(this, "state:emits:" + newstate));  
+            luminosity = Get(this, "state:luminosity:" + newstate); 
+        \} 
+    \}  
+\} else \{  
+    /* The light source died. */  
+    emit = UnSAM(Get(this, "state:emits:empty"));  
+    luminosity = 0; 
+  
+    /* Flag as unlit */  
+    this."trait:on" = nil;  
+    ::extinguish();
+\}  
+  
+/* Show emit. Replace instances of THIS with description of object. */  
+emit = Str(replace_strings(emit, "THIS", Describe(this)));  
+emit = replace_strings(dump_value(emit), "\\" ", "", " \\"", "");  
+  
+if(!Get(this."base:environment", "udat:possessed")) \{  
+    EmitIn(this."base:environment", capitalize(emit));  
+\} else \{  
+    EmitIn(Get(this."base:environment", "base:environment"), capitalize(emit));  
+\}  
+/* Set new power value and state description */  
+this."trait:power" = newp;  
+if(this."trait:power" \> this."power:total") \{ 
+    this."trait:power" = this."power:total"; 
+\} 
+this.state = newstate;  
+ 
+this."details:light:luminosity" = Flt(luminosity); 
+  
+/* Only schedule a new emit if light source has not died and if the light source is an emitter. */  
+if(newstate != "empty" \&\& \$this."lightsource:emitter") \{ 
+    delay = 300; 
+    if(this."state:emits:delay") \{ 
+        delay = this."state:emits:delay"; 
+    \} 
+    this."handler:decay" = In("decay", delay + random(120)); 
+\} else \{ 
+    this."details:light:hidden" = TRUE; 
+\} 
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:extinguish">
+         X[M] this."details:light:hidden" = TRUE; 
+  
+/* Stop timers */  
+if(this."handler:decay") \{  
+    Stop(this."handler:decay");  
+    Set(this, "handler:decay", nil);  
+\}  
+  
+/* Flag as unlit */  
+this."trait:on" = nil;  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:getstate">
+         X[M] int total, current, percentage;  
+mapping states;  
+mixed* percentages;  
+
+/* No need to calculate anything if light source doesn't decay */
+if(\$this."lightsource:nodecay") \{
+    return "full";
+\}
+  
+/* Calculate percentage of power remaining */  
+total = this."power:total";  
+current = \$power;  
+percentage = Int(Flt(Flt(current)/Flt(total)) * 100.0);  
+  
+states = this.states;  
+percentages = map_indices(states);  
+  
+if(percentage \> Int(percentages[2])) \{  
+    /* Greater than 75% remaining */  
+    return states[percentages[2]];  
+\} else if(percentage \> Int(percentages[1])) \{  
+    /* Between 25% and 75% remaining */  
+    return states[percentages[1]];  
+\} else if(percentage \> Int(percentages[0])) \{  
+    /* Less than  25% remaining */  
+    return states[percentages[0]];  
+\} else \{  
+    /* 0% remaining */  
+    return "empty";  
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:light">
+         X[M] int delay, luminosity; 
+string state; 
+ 
+state = ::getstate(\$power: Int(this."trait:power")); 
+luminosity = Get(this, "state:luminosity:" + state); 
+ 
+this."details:light:luminosity" = Flt(luminosity); 
+this."details:light:hidden" = FALSE; 
+
+/* Start emitter but only if flagged as an emitter */  
+if(\$this."lightsource:emitter") \{
+    this."handler:decay" = In("decay", random(3) + 1); 
+\}
+ 
+/* Flag as lit */  
+this."trait:on" = TRUE;  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:rejuvinate">
+         X[M] /* The light source rejuvinates a little. */  
+if(\$value) \{ 
+    ::changestate(\$type: "grow", \$value: \$value); 
+\} else \{ 
+    ::changestate(\$type: "grow", \$value: 1); 
+\} 
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:decay">
+         X[M] /* The light source decays a little. Display an emit to indicate this. */  
+
+if(\$this."lightsource:nodecay") \{
+    \$value = 0;
+\} else \{
+    \$value = 1;
+\}
+::changestate(\$type: "decay", \$value: \$value);  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1288308600, "jominey", "X", 1288309038, "jominey", "E", 1288309322, "jominey", "E", 1288309344, "jominey", "E", 1288309437, "jominey", "E", 1288309556, "jominey", "E", 1288309822, "jominey", "E", 1288309931, "jominey", "E", 1288309947, "jominey", "E", 1288309967, "jominey", "E", 1288310002, "jominey", "E", 1288310096, "jominey", "E", 1288310174, "jominey", "E", 1288310211, "jominey", "E", 1288310248, "jominey", "E", 1288310285, "jominey", "E", 1288310744, "jominey", "R", 1288311670, "jominey", "E", 1288311806, "jominey", "E", 1288312148, "jominey", "E", 1507998610, "jominey", "E", 1507998657, "jominey", "E", 1507998702, "jominey", "E", 1507999360, "jominey", "E", 1508168338, "jominey", "E", 1508295892, "jominey", "E", 1508296587, "jominey", "E", 1595517387, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

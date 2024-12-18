@@ -1,0 +1,59 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="@checkfavor" evoke="forbidden" audible="false" private="false" secret="true" obscured="false" target-abstracts="false" disabled="true" ooc="true" raw_verb="true">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* check relative favor ratings */
+int i;
+object char;
+
+if(!\$line \|\| sscanf(\$line, "%s to %s", \$from, \$to) != 2) \{
+ EmitTo(\$actor, "Format: "+Str(\$imperative)+" PCS to PC");
+ EmitTo(\$actor, "Alternate: "+Str(\$imperative)+" GUILD SHORTNAME to PC");
+ return FALSE;
+\}
+
+/* get rid of commas or semicolons */
+\$from = replace_strings(\$from, ",", "", ";", "");
+\$from = explode(\$from, " ");
+
+/* check if these are valid characters */
+\$to = common::lookup(\$name: lower_case(\$to));
+if(!\$to) \{
+ EmitTo(\$actor, "Invalid character to check favor for.");
+ return FALSE;
+\}
+
+\$check = \$from;
+\$from = (\{ \});
+for(i=0;i\<sizeof(\$check);i++) \{
+ char = common::lookup(\$name: lower_case(\$check[i])); 
+ if(char) \{
+  /* found a character. Include it */
+  \$from \|= (\{ char \});
+/* \} else if( Obj("Ironclaw:Guilds:"+lower_case(\$check[i])) \&\& \$guild = Obj("Ironclaw:Guilds:"+lower_case(\$check[i])) \&\& \$guild."isguild" ) \{*/
+ \} else if( Obj("Ironclaw:Guilds:"+lower_case(\$check[i])) \&\& Obj("Ironclaw:Guilds:"+lower_case(\$check[i])).isguild ) \{
+  /* found a guild. Include the PCs from it */
+  \$from \|= (\{ Obj("Ironclaw:Guilds:"+lower_case(\$check[i])) \});
+ \} else \{
+  EmitTo(\$actor, Str(\$check[i])+" is not a valid character or guild name.");
+  return FALSE;
+ \}
+\}
+if(!sizeof(\$from)) \{
+ EmitTo(\$actor, "Invalid character to check favor from.");
+ return FALSE;
+\}
+
+EmitTo(\$actor, dump_value(favor::getfavor(\$from: \$from, \$to: \$to)));
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1278239985, "tonyd", "E", 1278240091, "tonyd", "P", 1278240238, "tonyd", "P", 1278240335, "tonyd", "P", 1278240394, "tonyd", "P", 1278240423, "tonyd", "P", 1278240521, "tonyd", "P", 1278240689, "tonyd", "P", 1278240712, "tonyd", "P", 1278240745, "tonyd", "P", 1278240844, "tonyd", "P", 1278241013, "tonyd", "P", 1278241074, "tonyd", "P", 1278241097, "tonyd", "P", 1278241135, "tonyd", "P", 1278241162, "tonyd", "P", 1278241186, "tonyd", "P", 1278241223, "tonyd", "P", 1278241245, "tonyd", "P", 1278241325, "tonyd", "P", 1278241425, "tonyd", "P", 1278241486, "tonyd", "P", 1278241510, "tonyd", "P", 1278241580, "tonyd", "P", 1278241718, "tonyd", "P", 1278241763, "tonyd", "P", 1278243505, "tonyd", "R", 1278243518, "tonyd", "E", 1309201337, "tunk_bodin", "R", 1520629823, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

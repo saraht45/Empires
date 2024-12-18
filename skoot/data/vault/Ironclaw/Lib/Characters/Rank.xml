@@ -1,0 +1,1537 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Characters:RankScripts)"/>
+    <Core:PCProperties>
+      <Core:Property property="backup:merry:lib:get_rank_names_military">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_military instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+switch(level) \{
+  case 4:
+    title \|= (\{ "Private" \});
+    rankname = "Private";
+    break;
+  case 5:
+    title \|= (\{ "Lancepesade" \});
+    rankname = "Lancepesade";
+    break;
+  case 6:
+    title \|= (\{ "Lance Corporal" \});
+    rankname = "Lance Corporal";
+    break;
+  case 7:
+    title \|= (\{ "Ensign" \});
+    rankname = "Ensign";
+    break;
+  case 8:
+    title \|= (\{ "Lieutenant" \});
+    rankname = "Lieutenant";
+    break;
+  case 9:
+    title \|= (\{ "Captain" \});
+    rankname = "Captain";
+    break;
+  case 10:
+    title \|= (\{ "Sergeant-Major" \});
+    rankname = "Sergeant-Major";
+    break;
+  case 11:
+    title \|= (\{ "Brigadier" \});
+    rankname = "Brigadier";
+    break;
+  case 12:
+    title \|= (\{ "Major" \});
+    rankname = "Major";
+    break;
+  case 13:
+    title \|= (\{ "Marshal" \});
+    rankname = "Marshal";
+    break;
+  case 14:
+    title \|= (\{ "Lieutenant General", "General" \});
+    rankname = "Lieutenant General";
+    break;
+  case 15:
+    title \|= (\{ "Captain General", "General" \});
+    rankname = "Captain General";
+    break;
+  case 16:
+    title \|= (\{ "Field Marshal", "General" \});
+    rankname = "Field Marshal";
+    break;
+  case 17:
+    title \|= (\{ "High Constable", "General" \});
+    rankname = "High Constable";
+    break;
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="data:loyalty">
+         ([ "the Church of S'Allumer":"church", "the Great House Avoirdupois":"avoirdupois", "the Great House Bisclavret":"bisclavret", "the Great House Doloreaux":"doloreaux", "the Great House Rinaldi":"rinaldi", "the Minor House lePlow":"leplow", "the Triskellian Constabulary":"constables", "the Triskellian Guild Council":"council", "the Underworld Association":"underworld" ])
+      </Core:Property>
+      <Core:Property property="data:paths">
+         ([ "status:avoirdupois":"avoirdupois", "status:avoirdupois_mil":"avoirdupois", "status:bisclavret":"bisclavret", "status:bisclavret_mil":"bisclavret", "status:church":"church", "status:church_mil":"church", "status:constables":"constables", "status:council":"council", "status:doloreaux":"doloreaux", "status:doloreaux_mil":"doloreaux", "status:england":"england", "status:france":"france", "status:germany":"germany", "status:italy":"italy", "status:ketos":"ketos", "status:ketos_mil":"ketos", "status:rinaldi":"rinaldi", "status:rinaldi_mil":"rinaldi", "status:scotland":"scotland", "status:slaves":"council", "status:spain":"spain", "status:underworld":"underworld" ])
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status_church">
+         "E[G]\\n// Returns information about promotions in this promotion path\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// These promotions start from 3 onwards\\nif(\$give_promotion \&\& \$level \< 3)\\n  \$level = 3;\\nelse if(\$give_demotion \&\& \$level \<= 2)\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":-1, \\"curr_level\\":\$curr_level, \\"clear_entry\\":TRUE ]);\\nelse if(\$level \<= 2)\\n  return ([ \\"valid\\":FALSE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n\\n// What is the name of this new rank?\\n\$tmp = Call(this, \\"get_rank_names_\\"+\$groupname, \$char:\$char, \$groupname:\$groupname, \$level:\$level);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);\\n\\n// Gather info that is often required for promotions\\n\$has_patron = ::has_patron(\$char:\$char, \$groupname:\$groupname);\\n\$influence = Int(Get(\$char, \\"rank:influence:\\"+\$groupname));\\nif(\$influence) \$influence_count = TAG(\$influence, \\"imp\\");\\nelse \$influence_count = \\"0\\";\\n\\n// Now check whether we have a promotion available\\n\$promotion_valid = FALSE;\\n\$promotion_invalid = FALSE;\\n\\nif(\$level == 3) \{\\n  // Can they be inducted as a novice?\\n  // Requires 2 influence or a higher ranked patron in the church\\n  // if(TRUE \|\| \$has_patron \&\& \$has_patron[1] \> 4) \{\\n  //   // Valid, they have a patron\\n  //   \$requirements = TAG(\\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n  // \} else \{\\n  //   // They have nothing\\n  //   \$requirements = \\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n  // \}\\n\\n  \$higher_needed = 2;\\n  \$requirements = (\{ \});\\n  if(\$influence \>= \$higher_needed) \{\\n    // Valid, they have enough influence\\n    \$requirements += (\{ TAG(\\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\") \});\\n    \$promotion_valid = TRUE;\\n  \} else \{\\n    \$requirements += (\{ \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\" \});\\n  \}\\n\\n  if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have a patron\\n    \$requirements += (\{ TAG(\\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\" induct you. (Have them go to the cathedral main hall and use the @patron command)\\", \\"imp\\") \});\\n    // \$promotion_valid = TRUE; // Make it invalid so the patron has to induct\\n  \} else \{\\n    \$requirements += (\{ \\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\" induct you.\\" \});\\n  \}\\n\\n\} else \{\\n  // lower_needed and a patron\\n  // or higher_needed\\n  \\n  // How many influence points does each rank need?\\n  \$multiplier = \$level-3;\\n  if(\$multiplier \< 1) \$multiplier = 1;\\n  \$lower_needed = \$multiplier*4-2;\\n  \$higher_needed = \$multiplier*8-2;\\n\\n  if(\$influence \>= \$higher_needed) \{\\n    // Valid, they have enough influence\\n    \$requirements = TAG(\\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have enough influence and a patron\\n    \$requirements = TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed) \{\\n    // They have the influence, but not the patron\\n    \$requirements = (\{TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence,\\", \\"imp\\")+\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // They have the patron, but not the influence\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), \\"+TAG(\\"and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\"), \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else \{\\n    // They have nothing\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \}  \\n// \} else \{\\n//  // For now, make all other options invalid\\n//  \$promotion_invalid = TRUE;\\n//  \$requirements = \\"This rank level has not yet been implemented\\";\\n\}\\n\\nreturn ([ \\"invalid\\":\$promotion_invalid, \\"valid\\":\$promotion_valid, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status_church_mil">
+         "E[G]\\n// Returns information about promotions in this promotion path\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\nreturn ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"Not enabled yet\\" ]);\\n\\n// These promotions start from 3 onwards\\nif(\$give_promotion \&\& \$level \< 3)\\n  \$level = 3;\\nelse if(\$give_demotion \&\& \$level \<= 2)\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":-1, \\"curr_level\\":\$curr_level, \\"clear_entry\\":TRUE ]);\\nelse if(\$level \<= 2)\\n  return ([ \\"valid\\":FALSE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// What is the name of this new rank?\\n\$tmp = Call(this, \\"get_rank_names_\\"+\$groupname, \$char:\$char, \$groupname:\$groupname, \$level:\$level);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// For now, they can get the social promotion if they have enough influence for the rank, and a sponsor loyal to that group\\n\$requirements = \\"Spend \\"+Str(\$level)+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a patron equal or higher ranked than you and loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n\\n// Do they have the influence?\\nif(Int(Get(\$char, \\"influence:\\"+\$groupname)) \< \$level)\\n  return ([ \\"valid\\":FALSE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);\\n// Do they have the patron?\\n  // NOT WRITTEN YET\\n    \\n// Looks like the promotion is valid!\\n\\nreturn ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":TAG(\$requirements, \\"imp\\"), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status_constables">
+         "E[G]\\n// Returns information about promotions in this promotion path\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// These promotions start from 3 onwards\\nif(\$give_promotion \&\& \$level \< 3)\\n  \$level = 3;\\nelse if(\$give_demotion \&\& \$level \<= 2)\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":-1, \\"curr_level\\":\$curr_level, \\"clear_entry\\":TRUE ]);\\nelse if(\$level \<= 2)\\n  return ([ \\"valid\\":FALSE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// What is the name of this new rank?\\n\$tmp = Call(this, \\"get_rank_names_\\"+\$groupname, \$char:\$char, \$groupname:\$groupname, \$level:\$level);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// Gather info that is often required for promotions\\n\$has_patron = ::has_patron(\$char:\$char, \$groupname:\$groupname);\\n\$influence = Int(Get(\$char, \\"rank:influence:\\"+\$groupname));\\nif(\$influence) \$influence_count = TAG(\$influence, \\"imp\\");\\nelse \$influence_count = \\"0\\";\\n\\n// Now check whether we have a promotion available\\n\$promotion_valid = FALSE;\\n\$promotion_invalid = FALSE;\\n\\nif(\$level == 3) \{\\n  // Can they be inducted as a deputy?\\n  // Requires 2 influence or a higher ranked patron in the constabulary\\n  \\n  // if(TRUE \|\| \$has_patron \&\& \$has_patron[1] \> 4) \{\\n  //   // Valid, they have a patron\\n  //   \$requirements = TAG(\\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n  // \} else \{\\n  //   // They have nothing\\n  //   \$requirements = \\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n  // \}\\n\\n  \$higher_needed = 2;\\n  \$requirements = (\{ \});\\n  if(\$influence \>= \$higher_needed) \{\\n    // Valid, they have enough influence\\n    \$requirements += (\{ TAG(\\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\") \});\\n    \$promotion_valid = TRUE;\\n  \} else \{\\n    \$requirements += (\{ \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\" \});\\n  \}\\n\\n  if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have a patron\\n    \$requirements += (\{ TAG(\\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\" induct you. (Have them go to the cathedral main hall and use the @patron command)\\", \\"imp\\") \});\\n    // \$promotion_valid = TRUE; // Make it invalid so the patron has to induct\\n  \} else \{\\n    \$requirements += (\{ \\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\" induct you.\\" \});\\n  \}\\n\\n\} else \{\\n  // lower_needed and a patron\\n  // or higher_needed\\n  \\n  // How many influence points does each rank need?\\n  \$multiplier = \$level-3;\\n  if(\$multiplier \< 1) \$multiplier = 1;\\n  \$lower_needed = \$multiplier*4-2;\\n  \$higher_needed = \$multiplier*8-2;\\n\\n  if(\$influence \>= \$higher_needed) \{\\n    // Valid, they have enough influence\\n    \$requirements = TAG(\\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have enough influence and a patron\\n    \$requirements = TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed) \{\\n    // They have the influence, but not the patron\\n    \$requirements = (\{TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence,\\", \\"imp\\")+\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // They have the patron, but not the influence\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), \\"+TAG(\\"and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\"), \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else \{\\n    // They have nothing\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \}  \\n// \} else \{\\n//  // For now, make all other options invalid\\n//  \$promotion_invalid = TRUE;\\n//  \$requirements = \\"This rank level has not yet been implemented\\";\\n\}\\n\\nreturn ([ \\"invalid\\":\$promotion_invalid, \\"valid\\":\$promotion_valid, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status_council">
+         "E[G]\\n// Returns information about promotions in this promotion path\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// These promotions start from 4 onwards\\nif(\$give_promotion \&\& \$level \< 4)\\n  \$level = 4;\\nelse if(\$give_demotion \&\& \$level \<= 4)\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":-1, \\"clear_entry\\":TRUE ]);\\nelse if(\$level \<= 3)\\n  return ([ \\"valid\\":FALSE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);\\n\\n// What is the name of this new rank?\\n\$tmp = Call(this, \\"get_rank_names_\\"+\$groupname, \$char:\$char, \$groupname:\$groupname, \$level:\$level);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n\\n// Add the group name to the rankname - But only for the lower ranks (higher ranks are unique to the council)\\nif(\$level \<= 6) \$rankname = \\"Triskellian \\"+capitalize(\$rankname);\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);\\n\\n// Gather info that is often required for promotions\\n\$has_patron = ::has_patron(\$char:\$char, \$groupname:\$groupname);\\n\$influence = Int(Get(\$char, \\"rank:influence:\\"+\$groupname));\\nif(\$influence) \$influence_count = TAG(\$influence, \\"imp\\");\\nelse \$influence_count = \\"0\\";\\n\\n// Now check whether we have a promotion available\\n\$promotion_valid = FALSE;\\n\$promotion_invalid = FALSE;\\n\\n// if(!\$curr_level \|\| \$curr_level == 3) \{\\nif(TRUE) \{\\n  // Need:\\n  // lower_needed and a patron\\n  // or higher_needed\\n  \\n  // How many influence points does each rank need?\\n  \$multiplier = \$level-3;\\n  if(\$multiplier \< 1) \$multiplier = 1;\\n  \$lower_needed = \$multiplier*4-2;\\n  \$higher_needed = \$multiplier*8-2;\\n\\n  if(\$influence \>= \$higher_needed) \{\\n    // Valid, they have enough influence\\n    \$requirements = TAG(\\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have enough influence and a patron\\n    \$requirements = TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed) \{\\n    // They have the influence, but not the patron\\n    \$requirements = (\{TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence,\\", \\"imp\\")+\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // They have the patron, but not the influence\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), \\"+TAG(\\"and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\"), \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else \{\\n    // They have nothing\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \}  \\n\} else \{\\n  // For now, make all other options invalid\\n  \$promotion_invalid = TRUE;\\n  \$requirements = \\"This rank level has not yet been implemented\\";\\n\}\\n\\nreturn ([ \\"invalid\\":\$promotion_invalid, \\"valid\\":\$promotion_valid, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status_military">
+         "E[G]\\n// Returns information about promotions in this promotion path\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// These promotions start from 4 onwards\\nif(\$give_promotion \&\& \$level \< 4)\\n  \$level = 4;\\nelse if(\$give_demotion \&\& \$level \<= 3)\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":-1, \\"curr_level\\":\$curr_level, \\"clear_entry\\":TRUE ]);\\nelse if(\$level \<= 3)\\n  return ([ \\"valid\\":FALSE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// What is the name of this new rank?\\n\$tmp = ::get_rank_names_military(\$char:\$char, \$groupname:\$groupname, \$level:\$level);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n// Add the house name to the rankname\\nif(\$groupname != \\"\\" \&\& \$level != 3)\\n  \$rankname = capitalize(\$groupname)+\\" \\"+capitalize(\$rankname);\\nelse if(\$level == 3)\\n  \$rankname = \\"Freedman\\";\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// Gather info that is often required for promotions\\n\$has_patron = ::has_patron(\$char:\$char, \$groupname:\$groupname);\\n\$influence = Int(Get(\$char, \\"rank:influence:\\"+\$groupname));\\nif(\$influence) \$influence_count = TAG(\$influence, \\"imp\\");\\nelse \$influence_count = \\"0\\";\\n\\n// Now check whether we have a promotion available\\n\$promotion_valid = FALSE;\\n\$promotion_invalid = FALSE;\\n\\n// Hide Ketos for now\\nif(\$groupname == \\"ketos\\") \$promotion_invalid = TRUE;\\n\\n// if(!\$curr_level \|\| \$curr_level == 3) \{\\nif(TRUE) \{\\n  // Noble House privates need:\\n  // 2 influence and a higher ranked patron\\n  // +4 influence points needed for each level above private\\n  \\n  // How many influence points does each rank need?\\n  \$multiplier = \$level-3;\\n  if(\$multiplier \< 1) \$multiplier = 1;\\n  \$lower_needed = \$multiplier*4-2;\\n  \\n  if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have enough influence and a patron\\n    \$requirements = TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed) \{\\n    // They have the influence, but not the patron\\n    \$requirements = TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence,\\", \\"imp\\")+\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // They have the patron, but not the influence\\n    \$requirements = \\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\")\\"+TAG(\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n  \} else \{\\n    // They have nothing\\n    \$requirements = \\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n  \}\\n  \\n  \\n\\n  \\n\} else \{\\n  // For now, make all other options invalid\\n  \$promotion_invalid = TRUE;\\n  \$requirements = \\"This rank level has not yet been implemented\\";\\n\}\\n\\nreturn ([ \\"invalid\\":\$promotion_invalid, \\"valid\\":\$promotion_valid, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status_noble">
+         "E[G]\\n// Returns information about promotions in this promotion path\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// These promotions start from 4 onwards\\nif(\$give_promotion \&\& \$level \< 4)\\n  \$level = 4;\\nelse if(\$give_demotion \&\& \$level \<= 3)\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":-1, \\"curr_level\\":\$curr_level, \\"clear_entry\\":TRUE ]);\\nelse if(\$level \<= 3)\\n  return ([ \\"valid\\":FALSE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// What is the name of this new rank?\\n\$tmp = ::get_rank_names_noble(\$char:\$char, \$groupname:\$groupname, \$level:\$level);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n// Add the house name to the rankname\\nif(\$groupname != \\"\\" \&\& \$level != 3)\\n  \$rankname = capitalize(\$groupname)+\\" \\"+capitalize(\$rankname);\\nelse if(\$level == 3)\\n  \$rankname = \\"Freedman\\";\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// Gather info that is often required for promotions\\n\$has_patron = ::has_patron(\$char:\$char, \$groupname:\$groupname);\\n\$influence = Int(Get(\$char, \\"rank:influence:\\"+\$groupname));\\nif(\$influence) \$influence_count = TAG(\$influence, \\"imp\\");\\nelse \$influence_count = \\"0\\";\\n\\n// Now check whether we have a promotion available\\n\$promotion_valid = FALSE;\\n\$promotion_invalid = FALSE;\\n\\n// Hide Ketos for now\\nif(\$groupname == \\"ketos\\") \$promotion_invalid = TRUE;\\n\\n// if(!\$curr_level \|\| \$curr_level == 3) \{\\nif(TRUE) \{\\n\\n\\n  // Noble House yeomen need:\\n  // lower_needed and a patron\\n  // or higher_needed\\n  \\n  // How many influence points does each rank need?\\n  \$multiplier = \$level-3;\\n  if(\$multiplier \< 1) \$multiplier = 1;\\n  \$lower_needed = \$multiplier*4-2;\\n  \$higher_needed = \$multiplier*8-2;\\n\\n  if(\$influence \>= \$higher_needed) \{\\n    // Valid, they have enough influence\\n    \$requirements = TAG(\\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have enough influence and a patron\\n    \$requirements = TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed) \{\\n    // They have the influence, but not the patron\\n    \$requirements = (\{TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence,\\", \\"imp\\")+\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // They have the patron, but not the influence\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), \\"+TAG(\\"and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\"), \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else \{\\n    // They have nothing\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \}  \\n\} else \{\\n  // For now, make all other options invalid\\n  \$promotion_invalid = TRUE;\\n  \$requirements = \\"This rank level has not yet been implemented\\";\\n\}\\n\\nreturn ([ \\"invalid\\":\$promotion_invalid, \\"valid\\":\$promotion_valid, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status_slaves">
+         "E[G]\\n// Returns information about promotions in this promotion path\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// These promotions start from 0 onwards, and we can't demote \\"away\\" from this\\nif(\$level \<= 1)\\n  \$level = 1;\\n\\n// What is the name of this new rank?\\n\$tmp = Call(this, \\"get_rank_names_\\"+\$groupname, \$char:\$char, \$groupname:\$groupname, \$level:\$level);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n// Don't show promotions for slaves\\n\$promotion_valid = FALSE;\\n\$requirements = (\{ \});\\n\\nreturn ([ \\"valid\\":\$promotion, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_status_underworld">
+         "E[G]\\n// Returns information about promotions in this promotion path\\nif(!\$char) \$char = \$actor;\\nif(!\$path) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$path provided - please @assist!\\" ]);\\nif(!\$groupname) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$groupname provided - please @assist!\\" ]);\\nif(!\$level) return ([ \\"invalid\\":TRUE, \\"valid\\":FALSE, \\"requirements\\":\\"No \$level provided - please @assist!\\" ]);\\n\\n// These promotions start from 3 onwards\\nif(\$give_promotion \&\& \$level \< 3)\\n  \$level = 3;\\nelse if(\$give_demotion \&\& \$level \<= 2)\\n  return ([ \\"valid\\":TRUE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":-1, \\"curr_level\\":\$curr_level, \\"clear_entry\\":TRUE ]);\\nelse if(\$level \<= 2)\\n  return ([ \\"valid\\":FALSE, \\"rankname\\":\\"Freedman\\", \\"titles\\":(\{ \}), \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level, \\"curr_level\\":\$curr_level ]);\\n\\n\\n// What is the name of this new rank?\\n\$tmp = Call(this, \\"get_rank_names_\\"+\$groupname, \$char:\$char, \$groupname:\$groupname, \$level:\$level);\\n\$rankname = \$tmp[\\"rankname\\"];\\n\$title = \$tmp[\\"title\\"];\\n\\n// Is this actually a demotion?\\nif(\$give_demotion) return ([ \\"valid\\":TRUE, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);\\n\\n// Gather info that is often required for promotions\\n\$has_patron = ::has_patron(\$char:\$char, \$groupname:\$groupname);\\n\$influence = Int(Get(\$char, \\"rank:influence:\\"+\$groupname));\\nif(\$influence) \$influence_count = TAG(\$influence, \\"imp\\");\\nelse \$influence_count = \\"0\\";\\n\\n// Now check whether we have a promotion available\\n\$promotion_valid = FALSE;\\n\$promotion_invalid = FALSE;\\n\\nif(\$level == 3) \{\\n  // Can they be inducted as a henchman?\\n  // Requires 2 influence or a higher ranked patron in the church\\n  \\n  // if(TRUE \|\| \$has_patron \&\& \$has_patron[1] \> 4) \{\\n  //   // Valid, they have a patron\\n  //   \$requirements = TAG(\\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n  // \} else \{\\n  //   // They have nothing\\n  //   \$requirements = \\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\";\\n  // \}\\n\\n  \$higher_needed = 2;\\n  \$requirements = (\{ \});\\n  if(\$influence \>= \$higher_needed) \{\\n    // Valid, they have enough influence\\n    \$requirements += (\{ TAG(\\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\") \});\\n    \$promotion_valid = TRUE;\\n  \} else \{\\n    \$requirements += (\{ \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\" \});\\n  \}\\n\\n  if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have a patron\\n    \$requirements += (\{ TAG(\\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\" induct you. (Have them go to the cathedral main hall and use the @patron command)\\", \\"imp\\") \});\\n    // \$promotion_valid = TRUE; // Make it invalid so the patron has to induct\\n  \} else \{\\n    \$requirements += (\{ \\"Have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\" induct you.\\" \});\\n  \}\\n\\n\} else \{\\n  // lower_needed and a patron\\n  // or higher_needed\\n  \\n  // How many influence points does each rank need?\\n  \$multiplier = \$level-3;\\n  if(\$multiplier \< 1) \$multiplier = 1;\\n  \$lower_needed = \$multiplier*4-2;\\n  \$higher_needed = \$multiplier*8-2;\\n\\n  if(\$influence \>= \$higher_needed) \{\\n    // Valid, they have enough influence\\n    \$requirements = TAG(\\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence.\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // Valid, they have enough influence and a patron\\n    \$requirements = TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence, and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\");\\n    \$promotion_valid = TRUE;\\n  \} else if(\$influence \>= \$lower_needed) \{\\n    // They have the influence, but not the patron\\n    \$requirements = (\{TAG(\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence,\\", \\"imp\\")+\\" and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{\\n    // They have the patron, but not the influence\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), \\"+TAG(\\"and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"imp\\"), \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \} else \{\\n    // They have nothing\\n    \$requirements = (\{\\"Gather \\"+\$lower_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence (\\"+\$influence_count+\\"/\\"+\$lower_needed+\\"), and have a higher ranked patron who is loyal to the \\"+capitalize(\$groupname)+\\".\\", \\"Gather \\"+\$higher_needed+\\" points of \\"+capitalize(\$groupname)+\\" influence. (\\"+\$influence_count+\\"/\\"+\$higher_needed+\\")\\"\});\\n  \}  \\n// \} else \{\\n//  // For now, make all other options invalid\\n//  \$promotion_invalid = TRUE;\\n//  \$requirements = \\"This rank level has not yet been implemented\\";\\n\}\\n\\nreturn ([ \\"invalid\\":\$promotion_invalid, \\"valid\\":\$promotion_valid, \\"rankname\\":\$rankname, \\"titles\\":\$title, \\"requirements\\":\$requirements, \\"path\\":\$path, \\"groupname\\":\$groupname, \\"level\\":\$level ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_rank_names_church">
+         "E[G]\\n// returns the rank name (and title) for a given ranking number\\nstring rankname, *title, gender;\\nint level;\\nlevel = 3;\\nif(!\$char) \$char = \$actor;\\nif(\$level) level = \$level;\\n\\nrankname = \\"\\";\\ntitle = (\{ \});\\n\\nif(\$char.\\"base:gender\\" == 2) gender = \\"female\\";\\nelse gender = \\"male\\";\\n\\nswitch(level) \{\\n  case 3:\\n    rankname = \\"Novice\\";\\n    title \|= (\{ \\"Novice\\" \});\\n    break;\\n  case 4:\\n    rankname = \\"Church Acolyte\\";\\n    title \|= (\{ \\"Acolyte\\" \});\\n    break;\\n  case 5:\\n    if(gender == \\"male\\")\{\\n     rankname = \\"Brother\\";\\n     title \|= (\{ \\"Brother\\" \});\\n    \} else \{\\n     rankname = \\"Sister\\";\\n     title \|= (\{ \\"Sister\\" \});\\n    \}\\n    break;\\n  case 6:\\n    rankname = \\"Pastor\\";\\n    title \|= (\{ \\"Pastor\\" \});\\n    if(gender == \\"male\\")\{\\n     title \|= (\{ \\"Brother\\" \});\\n    \} else \{\\n     title \|= (\{ \\"Sister\\" \});\\n    \}\\n    break;\\n  case 7:\\n    rankname = \\"Deacon\\";\\n    title \|= (\{ \\"Deacon\\" \});\\n    if(gender == \\"male\\")\{\\n     title \|= (\{ \\"Father\\" \});\\n    \} else \{\\n     title \|= (\{ \\"Mother\\" \});\\n    \}\\n    break;\\n  case 8:\\n    rankname = \\"Presbyter\\";\\n    title \|= (\{ \\"Presbyter\\" \});\\n    if(gender == \\"male\\")\{\\n     title \|= (\{ \\"Father\\" \});\\n    \} else \{\\n     title \|= (\{ \\"Mother\\" \});\\n    \}\\n    break;\\n  case 9:\\n    rankname = \\"Prelate\\";\\n    title \|= (\{ \\"Prelate\\" \});\\n    break;\\n  case 10:\\n    rankname = \\"Bishop\\";\\n    title \|= (\{ \\"Bishop\\" \});\\n    break;\\n  case 11:\\n    rankname = \\"Exarch\\";\\n    title \|= (\{ \\"Exarch\\" \});\\n    break;\\n  case 12:\\n    rankname = \\"Vicar\\";\\n    title \|= (\{ \\"Vicar\\" \});\\n    break;\\n  case 13:\\n    rankname = \\"Archbishop\\";\\n    title \|= (\{ \\"Archbishop\\" \});\\n    break;\\n  case 14:\\n    rankname = \\"Archbishop\\";\\n    title \|= (\{ \\"Archbishop\\" \});\\n    break;\\n  case 15:\\n    rankname = \\"Primate\\";\\n    title \|= (\{ \\"Primate\\" \});\\n    break;\\n  case 16:\\n    rankname = \\"Cardinal\\";\\n    title \|= (\{ \\"Cardinal\\" \});\\n    break;\\n  case 17:\\n    if(gender == \\"male\\")\{\\n     rankname = \\"Patriarch\\";\\n     title \|= (\{ \\"Patriarch\\" \});\\n    \} else \{\\n     rankname = \\"Matriarch\\";\\n     title \|= (\{ \\"Matriarch\\" \});\\n    \}\\n    break;\\n  default:\\n    rankname = \\"unknown\\";\\n\}\\n\\nreturn ([ \\"rankname\\":rankname, \\"title\\":title ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_rank_names_church_mil">
+         "E[G]\\n// returns the rank name (and title) for a given ranking number\\nstring rankname, *title, gender;\\nint level;\\nlevel = 3;\\nif(!\$char) \$char = \$actor;\\nif(\$level) level = \$level;\\n\\nrankname = \\"\\";\\ntitle = (\{ \});\\n\\nif(\$char.\\"base:gender\\" == 2) gender = \\"female\\";\\nelse gender = \\"male\\";\\n\\nswitch(level) \{\\n  case 3:\\n    rankname = \\"Novice\\";\\n    title \|= (\{ \\"Novice\\" \});\\n    break;\\n  case 4:\\n    rankname = \\"Paladin Acolyte\\";\\n    title \|= (\{ \\"Acolyte\\" \});\\n    break;\\n  case 5:\\n    rankname = \\"Paladin Aspirant\\";\\n    title \|= (\{ \\"Aspirant\\" \});\\n    break;\\n  case 6:\\n    rankname = \\"Initiate Protector\\";\\n    title \|= (\{ \\"Initiate\\" \});\\n    break;\\n  case 7:\\n    rankname = \\"Errant Protector\\";\\n    title \|= (\{ \\"Errant\\" \});\\n    break;\\n  case 8:\\n    rankname = \\"Adept Protector\\";\\n    title \|= (\{ \\"Adept\\" \});\\n    break;\\n  case 9:\\n    rankname = \\"Knight Protector\\";\\n    if(gender == \\"male\\") title \|= (\{ \\"Sir\\" \});\\n    else title \|= (\{ \\"Dame\\" \});\\n    break;\\n  case 10:\\n    rankname = \\"Vintenar\\";\\n    title \|= (\{ \\"Vintenar\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Sir\\" \});\\n    else title \|= (\{ \\"Dame\\" \});\\n    break;\\n  case 11:\\n    rankname = \\"Lancer\\";\\n    title \|= (\{ \\"Lancer\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Sir\\" \});\\n    else title \|= (\{ \\"Dame\\" \});\\n    break;\\n  case 12:\\n    rankname = \\"Dragoon\\";\\n    title \|= (\{ \\"Dragoon\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Sir\\" \});\\n    else title \|= (\{ \\"Dame\\" \});\\n    break;\\n  case 13:\\n    if(gender == \\"male\\") \{\\n      rankname = \\"Knight Crusader\\";\\n      title \|= (\{ \\"Sir\\", \\"Crusader\\" \});\\n    \} else \{\\n      rankname = \\"Dame Crusader\\";\\n      title \|= (\{ \\"Dame\\", \\"Crusader\\" \});    \\n    \}\\n    break;\\n  case 14:\\n    rankname = \\"Crusader Lord\\";\\n    title \|= (\{ \\"Lord Crusader\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Lord\\" \});\\n    else title \|= (\{ \\"Lady\\" \});\\n    break;\\n  case 15:\\n    rankname = \\"Master Protector\\";\\n    title \|= (\{ \\"Master Protector\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Lord\\" \});\\n    else title \|= (\{ \\"Lady\\" \});\\n    break;\\n  case 16:\\n    rankname = \\"Grandmaster Protector\\";\\n    title \|= (\{ \\"Grandmaster Protector\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Lord\\" \});\\n    else title \|= (\{ \\"Lady\\" \});\\n    break;\\n  case 17:\\n    rankname = \\"High Protector\\";\\n    title \|= (\{ \\"High Protector\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Lord\\" \});\\n    else title \|= (\{ \\"Lady\\" \});\\n    break;\\n  default:\\n    rankname = \\"unknown\\";\\n\}\\n\\nreturn ([ \\"rankname\\":rankname, \\"title\\":title ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_rank_names_constables">
+         "E[G]\\n// returns the rank name (and title) for a given ranking number\\nstring rankname, *title, gender;\\nint level;\\nlevel = 3;\\nif(!\$char) \$char = \$actor;\\nif(\$level) level = \$level;\\n\\nrankname = \\"\\";\\ntitle = (\{ \});\\n\\nif(\$char.\\"base:gender\\" == 2) gender = \\"female\\";\\nelse gender = \\"male\\";\\n\\nswitch(level) \{\\n  case 3:\\n    rankname = \\"Deputy\\";\\n    title \|= (\{ \\"Deputy\\" \});\\n    break;\\n  case 4:\\n    rankname = \\"Guardsman\\";\\n    title \|= (\{ \\"Guardsman\\" \});\\n    break;\\n  case 5:\\n    rankname = \\"Sergeant\\";\\n    title \|= (\{ \\"Sergeant\\" \});\\n    break;\\n  case 6:\\n    rankname = \\"Detective\\";\\n    title \|= (\{ \\"Detective\\" \});\\n    break;\\n  case 7:\\n    rankname = \\"Aedile\\";\\n    title \|= (\{ \\"Aedile\\" \});\\n    break;\\n  case 8:\\n    rankname = \\"Sheriff\\";\\n    title \|= (\{ \\"Sheriff\\" \});\\n    break;\\n  case 9:\\n    rankname = \\"Tribune\\";\\n    title \|= (\{ \\"Tribune\\" \});\\n    break;\\n  case 10:\\n    rankname = \\"Sergeant-major\\";\\n    title \|= (\{ \\"Sergeant-major\\" \});\\n    break;\\n  case 11:\\n    rankname = \\"Brigadier\\";\\n    title \|= (\{ \\"Brigadier\\" \});\\n    break;\\n  case 12:\\n    rankname = \\"Major\\";\\n    title \|= (\{ \\"Major\\" \});\\n    break;\\n  case 13:\\n    rankname = \\"Marshal\\";\\n    title \|= (\{ \\"Marshal\\" \});\\n    break;\\n  case 14:\\n    rankname = \\"Lieutenant General\\";\\n    title \|= (\{ \\"Lieutenant General\\" \});\\n    break;\\n  case 15:\\n    rankname = \\"Captain General\\";\\n    title \|= (\{ \\"Captain General\\" \});\\n    break;\\n  case 16:\\n    rankname = \\"Field Marshal\\";\\n    title \|= (\{ \\"Field Marshal\\" \});\\n    break;\\n  case 17:\\n    rankname = \\"High Constable\\";\\n    title \|= (\{ \\"High Constable\\" \});\\n    break;\\n  default:\\n    rankname = \\"unknown\\";\\n\}\\n\\nreturn ([ \\"rankname\\":rankname, \\"title\\":title ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_rank_names_council">
+         "E[G]\\n// returns the rank name (and title) for a given ranking number\\nstring rankname, *title, gender;\\nint level;\\nlevel = 3;\\nif(!\$char) \$char = \$actor;\\nif(\$level) level = \$level;\\n\\nrankname = \\"\\";\\ntitle = (\{ \});\\n\\nif(\$char.\\"base:gender\\" == 2) gender = \\"female\\";\\nelse gender = \\"male\\";\\n\\nswitch(level) \{\\n  case 1:\\n    rankname = \\"slave\\";\\n    break;\\n  case 2:\\n    rankname = \\"serf\\";\\n    break;\\n  case 3:\\n    rankname = \\"Freedman\\";\\n    break;\\n  case 4:\\n    rankname = \\"Yeoman\\";\\n    break;\\n  case 5:\\n    rankname = \\"Burgher\\";\\n    break;\\n  case 6:\\n    rankname = \\"Thane\\";\\n    break;\\n  case 7:\\n    title = (\{ \\"Pontiff\\" \});\\n    rankname = \\"Pontiff\\";\\n    break;\\n  case 8:\\n    title = (\{ \\"Pontiff\\" \});\\n    rankname = \\"Grand Pontiff\\";\\n    break;\\n  case 9:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Master\\" \});\\n      rankname = \\"Master\\";\\n    \} else \{\\n      title = (\{ \\"Mistress\\" \});\\n      rankname = \\"Mistress\\";\\n    \}\\n    break;\\n  case 10:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Perfect Master\\" \});\\n      rankname = \\"Perfect Master\\";\\n    \} else \{\\n      title = (\{ \\"Perfect Mistress\\" \});\\n      rankname = \\"Perfect Mistress\\";\\n    \}\\n    break;\\n  case 11:\\n    title = (\{ \\"Provost\\" \});\\n    rankname = \\"Provost\\";\\n    break;\\n  case 12:\\n    title = (\{ \\"Intendant\\" \});\\n    rankname = \\"Intendant of the Council\\";\\n    break;\\n  case 13:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Master Elect\\" \});\\n      rankname = \\"Master Elect of the Council\\";\\n    \} else \{\\n      title = (\{ \\"Mistress Elect\\" \});\\n      rankname = \\"Mistress Elect of the Council\\";\\n    \}\\n    break;\\n  case 14:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Master Elect\\" \});\\n      rankname = \\"Master Elect of the City\\";\\n    \} else \{\\n      title = (\{ \\"Mistress Elect\\" \});\\n      rankname = \\"Mistress Elect of the City\\";\\n    \}\\n    break;\\n  case 15:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Sublime Master Elect\\" \});\\n      rankname = \\"Sublime Master Elect\\";\\n    \} else \{\\n      title = (\{ \\"Sublime Mistress Elect\\" \});\\n      rankname = \\"Mistress Elect\\";\\n    \}\\n    break;\\n  case 16:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Grand Master\\" \});\\n      rankname = \\"Grand Master Architect\\";\\n    \} else \{\\n      title = (\{ \\"Grand Mistress\\" \});\\n      rankname = \\"Grand Mistress Architect\\";\\n    \}\\n    break;\\n  case 17:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Grand Master\\" \});\\n      rankname = \\"Grand Master Elect\\";\\n    \} else \{\\n      title = (\{ \\"Grand Mistress\\" \});\\n      rankname = \\"Grand Mistress Elect\\";\\n    \}\\n    break;\\n  default:\\n    rankname = \\"unknown\\";\\n\}\\n\\nreturn ([ \\"rankname\\":rankname, \\"title\\":title ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_rank_names_military">
+         "E[G]\\n// returns the rank name (and title) for a given ranking number\\nstring rankname, *title;\\nint level;\\nlevel = 3;\\nif(!\$char) \$char = \$actor;\\nif(\$level) level = \$level;\\n\\nrankname = \\"\\";\\ntitle = (\{ \});\\n\\nswitch(level) \{\\n  case 4:\\n    title \|= (\{ \\"Private\\" \});\\n    rankname = \\"Private\\";\\n    break;\\n  case 5:\\n    title \|= (\{ \\"Lancepesade\\" \});\\n    rankname = \\"Lancepesade\\";\\n    break;\\n  case 6:\\n    title \|= (\{ \\"Lance Corporal\\" \});\\n    rankname = \\"Lance Corporal\\";\\n    break;\\n  case 7:\\n    title \|= (\{ \\"Ensign\\" \});\\n    rankname = \\"Ensign\\";\\n    break;\\n  case 8:\\n    title \|= (\{ \\"Lieutenant\\" \});\\n    rankname = \\"Lieutenant\\";\\n    break;\\n  case 9:\\n    title \|= (\{ \\"Captain\\" \});\\n    rankname = \\"Captain\\";\\n    break;\\n  case 10:\\n    title \|= (\{ \\"Sergeant-Major\\" \});\\n    rankname = \\"Sergeant-Major\\";\\n    break;\\n  case 11:\\n    title \|= (\{ \\"Brigadier\\" \});\\n    rankname = \\"Brigadier\\";\\n    break;\\n  case 12:\\n    title \|= (\{ \\"Major\\" \});\\n    rankname = \\"Major\\";\\n    break;\\n  case 13:\\n    title \|= (\{ \\"Marshal\\" \});\\n    rankname = \\"Marshal\\";\\n    break;\\n  case 14:\\n    title \|= (\{ \\"Lieutenant General\\", \\"General\\" \});\\n    rankname = \\"Lieutenant General\\";\\n    break;\\n  case 15:\\n    title \|= (\{ \\"Captain General\\", \\"General\\" \});\\n    rankname = \\"Captain General\\";\\n    break;\\n  case 16:\\n    title \|= (\{ \\"Field Marshal\\", \\"General\\" \});\\n    rankname = \\"Field Marshal\\";\\n    break;\\n  case 17:\\n    title \|= (\{ \\"High Constable\\", \\"General\\" \});\\n    rankname = \\"High Constable\\";\\n    break;\\n\}\\n\\nreturn ([ \\"rankname\\":rankname, \\"title\\":title ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_rank_names_noble">
+         "E[G]\\n// returns the rank name (and title) for a given ranking number\\nstring rankname, *title, gender;\\nint level;\\nlevel = 3;\\nif(!\$char) \$char = \$actor;\\nif(\$level) level = \$level;\\n\\nrankname = \\"\\";\\ntitle = (\{ \});\\n\\nif(\$char.\\"base:gender\\" == 2) gender = \\"female\\";\\nelse gender = \\"male\\";\\n\\nswitch(level) \{\\n  case 1:\\n    rankname = \\"slave\\";\\n    break;\\n  case 2:\\n    rankname = \\"serf\\";\\n    break;\\n  case 3:\\n    rankname = \\"freedman\\";\\n    break;\\n  case 4:\\n    rankname = \\"yeoman\\";\\n    break;\\n  case 5:\\n    rankname = \\"burgher\\";\\n    break;\\n  case 6:\\n    rankname = \\"thane\\";\\n    break;\\n  case 7:\\n    title = (\{ \\"Esquire\\" \});\\n    rankname = \\"gentry\\";\\n    break;\\n  case 8:\\n    title = (\{ \\"Esquire\\" \});\\n    rankname = \\"armigerous gentry\\";\\n    break;\\n  case 9:\\n    if(gender == \\"male\\")\\n      title = (\{ \\"Sir\\" \});\\n    else\\n      title = (\{ \\"Dame\\" \});\\n    rankname = \\"knight\\";\\n    break;\\n  case 10:\\n    if(gender == \\"male\\") \{\\n      title \|= (\{ \\"Sir\\", \\"Baronet\\" \});\\n      rankname = \\"baronet\\";\\n    \} else \{\\n      title \|= (\{ \\"Dame\\", \\"Baronetess\\" \});\\n      rankname = \\"baronetess\\";\\n    \}\\n    break;\\n  case 11:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Lord\\", \\"Baron\\" \});\\n      rankname = \\"baron\\";\\n    \} else \{\\n      title = (\{ \\"Lady\\", \\"Baroness\\" \});\\n      rankname = \\"baroness\\";\\n    \}\\n    break;\\n  case 12:\\n    if(gender == \\"male\\") \{\\n      title \|= (\{ \\"Lord\\", \\"Viscount\\" \});\\n      rankname = \\"viscount\\";\\n    \} else \{\\n      title = (\{ \\"Lady\\", \\"Viscountess\\" \});\\n      rankname = \\"viscountess\\";\\n    \}\\n    break;\\n  case 13:\\n    if(gender == \\"male\\") \{\\n      title = (\{ \\"Lord\\", \\"Count\\" \});\\n      rankname = \\"count\\";\\n    \} else \{\\n      title = (\{ \\"Lady\\", \\"Countess\\" \});\\n      rankname = \\"countess\\";\\n    \}\\n    break;\\n  case 14:\\n    if(gender == \\"male\\")\\n      title = (\{ \\"Lord\\", \\"Landgrave\\" \});\\n    else\\n      title = (\{ \\"Lady\\", \\"Landgrave\\" \});\\n    rankname = \\"landgrave\\";\\n    break;\\n  case 15:\\n    if(gender == \\"male\\") \{\\n      title \|= (\{ \\"Lord\\", \\"Margrave\\" \});\\n      rankname = \\"margrave\\";\\n    \} else \{\\n      title \|= (\{ \\"Lady\\", \\"Margravine\\" \});\\n      rankname = \\"margravine\\";\\n    \}\\n    break;\\n  case 16:\\n    if(gender == \\"male\\") \{\\n      title \|= (\{ \\"Lord\\", \\"Marquis\\" \});\\n      rankname = \\"marquis\\";\\n    \} else \{\\n      title \|= (\{ \\"Lady\\", \\"Marchioness\\" \});\\n      rankname = \\"marchioness\\";\\n    \}\\n    break;\\n  case 17:\\n    if(gender == \\"male\\") \{\\n      title \|= (\{ \\"Lord\\", \\"Duke\\" \});\\n      rankname = \\"duke\\";\\n    \} else \{\\n      title \|= (\{ \\"Lady\\", \\"Duchess\\" \});\\n      rankname = \\"duchess\\";\\n    \}\\n    break;\\n  default:\\n    rankname = \\"unknown\\";\\n\}\\n\\nreturn ([ \\"rankname\\":rankname, \\"title\\":title ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_rank_names_slaves">
+         "E[G]\\n// returns the rank name (and title) for a given ranking number\\nstring rankname, *title, gender;\\nint level;\\nlevel = 3;\\nif(!\$char) \$char = \$actor;\\nif(\$level) level = \$level;\\n\\nrankname = \\"\\";\\ntitle = (\{ \});\\n\\nif(\$char.\\"base:gender\\" == 2) gender = \\"female\\";\\nelse gender = \\"male\\";\\n\\nswitch(level) \{\\n  case 1:\\n    rankname = \\"Slave\\";\\n    break;\\n  case 2:\\n    rankname = \\"Serf\\";\\n    break;\\n  case 3:\\n    rankname = \\"Freedman\\";\\n    break;\\n  default:\\n    rankname = \\"Slave\\";\\n\}\\n\\nreturn ([ \\"rankname\\":rankname, \\"title\\":title ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_rank_names_underworld">
+         "E[G]\\n// returns the rank name (and title) for a given ranking number\\nstring rankname, *title, gender;\\nint level;\\nlevel = 3;\\nif(!\$char) \$char = \$actor;\\nif(\$level) level = \$level;\\n\\nrankname = \\"\\";\\ntitle = (\{ \});\\n\\nif(\$char.\\"base:gender\\" == 2) gender = \\"female\\";\\nelse gender = \\"male\\";\\n\\nswitch(level) \{\\n  case 3:\\n    rankname = \\"Henchman\\";\\n    break;\\n  case 4:\\n    rankname = \\"Ruffian\\";\\n    break;\\n  case 5:\\n    rankname = \\"Thug\\";\\n    break;\\n  case 6:\\n    rankname = \\"Ganger\\";\\n    break;\\n  case 7:\\n    rankname = \\"Associate\\";\\n    break;\\n  case 8:\\n    rankname = \\"Caporegime\\";\\n    break;\\n  case 9:\\n    rankname = \\"Gang Lieutenant\\";\\n    break;\\n  case 10:\\n    rankname = \\"Gang Underboss\\";\\n    break;\\n  case 11:\\n    rankname = \\"Gang Boss\\";\\n    title \|= (\{ \\"Boss\\" \});\\n    break;\\n  case 12:\\n    rankname = \\"Head Capo\\";\\n    title \|= (\{ \\"Boss\\", \\"Capo\\" \});\\n    break;\\n  case 13:\\n    rankname = \\"Consigliere\\";\\n    title \|= (\{ \\"Boss\\", \\"Capo\\" \});\\n    break;\\n  case 14:\\n    rankname = \\"Ringleader\\";\\n    title \|= (\{ \\"Boss\\", \\"Capo\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Father\\" \});\\n    else title \|= (\{ \\"Mother\\" \});\\n    break;\\n  case 15:\\n    rankname = \\"Mastermind\\";\\n    title \|= (\{ \\"Boss\\", \\"Capo\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Father\\" \});\\n    else title \|= (\{ \\"Mother\\" \});\\n    break;\\n  case 16:\\n    rankname = \\"Crime Lord\\";\\n    title \|= (\{ \\"Boss\\", \\"Capo\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Father\\" \});\\n    else title \|= (\{ \\"Mother\\" \});\\n    break;\\n  case 17:\\n    rankname = \\"Kingpin\\";\\n    title \|= (\{ \\"Boss\\", \\"Capo\\" \});\\n    if(gender == \\"male\\") title \|= (\{ \\"Father\\" \});\\n    else title \|= (\{ \\"Mother\\" \});\\n    break;\\n  default:\\n    rankname = \\"unknown\\";\\n\}\\n\\nreturn ([ \\"rankname\\":rankname, \\"title\\":title ]);"
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status_church">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status_church instead! */
+/* Returns information about promotions in this promotion path */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* These promotions start from 3 onwards */
+if(\$give_promotion \&\& \$level \< 3)
+  \$level = 3;
+else if(\$give_demotion \&\& \$level \<= 2)
+  return ([ "valid":TRUE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":-1, "curr_level":\$curr_level, "clear_entry":TRUE ]);
+else if(\$level \<= 2)
+  return ([ "valid":FALSE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+
+/* What is the name of this new rank? */
+\$tmp = Call(this, "get_rank_names_"+\$groupname, \$char: \$char, \$groupname: \$groupname, \$level: \$level);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+
+/* Is this actually a demotion? */
+if(\$give_demotion) return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+
+/* Gather info that is often required for promotions */
+\$has_patron = ::has_patron(\$char: \$char, \$groupname: \$groupname);
+\$influence = Int(Get(\$char, "rank:influence:"+\$groupname));
+if(\$influence) \$influence_count = TAG(\$influence, "imp");
+else \$influence_count = "0";
+
+/* Now check whether we have a promotion available */
+\$promotion_valid = FALSE;
+\$promotion_invalid = FALSE;
+
+if(\$level == 3) \{
+  /* Can they be inducted as a novice? */
+  /* Requires 2 influence or a higher ranked patron in the church */
+  /* if(TRUE \|\| \$has_patron \&\& \$has_patron[1] \> 4) \{ */
+  /*   // Valid, they have a patron */
+  /*   \$requirements = TAG("Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"); */
+  /* \} else \{ */
+  /*   // They have nothing */
+  /*   \$requirements = "Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+"."; */
+  /* \} */
+
+  \$higher_needed = 2;
+  \$requirements = (\{ \});
+  if(\$influence \>= \$higher_needed) \{
+    /* Valid, they have enough influence */
+    \$requirements += (\{ TAG("Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence.", "imp") \});
+    \$promotion_valid = TRUE;
+  \} else \{
+    \$requirements += (\{ "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")" \});
+  \}
+
+  if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have a patron */
+    \$requirements += (\{ TAG("Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+" induct you. (Have them go to the cathedral main hall and use the @patron command)", "imp") \});
+    /* \$promotion_valid = TRUE; // Make it invalid so the patron has to induct */
+  \} else \{
+    \$requirements += (\{ "Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+" induct you." \});
+  \}
+
+\} else \{
+  /* lower_needed and a patron */
+  /* or higher_needed */
+  
+  /* How many influence points does each rank need? */
+  \$multiplier = \$level-3;
+  if(\$multiplier \< 1) \$multiplier = 1;
+  \$lower_needed = \$multiplier*4-2;
+  \$higher_needed = \$multiplier*8-2;
+
+  if(\$influence \>= \$higher_needed) \{
+    /* Valid, they have enough influence */
+    \$requirements = TAG("Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence.", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have enough influence and a patron */
+    \$requirements = TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed) \{
+    /* They have the influence, but not the patron */
+    \$requirements = (\{TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence,", "imp")+" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* They have the patron, but not the influence */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), "+TAG("and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"), "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else \{
+    /* They have nothing */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \}  
+/* \} else \{ */
+/*  // For now, make all other options invalid */
+/*  \$promotion_invalid = TRUE; */
+/*  \$requirements = "This rank level has not yet been implemented"; */
+\}
+
+return ([ "invalid":\$promotion_invalid, "valid":\$promotion_valid, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status_church_mil">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status_church_mil instead! */
+/* Returns information about promotions in this promotion path */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+return ([ "invalid":TRUE, "valid":FALSE, "requirements":"Not enabled yet" ]);
+
+/* These promotions start from 3 onwards */
+if(\$give_promotion \&\& \$level \< 3)
+  \$level = 3;
+else if(\$give_demotion \&\& \$level \<= 2)
+  return ([ "valid":TRUE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":-1, "curr_level":\$curr_level, "clear_entry":TRUE ]);
+else if(\$level \<= 2)
+  return ([ "valid":FALSE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* What is the name of this new rank? */
+\$tmp = Call(this, "get_rank_names_"+\$groupname, \$char: \$char, \$groupname: \$groupname, \$level: \$level);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+
+/* Is this actually a demotion? */
+if(\$give_demotion) return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* For now, they can get the social promotion if they have enough influence for the rank, and a sponsor loyal to that group */
+\$requirements = "Spend "+Str(\$level)+" points of "+capitalize(\$groupname)+" influence, and have a patron equal or higher ranked than you and loyal to the "+capitalize(\$groupname)+".";
+
+/* Do they have the influence? */
+if(Int(Get(\$char, "influence:"+\$groupname)) \< \$level)
+  return ([ "valid":FALSE, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+/* Do they have the patron? */
+  /* NOT WRITTEN YET */
+    
+/* Looks like the promotion is valid! */
+
+return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "requirements":TAG(\$requirements, "imp"), "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status_constables">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status_constables instead! */
+/* Returns information about promotions in this promotion path */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* These promotions start from 3 onwards */
+if(\$give_promotion \&\& \$level \< 3)
+  \$level = 3;
+else if(\$give_demotion \&\& \$level \<= 2)
+  return ([ "valid":TRUE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":-1, "curr_level":\$curr_level, "clear_entry":TRUE ]);
+else if(\$level \<= 2)
+  return ([ "valid":FALSE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* What is the name of this new rank? */
+\$tmp = Call(this, "get_rank_names_"+\$groupname, \$char: \$char, \$groupname: \$groupname, \$level: \$level);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+
+/* Is this actually a demotion? */
+if(\$give_demotion) return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* Gather info that is often required for promotions */
+\$has_patron = ::has_patron(\$char: \$char, \$groupname: \$groupname);
+\$influence = Int(Get(\$char, "rank:influence:"+\$groupname));
+if(\$influence) \$influence_count = TAG(\$influence, "imp");
+else \$influence_count = "0";
+
+/* Now check whether we have a promotion available */
+\$promotion_valid = FALSE;
+\$promotion_invalid = FALSE;
+
+if(\$level == 3) \{
+  /* Can they be inducted as a deputy? */
+  /* Requires 2 influence or a higher ranked patron in the constabulary */
+  
+  /* if(TRUE \|\| \$has_patron \&\& \$has_patron[1] \> 4) \{ */
+  /*   // Valid, they have a patron */
+  /*   \$requirements = TAG("Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"); */
+  /* \} else \{ */
+  /*   // They have nothing */
+  /*   \$requirements = "Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+"."; */
+  /* \} */
+
+  \$higher_needed = 2;
+  \$requirements = (\{ \});
+  if(\$influence \>= \$higher_needed) \{
+    /* Valid, they have enough influence */
+    \$requirements += (\{ TAG("Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence.", "imp") \});
+    \$promotion_valid = TRUE;
+  \} else \{
+    \$requirements += (\{ "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")" \});
+  \}
+
+  if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have a patron */
+    \$requirements += (\{ TAG("Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+" induct you. (Have them go to the cathedral main hall and use the @patron command)", "imp") \});
+    /* \$promotion_valid = TRUE; // Make it invalid so the patron has to induct */
+  \} else \{
+    \$requirements += (\{ "Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+" induct you." \});
+  \}
+
+\} else \{
+  /* lower_needed and a patron */
+  /* or higher_needed */
+  
+  /* How many influence points does each rank need? */
+  \$multiplier = \$level-3;
+  if(\$multiplier \< 1) \$multiplier = 1;
+  \$lower_needed = \$multiplier*4-2;
+  \$higher_needed = \$multiplier*8-2;
+
+  if(\$influence \>= \$higher_needed) \{
+    /* Valid, they have enough influence */
+    \$requirements = TAG("Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence.", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have enough influence and a patron */
+    \$requirements = TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed) \{
+    /* They have the influence, but not the patron */
+    \$requirements = (\{TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence,", "imp")+" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* They have the patron, but not the influence */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), "+TAG("and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"), "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else \{
+    /* They have nothing */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \}  
+/* \} else \{ */
+/*  // For now, make all other options invalid */
+/*  \$promotion_invalid = TRUE; */
+/*  \$requirements = "This rank level has not yet been implemented"; */
+\}
+
+return ([ "invalid":\$promotion_invalid, "valid":\$promotion_valid, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status_council">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status_council instead! */
+/* Returns information about promotions in this promotion path */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* These promotions start from 4 onwards */
+if(\$give_promotion \&\& \$level \< 4)
+  \$level = 4;
+else if(\$give_demotion \&\& \$level \<= 4)
+  return ([ "valid":TRUE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":-1, "clear_entry":TRUE ]);
+else if(\$level \<= 3)
+  return ([ "valid":FALSE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":\$level ]);
+
+/* What is the name of this new rank? */
+\$tmp = Call(this, "get_rank_names_"+\$groupname, \$char: \$char, \$groupname: \$groupname, \$level: \$level);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+
+/* Add the group name to the rankname - But only for the lower ranks (higher ranks are unique to the council) */
+if(\$level \<= 6) \$rankname = "Triskellian "+capitalize(\$rankname);
+
+/* Is this actually a demotion? */
+if(\$give_demotion) return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+
+/* Gather info that is often required for promotions */
+\$has_patron = ::has_patron(\$char: \$char, \$groupname: \$groupname);
+\$influence = Int(Get(\$char, "rank:influence:"+\$groupname));
+if(\$influence) \$influence_count = TAG(\$influence, "imp");
+else \$influence_count = "0";
+
+/* Now check whether we have a promotion available */
+\$promotion_valid = FALSE;
+\$promotion_invalid = FALSE;
+
+/* if(!\$curr_level \|\| \$curr_level == 3) \{ */
+if(TRUE) \{
+  /* Need: */
+  /* lower_needed and a patron */
+  /* or higher_needed */
+  
+  /* How many influence points does each rank need? */
+  \$multiplier = \$level-3;
+  if(\$multiplier \< 1) \$multiplier = 1;
+  \$lower_needed = \$multiplier*4-2;
+  \$higher_needed = \$multiplier*8-2;
+
+  if(\$influence \>= \$higher_needed) \{
+    /* Valid, they have enough influence */
+    \$requirements = TAG("Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence.", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have enough influence and a patron */
+    \$requirements = TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed) \{
+    /* They have the influence, but not the patron */
+    \$requirements = (\{TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence,", "imp")+" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* They have the patron, but not the influence */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), "+TAG("and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"), "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else \{
+    /* They have nothing */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \}  
+\} else \{
+  /* For now, make all other options invalid */
+  \$promotion_invalid = TRUE;
+  \$requirements = "This rank level has not yet been implemented";
+\}
+
+return ([ "invalid":\$promotion_invalid, "valid":\$promotion_valid, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status_military">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status_military instead! */
+/* Returns information about promotions in this promotion path */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* These promotions start from 4 onwards */
+if(\$give_promotion \&\& \$level \< 4)
+  \$level = 4;
+else if(\$give_demotion \&\& \$level \<= 3)
+  return ([ "valid":TRUE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":-1, "curr_level":\$curr_level, "clear_entry":TRUE ]);
+else if(\$level \<= 3)
+  return ([ "valid":FALSE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* What is the name of this new rank? */
+\$tmp = ::get_rank_names_military(\$char: \$char, \$groupname: \$groupname, \$level: \$level);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+/* Add the house name to the rankname */
+if(\$groupname != "" \&\& \$level != 3)
+  \$rankname = capitalize(\$groupname)+" "+capitalize(\$rankname);
+else if(\$level == 3)
+  \$rankname = "Freedman";
+
+/* Is this actually a demotion? */
+if(\$give_demotion) return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* Gather info that is often required for promotions */
+\$has_patron = ::has_patron(\$char: \$char, \$groupname: \$groupname);
+\$influence = Int(Get(\$char, "rank:influence:"+\$groupname));
+if(\$influence) \$influence_count = TAG(\$influence, "imp");
+else \$influence_count = "0";
+
+/* Now check whether we have a promotion available */
+\$promotion_valid = FALSE;
+\$promotion_invalid = FALSE;
+
+/* Hide Ketos for now */
+if(\$groupname == "ketos") \$promotion_invalid = TRUE;
+
+/* if(!\$curr_level \|\| \$curr_level == 3) \{ */
+if(TRUE) \{
+  /* Noble House privates need: */
+  /* 2 influence and a higher ranked patron */
+  /* +4 influence points needed for each level above private */
+  
+  /* How many influence points does each rank need? */
+  \$multiplier = \$level-3;
+  if(\$multiplier \< 1) \$multiplier = 1;
+  \$lower_needed = \$multiplier*4-2;
+  
+  if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have enough influence and a patron */
+    \$requirements = TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed) \{
+    /* They have the influence, but not the patron */
+    \$requirements = TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence,", "imp")+" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".";
+  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* They have the patron, but not the influence */
+    \$requirements = "Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+")"+TAG(" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+  \} else \{
+    /* They have nothing */
+    \$requirements = "Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".";
+  \}
+  
+  
+
+  
+\} else \{
+  /* For now, make all other options invalid */
+  \$promotion_invalid = TRUE;
+  \$requirements = "This rank level has not yet been implemented";
+\}
+
+return ([ "invalid":\$promotion_invalid, "valid":\$promotion_valid, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status_noble">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status_noble instead! */
+/* Returns information about promotions in this promotion path */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* These promotions start from 4 onwards */
+if(\$give_promotion \&\& \$level \< 4)
+  \$level = 4;
+else if(\$give_demotion \&\& \$level \<= 3)
+  return ([ "valid":TRUE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":-1, "curr_level":\$curr_level, "clear_entry":TRUE ]);
+else if(\$level \<= 3)
+  return ([ "valid":FALSE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* What is the name of this new rank? */
+\$tmp = ::get_rank_names_noble(\$char: \$char, \$groupname: \$groupname, \$level: \$level);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+/* Add the house name to the rankname */
+if(\$groupname != "" \&\& \$level != 3)
+  \$rankname = capitalize(\$groupname)+" "+capitalize(\$rankname);
+else if(\$level == 3)
+  \$rankname = "Freedman";
+
+/* Is this actually a demotion? */
+if(\$give_demotion) return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* Gather info that is often required for promotions */
+\$has_patron = ::has_patron(\$char: \$char, \$groupname: \$groupname);
+\$influence = Int(Get(\$char, "rank:influence:"+\$groupname));
+if(\$influence) \$influence_count = TAG(\$influence, "imp");
+else \$influence_count = "0";
+
+/* Now check whether we have a promotion available */
+\$promotion_valid = FALSE;
+\$promotion_invalid = FALSE;
+
+/* Hide Ketos for now */
+if(\$groupname == "ketos") \$promotion_invalid = TRUE;
+
+/* if(!\$curr_level \|\| \$curr_level == 3) \{ */
+if(TRUE) \{
+
+
+  /* Noble House yeomen need: */
+  /* lower_needed and a patron */
+  /* or higher_needed */
+  
+  /* How many influence points does each rank need? */
+  \$multiplier = \$level-3;
+  if(\$multiplier \< 1) \$multiplier = 1;
+  \$lower_needed = \$multiplier*4-2;
+  \$higher_needed = \$multiplier*8-2;
+
+  if(\$influence \>= \$higher_needed) \{
+    /* Valid, they have enough influence */
+    \$requirements = TAG("Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence.", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have enough influence and a patron */
+    \$requirements = TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed) \{
+    /* They have the influence, but not the patron */
+    \$requirements = (\{TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence,", "imp")+" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* They have the patron, but not the influence */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), "+TAG("and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"), "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else \{
+    /* They have nothing */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \}  
+\} else \{
+  /* For now, make all other options invalid */
+  \$promotion_invalid = TRUE;
+  \$requirements = "This rank level has not yet been implemented";
+\}
+
+return ([ "invalid":\$promotion_invalid, "valid":\$promotion_valid, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status_slaves">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status_slaves instead! */
+/* Returns information about promotions in this promotion path */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* These promotions start from 0 onwards, and we can't demote "away" from this */
+if(\$level \<= 1)
+  \$level = 1;
+
+/* What is the name of this new rank? */
+\$tmp = Call(this, "get_rank_names_"+\$groupname, \$char: \$char, \$groupname: \$groupname, \$level: \$level);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+
+/* Is this actually a demotion? */
+if(\$give_demotion) return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+/* Don't show promotions for slaves */
+\$promotion_valid = FALSE;
+\$requirements = (\{ \});
+
+return ([ "valid":\$promotion, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:check_status_underworld">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_status_underworld instead! */
+/* Returns information about promotions in this promotion path */
+if(!\$char) \$char = \$actor;
+if(!\$path) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$path provided - please @assist!" ]);
+if(!\$groupname) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$groupname provided - please @assist!" ]);
+if(!\$level) return ([ "invalid":TRUE, "valid":FALSE, "requirements":"No \$level provided - please @assist!" ]);
+
+/* These promotions start from 3 onwards */
+if(\$give_promotion \&\& \$level \< 3)
+  \$level = 3;
+else if(\$give_demotion \&\& \$level \<= 2)
+  return ([ "valid":TRUE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":-1, "curr_level":\$curr_level, "clear_entry":TRUE ]);
+else if(\$level \<= 2)
+  return ([ "valid":FALSE, "rankname":"Freedman", "titles":(\{ \}), "path":\$path, "groupname":\$groupname, "level":\$level, "curr_level":\$curr_level ]);
+
+
+/* What is the name of this new rank? */
+\$tmp = Call(this, "get_rank_names_"+\$groupname, \$char: \$char, \$groupname: \$groupname, \$level: \$level);
+\$rankname = \$tmp["rankname"];
+\$title = \$tmp["title"];
+
+/* Is this actually a demotion? */
+if(\$give_demotion) return ([ "valid":TRUE, "rankname":\$rankname, "titles":\$title, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+
+/* Gather info that is often required for promotions */
+\$has_patron = ::has_patron(\$char: \$char, \$groupname: \$groupname);
+\$influence = Int(Get(\$char, "rank:influence:"+\$groupname));
+if(\$influence) \$influence_count = TAG(\$influence, "imp");
+else \$influence_count = "0";
+
+/* Now check whether we have a promotion available */
+\$promotion_valid = FALSE;
+\$promotion_invalid = FALSE;
+
+if(\$level == 3) \{
+  /* Can they be inducted as a henchman? */
+  /* Requires 2 influence or a higher ranked patron in the church */
+  
+  /* if(TRUE \|\| \$has_patron \&\& \$has_patron[1] \> 4) \{ */
+  /*   // Valid, they have a patron */
+  /*   \$requirements = TAG("Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"); */
+  /* \} else \{ */
+  /*   // They have nothing */
+  /*   \$requirements = "Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+"."; */
+  /* \} */
+
+  \$higher_needed = 2;
+  \$requirements = (\{ \});
+  if(\$influence \>= \$higher_needed) \{
+    /* Valid, they have enough influence */
+    \$requirements += (\{ TAG("Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence.", "imp") \});
+    \$promotion_valid = TRUE;
+  \} else \{
+    \$requirements += (\{ "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")" \});
+  \}
+
+  if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have a patron */
+    \$requirements += (\{ TAG("Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+" induct you. (Have them go to the cathedral main hall and use the @patron command)", "imp") \});
+    /* \$promotion_valid = TRUE; // Make it invalid so the patron has to induct */
+  \} else \{
+    \$requirements += (\{ "Have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+" induct you." \});
+  \}
+
+\} else \{
+  /* lower_needed and a patron */
+  /* or higher_needed */
+  
+  /* How many influence points does each rank need? */
+  \$multiplier = \$level-3;
+  if(\$multiplier \< 1) \$multiplier = 1;
+  \$lower_needed = \$multiplier*4-2;
+  \$higher_needed = \$multiplier*8-2;
+
+  if(\$influence \>= \$higher_needed) \{
+    /* Valid, they have enough influence */
+    \$requirements = TAG("Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence.", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed \&\& \$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* Valid, they have enough influence and a patron */
+    \$requirements = TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence, and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp");
+    \$promotion_valid = TRUE;
+  \} else if(\$influence \>= \$lower_needed) \{
+    /* They have the influence, but not the patron */
+    \$requirements = (\{TAG("Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence,", "imp")+" and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else if(\$has_patron \&\& \$has_patron[1] \> \$level) \{
+    /* They have the patron, but not the influence */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), "+TAG("and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "imp"), "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \} else \{
+    /* They have nothing */
+    \$requirements = (\{"Gather "+\$lower_needed+" points of "+capitalize(\$groupname)+" influence ("+\$influence_count+"/"+\$lower_needed+"), and have a higher ranked patron who is loyal to the "+capitalize(\$groupname)+".", "Gather "+\$higher_needed+" points of "+capitalize(\$groupname)+" influence. ("+\$influence_count+"/"+\$higher_needed+")"\});
+  \}  
+/* \} else \{ */
+/*  // For now, make all other options invalid */
+/*  \$promotion_invalid = TRUE; */
+/*  \$requirements = "This rank level has not yet been implemented"; */
+\}
+
+return ([ "invalid":\$promotion_invalid, "valid":\$promotion_valid, "rankname":\$rankname, "titles":\$title, "requirements":\$requirements, "path":\$path, "groupname":\$groupname, "level":\$level ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_old_rank_names_military">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_military instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+switch(level) \{
+  case 4:
+    title \|= (\{ "Private" \});
+    rankname = "Private";
+    break;
+  case 5:
+    title \|= (\{ "Lancepesade" \});
+    rankname = "Lancepesade";
+    break;
+  case 6:
+    title \|= (\{ "Lance Corporal" \});
+    rankname = "Lance Corporal";
+    break;
+  case 7:
+    title \|= (\{ "Ensign" \});
+    rankname = "Ensign";
+    break;
+  case 8:
+    title \|= (\{ "Lieutenant" \});
+    rankname = "Lieutenant";
+    break;
+  case 9:
+    title \|= (\{ "Captain" \});
+    rankname = "Captain";
+    break;
+  case 10:
+    title \|= (\{ "Sergeant-Major" \});
+    rankname = "Sergeant-Major";
+    break;
+  case 11:
+    title \|= (\{ "Brigadier" \});
+    rankname = "Brigadier";
+    break;
+  case 12:
+    title \|= (\{ "Major" \});
+    rankname = "Major";
+    break;
+  case 13:
+    title \|= (\{ "Marshal" \});
+    rankname = "Marshal";
+    break;
+  case 14:
+    title \|= (\{ "Lieutenant General", "General" \});
+    rankname = "Lieutenant General";
+    break;
+  case 15:
+    title \|= (\{ "Captain General", "General" \});
+    rankname = "Captain General";
+    break;
+  case 16:
+    title \|= (\{ "Field Marshal", "General" \});
+    rankname = "Field Marshal";
+    break;
+  case 17:
+    title \|= (\{ "High Constable", "General" \});
+    rankname = "High Constable";
+    break;
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_names_church">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_church instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title, gender;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+if(\$char."base:gender" == 2) gender = "female";
+else gender = "male";
+
+switch(level) \{
+  case 3:
+    rankname = "Novice";
+    title \|= (\{ "Novice" \});
+    break;
+  case 4:
+    rankname = "Church Acolyte";
+    title \|= (\{ "Acolyte" \});
+    break;
+  case 5:
+    if(gender == "male")\{
+     rankname = "Brother";
+     title \|= (\{ "Brother" \});
+    \} else \{
+     rankname = "Sister";
+     title \|= (\{ "Sister" \});
+    \}
+    break;
+  case 6:
+    rankname = "Pastor";
+    title \|= (\{ "Pastor" \});
+    if(gender == "male")\{
+     title \|= (\{ "Brother" \});
+    \} else \{
+     title \|= (\{ "Sister" \});
+    \}
+    break;
+  case 7:
+    rankname = "Deacon";
+    title \|= (\{ "Deacon" \});
+    if(gender == "male")\{
+     title \|= (\{ "Father" \});
+    \} else \{
+     title \|= (\{ "Mother" \});
+    \}
+    break;
+  case 8:
+    rankname = "Presbyter";
+    title \|= (\{ "Presbyter" \});
+    if(gender == "male")\{
+     title \|= (\{ "Father" \});
+    \} else \{
+     title \|= (\{ "Mother" \});
+    \}
+    break;
+  case 9:
+    rankname = "Prelate";
+    title \|= (\{ "Prelate" \});
+    break;
+  case 10:
+    rankname = "Bishop";
+    title \|= (\{ "Bishop" \});
+    break;
+  case 11:
+    rankname = "Exarch";
+    title \|= (\{ "Exarch" \});
+    break;
+  case 12:
+    rankname = "Vicar";
+    title \|= (\{ "Vicar" \});
+    break;
+  case 13:
+    rankname = "Archbishop";
+    title \|= (\{ "Archbishop" \});
+    break;
+  case 14:
+    rankname = "Archbishop";
+    title \|= (\{ "Archbishop" \});
+    break;
+  case 15:
+    rankname = "Primate";
+    title \|= (\{ "Primate" \});
+    break;
+  case 16:
+    rankname = "Cardinal";
+    title \|= (\{ "Cardinal" \});
+    break;
+  case 17:
+    if(gender == "male")\{
+     rankname = "Patriarch";
+     title \|= (\{ "Patriarch" \});
+    \} else \{
+     rankname = "Matriarch";
+     title \|= (\{ "Matriarch" \});
+    \}
+    break;
+  default:
+    rankname = "unknown";
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_names_church_mil">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_church_mil instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title, gender;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+if(\$char."base:gender" == 2) gender = "female";
+else gender = "male";
+
+switch(level) \{
+  case 3:
+    rankname = "Novice";
+    title \|= (\{ "Novice" \});
+    break;
+  case 4:
+    rankname = "Paladin Acolyte";
+    title \|= (\{ "Acolyte" \});
+    break;
+  case 5:
+    rankname = "Paladin Aspirant";
+    title \|= (\{ "Aspirant" \});
+    break;
+  case 6:
+    rankname = "Initiate Protector";
+    title \|= (\{ "Initiate" \});
+    break;
+  case 7:
+    rankname = "Errant Protector";
+    title \|= (\{ "Errant" \});
+    break;
+  case 8:
+    rankname = "Adept Protector";
+    title \|= (\{ "Adept" \});
+    break;
+  case 9:
+    rankname = "Knight Protector";
+    if(gender == "male") title \|= (\{ "Sir" \});
+    else title \|= (\{ "Dame" \});
+    break;
+  case 10:
+    rankname = "Vintenar";
+    title \|= (\{ "Vintenar" \});
+    if(gender == "male") title \|= (\{ "Sir" \});
+    else title \|= (\{ "Dame" \});
+    break;
+  case 11:
+    rankname = "Lancer";
+    title \|= (\{ "Lancer" \});
+    if(gender == "male") title \|= (\{ "Sir" \});
+    else title \|= (\{ "Dame" \});
+    break;
+  case 12:
+    rankname = "Dragoon";
+    title \|= (\{ "Dragoon" \});
+    if(gender == "male") title \|= (\{ "Sir" \});
+    else title \|= (\{ "Dame" \});
+    break;
+  case 13:
+    if(gender == "male") \{
+      rankname = "Knight Crusader";
+      title \|= (\{ "Sir", "Crusader" \});
+    \} else \{
+      rankname = "Dame Crusader";
+      title \|= (\{ "Dame", "Crusader" \});    
+    \}
+    break;
+  case 14:
+    rankname = "Crusader Lord";
+    title \|= (\{ "Lord Crusader" \});
+    if(gender == "male") title \|= (\{ "Lord" \});
+    else title \|= (\{ "Lady" \});
+    break;
+  case 15:
+    rankname = "Master Protector";
+    title \|= (\{ "Master Protector" \});
+    if(gender == "male") title \|= (\{ "Lord" \});
+    else title \|= (\{ "Lady" \});
+    break;
+  case 16:
+    rankname = "Grandmaster Protector";
+    title \|= (\{ "Grandmaster Protector" \});
+    if(gender == "male") title \|= (\{ "Lord" \});
+    else title \|= (\{ "Lady" \});
+    break;
+  case 17:
+    rankname = "High Protector";
+    title \|= (\{ "High Protector" \});
+    if(gender == "male") title \|= (\{ "Lord" \});
+    else title \|= (\{ "Lady" \});
+    break;
+  default:
+    rankname = "unknown";
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_names_constables">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_constables instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title, gender;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+if(\$char."base:gender" == 2) gender = "female";
+else gender = "male";
+
+switch(level) \{
+  case 3:
+    rankname = "Deputy";
+    title \|= (\{ "Deputy" \});
+    break;
+  case 4:
+    rankname = "Guardsman";
+    title \|= (\{ "Guardsman" \});
+    break;
+  case 5:
+    rankname = "Sergeant";
+    title \|= (\{ "Sergeant" \});
+    break;
+  case 6:
+    rankname = "Detective";
+    title \|= (\{ "Detective" \});
+    break;
+  case 7:
+    rankname = "Aedile";
+    title \|= (\{ "Aedile" \});
+    break;
+  case 8:
+    rankname = "Sheriff";
+    title \|= (\{ "Sheriff" \});
+    break;
+  case 9:
+    rankname = "Tribune";
+    title \|= (\{ "Tribune" \});
+    break;
+  case 10:
+    rankname = "Sergeant-major";
+    title \|= (\{ "Sergeant-major" \});
+    break;
+  case 11:
+    rankname = "Brigadier";
+    title \|= (\{ "Brigadier" \});
+    break;
+  case 12:
+    rankname = "Major";
+    title \|= (\{ "Major" \});
+    break;
+  case 13:
+    rankname = "Marshal";
+    title \|= (\{ "Marshal" \});
+    break;
+  case 14:
+    rankname = "Lieutenant General";
+    title \|= (\{ "Lieutenant General" \});
+    break;
+  case 15:
+    rankname = "Captain General";
+    title \|= (\{ "Captain General" \});
+    break;
+  case 16:
+    rankname = "Field Marshal";
+    title \|= (\{ "Field Marshal" \});
+    break;
+  case 17:
+    rankname = "High Constable";
+    title \|= (\{ "High Constable" \});
+    break;
+  default:
+    rankname = "unknown";
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_names_council">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_council instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title, gender;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+if(\$char."base:gender" == 2) gender = "female";
+else gender = "male";
+
+switch(level) \{
+  case 1:
+    rankname = "slave";
+    break;
+  case 2:
+    rankname = "serf";
+    break;
+  case 3:
+    rankname = "Freedman";
+    break;
+  case 4:
+    rankname = "Yeoman";
+    break;
+  case 5:
+    rankname = "Burgher";
+    break;
+  case 6:
+    rankname = "Thane";
+    break;
+  case 7:
+    title = (\{ "Pontiff" \});
+    rankname = "Pontiff";
+    break;
+  case 8:
+    title = (\{ "Pontiff" \});
+    rankname = "Grand Pontiff";
+    break;
+  case 9:
+    if(gender == "male") \{
+      title = (\{ "Master" \});
+      rankname = "Master";
+    \} else \{
+      title = (\{ "Mistress" \});
+      rankname = "Mistress";
+    \}
+    break;
+  case 10:
+    if(gender == "male") \{
+      title = (\{ "Perfect Master" \});
+      rankname = "Perfect Master";
+    \} else \{
+      title = (\{ "Perfect Mistress" \});
+      rankname = "Perfect Mistress";
+    \}
+    break;
+  case 11:
+    title = (\{ "Provost" \});
+    rankname = "Provost";
+    break;
+  case 12:
+    title = (\{ "Intendant" \});
+    rankname = "Intendant of the Council";
+    break;
+  case 13:
+    if(gender == "male") \{
+      title = (\{ "Master Elect" \});
+      rankname = "Master Elect of the Council";
+    \} else \{
+      title = (\{ "Mistress Elect" \});
+      rankname = "Mistress Elect of the Council";
+    \}
+    break;
+  case 14:
+    if(gender == "male") \{
+      title = (\{ "Master Elect" \});
+      rankname = "Master Elect of the City";
+    \} else \{
+      title = (\{ "Mistress Elect" \});
+      rankname = "Mistress Elect of the City";
+    \}
+    break;
+  case 15:
+    if(gender == "male") \{
+      title = (\{ "Sublime Master Elect" \});
+      rankname = "Sublime Master Elect";
+    \} else \{
+      title = (\{ "Sublime Mistress Elect" \});
+      rankname = "Mistress Elect";
+    \}
+    break;
+  case 16:
+    if(gender == "male") \{
+      title = (\{ "Grand Master" \});
+      rankname = "Grand Master Architect";
+    \} else \{
+      title = (\{ "Grand Mistress" \});
+      rankname = "Grand Mistress Architect";
+    \}
+    break;
+  case 17:
+    if(gender == "male") \{
+      title = (\{ "Grand Master" \});
+      rankname = "Grand Master Elect";
+    \} else \{
+      title = (\{ "Grand Mistress" \});
+      rankname = "Grand Mistress Elect";
+    \}
+    break;
+  default:
+    rankname = "unknown";
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_names_military">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_military instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+switch(level) \{
+  case 4:
+    title \|= (\{ "Private" \});
+    rankname = "Private";
+    break;
+  case 5:
+    title \|= (\{ "Lancepesade" \});
+    rankname = "Lancepesade";
+    break;
+  case 6:
+    title \|= (\{ "Sergeant" \});
+    rankname = "Sergeant";
+    break;
+  case 7:
+    title \|= (\{ "Sergeant-Major" \});
+    rankname = "Sergeant-Major";
+    break;
+  case 8:
+    title \|= (\{ "Chief Warrant" \});
+    rankname = "Chief Warrant";
+    break;
+  case 9:
+    title \|= (\{ "Lieutenant" \});
+    rankname = "Lieutenant";
+    break;
+  case 10:
+    title \|= (\{ "Captain" \});
+    rankname = "Captain";
+    break;
+  case 11:
+    title \|= (\{ "Major" \});
+    rankname = "Major";
+    break;
+  case 12:
+    title \|= (\{ "Colonel" \});
+    rankname = "Colonel";
+    break;
+  case 13:
+    title \|= (\{ "Brigadier" \});
+    rankname = "Brigadier";
+    break;
+  case 14:
+    title \|= (\{ "Lieutenant General", "General" \});
+    rankname = "Lieutenant General";
+    break;
+  case 15:
+    title \|= (\{ "Captain General", "General" \});
+    rankname = "Captain General";
+    break;
+  case 16:
+    title \|= (\{ "Marshal" \});
+    rankname = "Marshal";
+    break;
+  case 17:
+    title \|= (\{ "Field Marshal", "Marshal" \});
+    rankname = "Field Marshal";
+    break;
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_names_noble">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_noble instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title, gender;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+if(\$char."base:gender" == 2) gender = "female";
+else gender = "male";
+
+switch(level) \{
+  case 1:
+    rankname = "slave";
+    break;
+  case 2:
+    rankname = "serf";
+    break;
+  case 3:
+    rankname = "freedman";
+    break;
+  case 4:
+    rankname = "yeoman";
+    break;
+  case 5:
+    rankname = "burgher";
+    break;
+  case 6:
+    rankname = "thane";
+    break;
+  case 7:
+    title = (\{ "Esquire" \});
+    rankname = "gentry";
+    break;
+  case 8:
+    title = (\{ "Esquire" \});
+    rankname = "armigerous gentry";
+    break;
+  case 9:
+    if(gender == "male")
+      title = (\{ "Sir" \});
+    else
+      title = (\{ "Dame" \});
+    rankname = "knight";
+    break;
+  case 10:
+    if(gender == "male") \{
+      title \|= (\{ "Sir", "Baronet" \});
+      rankname = "baronet";
+    \} else \{
+      title \|= (\{ "Dame", "Baronetess" \});
+      rankname = "baronetess";
+    \}
+    break;
+  case 11:
+    if(gender == "male") \{
+      title = (\{ "Lord", "Baron" \});
+      rankname = "baron";
+    \} else \{
+      title = (\{ "Lady", "Baroness" \});
+      rankname = "baroness";
+    \}
+    break;
+  case 12:
+    if(gender == "male") \{
+      title \|= (\{ "Lord", "Viscount" \});
+      rankname = "viscount";
+    \} else \{
+      title = (\{ "Lady", "Viscountess" \});
+      rankname = "viscountess";
+    \}
+    break;
+  case 13:
+    if(gender == "male") \{
+      title = (\{ "Lord", "Count" \});
+      rankname = "count";
+    \} else \{
+      title = (\{ "Lady", "Countess" \});
+      rankname = "countess";
+    \}
+    break;
+  case 14:
+    if(gender == "male")
+      title = (\{ "Lord", "Landgrave" \});
+    else
+      title = (\{ "Lady", "Landgrave" \});
+    rankname = "landgrave";
+    break;
+  case 15:
+    if(gender == "male") \{
+      title \|= (\{ "Lord", "Margrave" \});
+      rankname = "margrave";
+    \} else \{
+      title \|= (\{ "Lady", "Margravine" \});
+      rankname = "margravine";
+    \}
+    break;
+  case 16:
+    if(gender == "male") \{
+      title \|= (\{ "Lord", "Marquis" \});
+      rankname = "marquis";
+    \} else \{
+      title \|= (\{ "Lady", "Marchioness" \});
+      rankname = "marchioness";
+    \}
+    break;
+  case 17:
+    if(gender == "male") \{
+      title \|= (\{ "Lord", "Duke" \});
+      rankname = "duke";
+    \} else \{
+      title \|= (\{ "Lady", "Duchess" \});
+      rankname = "duchess";
+    \}
+    break;
+  default:
+    rankname = "unknown";
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_names_slaves">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_slaves instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title, gender;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+if(\$char."base:gender" == 2) gender = "female";
+else gender = "male";
+
+switch(level) \{
+  case 1:
+    rankname = "Slave";
+    break;
+  case 2:
+    rankname = "Serf";
+    break;
+  case 3:
+    rankname = "Freedman";
+    break;
+  default:
+    rankname = "Slave";
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_names_underworld">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_rank_names_underworld instead! */
+/* returns the rank name (and title) for a given ranking number */
+string rankname, *title, gender;
+int level;
+level = 3;
+if(!\$char) \$char = \$actor;
+if(\$level) level = \$level;
+
+rankname = "";
+title = (\{ \});
+
+if(\$char."base:gender" == 2) gender = "female";
+else gender = "male";
+
+switch(level) \{
+  case 3:
+    rankname = "Henchman";
+    break;
+  case 4:
+    rankname = "Ruffian";
+    break;
+  case 5:
+    rankname = "Thug";
+    break;
+  case 6:
+    rankname = "Ganger";
+    break;
+  case 7:
+    rankname = "Associate";
+    break;
+  case 8:
+    rankname = "Caporegime";
+    break;
+  case 9:
+    rankname = "Gang Lieutenant";
+    break;
+  case 10:
+    rankname = "Gang Underboss";
+    break;
+  case 11:
+    rankname = "Gang Boss";
+    title \|= (\{ "Boss" \});
+    break;
+  case 12:
+    rankname = "Head Capo";
+    title \|= (\{ "Boss", "Capo" \});
+    break;
+  case 13:
+    rankname = "Consigliere";
+    title \|= (\{ "Boss", "Capo" \});
+    break;
+  case 14:
+    rankname = "Ringleader";
+    title \|= (\{ "Boss", "Capo" \});
+    if(gender == "male") title \|= (\{ "Father" \});
+    else title \|= (\{ "Mother" \});
+    break;
+  case 15:
+    rankname = "Mastermind";
+    title \|= (\{ "Boss", "Capo" \});
+    if(gender == "male") title \|= (\{ "Father" \});
+    else title \|= (\{ "Mother" \});
+    break;
+  case 16:
+    rankname = "Crime Lord";
+    title \|= (\{ "Boss", "Capo" \});
+    if(gender == "male") title \|= (\{ "Father" \});
+    else title \|= (\{ "Mother" \});
+    break;
+  case 17:
+    rankname = "Kingpin";
+    title \|= (\{ "Boss", "Capo" \});
+    if(gender == "male") title \|= (\{ "Father" \});
+    else title \|= (\{ "Mother" \});
+    break;
+  default:
+    rankname = "unknown";
+\}
+
+return ([ "rankname":rankname, "title":title ]);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1426482308, "tonyd", "E", 1427797153, "tonyd", "P", 1427797169, "tonyd", "P", 1427797239, "tonyd", "P", 1427797273, "tonyd", "P", 1427802523, "tonyd", "P", 1427802577, "tonyd", "P", 1427802695, "tonyd", "P", 1427802796, "tonyd", "P", 1427802846, "tonyd", "P", 1427802933, "tonyd", "P", 1427802951, "tonyd", "P", 1427803055, "tonyd", "P", 1427803083, "tonyd", "P", 1427803102, "tonyd", "P", 1427803124, "tonyd", "P", 1427803182, "tonyd", "P", 1427803320, "tonyd", "P", 1427803976, "tonyd", "P", 1427807681, "tonyd", "P", 1427807735, "tonyd", "P", 1427808027, "tonyd", "P", 1427808092, "tonyd", "P", 1427808116, "tonyd", "P", 1427808214, "tonyd", "P", 1427808280, "tonyd", "P", 1428222210, "tonyd", "P", 1428222234, "tonyd", "P", 1428222247, "tonyd", "P", 1428222268, "tonyd", "P", 1428223110, "tonyd", "P", 1428223121, "tonyd", "P", 1428239655, "tonyd", "P", 1428239666, "tonyd", "P", 1428239696, "tonyd", "P", 1428239736, "tonyd", "P", 1428239750, "tonyd", "P", 1428239767, "tonyd", "P", 1428239819, "tonyd", "P", 1428239829, "tonyd", "P", 1428239888, "tonyd", "P", 1428239900, "tonyd", "P", 1428297649, "tonyd", "P", 1428298593, "tonyd", "P", 1428300913, "tonyd", "P", 1428301747, "tonyd", "P", 1428302602, "tonyd", "P", 1428302684, "tonyd", "P", 1428302760, "tonyd", "P", 1428302893, "tonyd", "P", 1428302907, "tonyd", "P", 1428302943, "tonyd", "P", 1428302964, "tonyd", "P", 1428302986, "tonyd", "P", 1428303212, "tonyd", "P", 1428303933, "tonyd", "P", 1428303972, "tonyd", "P", 1428304322, "tonyd", "P", 1428304374, "tonyd", "P", 1428304387, "tonyd", "P", 1428304499, "tonyd", "P", 1428304526, "tonyd", "P", 1428304552, "tonyd", "P", 1428305168, "tonyd", "P", 1428305184, "tonyd", "P", 1428305282, "tonyd", "P", 1428305311, "tonyd", "P", 1428305338, "tonyd", "P", 1428305386, "tonyd", "P", 1428305521, "tonyd", "P", 1428305653, "tonyd", "P", 1428305781, "tonyd", "P", 1428305909, "tonyd", "P", 1428305958, "tonyd", "P", 1428306033, "tonyd", "P", 1428306574, "tonyd", "P", 1428306580, "tonyd", "P", 1428306595, "tonyd", "P", 1428311394, "tonyd", "P", 1428311789, "tonyd", "P", 1428311830, "tonyd", "P", 1428311880, "tonyd", "P", 1428311931, "tonyd", "P", 1428312510, "tonyd", "P", 1428312559, "tonyd", "P", 1428312700, "tonyd", "P", 1428313520, "tonyd", "P", 1428313599, "tonyd", "P", 1428313619, "tonyd", "P", 1428313840, "tonyd", "P", 1428313858, "tonyd", "P", 1428313933, "tonyd", "P", 1428313965, "tonyd", "P", 1428314490, "tonyd", "P", 1428314531, "tonyd", "P", 1428314765, "tonyd", "P", 1428314801, "tonyd", "P", 1428314844, "tonyd", "P", 1428315440, "tonyd", "P", 1428372929, "tonyd", "P", 1428373477, "tonyd", "P", 1428375001, "tonyd", "P", 1428375113, "tonyd", "P", 1428375134, "tonyd", "P", 1428375207, "tonyd", "P", 1428375219, "tonyd", "P", 1428375256, "tonyd", "P", 1428375271, "tonyd", "P", 1428375285, "tonyd", "P", 1428375307, "tonyd", "P", 1428375321, "tonyd", "P", 1428375368, "tonyd", "P", 1428375531, "tonyd", "P", 1428375551, "tonyd", "P", 1428375598, "tonyd", "P", 1428375611, "tonyd", "P", 1428375758, "tonyd", "P", 1428375766, "tonyd", "P", 1428375835, "tonyd", "P", 1428376158, "tonyd", "P", 1428376170, "tonyd", "P", 1428376191, "tonyd", "P", 1428376200, "tonyd", "P", 1428376245, "tonyd", "P", 1428916425, "tonyd", "P", 1428916492, "tonyd", "P", 1428916525, "tonyd", "P", 1428916541, "tonyd", "P", 1428916594, "tonyd", "P", 1429960391, "tonyd", "P", 1429960466, "tonyd", "P", 1429960492, "tonyd", "P", 1430821880, "tonyd", "P", 1430822093, "tonyd", "P", 1430822222, "tonyd", "P", 1430822269, "tonyd", "P", 1430822379, "tonyd", "P", 1430822417, "tonyd", "P", 1430822532, "tonyd", "P", 1430822596, "tonyd", "P", 1430822628, "tonyd", "P", 1430822795, "tonyd", "P", 1430822832, "tonyd", "P", 1430822983, "tonyd", "P", 1430823004, "tonyd", "P", 1430823025, "tonyd", "P", 1430823044, "tonyd", "P", 1430823081, "tonyd", "P", 1430823114, "tonyd", "P", 1430823202, "tonyd", "P", 1430823216, "tonyd", "P", 1430823284, "tonyd", "P", 1430823311, "tonyd", "P", 1430823346, "tonyd", "P", 1430823361, "tonyd", "P", 1430823381, "tonyd", "P", 1430823457, "tonyd", "P", 1430823634, "tonyd", "P", 1430823712, "tonyd", "P", 1430823755, "tonyd", "P", 1430823802, "tonyd", "P", 1430823811, "tonyd", "P", 1430823819, "tonyd", "P", 1430823895, "tonyd", "P", 1430824007, "tonyd", "P", 1430824027, "tonyd", "P", 1430824261, "tonyd", "P", 1430824527, "tonyd", "P", 1430824553, "tonyd", "P", 1433995567, "tonyd", "P", 1433995595, "tonyd", "P", 1433995726, "tonyd", "P", 1433995807, "tonyd", "P", 1433995888, "tonyd", "P", 1433997873, "tonyd", "P", 1433997895, "tonyd", "P", 1433997931, "tonyd", "P", 1433998275, "tonyd", "P", 1433998321, "tonyd", "P", 1433998352, "tonyd", "P", 1433998378, "tonyd", "P", 1433998383, "tonyd", "P", 1434004333, "tonyd", "P", 1434004418, "tonyd", "P", 1434004486, "tonyd", "P", 1434004680, "tonyd", "P", 1434004759, "tonyd", "P", 1434004802, "tonyd", "P", 1434004829, "tonyd", "P", 1434004893, "tonyd", "P", 1434004928, "tonyd", "P", 1434004944, "tonyd", "P", 1434004979, "tonyd", "P", 1434005288, "tonyd", "P", 1434005354, "tonyd", "P", 1434005404, "tonyd", "P", 1434005436, "tonyd", "P", 1434005461, "tonyd", "P", 1434006328, "tonyd", "P", 1434006554, "tonyd", "P", 1434006573, "tonyd", "P", 1434006632, "tonyd", "P", 1434006744, "tonyd", "P", 1434007250, "tonyd", "P", 1434009296, "tonyd", "P", 1434009593, "tonyd", "P", 1434009794, "tonyd", "P", 1434009856, "tonyd", "P", 1434624224, "tonyd", "P", 1434624720, "tonyd", "P", 1434624767, "tonyd", "P", 1434624784, "tonyd", "P", 1434624802, "tonyd", "P", 1434624920, "tonyd", "P", 1434625053, "tonyd", "P", 1434625380, "tonyd", "P", 1434625425, "tonyd", "P", 1434625442, "tonyd", "P", 1434625519, "tonyd", "P", 1434625624, "tonyd", "P", 1434625673, "tonyd", "P", 1434625710, "tonyd", "P", 1434625780, "tonyd", "P", 1434625796, "tonyd", "P", 1434625899, "tonyd", "P", 1434626310, "tonyd", "P", 1434626365, "tonyd", "P", 1434626484, "tonyd", "P", 1434626503, "tonyd", "P", 1434626542, "tonyd", "P", 1434626795, "tonyd", "P", 1434626817, "tonyd", "P", 1434627218, "tonyd", "P", 1435131476, "tonyd", "P", 1435131668, "tonyd", "P", 1435131762, "tonyd", "P", 1435131910, "tonyd", "P", 1435131950, "tonyd", "P", 1435132007, "tonyd", "P", 1437801758, "tonyd", "P", 1437801903, "tonyd", "P", 1437804122, "tonyd", "P", 1437804197, "tonyd", "P", 1437804660, "tonyd", "P", 1437804683, "tonyd", "P", 1437804815, "tonyd", "P", 1437804822, "tonyd", "P", 1437804878, "tonyd", "P", 1437804905, "tonyd", "P", 1437804925, "tonyd", "P", 1437805038, "tonyd", "P", 1437805065, "tonyd", "P", 1437805436, "tonyd", "P", 1437905773, "tonyd", "P", 1437905869, "tonyd", "P", 1437905916, "tonyd", "P", 1437905929, "tonyd", "P", 1437905981, "tonyd", "P", 1437906004, "tonyd", "P", 1442880441, "jominey", "E", 1442880515, "jominey", "E", 1442882789, "jominey", "E", 1442883002, "jominey", "E", 1442891944, "jominey", "E", 1442892132, "jominey", "E", 1442892403, "jominey", "E", 1449883317, "tonyd", "E", 1449884293, "tonyd", "E", 1533489487, "jominey", "E", 1533489641, "jominey", "E", 1533491850, "jominey", "E", 1533519188, "jominey", "E", 1572404928, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

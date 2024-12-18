@@ -1,0 +1,131 @@
+<object clone="/base/obj/thing" owner="lidiab">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="pliar"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="pliars"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="tooth"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             tooth pulling pliars
+          </Base:Description>
+          <Base:Description type="look">
+             A nasty looking set of pliars. The clamps are stained with dried blood.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:detooth">
+         X[M] /* do they have teeth? */
+\$victim = \$par["victim"];
+if(\$victim."details:teeth:pnames" \&\& sizeof(Arr(\$victim."details:teeth:pnames"))) \{
+  EmitTo(\$actor, "One by one you pull out "+Describe(NewNRef(\$victim, "fteeth"))+".");
+  EmitTo(\$victim, "One by one "+Describe(\$actor)+" pulls out "+Describe(NewNRef(\$victim, "teeth"), nil, \$victim)+".");
+  EmitIn(\$actor."base:environment", "One by "+Describe(\$actor)+" you pulls out "+Describe(NewNRef(\$victim, "teeth"))+".", \$actor, \$victim);
+\} else \{
+  EmitTo(\$actor, "One by one you pull out "+Describe(\$victim)+"'s teeth.");
+  EmitTo(\$victim, "One by one "+Describe(\$actor)+" pulls out your teeth.");
+  EmitIn(\$actor."base:environment", "One by "+Describe(\$actor)+" pulls out "+Describe(\$victim)+"'s teeth.", \$actor, \$victim);
+\}
+
+\$victim.detoothed = TRUE;
+
+/* create the removed teeth*/
+\$teeth = Spawn(\$\{Ironclaw:Props:Guild:Constabulary:DeclawedClaws\});
+if(\$teeth) \{
+ \$teeth."base:environment" = \$actor;
+ if(!\$teeth."base:environment") \{
+  Slay(\$teeth);
+ \} else \{
+  \$teeth.victimname = capitalize(Str(\$victim."skotos:charname"));
+  \$teeth.animal = \$victim."trait:animal";
+  \$teeth.type = \$victim."appearance:teeth";
+  if(!\$teeth.type) \$teeth.type = "teeth";
+  \$teeth.singtype = \$victim."appearance:teeth"[0..strlen(\$victim."appearance:teeth")-2];
+  Set(\$teeth, "details:default:adjective:"+\$teeth.singtype, 1);
+  Set(\$teeth, "details:default:adjective:"+\$teeth.type, 1);
+
+  Set(\$teeth, "details:default:adjective:"+Str(\$victim."skotos:charname"), 1);
+  Set(\$teeth, "details:default:adjective:"+Str(\$victim."skotos:charname")+"s", 1);
+ \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:expired_detooth">
+         X[M] \$victim = \$par["victim"];
+EmitTo(\$actor, "Your request to remove teeth from "+Describe(\$victim)+" has expired.");
+EmitTo(\$victim, "The request to remove your teeth has expired.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:no_detooth">
+         X[M] \$victim = \$par["victim"];
+EmitTo(\$actor, Describe(\$victim)+" does not consent to having their teeth removed..");
+EmitTo(\$victim, "You have decided not to consent to having their teeth removed.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:pull-dob-2">
+         X[M] /* detooth someone. yay! */
+
+/* are we detoothing someone? */
+if(!\$dob) return TRUE;
+if(sizeof(\$dob) \> 1) \{
+  EmitTo(\$actor, "You can only remove teeth from one person at a time. Sorry.");
+  return FALSE;
+\}
+
+\$victim = NRefOb(Arr(\$dob)[0]);
+EmitTo(\$actor, "Requesting OOC consent to remove teeth "+Describe(\$victim)+".");
+
+interaction::question(\$actor: \$victim, \$question: "Do you consent to "+Describe(\$actor)+" removing your teeth? NOTE: THIS CANNOT BE UNDONE. "+Describe(\$victim)+" will likely remain without teeth forever more.", \$expires: 80, \$env: "FALSE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "detooth", \$no_fun: "no_detooth", \$expire_fun: "expired_detooth", \$par: ([ "victim": \$victim, "actor": \$actor]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1192452480, "tonyd", "E", 1192452510, "tonyd", "E", 1192452525, "tonyd", "E", 1192452565, "tonyd", "E", 1192453035, "tonyd", "P", 1192453094, "tonyd", "P", 1192453115, "tonyd", "P", 1192453259, "tonyd", "P", 1192453390, "tonyd", "P", 1192453404, "tonyd", "P", 1192453499, "tonyd", "P", 1192453926, "tonyd", "P", 1192454156, "tonyd", "P", 1192454187, "tonyd", "P", 1192454235, "tonyd", "P", 1192454475, "tonyd", "P", 1192454499, "tonyd", "P", 1192454542, "tonyd", "P", 1192454569, "tonyd", "P", 1192454641, "tonyd", "P", 1192454779, "tonyd", "P", 1192454831, "tonyd", "P", 1192454873, "tonyd", "P", 1192454897, "tonyd", "P", 1192454927, "tonyd", "P", 1192454965, "tonyd", "P", 1192454990, "tonyd", "P", 1192455195, "tonyd", "P", 1192455240, "tonyd", "P", 1192455384, "tonyd", "P", 1192455483, "tonyd", "E", 1192457730, "tonyd", "P", 1233982510, "tonyd", "E", 1233982588, "tonyd", "E", 1233984429, "tonyd", "E", 1233987647, "tonyd", "E", 1233988430, "tonyd", "E", 1532489567, "lidiab", "E", 1534383877, "lidiab", "E", 1534383905, "lidiab", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

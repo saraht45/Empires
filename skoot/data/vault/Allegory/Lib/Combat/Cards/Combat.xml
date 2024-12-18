@@ -1,0 +1,1957 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Allegory:Lib:Combat:Cards:Libraries:UrActions)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-post:command%combat">
+         X[M] /* was the verb a combat action? */
+\$debug = nil;
+\$debug = \$actor;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? ACT-POST:COMMAND!");
+
+
+if(!\$actor.combat
+\|\| !\$actor.combat["combatants"]
+\|\| sizeof(\$actor.combat["combatants"]) \< 2) return TRUE;
+
+/* Can only do these if they have a free action */
+if(\$actor."combat:actions" \&\& \$actor."combat:actions" \>= 1) \{
+  switch(\$verb) \{
+  case "focus":
+    if(\$actor."combat:state:focused") \{
+      EmitTo(\$actor, "You are already focused.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    if(\$actor."combat:actions" \< 2) \{
+      EmitTo(\$actor, "You need two free actions to focus properly during combat.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    \$actor."combat:state:focused" = TRUE;
+    /* charge an extra action for focus */
+    \$actor."combat:actions"--;
+    combat::action_complete();
+    return TRUE;
+    break;
+  case "guard":
+    if(\$actor."combat:state:guarding") \{
+      EmitTo(\$actor, "You are already guarding.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    \$actor."combat:state:guarding" = TRUE;
+    combat::action_complete();
+    return TRUE;
+    break;
+  case "rally":
+    return TRUE;
+    if(!\$dob)\{
+      EmitTo(\$actor, "Who do you want to rally?");
+      return TRUE;
+    \}
+    if(sizeof(\$dob) != 1)\{
+      EmitTo(\$actor, "You can only rally one ally at a time.");
+      return TRUE;
+    \}
+    /* Make dice roll to see how effective the rallying was */
+
+    /* If the rallying was successful, remove the afraid state */
+    if(TRUE) \{
+      combat::set_state(\$char: NRefOb(\$dob[0]), \$state: "unafraid");
+    \}
+    combat::action_complete();
+    return TRUE;
+    break;
+  default:
+    return TRUE;
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:attack%ccombat">
+         X[M] /* This allows a player to target standard attacks by using the emote: attack bob's nose */
+if(!\$actor.combat) return TRUE;
+
+if(\$actor.combat["options"]) \{
+  \$found = FALSE;
+  for(\$i=0;!\$found \&\& \$i\<sizeof(\$actor.combat["options"]);\$i++) \{
+    if(\$actor.combat["options"][\$i][0] == "attack") \$found = TRUE;
+  \}
+  if(!\$found) \{
+    EmitTo(\$actor, "You don't have any attack actions available.");
+    return FALSE;
+  \}
+\}
+
+if(Int(\$actor."effect:energy:severity") \>= (Int(\$actor."status:energy-max") - 2)) \{
+ EmitTo(\$actor, "You are way, WAY too tired to continue fighting.");
+ return FALSE;
+\}
+
+Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\}, "attack", \$char: \$actor, \$par: ([
+"taking_action":TRUE,
+"use_target":\$target
+]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:enter%ccombat">
+         X[M] if(\$actor."exit:blocked") \{
+    EmitTo(\$actor, \$actor."exit:blocked");
+    return FALSE;
+\}
+if(\$actor.combat) \{
+  /* They are already in combat */
+
+  /* Can they successfully break from combat? */
+  if(Call(\$\{Allegory:Lib:Combat:Cards:Combat\}, "breakcombat", \$char: \$actor)) return TRUE;
+
+  /* Apparently not... */
+  EmitTo(\$actor, "You cannot leave "+Describe(\$actor."base:environment")+" while in combat.");
+  EmitTo(\$actor, "You can attempt to 'breakcombat' to end the fight. Or you can defeat or be defeated by your opponents.");
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:fight">
+         X[M] if(\$(dob:words)) \{
+    int x;
+    mapping replaceMap;
+    mixed* replace;
+
+    replaceMap = ([ "first":"1st", "second":"2nd", "third":"3rd", "fourth":"4th", "fifth":"5th", "sixth":"6th", "seventh":"7th", "eighth":"8th", "ninth":"9th", "tenth":"10th" ]);
+    replace = map_indices(replaceMap);
+    for(x = 0; x \< sizeof(\$(dob:words)); x++) \{
+        if(member(\$(dob:words)[x], replace)) \{
+            \$(dob:words)[x] = replaceMap[\$(dob:words)[x]];
+        \}
+    \}
+    \$dob = combat::find_target(\$point: implode(\$(dob:words), " "));
+\}
+
+/* start (or join) a fight using the combat system */
+if(!\$dob \|\| !sizeof(\$dob)) \{
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+\}
+
+\$target = NRefOb(\$dob[0]);
+if(!\$target."combat:fightable" \|\| \$target."trait:dead" \|\| \$target."combat:dead") \{
+ EmitTo(\$actor, "You cannot fight "+Describe(\$target, nil, \$actor)+".");
+ return FALSE;
+\}
+
+if(\$actor == \$target) \{
+ EmitTo(\$actor, "You cannot fight yourself.");
+ return FALSE;
+\}
+
+if(Int(\$actor."effect:energy:severity") \>= (Int(\$actor."status:energy-max") - 2)) \{
+ EmitTo(\$actor, "You are way, WAY too tired to continue fighting.");
+ return FALSE;
+\}
+
+if(Int(\$actor."effect:health:severity") \>= (Int(\$actor."status:health-max") - 10)) \{
+ EmitTo(\$actor, "You are way, WAY too injured to continue fighting.");
+ return FALSE;
+\}
+
+if(!\$actor."base:environment"."area:dangerarea" \&\& Int(\$actor."effect:health:severity") \>= (Int(\$actor."status:health-max") - 10)) \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+if(\$actor."base:environment" != \$target."base:environment") \{
+    if(!\$actor."combat:weapon:mainhand" \|\| (\$actor."combat:weapon:mainhand" \&\& !\$actor."combat:weapon:mainhand"."weapon:ranged")) \{
+        EmitTo(\$actor, "You must wield a ranged weapon to fight " + Describe(\$target) + " from here."); 
+        return FALSE;
+    \}
+\}
+
+combat::start_fight_joinfight();
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:load%ccombat">
+         X[M] /* This allows a player to target standard attacks by using the emote: attack bob's nose */
+if(!\$actor.combat) return TRUE;
+
+if(\$actor.combat["options"]) \{
+  \$found = FALSE;
+  for(\$i=0;!\$found \&\& \$i\<sizeof(\$actor.combat["options"]);\$i++) \{
+    if(\$actor.combat["options"][\$i][0] == "load") \$found = TRUE;
+  \}
+  if(!\$found) \{
+    EmitTo(\$actor, "You don't have any attack actions available.");
+    return FALSE;
+  \}
+\}
+
+Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\}, "load", \$char: \$actor, \$par: ([ "taking_action":TRUE ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:pass">
+         X[M] /* passing a turn in combat */
+if(!\$actor \|\| !\$actor.combat) return TRUE;
+
+/* Sanity check that this isn't an emote for RP */
+if(\$dob \|\| \$iob \|\| \$with \|\| \$gait_exit \|\| \$evoke) return TRUE;
+
+return combat::end_turn(\$char: \$actor);
+
+/* return Call(\$\{Allegory:Lib:Combat:Cards:Combat\}, "end_turn", \$char: \$actor); */
+      </Core:Property>
+      <Core:Property property="merry:act-pre:spar">
+         X[M] /* start (or join) a fight using the combat system */
+if(!\$dob) \{
+ EmitTo(\$actor, "Who do you want to spar?");
+ return FALSE;
+\}
+
+\$target = NRefOb(\$dob[0]);
+if(!\$target."combat:fightable" \|\| \$target."trait:dead") \{
+ EmitTo(\$actor, "You cannot spar "+Describe(\$target, nil, \$actor)+".");
+ return FALSE;
+\}
+
+if(\$actor == \$target) \{
+ EmitTo(\$actor, "You cannot spar yourself.");
+ return FALSE;
+\}
+
+if(Int(\$actor."effect:energy:severity") \>= (Int(\$actor."status:energy-max") - 2)) \{
+ EmitTo(\$actor, "You are way, WAY too tired to continue fighting.");
+ return FALSE;
+\}
+
+if(Int(\$actor."effect:health:severity") \>= (Int(\$actor."status:health-max") - 10)) \{
+ EmitTo(\$actor, "You are way, WAY too injured to continue fighting.");
+ return FALSE;
+\}
+
+if(!\$actor."base:environment"."area:dangerarea" \&\& Int(\$actor."effect:health:severity") \>= (Int(\$actor."status:health-max") - 10)) \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+combat::start_fight_joinfight(\$sparring: 1);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:action_complete">
+         X[M] /* The PC has completed a combat action */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? ACTION_COMPLETE!");
+
+
+if(!\$actor."combat:actions") \$actor."combat:actions" = 0;
+
+/* remove one of their actions */
+\$actor."combat:actions"--;
+
+/* Either list remaining actions, or assign actions to someone else */
+::list_actions(\$fighter: \$actor);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:action_rally">
+         X[M] /* Attempt to rally an ally */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? ACTION_RALLY!");
+
+/* Are they just asking if a rally action can be taken? */
+if(\$validcheck) \{
+  /* Cannot rally anyone if you are afraid, berserk, confused, enraged, terrified, or otherwise not in their right mindset */
+  if(\$fighter."combat:state:afraid") return FALSE;
+  if(\$fighter."combat:state:berserk") return FALSE;
+  if(\$fighter."combat:state:confused") return FALSE;
+  if(\$fighter."combat:state:enraged") return FALSE;
+  if(\$fighter."combat:state:terrified") return FALSE;
+  return TRUE;
+\}
+
+/* Can the fighter take a rally action? */
+/* Cannot rally anyone if you are afraid, berserk, confused, enraged, terrified, or otherwise not in their right mindset */
+if(\$fighter."combat:state:afraid") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are afraid.");
+  return FALSE;
+\} else if(\$fighter."combat:state:berserk") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are berserk.");
+  return FALSE;
+\} else if(\$fighter."combat:state:confused") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are confused.");
+  return FALSE;
+\} else if(\$fighter."combat:state:enraged") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are enraged.");
+  return FALSE;
+\} else if(\$fighter."combat:state:terrified") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are terrified.");
+  return FALSE;
+\}
+
+
+if(!\$fighter."combat:actions" \|\| \$fighter."combat:actions" \< 1) \{
+  EmitTo(\$fighter, "You cannot rally your allies at the moment. Wait until some actions have been assigned to you.");
+  combat::action_complete();
+  return FALSE;
+\}
+
+if(!\$dob)\{
+  EmitTo(\$fighter, "Who do you want to rally?");
+  return FALSE;
+\}
+if(sizeof(\$dob) != 1)\{
+  EmitTo(\$fighter, "You can only rally one ally at a time.");
+  return FALSE;
+\}
+
+/* Make dice roll to see how effective the rallying was */
+
+/* If the rallying was successful, remove the afraid state */
+/* EXTENSION: When we add the will attribute, remove the trait:mind attribute! */
+if( ironclaw::roll_dicepool(\$roller: \$fighter, \$skills: (\{ "trait:mind", "trait:will", "leadership" \}), \$rolltype: "target", \$target: 3) \> 0) \{
+  combat::set_state(\$char: NRefOb(\$dob[0]), \$state: "unafraid");
+\} else \{
+  \$adverb = "unsuccessfully";
+\}
+
+combat::action_complete(\$actor: \$fighter);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:assign_actions">
+         X[M] /* Nobody has any combat actions. Assign some */
+object fighter, target;
+int i, sz, highest;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? ASSIGN_ACTIONS!");
+
+if(!\$combatants) return nil;
+/* sanity check, remove nil combatants */
+\$combatants -= (\{ nil \});
+
+EmitTo(\$az, "Choosing combatant");
+
+/* choose a combatant to get actions */
+fighter = nil;
+/*EmitTo(\$actor, "combatants are "+dump_value(\$combatants));*/
+/* pick someone to give actions to */
+while(!fighter) \{
+ /* check we have enough fighters */
+ if(sizeof(\$combatants) \<= 1) \{
+  if(sizeof(\$combatants)) \{
+   if(\$combatants[0].combat["mode"] == "breakcombat") \{
+    EmitTo(\$combatants[0], "You see an opportunity and break from combat.");
+   \} else \{
+    EmitTo(\$combatants[0], "You are the last one standing in the fight.");
+   \}
+   ::remove_from_combat(\$fighter: \$combatants[0]);
+  \}
+  return nil;
+ \}
+
+ /* pick the next fighter */
+ if(\$scriptrunner) \{
+   EmitTo(\$az, "Choosing from "+dump_value(\$combatants));
+   for(i=0;i\<sizeof(\$combatants);i++) \{
+     if(\$combatants[i] == \$scriptrunner) \{
+       if(sizeof(\$combatants) \> i+1) \{
+         fighter = \$combatants[i+1];
+         continue;
+       \} else \{
+         fighter = \$combatants[0];
+       \}
+     \}
+   \}
+ \}
+
+ if(!fighter) \{
+   /* pick a fighter randomly */
+   EmitTo(\$az, "Choosing RANDOMLY from "+dump_value(\$combatants));
+   fighter = \$combatants[random(sizeof(\$combatants))];
+ \}
+
+ EmitTo(\$az, "Assigning actions to "+dump_value(fighter));
+
+ /* sanity check */
+ if(!fighter) break;
+ if(!fighter."base:environment") \{
+  /* check that they are still logged in */
+  EmitTo(\$az, "Not logged in. Removing from combat");
+  ::remove_from_combat(\$fighter: fighter);
+  \$combatants -= (\{ fighter \});
+  fighter = nil;
+  continue;
+ \}
+
+ /* is the fighter trying to break from combat? */
+ if(fighter \&\& fighter.combat["mode"] == "breakcombat") \{
+  /* have they started a new fight? */
+  if(fighter.combat["target"] \|\| fighter.combat["newtarget"]) \{
+   fighter.combat["mode"] = nil;
+  \} else \{
+   \$blockers = (\{\});
+   for(i=0;i\<sizeof(fighter.combat["combatants"]);i++) \{
+    if(fighter.combat["combatants"][i] \&\& fighter.combat["combatants"][i].combat) \{
+     if(fighter.combat["combatants"][i].combat["newtarget"] == fighter \|\|
+       (!fighter.combat["combatants"][i].combat["newtarget"] \&\& NRefOb(fighter.combat["combatants"][i].combat["target"]) == fighter)) \{
+      if(fighter.combat["combatants"][i]."base:environment" == fighter."base:environment")
+       \$blockers \|= (\{ fighter.combat["combatants"][i] \});
+     \}
+    \}
+   \}
+   if(!sizeof(\$blockers)) \{
+    EmitTo(fighter, TAG("You see an opportunity to break from the fight.", "imp"));
+    ::remove_from_combat(\$fighter: fighter);
+    \$combatants -= (\{ fighter \});
+    fighter = nil;
+   \} else \{
+    \$message = "You cannot break from combat while ";
+    if(sizeof(\$blockers) \> 1) \{
+     \$message += Describe(\$blockers)+" are";
+    \} else \{
+     \$message += Describe(\$blockers)+" is";
+    \}
+    \$message += " fighting you.";
+    EmitTo(fighter, \$message);
+   \}
+  \}
+ \}
+
+\}
+
+if(!fighter) return nil;
+
+/* do we have a target? */
+if(fighter.combat["newtarget"]) \{
+ fighter.combat["target"] = fighter.combat["newtarget"];
+ fighter.combat["newtarget"] = nil;
+\}
+
+if(!fighter.combat["target"]) \{
+ target = nil;
+\} else \{
+ target = fighter.combat["target"];
+\}
+
+/* sanity check */
+if(target) \{
+ if(!NRefOb(target)."base:environment") \{
+  ::remove_from_combat(\$fighter: NRefOb(target));
+  target = nil;
+ \} else if(NRefOb(target)."base:environment" != fighter."base:environment") \{
+  target = nil;
+ \} else if(!NRefOb(target).combat \|\| !NRefOb(target).combat["combatants"]) \{
+  target = nil;
+ \}
+\}
+
+/* If they have a script to assign actions */
+if(FindMerry(fighter, "lib", "combat:assign_actions")) \{
+ if(!Call(fighter, "combat:assign_actions"))
+  \$combatants -= (\{ fighter \});
+ return ::assign_actions(\$combatants: \$combatants);
+\} else \{
+  /* no script. Assign actions normally */
+  if(Int(fighter."combat:actions") \>= 0) \{
+    fighter."combat:actions" = 2;
+  \} else \{
+    fighter."combat:actions" = Int(fighter."combat:actions")+2;
+  \}
+
+  /* Recover from reeling */
+  if(fighter.combat["status"]["reeling"]) \{
+    fighter."combat:actions"--;
+    fighter.combat["status"]["reeling"] = nil;
+    EmitTo(fighter, TAG("You are no longer reeling.", "imp"));
+    EmitIn(fighter."base:environment", TAG(Describe(fighter)+" is no longer reeling.", "imp"));
+  \}
+
+
+  /* If they have a script to deal with the actions */
+  if(FindMerry(fighter, "lib", "combat:perform_actions")) \{
+   Call(fighter, "combat:perform_actions");
+  \} else \{
+   /* describe the actions */
+   ::list_actions(\$fighter: fighter, \$target: target);
+
+   /* And now tell all the other combatants to wait their turn */
+   for(i=0;i\<sizeof(\$combatants);i++) \{
+     \$char = \$combatants[i];
+     if(\$char \&\& \$char != fighter) \{
+       EmitTo(\$char, TAG("[OOC: "+Describe(fighter)+" has been assigned combat actions.]", "imp"));
+     \}
+   \}
+  \}
+\}
+return fighter;
+      </Core:Property>
+      <Core:Property property="merry:lib:breakcombat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:breakcombat instead! */
+/* Try to break from the combat */
+int i, j;
+\$az = \$\{Chatters:AE:az:azrael\};
+if(!\$char) \$char = \$actor;
+if(!\$char \|\| !\$char.combat) return FALSE;
+
+/* Get the combat data */
+\$combat_datafile = \$\{Allegory:Lib:Combat:Cards:CombatData\};
+\$combat_data = Get(\$combat_datafile, Str(\$char.combat["id"]));
+if(!\$combat_data) \{
+  /* No data - why are they trying to break from combat? That's strange! */
+  EmitTo(\$az, name(\$char)+" trying to break from combat, but there's no combat_data");
+  /* Clear their combat property (in case they still have it for some reason...) */
+  \$char.combat = nil;
+  return TRUE; /* Return true - if there's no data then they're not in combat anymore. So they've successfully broken from combat */
+\}
+
+/* Is the PC targeting anyone? */
+if(\$char.combat["target"]) \{
+  EmitTo(\$char, "You stop targeting "+Describe(NRefOb(\$char.combat["target"]))+".");
+  if(\$char."base:environment" == \$char.combat["target"]."base:environment") EmitTo(NRefOb(\$char.combat["target"]), Describe(\$char)+" stops targeting you.");
+  if(\$char."base:environment") \{
+    EmitIn(\$char."base:environment", Describe(\$char)+" stops targeting "+Describe(NRefOb(\$char.combat["target"]))+".", \$char, NRefOb(\$char.combat["target"]));
+  \}
+
+  \$op = \$char.combat["target"]; 
+  \$char.combat["target"] = nil;
+ 
+  if(\$op \&\& \$op.combat \&\& \$op.combat["target"] == \$char \&\& \$op."combat:requirement:ranged") \{
+      \$op.combat["target"] = nil;
+  \} 
+\}
+
+/* Is anyone targeting the PC? */
+\$enemies = "";
+for(i=0; i\<sizeof(\$combat_data["combatants"]); i++) \{
+  /* Check if this combatant is targeting the \$char */
+/*  if(\$combat_data["combatants"][i]
+  \&\& \$combat_data["combatants"][i].combat
+  \&\& \$combat_data["combatants"][i].combat["target"]
+  \&\& NRefOb(\$combat_data["combatants"][i].combat["target"]) == \$char
+  \&\& \$combat_data["combatants"][i].combat["fighting_style"] != "ranged") \{
+    if(\$enemies != "") \$enemies += ", ";
+    \$enemies += Describe(\$combat_data["combatants"][i]);
+  \} */
+\}
+
+if(\$enemies != "") \{
+  EmitTo(\$char, "You cannot break from combat while you are being attacked. You are currently being targeted by: "+\$enemies);
+  \$char.combat["breakcombat"] = TRUE;
+  return FALSE;
+\} else \{
+  /* Nobody targeting this PC. Let them break from combat */
+
+  /* Need to end their turn so the next fighter gets their turn... (as we haven't checked whether this PC is currently having their turn - this is easier, end_turn will check that */
+  ::end_turn(\$char: \$char, \$no_loop_trigger: FALSE);
+  ::remove_from_combat(\$fighter: \$char, \$combat_data: \$combat_data);
+\}
+
+/* Were any of the other fighters trying to break from combat, but unable until now? */
+\$delay(0.01, TRUE, "9eb5");
+for(j=0; j\<sizeof(\$combat_data["combatants"]); j++) \{
+  \$fighter = \$combat_data["combatants"][j];
+  if(\$fighter.combat \&\& \$fighter.combat["breakcombat"]) \{
+    /* They were trying to break from combat. Can they? */
+    \$enemies = FALSE;
+    for(i=0; i\<sizeof(\$combat_data["combatants"]); i++) \{
+      /* Check if this combatant is targeting the \$char */
+      if(\$combat_data["combatants"][i]
+      \&\& \$combat_data["combatants"][i].combat
+      \&\& \$combat_data["combatants"][i].combat["target"]
+      \&\& NRefOb(\$combat_data["combatants"][i].combat["target"]) == \$fighter) \{
+        \$enemies = TRUE;
+        break;
+      \}
+    \}
+    if(!\$enemies) \{
+      /* They can now break from combat */
+      \$delay(0.1, TRUE, "f283");
+      \$char = \$fighter;
+      Social(\$\{Chatters:IC:go:gorc\}, "breakcombat");
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight">
+         X[M] /* decide not to breakcombat, and continue the fight */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? CONTINUE_FIGHT!");
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+\$target."breakcombat:decision" = nil;
+
+EmitTo(\$target, "You steady yourself, and get ready to continue fighting.");
+EmitIn(\$target."base:environment", Describe(\$target)+" seems to gather "+\$target."base:possessive"+" wits, and appears ready for combat again.", \$target);
+
+Call(\$\{Allegory:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight_expire">
+         X[M] /* decide not to breakcombat, and continue the fight */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? CONTINUE_FIGHT_EXPIRE!");
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+
+EmitTo(\$target, "You have taken too long to answer the question. We're going to assume you want to break from the fight.");
+if(\$target."base:combat:weapon") \{
+ EmitTo(\$target, "You lower your weapon, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" lowers "+\$target."base:possessive"+" weapon, apparently beaten.", \$target);
+\} else \{
+ EmitTo(\$target, "You raise your hands to yield, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" raises "+\$target."base:possessive"+" hands to yield, apparently beaten.", \$target);
+\}
+
+\$target."breakcombat:decision" = nil;
+::remove_from_combat(\$fighter: \$target);
+
+Call(\$\{Allegory:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight_no">
+         X[M] /* decide not to breakcombat, and continue the fight */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? CONTINUE_FIGHT_NO!");
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+
+if(\$target."base:combat:weapon") \{
+ EmitTo(\$target, "You lower your weapon, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" lowers "+\$target."base:possessive"+" weapon, apparently beaten.", \$target);
+\} else \{
+ EmitTo(\$target, "You raise your hands to yield, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" raises "+\$target."base:possessive"+" hands to yield, apparently beaten.", \$target);
+\}
+
+\$target."breakcombat:decision" = nil;
+::remove_from_combat(\$fighter: \$target);
+
+Call(\$\{Allegory:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:draw_actions">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:draw_actions instead! */
+/* Select up to 5 actions that the PC can do, based on the cards in their hand */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Select the actions available - i.e. the cards in their hand */
+if(!\$char.combat["hand"]) \$char.combat["hand"] = (\{ \});
+\$actions = copy(\$char.combat["hand"]);
+
+/* They may only have 5 actions available */
+while(sizeof(\$actions) \> 5) \{
+  /* Remove random actions until they only have 5 */
+  \$actions[random(sizeof(\$actions))] = nil;
+  \$actions -= (\{ nil \});
+\}
+
+\$char.combat["options"] = \$actions;
+
+return \$actions;
+      </Core:Property>
+      <Core:Property property="merry:lib:draw_card">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:draw_card instead! */
+/* Draw new card (combat option) for the fighter */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Are there any cards left in the deck? */
+if(!sizeof(\$char.combat["deck"])) \{
+  if(random(2))
+    \$char.combat["bonus:attack:endgame"] = Int(\$char.combat["bonus:attack:endgame"]) + 1;
+  else
+    \$char.combat["bonus:damage:endgame"] = Int(\$char.combat["bonus:damage:endgame"]) + 1;
+  \$char.combat["tmp:bonus:endgame"] = TRUE; /* Set this property so we can emote the bonus */
+  return TRUE;
+\}
+
+/* Draw a card */
+i = random(sizeof(\$char.combat["deck"]));
+\$card = \$char.combat["deck"][i];
+
+/* Is this card valid to draw? */
+/* NOT WRITTEN YET */
+
+/* Add card to hand */
+\$char.combat["hand"] += (\{ \$card \});
+/* And remove card from the deck */
+\$char.combat["deck"][i] = nil;
+\$char.combat["deck"] -= (\{ nil \});
+
+/* Does anything happen after adding the card to the hand? */
+/* NOT WRITTEN YET */
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:draw_hand">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:draw_hand instead!
+
+/* Sets up the combat options available to the PC */
+if(!\$char) return FALSE;
+/* Some sanity checking */
+if(!\$char.combat["deck"]) \{
+  ::select_combat_deck(\$char: \$char);
+  return FALSE;
+\}
+/* Are they already holding a hand? */
+if(!\$char.combat["hand"] \|\| \$char.combat["fighting_style"] == "ranged") \{
+  /* Draw five cards (Three starting cards + two drawn cards) */
+  \$char.combat["hand"] = (\{ \});
+
+  /* Check the fighting style */
+  combat::update_fighting_style(\$char: \$char);
+
+  /* Start the hand with the standard attack/aim/guard options */
+
+  if(\$char.combat["fighting_style"] == "ranged") \{
+      if(\$char.combat["target"] \&\& \$char."combat:weapon:mainhand" \&\& \$char."combat:weapon:mainhand"."weapon:ranged") \{
+          \$char.combat["hand"] += (\{ (\{ "attack", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+          \$char.combat["hand"] += (\{ (\{ "focus", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+
+          if(\$char."combat:weapon:mainhand"."weapon:ammo:accepts") \{
+              \$char.combat["hand"] += (\{ (\{ "load", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+          \}
+      \} else \{
+          \$char.combat["hand"] += (\{ (\{ "guard", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+      \}
+  \} else \{
+      \$char.combat["hand"] += (\{ (\{ "attack", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+      \$char.combat["hand"] += (\{ (\{ "focus", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+      \$char.combat["hand"] += (\{ (\{ "guard", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+  \}
+
+  if(\$char.combat \&\& \$char.combat["target"] \&\& NRefOb(\$char.combat["target"])."combat:extra:options") \{
+      \$char.combat["hand"] += NRefOb(\$char.combat["target"])."combat:extra:options";
+  \}
+
+  /* And start them guarding */
+  if(!\$char.combat["status"]) \$char.combat["status"] = ([ ]);
+  \$char.combat["status"]["guarding"] = 1;
+\}
+
+/* Draw remaining two cards */
+::draw_card(\$char: \$char);
+::draw_card(\$char: \$char);
+
+
+if(\$listactions) \{ combat::draw_actions(\$fighter: \$char); combat::list_actions(\$fighter: \$char); \}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:end_turn">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:end_turn instead! */
+/* End the turn for the current PC */
+if(!\$char \|\| !\$char.combat) return FALSE;
+
+/* Get the combat data */
+\$combat_data = combat::datafile(\$id: \$char.combat["id"]);
+if(!\$combat_data) return FALSE;
+
+/* Remove nil entries */
+\$combat_data["combatants"] -= (\{ nil \});
+
+/* Set it to be the next PCs turn */
+\$char.combat["current_turn"] = nil;
+\$char.combat["actions"] = nil;
+if(\$combat_data["currently_acting"] == \$char) \{
+  \$combat_data["currently_acting"] = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$char);
+
+  if(!\$no_loop_trigger) \{
+    /* ... and (almost) immediately call the loop, so we don't have to wait */
+    \$combat_loop_id = \$char.combat["id"]; /* Need to save this into a variable in case they are ending their turn because they're breaking out of combat (in which case the variable will get cleared during the delay, and they might have moved rooms) */
+    \$delay(0.01, TRUE, "a301");
+    ::loop(\$combat_loop_id: \$combat_loop_id);
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_target">
+         X[M] /* 
+  Simulation of a non-raw verb role, so as to be able to figure out one/many objects by in-game specification, such as "all my blue apples" or "george's thirteenth garment" etc. 
+ 
+  Supported syntax = 
+    [all] [[\<target\>'s\|my] [\<object\>'s [...]]] [numeric] [adjective(s)] [sname/pname] [and ...] 
+ 
+  Supported arguments: 
+    \$prime_source: defaults to nil. If set, it will be the environment in which the object(s) will be sought for. 
+ 
+*/ 
+ 
+constant PHASE_PRE = 0; 
+constant PHASE_OBJ = 1; 
+ 
+NRef *targets, *tmp; 
+int numerical, i, j, jsz, sz, all, *res; 
+object source, *list; 
+string det, word, rest, *tpoint, *words, *strings; 
+mapping targetMap;
+ 
+if(!\$point)  return nil; 
+ 
+/* 
+ * Divide by the "and" keyword and resolve each 
+ * individually and add to chain. 
+ */ 
+tpoint = explode( \$point, " and " ); 
+if( sizeof( tpoint ) \> 1 ) \{ 
+    targets = (\{ \}); 
+    for( i = 0; i \< sizeof( tpoint ); i++ )  
+        if( (tmp = ::point(\$point: tpoint[i], \$prime_source: \$prime_source)) ) 
+            targets += tmp; 
+        else 
+            return nil; 
+    return targets; 
+\} 
+ 
+/* 
+ * Divide possessive references. 
+ */ 
+ 
+all = !!\$all; 
+source = nil; 
+ 
+if( !\$prime_source \&\& strlen(\$point)\>4 \&\& \$point[..3] == "all " ) \{ 
+    all = TRUE; 
+    \$point = \$point[4..]; 
+\} 
+ 
+while( sscanf( \$point, "%s'%s", word, rest ) == 2 ) \{ 
+    if( rest[..1] == "s " ) 
+        rest = rest[2..]; 
+    else 
+        rest = rest[1..]; 
+    targets = ::point(\$point: word, \$prime_source: \$prime_source, \$all: all); 
+    if( sizeof( targets ) != 1 ) 
+        return nil; 
+    \$prime_source = NRefOb(targets[0]); 
+    \$point = rest; 
+\} 
+ 
+\$destinations = -1; 
+\$destination = ([ ]); 
+ 
+if( !\$prime_source \&\& strlen(\$point)\>3 \&\& \$point[..2] == "my " ) \{ 
+    \$point = \$point[3..]; 
+    source = \$actor; 
+\} else 
+    source = \$prime_source; 
+ 
+/* 
+ * Find numeric targeting. 
+ */ 
+ 
+words = explode( \$point, " " ); 
+ 
+word = words[0]; 
+sz = strlen(word); 
+ 
+numerical = 0; 
+ 
+if( sz \> 2 \&\& (word[sz-3..] == "1st" \|\| word[sz-3..] == "2nd" \|\| word[sz-3..] == "3rd" \|\| word[sz-2..] == "th") \&\& !common::isnan(\$value: word[..sz-3]) ) \{ 
+    numerical = Int(word[..sz-3]); 
+    words = words[1..];  
+\} 
+ 
+\$adjectives = ([ ]); 
+\$snames = ([ ]); 
+\$pnames = ([ ]); 
+ 
+if( source ) \{ 
+    /* 
+     * Add source inventory to list, including source's details. 
+     */ 
+    list = source."base:inventory"; 
+    sz = sizeof( list ); 
+    for( i = 0; i \< sz; i++ )  
+        ::add_object_to_mapping(\$ob: list[i], \$all_details: list[i] == source); 
+ 
+\} else \{ 
+    /* 
+     * Add actor's inventory to list.  
+     */ 
+    list = \$actor."base:inventory"; 
+    sz = sizeof( list ); 
+    for( i = 0; i \< sz; i++ ) 
+        ::add_object_to_mapping(\$ob: list[i], \$all_details: FALSE); 
+ 
+    /* 
+     * Additionally, add room's inventory to list, including actor details. 
+     */ 
+    list = \$actor."base:environment"."base:inventory"; 
+    sz = sizeof(list); 
+    for(i = 0; i \< sz; i++) 
+        ::add_object_to_mapping(\$ob: list[i], \$all_details: list[i] == \$actor); 
+ 
+    /* 
+     * And room's details. 
+     */ 
+    ::add_object_to_mapping(\$ob: \$actor."base:environment", \$all_details: TRUE); 
+
+    /*
+     * Check for scanned targets
+     */
+    if(\$actor."combat:scanning") \{
+        targetMap = \$actor."combat:scanning:targets";
+        targets = map_indices(targetMap);
+        for(i = 0; i \< sizeof(targets); i++) \{
+            ::add_object_to_mapping(\$ob: targets[i], \$all_details: TRUE);
+        \}
+    \}
+\} 
+ 
+sz = sizeof( words ); 
+ 
+jsz = \$destinations; 
+if( sz \> 1 ) \{ 
+    for( j = 0; j \< jsz; j++ )  
+        if( \$destination[j] ) 
+            if( !\$adjectives[j] )  
+                \$destination[j] = nil; 
+            else  
+                for( i = 0; i \< sz-1; i++ ) \{ 
+                    word = words[i]; 
+                    if( !\$adjectives[j][word] )\{ 
+                        \$destination[j] = nil; 
+                        i = sz-1; 
+                    \} 
+                \} 
+\} 
+ 
+word = words[sizeof(words)-1]; 
+ 
+res = map_indices( \$destination ); 
+jsz = sizeof( res ); 
+ 
+for( j = 0; j \< jsz; j++ )  
+    if( !\$snames[res[j]][word] \&\& !\$pnames[res[j]][word] )\{ 
+        \$destination[res[j]] = nil; 
+    \} 
+ 
+if( numerical ) \{ 
+    \$result = map_values( \$destination ); 
+    if( numerical \> sizeof( \$result ))  
+        return nil; 
+    else  
+        return (\{ \$result[numerical-1] \}); 
+\} 
+ 
+return map_values( \$destination );
+      </Core:Property>
+      <Core:Property property="merry:lib:get_next_player">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_next_player instead! */
+/* This function returns the player who gets the next turn
+Expects:
+\$combat_data - fight data info
+\$currently_acting - the player who is currently having their turn. Can be nil, in which case initiative will be rolled
+*/
+
+int i;
+if(!\$combat_data) return nil;
+
+\$combatants = Arr(\$combat_data["combatants"]);
+\$combatants -= (\{ nil \});
+
+/* SANITY CHECK - remove combatants that are no longer fighting.
+THIS SHOULD NOT BE NECESSARY, BUT IT IS FOR SOME REASON! */
+for(i=0;i\<sizeof(\$combatants);i++) \{
+  if(!\$combatants[i].combat) \{
+    \$combat_data["combatants"] -= (\{ \$combatants[i] \});
+    \$combatants -= (\{ \$combatants[i] \});
+  \}
+\}
+\$combatants -= (\{ nil \});
+
+/* Easy situations first. If there are 0 or 1 combatants remaining */
+if(!sizeof(\$combatants)) return nil;
+if(sizeof(\$combatants) == 1) return \$combatants[0];
+
+if(\$currently_acting) \{
+  \$index = index(\$currently_acting, \$combatants);
+  if(\$index != -1) \{
+    /* We found the player in the list */
+    /* Get the index of the next player in the list */
+    \$index++;
+    /* Did we hit the end of the list? */
+    if(\$index \>= sizeof(\$combatants)) \$index = 0;
+    return \$combatants[\$index];
+  \}
+\}
+
+/* We don't know who had the previous turn (maybe it's a new fight?) */
+/* Pick one at random */
+/* EXTENSION - We should make this do some sort of initiative roll to see who goes first */
+/* return \$combatants[random(sizeof(\$combatants))]; */
+
+if(\$attacker \&\& \$attacker."combat:weapon:mainhand" \&\& \$attacker."combat:weapon:mainhand"."weapon:ranged" \|\| (\$attacker.combat["target"] \&\& \$attacker.combat["target"]."combat:requirement:ranged")) \{
+    return \$attacker;
+\} else \{
+    return \$combatants[random(sizeof(\$combatants))];
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:initialize_combat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:initialize_combat instead! */
+/* Sets up the combat options available to the PC */
+
+if(!\$char) return FALSE;
+
+::select_combat_deck(\$char: \$char);
+
+if(\$opponent \&\& !\$char.combat["target"]) \{
+  \$char.combat["target"] = \$opponent;
+\}
+
+::draw_hand(\$char: \$char, \$listactions: \$listactions);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:list_actions">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:list_actions instead! */
+/* list combat actions */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+if(!\$char.combat["actions"] \|\| \$char.combat["actions"] \< 1) /* No actions remaining (how did this happen?) - end the turn */
+  return ::end_turn(\$char: \$char);
+
+\$combat_data = combat::datafile(\$id: \$char.combat["id"]);
+
+/* Are they still in combat? */
+if(!\$combat_data \|\| !\$char.combat) return ::end_turn(\$char: \$char);
+
+/* If they've won the fight. Pass this turn to let that trigger */
+if(sizeof(\$combat_data["combatants"]) \<= 1) return ::end_turn(\$char: \$char);
+
+/* Do they still have a target? */
+if(\$char.combat["target"]) \{
+  if(!\$char.combat["target"].combat
+/*  \|\| NRefOb(\$char.combat["target"])."base:environment" != \$char."base:environment" */
+  \|\| NRefOb(\$char.combat["target"]).combat["id"] != \$char.combat["id"]) \{
+    \$char.combat["target"] = nil;
+  \}
+\}
+
+if(!\$char.combat["options"] \|\| !sizeof(\$char.combat["options"])) \{
+  EmitTo(\$char, TAG("You have no actions available to take during this fight. You probably want to pass.", "Imp"));
+
+  if(FindMerry(\$char, "lib", "take_combat_actions")) \{
+    \$result = Call(\$char, "take_combat_actions", \$char: \$char, \$par: ([ ]));
+    if(\$result == -1 \|\| !\$result) ::end_turn(\$char: \$char);
+  \} 
+  return FALSE;
+\}
+
+/* Delay for a moment, so this comes after the emotes for the previous turn ending (or whatever) */
+\$delay(0.01, TRUE, "cf9e");
+
+if(FindMerry(\$char, "lib", "take_combat_actions")) \{
+  \$result = Call(\$char, "take_combat_actions", \$char: \$char, \$par: ([ ]));
+  if(\$result == -1) \{
+    /* Returning -1 from this script means we need to offer the actions to them like we do for a normal PC */
+  \} else if (\$result) \{
+    /* Returning TRUE means the NPC has completed their action. Since they completed it, we don't need to charge actions */
+    return TRUE;
+  \} else if (!\$result) \{
+    /* Returning FALSE means the NPC has not completed their action. We should charge actions like usual */
+    ::charge_action(\$char: \$char);
+    return TRUE;
+  \}
+\}
+ 
+
+\$par = nil; 
+if(!\$char.combat) return TRUE;
+if(!\$char.combat["options"]) return TRUE;
+
+\$actions = copy(\$char.combat["options"]);
+\$turn_id = random(1000000000);
+\$params = ([ "char":\$char, "taking_action":TRUE, "turn_id":\$turn_id ]);
+\$actions -= (\{ nil \});
+
+for(i=0;i\<sizeof(\$actions);i++) \{
+  /* Check if this action is currently valid  */
+  \$valid = Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE);
+
+  /* Get a description of the action */
+  if(sizeof(\$actions[i]) \>= 2) \{
+    if(\$valid)
+      \$actions[i] += (\{ capitalize(Str(Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$description: TRUE))) \});
+    else
+      \$actions[i] += (\{ TAG(capitalize(Str(Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$description: TRUE))), "evoke:first") \});
+
+  \}
+\}
+
+while(sizeof(\$actions) \< 5) \$actions += (\{ (\{ nil, nil, nil \}) \});
+
+\$expire_time = 60*2;
+\$char.combat["current_turn"] = time()+\$expire_time; /* Sets the turn to expire at the same time the question expires */
+
+if(\$char.combat["actions"] == 1) \$actions_text = "1 action";
+else \$actions_text = Str(\$char.combat["actions"])+" actions";
+
+interaction::question(\$actor: \$char, \$question: "What action do you want to take? You have "+\$actions_text+" remaining.", \$expires: \$expire_time, \$env: "TRUE", \$a: \$actions[0][2], \$a_ob: \$actions[0][1], \$a_fun: \$actions[0][0], \$b: \$actions[1][2], \$b_ob: \$actions[1][1], \$b_fun: \$actions[1][0], \$c: \$actions[2][2], \$c_ob: \$actions[2][1], \$c_fun: \$actions[2][0], \$d: \$actions[3][2], \$d_ob: \$actions[3][1], \$d_fun: \$actions[3][0], \$e: \$actions[4][2], \$e_ob: \$actions[4][1], \$e_fun: \$actions[4][0], \$expire_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$expire_fun: "question_expire", \$par: \$params);
+
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:loop">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:loop instead! */
+/* combat loop */
+int i, j, k;
+string *indices;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "Started loop");
+
+if(!\$combat_loop_id) return TRUE;
+\$combat_datafile = \$\{Allegory:Lib:Combat:Cards:CombatData\};
+\$combat_data = combat::datafile(\$id: \$combat_loop_id);
+if(!\$combat_data) return FALSE;
+\$loop_id = Int(\$combat_data["loop_id"])+1;
+\$combat_data["loop_id"] = \$loop_id;
+
+while(TRUE) \{
+
+  /* Do we need this? */
+  \$combat_data = combat::datafile(\$id: \$combat_loop_id);
+  if(!\$combat_data) return TRUE;
+
+  /* Remove any nil combatants */
+  \$combat_data["combatants"] -= (\{ nil \});
+
+  /* Is this the current loop, or have we started a new one? */
+  if(\$loop_id != \$combat_data["loop_id"]) return TRUE;
+
+  \$currently_acting = \$combat_data["currently_acting"];
+
+  if(!\$currently_acting) \{
+    EmitTo(\$az, "We don't have a current actor. Pick a new one.");
+    EmitTo(\$az, dump_value(\$combat_data));
+    \$currently_acting = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$currently_acting);
+    EmitTo(\$az, "Chose "+dump_value(\$currently_acting));
+    if(!\$currently_acting) \{
+      /* Couldn't find a player to take a turn. I guess the fight is over? */
+      EmitTo(\$az, "No more PCs. Ending the fight.");
+      Set(\$combat_datafile, \$combat_loop_id, nil);
+      return TRUE;
+    \}
+  \}
+  if(\$currently_acting)
+    \$combat_data["currently_acting"] = \$currently_acting;
+
+ 
+  if(\$currently_acting \&\& !\$currently_acting."base:environment") \{
+    /* They aren't in the room anymore. Possibly they logged out or got disconnected? */
+    EmitTo(\$az, Describe(\$currently_acting)+" seems to be logged out");
+    \$combat_data["currently_acting"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    continue;
+ /* \} else if(\$currently_acting \&\& \$currently_acting."base:environment" != \$combat_data["location"]) \{ */
+    /* They are in a different room. I guess they escaped the fight somehow. */
+ /*   EmitTo(\$az, Describe(\$currently_acting)+" has moved rooms");
+    \$combat_data["currently_acting"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    continue; */
+  \} else if(\$currently_acting \&\& !\$currently_acting.combat) \{
+    /* No longer fighting?!!! */
+    \$combat_data["currently_acting"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    continue;
+  \} else if(\$currently_acting \&\& \$currently_acting.combat["id"] != \$combat_loop_id) \{
+    /* They are in a different fight. */
+    EmitTo(\$az, Describe(\$currently_acting)+" has changed fights");
+    EmitTo(\$az, dump_value(\$currently_acting.combat));
+    \$combat_data["currently_acting"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    continue;
+  \}
+
+ 
+  /* Sanity checking */
+  /* We should probably find out why this isn't always set, so we don't need this */
+  if(!\$currently_acting.combat["status"]) \$currently_acting.combat["status"] = ([ ]);
+
+
+  EmitTo(\$az, "OK. So it's "+dump_value(\$currently_acting)+"'s turn");
+  /* Have they won the fight? */
+  if(sizeof(\$combat_data["combatants"]) \<= 1) \{
+    EmitTo(\$currently_acting, "There you stand, the final fighter, triumphant.");
+    if(\$currently_acting."base:environment")
+      EmitIn(\$currently_acting."base:environment", Describe(\$currently_acting)+" is the last fighter left standing.", \$currently_acting);
+    ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    Set(\$combat_datafile, \$combat_loop_id, nil);
+    return FALSE;
+  \} else if(!sizeof(\$combat_data["combatants"])) \{
+    Set(\$combat_datafile, \$combat_loop_id, nil);
+    return FALSE;
+  \} 
+
+  /* Have they already started their turn already? */
+  if(!\$currently_acting.combat["current_turn"]) \{
+    /* STARTING TURN */
+EmitTo(\$az, "Starting turn"); 
+    for(i=0;i\<sizeof(Arr(\$combat_data["combatants"]));i++) \{
+      if(\$combat_data["combatants"][i] \&\& \$combat_data["combatants"][i] != \$currently_acting) \{
+        if(\$currently_acting \&\& \$currently_acting.combat["fighting_style"] != "ranged") \{ 
+            EmitTo(\$combat_data["combatants"][i], TAG("Starting turn for "+Describe(\$currently_acting)+".", "imp"));
+        \} else \{ 
+            if(\$currently_acting \&\& \$currently_acting.combat["target"] \&\& \$currently_acting.combat["target"].combat["target"]) \{
+                EmitTo(\$combat_data["combatants"][i], TAG("Starting turn for "+Describe(\$currently_acting)+".", "imp"));
+            \}
+        \} 
+      \}
+    \}
+
+    /* Remove any statuses that have expired (and reduce the rest by 1 round) */
+    indices = map_indices(\$currently_acting.combat["status"]);
+    for(i=0;i\<sizeof(indices);i++) \{
+      if(\$currently_acting.combat["status"][indices[i]] \> 1) \{
+        /* Reduce the number of rounds remaining by 1 */
+        \$currently_acting.combat["status"][indices[i]]--;
+      \} else if(\$currently_acting.combat["status"][indices[i]] \>= 0) \{
+        /* No rounds remaining, remove this status */
+        EmitTo(\$currently_acting, TAG("You are no longer "+indices[i]+".", "imp"));
+        \$currently_acting.combat["status"][indices[i]] = nil;
+      \}
+    \}
+
+    \$currently_acting.combat["current_turn"] = time()+60*2-5; /* Turn expires in 2 minutes of no activity */
+    \$currently_acting.combat["actions"] = 2; /* A typical turn gives 2 actions. */
+
+    /* If they're reeling, that uses up one of their actions */
+    if(\$currently_acting.combat["status"]["reeling"]) \{
+      \$currently_acting.combat["actions"]--;
+      \$currently_acting.combat["status"]["reeling"] = nil;
+      EmitTo(\$currently_acting, TAG("You are no longer reeling.", "imp"));
+    \}
+
+    /* If they want to guard someone, that uses up one of their actions */
+    if(\$currently_acting.combat["to_guard"] \&\& \$currently_acting.combat["to_guard"] == \$currently_acting.combat["guarding"])
+      \$currently_acting.combat["to_guard"] = nil;
+    if(\$currently_acting.combat["actions"]
+    \&\& \$currently_acting.combat["to_guard"]) \{
+      /* Remove the previous PC that you were guarding */
+      if(\$currently_acting.combat["guarding"]
+      \&\& \$currently_acting.combat["guarding"].combat
+      \&\& \$currently_acting.combat["guarding"].combat["guarded_by"]) \{
+        \$currently_acting.combat["guarding"].combat["guarded_by"] -= (\{ \$currently_acting \});
+      \}
+
+      \$currently_acting.combat["guarding"] = \$currently_acting.combat["to_guard"];
+      if(!\$currently_acting.combat["to_guard"].combat["guarded_by"]) \$currently_acting.combat["to_guard"].combat["guarded_by"] = (\{ \});
+      \$currently_acting.combat["to_guard"].combat["guarded_by"] \|= (\{ \$currently_acting \});
+
+      EmitTo(\$currently_acting, "You move protectively in front of "+Describe(\$currently_acting.combat["to_guard"])+".");
+      EmitTo(\$currently_acting.combat["to_guard"], Describe(\$currently_acting)+" moves protectively in front of you.");
+      EmitIn(\$currently_acting."base:environment", Describe(\$currently_acting)+" moves protectively in front of "+Describe(\$currently_acting.combat["to_guard"])+".", \$currently_acting, \$currently_acting.combat["to_guard"]);
+
+      \$currently_acting.combat["to_guard"] = nil;
+      \$currently_acting.combat["target"] = nil;
+
+
+
+      /* Charge actions. If there's more than 1, just reduce it. If there's only 1, trigger the charge action script */
+      if(\$currently_acting.combat["actions"] \> 1)
+        \$currently_acting.combat["actions"]--;
+      else \{
+        combat::charge_action(\$char: \$currently_acting);
+        continue;
+      \}
+    \}
+
+    /* And draw 2 cards */
+    if(\$currently_acting.combat["hand:redraw"]) \{ /* Don't draw cards if this is their first turn since drawing their hand */
+      \$currently_acting.combat["hand:redraw"] = nil;
+    \} else \{
+      ::draw_card(\$char: \$currently_acting);
+      ::draw_card(\$char: \$currently_acting);
+    \}
+    /* Now list their actions */
+    ::draw_actions(\$char: \$currently_acting);
+    ::list_actions(\$char: \$currently_acting);
+  \} else \{
+    if(\$currently_acting.combat["actions"] \<= 0) \{
+      /* They've used both their actions already */
+      \$combat_data["currently_acting"] = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$currently_acting);
+      continue;
+    \}
+  \}
+
+  if(\$currently_acting.combat
+  \&\& \$currently_acting.combat["current_turn"]
+  \&\& \$currently_acting.combat["current_turn"] \< time()) \{
+    /* Turn has expired. Next player's turn */
+    ::end_turn(\$char: \$currently_acting, \$no_loop_trigger: TRUE);
+    \$delay(1, TRUE, "5c06");
+  \} else \{
+    \$delay(60*5, TRUE, "LOOP");
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question_expire">
+         X[M] /* Waited for a response. Question has expired */
+/* Are they still in combat? */
+if(!\$actor \|\| !\$actor.combat) return FALSE;
+
+/* Does the turn expiry match this script? */
+/* \$actor.combat["current_turn"] should be equal to time() - give or take a few seconds for lag */
+if(Int(\$actor.combat["current_turn"]) \> time()+1 \|\| !\$actor.combat["current_turn"]) \{
+  /* The current turn timer has been reset since this question was asked */
+  return TRUE;
+\}
+
+/* Expire the question, let the player know their turn is over, and move onto the next combatant */
+EmitTo(\$actor, "You have taken too long to choose. Your turn is now over.");
+::end_turn(\$char: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_from_combat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:remove_from_combat instead! */
+/* remove a fighter from combat */
+/* Expects: */
+/* \$combat_data - fight data */
+/* \$fighter - fighter that is no longer fighting */
+
+object next;
+
+if(!\$fighter) return nil;
+\$fighter = NRefOb(\$fighter);
+
+\$combat_data = combat::datafile(\$char: \$fighter);
+if(!\$combat_data) return nil;
+
+next = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$fighter);
+\$fighter.combat = nil;
+\$combat_data["combatants"] -= (\{ \$fighter \});
+
+/* remove states that shouldn't last between combats */
+
+/* and to clear up old code... */
+if(\$fighter != \$\{Chatters:AE:az:azrael\}
+\&\& \$fighter != \$\{Chatters:IC:go:gorc\}
+\&\& \$fighter != \$\{Chatters:IC:pi:pic\}) \{
+  \$fighter."merry:inherit:act-pre:breakcombat" = nil;
+  \$fighter."merry:inherit:act-pre:fight" = nil;
+  \$fighter."merry:inherit:act-pre:pass" = nil;
+\}
+
+\$combat_data = combat::datafile(\$char: next);
+
+\$delay(0.01, FALSE, "4580");
+
+if(!\$fighter."combat:dead") \$fighter."nip:trait:movement:frequency" = nil;
+
+return next;
+      </Core:Property>
+      <Core:Property property="merry:lib:select_combat_deck">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:select_combat_deck instead! */
+/* Sets up the combat options available to the PC */
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* For now just give everyone the same deck */
+\$deck = (\{ \});
+/*\$deck += (\{ (\{ "shield bash", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+\$deck += (\{ (\{ "twohanded strike", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});*/
+
+/* Can they sneak attack? */
+/*
+if(Int(\$char."skill:combat:sneakattack")+Int(\$char."career:combat:sneakattack"))
+    \$deck += (\{ (\{ "sneak attack", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+*/
+
+/* Allow barstool brawl? */
+if(\$char."base:environment"."combat:options:barstool_brawl:name") \{
+    \$deck += (\{ (\{ "barstool smash", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+    \$deck += (\{ (\{ "barstool smash", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+    \$deck += (\{ (\{ "barstool smash", \$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+\}
+
+\$char.combat["deck"] = \$deck;
+\$char.combat["hand:redraw"] = TRUE;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_reeling">
+         X[M] /* Set this as PC reeling */
+if(!\$char \|\| !\$char.combat) return FALSE;
+
+if(!\$char.combat["status"]["reeling"]) \{
+  \$char.combat["status"]["reeling"] = -1;
+  EmitTo(\$char, TAG("You are now reeling.", "imp"));
+  if(\$notify)
+    EmitTo(\$notify, TAG(Describe(\$char)+" is sent reeling.", "imp"));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_state">
+         X[M] /* Set a combat status in a PC */
+if(!\$state \|\| typeof(\$state) != T_STRING) error("Unknown state passed with character "+dump_value(\$char));
+if(!\$char \|\| typeof(\$char) != T_OBJECT) error("Unknown \$char passed for state "+Str(\$state));
+/* Also possibly expect \$description */
+
+if(lower_case(\$state) == "reeling") \{
+  if(!NRefOb(\$char)."combat:state:reeling") \{
+    NRefOb(\$char)."combat:state:reeling" = TRUE;
+    if(\$description)
+      Social(\$char, "reel");
+  \}
+\} else if(lower_case(\$state) == "dead") \{
+  if(FindMerry( NRefOb(\$target), "lib", "combat:dead"))
+    if(!Call(NRefOb(\$target), "combat:dead")) return TRUE;
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been killed.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" has been killed.", \$char);
+  \}
+
+  Act(NRefOb(\$target), "nip/die");
+  Call(\$\{Allegory:Lib:Characters:Death\}, "die", \$victim: NRefOb(\$target));
+
+  if(!NRefOb(\$char)."combat:state:dead")
+    NRefOb(\$char)."combat:state:dead" = TRUE;
+  combat::remove_from_combat(\$fighter: NRefOb(\$target), \$description: FALSE);
+\} else if(lower_case(\$state) == "dying") \{
+  if(FindMerry( NRefOb(\$target), "lib", "combat:dying"))
+    if(!Call(NRefOb(\$target), "combat:dying")) return TRUE;
+
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:dying", \$value: TRUE, \$timer: 60*60*4);
+  /* Dying also makes you injured and hurt */
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:injured", \$value: TRUE, \$timer: 60*60*24*3);
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You are dying! Seek medical assistance.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to be dying.", \$char);
+  \}
+  combat::remove_from_combat(\$fighter: NRefOb(\$target), \$description: FALSE);
+\} else if(lower_case(\$state) == "injured") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:injured", \$value: TRUE, \$timer: 60*60*24*3);
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24); /* Injuries also make you hurt */
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been seriously injured", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to have been seriously injured.", \$char);
+  \}
+\} else if(lower_case(\$state) == "hurt") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been significantly hurt.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to have been significantly hurt.", \$char);
+  \}
+\} else if(lower_case(\$state) == "afraid") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:afraid", \$value: TRUE, \$timer: 60*60*4);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have become afraid.", "imp"));
+    EmitTo(\$char, "[OOC: You now take a penalty on all attacks until the fight ends, or an ally rallies you.]");
+  \}
+\} else if(lower_case(\$state) == "unafraid") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:afraid", \$value: nil, \$timer: 60*60*4);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You are no longer afraid.", "imp"));
+  \}
+\} else if(lower_case(\$state) == "overkilled") \{
+  /* NOT IMPLEMENTED YET */
+\} else \{
+  error("Unknown state "+Str(\$state)+" for "+dump_value(\$char)+".");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_error_noaction">
+         X[M] /* used by combat objects to display an error message saying they can't do an action */
+if(!\$actor) return FALSE;
+if(!\$victim) return FALSE;
+if(!\$action) return FALSE;
+
+if(!\$actor.combat \|\| (NRefOb(\$actor.combat["target"]) != \$victim \&\& \$actor.combat["newtarget"] != \$victim) ) \{
+  EmitTo(\$actor, "You must fight "+Describe(\$victim)+" before you can "+Str(\$action)+" "+\$victim."base:objective"+".");
+\} else \{
+  EmitTo(\$actor, "You must wait for your turn before you can "+Str(\$action)+" "+Describe(\$victim)+".");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:start_fight instead! */
+/* start (or join) a fight using the combat system */
+\$combat_datafile = \$\{Allegory:Lib:Combat:Cards:CombatData\};
+\$az = \$\{Chatters:AE:az:azrael\};
+
+if(!\$attacker) \$attacker = \$actor;
+if(\$par \&\& \$par["attacker"])
+  \$attacker = \$par["attacker"];
+
+if(!\$target \&\& \$par) \$target = \$par["target"];
+if(!\$target) \{
+ /* Maybe they're joining the fight in a support role, and don't have a target? e.g. guarding someone */
+ /*
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+ */
+\}
+
+if(!\$attacker.combat) \$attacker.combat = ([ "status":([ ]) ]);
+if(\$target \&\& !\$target.combat) \$target.combat = ([ "status":([ ]) ]);
+
+if(\$sparring) \{
+    \$target.combat["sparring"] = 1;
+    \$attacker.combat["sparring"] = 1;
+\} else \{
+    \$target.combat["sparring"] = nil;
+    \$attacker.combat["sparring"] = nil;
+\}
+
+/* They just picked a target. They are no longer trying to break from combat */
+\$attacker.combat["breakcombat"] = nil;
+
+if(\$target \&\& \$attacker.combat["guarding"]) \{
+  if(\$target
+  \&\& \$attacker.combat["guarding"]
+  \&\& \$attacker.combat["guarding"].combat
+  \&\& \$attacker.combat["guarding"].combat["guarded_by"]) \{
+    \$attacker.combat["guarding"].combat["guarded_by"] -= (\{ \$attacker \});
+  \}
+  EmitTo(\$attacker, "You are no longer guarding "+Describe(\$attacker.combat["guarding"])+".");
+  \$attacker.combat["guarding"] = nil;
+\}
+
+if(\$target \&\& \$attacker.combat["id"] \&\& \$target.combat["id"] \&\& \$attacker.combat["target"]) \{
+  /* Both the attacker and defender are already fighting */
+  /* They are already in the same fight. Are they requesting to change targets? */
+  if(\$attacker.combat \&\& \$attacker.combat["target"] \&\& NRefOb(\$attacker.combat["target"]) == \$target) \{
+    EmitTo(\$attacker, "You are already fighting "+Describe(\$target)+".");
+    return FALSE;
+  \}
+
+  \$combat_datafile = \$\{Allegory:Lib:Combat:Cards:CombatData\};
+  \$combat_data = Get(\$combat_datafile, \$attacker.combat["id"]);
+
+  if(\$combat_data["currently_acting"] == \$attacker) \{
+    /* It's their turn, they're allowed to change targets */
+    EmitTo(\$attacker, "You switch targets to fight "+Describe(\$target)+".");
+    if(\$target."base:environment" == \$attacker."base:environment") EmitTo(\$target, Describe(\$attacker)+" begins to fight you.");
+    if(\$target."base:environment" == \$attacker."base:environment") EmitIn(\$attacker."base:environment", Describe(\$attacker)+" switches attention and begins to fight "+Describe(\$target)+".", \$attacker, \$target);
+    \$attacker.combat["target"] = \$target;
+    if(!\$target.combat["target"]) \{
+      \$target.combat["target"] = \$attacker;
+      EmitTo(\$target, "You prepare to defend yourself from "+Describe(\$attacker)+".");
+      EmitTo(\$attacker, Describe(\$target)+" prepares to defend "+\$target."base:objective"+"self from you.");
+      EmitIn(\$attacker."base:environment", Describe(\$target)+" prepares to defend "+\$target."base:objective"+"self from "+Describe(\$attacker)+".", \$attacker, \$target);
+    \}
+    ::list_actions(\$char: \$attacker);
+  \} else \{
+    /* Not their turn. They can change on their next turn */
+    EmitTo(\$attacker, "You will switch targets to fight "+Describe(\$target)+" at the start of your next turn.");
+  \}
+  return FALSE;
+\} else if(\$target) \{
+  if(\$sparring) \{
+      EmitTo(\$attacker, "You begin to spar "+Describe(\$target)+".");
+      if(\$target."base:environment" == \$attacker."base:environment") EmitTo(\$target, Describe(\$attacker)+" begins to spar you.");
+      if(\$target."base:environment" == \$attacker."base:environment") EmitIn(\$attacker."base:environment", Describe(\$attacker)+" begins to spar "+Describe(\$target)+".", \$attacker, \$target);
+  \} else \{
+      EmitTo(\$attacker, "You begin to fight "+Describe(\$target)+".");
+      if(\$target."base:environment" == \$attacker."base:environment") EmitTo(\$target, Describe(\$attacker)+" begins to fight you.");
+      if(\$target."base:environment" == \$attacker."base:environment") EmitIn(\$attacker."base:environment", Describe(\$attacker)+" begins to fight "+Describe(\$target)+".", \$attacker, \$target);
+  \}
+
+  if(\$attacker.combat["id"]) \{
+    /* The attacker is already in a fight */
+    \$target.combat["id"] = \$attacker.combat["id"];
+
+    if(\$attacker.combat["target"]) \{
+        if(\$target."base:environment" == \$attacker."base:environment") \{
+            ::initialize_combat(\$char: \$target, \$opponent: \$attacker);
+        \} else \{
+            ::initialize_combat(\$char: \$target, \$opponent: \$attacker, \$ranged: 1, \$listactions: 1);
+        \}
+    \} else \{
+        \$attacker.combat["target"] = \$target;
+        if(\$target."base:environment" == \$attacker."base:environment") \{
+            ::initialize_combat(\$char: \$attacker, \$opponent: \$target);
+        \} else \{
+            \$attacker.combat["hand"] = nil;
+            \$attacker.combat["options"] = nil;
+            ::initialize_combat(\$char: \$attacker, \$opponent: \$target, \$ranged: 1, \$listactions: 1);
+        \}
+    \}
+  \} else if(\$target.combat["id"]) \{
+    /* The defender is already in a fight */
+    \$attacker.combat["id"] = \$target.combat["id"];
+    ::initialize_combat(\$char: \$attacker, \$opponent: \$target);
+  \} else \{
+    /* Neither the attacker nor the defender is in the fight? */
+    \$attacker.combat["id"] = name(\$attacker."base:environment");
+    \$target.combat["id"] = \$attacker.combat["id"];
+    ::initialize_combat(\$char: \$attacker, \$opponent: \$target);
+
+    if(\$target."base:environment" == \$attacker."base:environment") 
+        ::initialize_combat(\$char: \$target, \$opponent: \$attacker);
+    else
+        ::initialize_combat(\$char: \$target, \$opponent: \$attacker, \$ranged: 1);
+  \}
+\} else \{
+  /* No target. Are they joining as a support role? */
+  \$attacker.combat["id"] = name(\$attacker."base:environment");
+  ::initialize_combat(\$char: \$attacker, \$opponent: nil);
+\} 
+/* Add these PCs to the list of combatants */
+\$data = Get(\$combat_datafile, \$attacker.combat["id"]);
+if(!\$data) \{
+  \$data = ([ "combatants":(\{ \}), "location":\$attacker."base:environment" ]);
+  Set(\$combat_datafile, \$attacker.combat["id"], \$data);
+\}
+ 
+if(\$target)
+    \$data["combatants"] \|= (\{ \$attacker, \$target \});
+else
+    \$data["combatants"] \|= (\{ \$attacker \});
+
+/* And start the fight, if needed */
+::loop(\$combat_loop_id: \$attacker.combat["id"]);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_joinfight">
+         X[M] /* Trying to start or join in a fight */
+
+/* Sanity check */
+if(!\$actor."base:environment") return FALSE;
+
+/* If they are in a danger zone, then they don't get asked if they want to fight or not. They have no choice. */
+if(\$actor."base:environment"."area:dangerarea") \{
+ combat::start_fight_victimcheck();
+ return FALSE;
+\}
+
+/* if they're already fighting, don't ask about injuries */
+if(\$actor.combat \&\& \$actor.combat["combatants"] \&\& sizeof(\$actor.combat["combatants"]) \> 1) \{
+ combat::start_fight_victimcheck();
+ return FALSE;
+\}
+
+/* If they are an NPC, don't ask them any questions. */
+if(!\$actor."udat:object") \{
+ combat::start_fight_victimcheck(\$sparring: \$sparring);
+ return FALSE;
+\}
+
+/* If they have already used their gift that stops them dying, warn them that they might die */
+/* NOT WRITTEN YET */
+
+/* If they're already quite injured, let them know that they risk further injuries */
+if(Int(\$actor."effect:health:severity") \>= Int(Int(\$actor."status:health-max")/2)) \{
+  /* warn that they're risking long term injuries and death */
+  interaction::question(\$actor: \$actor, \$question: "You are already quite injured. If you continue to fight, you risk suffering a long term injury, or possibly death. Are you sure you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$yes_fun: "start_fight_victimcheck", \$no: "", \$expire: "", \$par: ([ "target":\$target]));
+  return FALSE;
+\}
+
+combat::start_fight_victimcheck(\$sparring: \$sparring);
+
+return FALSE;
+
+
+
+
+if(!\$target \&\& \$par) \$target = \$par["target"];
+if(!\$target) \{
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+\}
+
+/* If they are dead, they can't fight */
+if(\$target."combat:state:dead") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* if they aren't possessed (i.e. an NPC) don't ask for consent */
+if(!\$target."udat:object") \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* are they able to fight? */
+
+/* If they are in a danger zone, then they don't get asked if they want to fight or not. They have no choice. */
+if(\$target."base:environment"."area:dangerarea") \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* Dying, and not in a danger zone */
+if(!\$target."base:environment"."area:dangerarea"
+\&\& \$target."combat:state:dying") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* If they're already quite injured, let them know that they risk further injuries */
+if(\$actor."combat:state:injured") \{
+ /* warn that they're risking permanent injuries and death */
+ interaction::question(\$actor: \$target, \$question: Describe(\$actor)+" is attempting to attack you, however you are extremely tired. If you choose to fight you risk suffering a long term injury, or death. Do you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$no_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$expire_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$yes_fun: "start_fight", \$no_fun: "start_fight_victimcheck_no", \$expire_fun: "start_fight_victimcheck_expire", \$par: ([ "attacker":\$actor, "target":\$target]));
+  return FALSE;
+\}
+
+/* No other reasons to ask questions */
+combat::start_fight();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck">
+         X[M] /* Got attacked. Do we get to choose whether to fight? */
+
+if(!\$target \&\& \$par) \$target = \$par["target"];
+if(!\$target) \{
+ /*
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+ */
+ /* No target - maybe they're joining to help, like someone joining to guard? */
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* If they are dead, they can't fight */
+if(Int(\$target."effect:health:severity") \>= (Int(\$actor."status:health-max") - 10)) \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* if they aren't possessed (i.e. an NPC) don't ask for consent */
+if(!\$target."udat:object") \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* are they able to fight? */
+
+/* If they are in a danger zone, then they don't get asked if they want to fight or not. They have no choice. */
+if(\$target."base:environment"."area:dangerarea") \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* Dying, and not in a danger zone */
+if(!\$target."base:environment"."area:dangerarea"
+\&\& \$target."combat:state:dying") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* If they're already quite injured, let them know that they risk further injuries */
+if(Int(\$target."effect:health:severity") \>= Int(Int(\$actor."status:health-max")/2)) \{
+ /* warn that they're risking permanent injuries and death */
+ interaction::question(\$actor: \$target, \$question: Describe(\$actor)+" is attempting to attack you, however you are extremely tired. If you choose to fight you risk suffering a long term injury, or death. Do you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$no_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$expire_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$yes_fun: "start_fight", \$no_fun: "start_fight_victimcheck_no", \$expire_fun: "start_fight_victimcheck_expire", \$par: ([ "attacker":\$actor, "target":\$target]));
+  return FALSE;
+\}
+
+/* No other reasons to ask questions */
+combat::start_fight(\$sparring: \$sparring);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck_expire">
+         X[M] if(\$par \&\& \$par["target"])
+ \$target = \$par["target"];
+if(\$par \&\& \$par["attacker"])
+ \$attacker = \$par["attacker"];
+
+/* if they're already fighting, don't ask about injuries */
+if(NRefOb(\$target).combat \&\& \$target.combat["combatants"] \&\& sizeof(NRefOb(\$target).combat["combatants"]) \> 1) \{
+ /* Call(\$\{Allegory:Lib:Combat:New:Combat\}, "start_fight"); */
+ combat::start_fight();
+ return FALSE;
+\}
+
+EmitTo(\$par["attacker"], Describe(NRefOb(\$par["target"]))+" has taken too long to respond to your attack, and as they are injured, we're assuming they are unwilling to keep fighting.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck_no">
+         X[M] if(\$par \&\& \$par["target"])
+ \$target = \$par["target"];
+if(\$par \&\& \$par["attacker"])
+ \$attacker = \$par["attacker"];
+
+/* if they're already fighting, don't ask about injuries */
+if(NRefOb(\$target).combat \&\& \$target.combat["combatants"] \&\& sizeof(NRefOb(\$target).combat["combatants"]) \> 1) \{
+ EmitTo(\$target, "As you are already in combat, unfortunately, anyone else can join in too.");
+ /* Call(\$\{Allegory:Lib:Combat:New:Combat\}, "start_fight"); */
+ combat::start_fight();
+ return FALSE;
+\}
+
+EmitTo(\$attacker, Describe(NRefOb(\$target))+" is injured, and unwilling to keep fighting.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:unwield">
+         X[M] object mainhand, offhand;
+
+if(\$mainhand) \{
+    \$actor."combat:weapon:mainhand" = nil;
+    \$actor."base:combat:weapon" = nil;
+    \$actor."base:weapon" = 0;
+    \$mainhand."base:immobile" = nil;
+    \$mainhand."base:wielded-by" = nil;
+\}
+
+if(\$offhand) \{
+    \$actor."combat:weapon:offhand" = nil;
+    \$actor."base:combat:weapon" = nil;
+    \$actor."base:weapon" = 0;
+    \$offhand."base:immobile" = nil;
+    \$offhand."base:wielded-by" = nil;
+\}
+
+if(!\$mainhand \&\& !\$offhand) \{
+    mainhand = \$actor."combat:weapon:mainhand";
+    offhand = \$actor."combat:weapon:offhand";
+    \$actor."combat:weapon:mainhand" = nil;
+    \$actor."combat:weapon:offhand" = nil;
+    \$actor."base:combat:weapon" = nil;
+    \$actor."base:weapon" = 0;
+
+    if(mainhand) \{
+        mainhand."base:immobile" = nil;
+        mainhand."base:wielded-by" = nil;
+    \}
+
+    if(offhand) \{
+        offhand."base:immobile" = nil;
+        offhand."base:wielded-by" = nil;
+    \}
+\}
+
+if(\$actor.combat) \{
+    combat::update_fighting_style(\$char: \$actor);
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:update_fighting_style">
+         X[M] if(\$char."combat:weapon:mainhand") \{
+    if(\$char."combat:weapon:mainhand"."weapon:ranged") \{
+        \$char.combat["fighting_style"] = "ranged";
+        \$char.combat["fighting_style_penalty"] = nil;
+        return TRUE;
+    \}
+\}
+
+if(\$char."combat:weapon:mainhand" \&\& \$char."combat:weapon:offhand") \{
+    if(\$char."combat:weapon:mainhand" == \$char."combat:weapon:offhand") \{
+        \$char.combat["fighting_style"] = "two-handed-fighter";
+        if(\$char."trait:class1" != "two-handed-fighter" \&\& \$char."trait:class2" != "two-handed-fighter") \{
+            \$char.combat["fighting_style_penalty"] = 1;
+        \} else \{
+            \$char.combat["fighting_style_penalty"] = nil;
+        \}
+    \} else \{
+        \$char.combat["fighting_style"] = "dual-wielding-fighter";
+        if(\$char."trait:class1" != "dual-wielding-fighter" \&\& \$char."trait:class2" != "dual-wielding-fighter") \{
+            \$char.combat["fighting_style_penalty"] = 1;
+        \} else \{
+            \$char.combat["fighting_style_penalty"] = nil;
+        \}
+    \}
+\} else if(\$char."combat:weapon:mainhand" \&\& !\$char."combat:weapon:offhand") \{
+    \$char.combat["fighting_style"] = "one-handed-fighter";
+    if(\$char."trait:class1" != "one-handed-fighter" \&\& \$char."trait:class2" != "one-handed-fighter") \{
+        \$char.combat["fighting_style_penalty"] = 1;
+    \} else \{
+        \$char.combat["fighting_style_penalty"] = nil;
+    \}
+\} else \{
+    \$char.combat["fighting_style"] = "unarmed-fighter";
+    if(\$char."trait:class1" != "unarmed-fighter" \&\& \$char."trait:class2" != "unarmed-fighter") \{
+        \$char.combat["fighting_style_penalty"] = 1;
+    \} else \{
+        \$char.combat["fighting_style_penalty"] = nil;
+    \}
+\}
+
+if(\$char.combat["target"]) \{
+    if(\$char."base:environment" != \$char.combat["target"]."base:environment") \{
+        \$char.combat["fighting_style"] = "ranged";
+        \$char.combat["fighting_style_penalty"] = nil;
+    \}
+\} else \{
+    \$char.combat["fighting_style"] = "ranged";
+    \$char.combat["fighting_style_penalty"] = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:validate_target">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:wield">
+         X[M] if(\$mainhand) \{
+    \$actor."combat:weapon:mainhand" = \$mainhand;
+    \$mainhand."base:immobile" = 1;
+    \$mainhand."base:wielded-by" = \$actor;
+\}
+
+if(\$offhand) \{
+    \$actor."combat:weapon:offhand" = \$offhand;
+    \$offhand."base:immobile" = 1;
+    \$offhand."base:wielded-by" = \$actor;
+\}
+
+if(\$actor.combat) \{
+    combat::update_fighting_style(\$char: \$actor);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1567891240, "jominey", "E", 1567891930, "jominey", "E", 1567892145, "jominey", "E", 1567892172, "jominey", "E", 1567892460, "jominey", "E", 1567892683, "jominey", "E", 1567893093, "jominey", "E", 1567893201, "jominey", "E", 1567893541, "jominey", "E", 1567893595, "jominey", "E", 1567893715, "jominey", "E", 1567894060, "jominey", "E", 1567894111, "jominey", "E", 1567894388, "jominey", "P", 1567894457, "jominey", "E", 1567894510, "jominey", "E", 1567894546, "jominey", "E", 1567894611, "jominey", "E", 1567895634, "jominey", "E", 1567896304, "jominey", "E", 1567896351, "jominey", "E", 1567896438, "jominey", "E", 1567896614, "jominey", "E", 1567896767, "jominey", "E", 1567896888, "jominey", "E", 1567896962, "jominey", "E", 1567897052, "jominey", "P", 1567897288, "jominey", "E", 1567897369, "jominey", "P", 1567897619, "jominey", "P", 1567898015, "jominey", "E", 1567898625, "jominey", "E", 1567898735, "jominey", "E", 1567898968, "jominey", "E", 1567899045, "jominey", "E", 1567899836, "jominey", "E", 1567899853, "jominey", "E", 1567899863, "jominey", "E", 1567900151, "jominey", "E", 1567902495, "jominey", "E", 1567905034, "jominey", "E", 1567905304, "jominey", "E", 1567905454, "jominey", "E", 1567910130, "jominey", "E", 1567910434, "jominey", "E", 1567912942, "jominey", "P", 1568683906, "jominey", "P", 1568768468, "jominey", "P", 1568768593, "jominey", "P", 1568769336, "jominey", "P", 1568769873, "jominey", "E", 1568769963, "jominey", "E", 1568770008, "jominey", "E", 1568770121, "jominey", "E", 1568770180, "jominey", "E", 1568770285, "jominey", "E", 1568770432, "jominey", "E", 1568770477, "jominey", "E", 1568770577, "jominey", "E", 1568770658, "jominey", "E", 1568770706, "jominey", "E", 1568771042, "jominey", "E", 1568771079, "jominey", "E", 1568771357, "jominey", "E", 1568771601, "jominey", "E", 1568771621, "jominey", "E", 1568771659, "jominey", "E", 1568771688, "jominey", "E", 1568771746, "jominey", "E", 1568771768, "jominey", "E", 1568771907, "jominey", "E", 1568772067, "jominey", "E", 1568772454, "jominey", "E", 1568772687, "jominey", "E", 1568772845, "jominey", "P", 1568773186, "jominey", "P", 1568773275, "jominey", "P", 1568773310, "jominey", "P", 1568773363, "jominey", "P", 1568773495, "jominey", "E", 1568773597, "jominey", "E", 1568773652, "jominey", "E", 1568773806, "jominey", "E", 1568773818, "jominey", "E", 1568773839, "jominey", "E", 1568773915, "jominey", "P", 1568829782, "jominey", "E", 1583449873, "jominey", "E", 1589918730, "jominey", "E", 1589918810, "jominey", "E", 1589918940, "jominey", "E", 1589919039, "jominey", "E", 1589919170, "jominey", "E", 1589919177, "jominey", "E", 1589919691, "jominey", "P", 1589919759, "jominey", "P", 1589919822, "jominey", "P", 1589919960, "jominey", "P", 1592016071, "jominey", "E", 1592016311, "jominey", "P", 1592059323, "jominey", "P", 1592059379, "jominey", "P", 1592059407, "jominey", "P", 1592059700, "jominey", "P", 1593790087, "jominey", "E", 1593873412, "jominey", "P", 1593977360, "jominey", "E", 1593977510, "jominey", "E", 1596937463, "jominey", "E", 1596937526, "jominey", "E", 1596937573, "jominey", "E", 1600915241, "jominey", "E", 1600915264, "jominey", "E", 1600915291, "jominey", "E", 1600915323, "jominey", "E", 1600915421, "jominey", "E", 1600915463, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

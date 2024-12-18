@@ -1,0 +1,102 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="zell">
+  <SkotOS:MerAcHa action_id="examine" verb="OBJ(Zell:Verbs:examine)">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-desc:action">
+         X[M] string description;
+
+if (\$what == nil \|\| sizeof(\$what) == 1) \{
+  \$rob."desc:finish_examine:args" = (\{ \$what ? \$what[0] : nil\});
+  \$delay = 2.0;
+
+  if (\$what == nil) \{
+    \$(verb-extra:pe) = "the surroundings";
+    /* (kalle)
+     * Changed "your surroundings" to "the surroundings"
+     */
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global-post:action">
+         X[M] /* convert old \$nref calls */
+
+if(\$target) \{
+    if(NRefOb(\$target)."trait:help" \&\& !\$actor."trait:tips-disabled") \{
+        EmitTo(\$actor, TAG("[OOC TIP: " + NRefOb(\$target)."trait:help" + "]", "imp"));
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global-pre:action">
+         X[M] /* convert old \$nref calls */
+
+if (\$what == nil \&\& \$nref != nil) \{
+  \$what = (\{ \$nref \});
+  \$roles = (\{ "what" \});
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global:action">
+         X[M] string description;
+string beginning, middle, end, wielding;
+object main, off;
+
+if(!\$target) return TRUE;
+
+if(NRefDetail(\$target) == "default") \{
+
+    if(\$actor."base:environment" == NRefOb(\$target)) return TRUE;
+
+    if(!NRefOb(\$target)."combat:weapon:mainhand" \&\& !NRefOb(\$target)."combat:weapon:offhand") return TRUE;
+
+    \$target = NRefOb(\$target);
+    
+    description = UnSAM(ParseXML("\\\<describe-view type=\\"examine\\" view=\\"OBJ(" + Str(\$target) + ")\\"/\\\>"));
+ 
+    if(\$actor == \$target) \{
+        EmitTo(\$actor, TAG("You examine yourself.", "social:first"));
+        EmitIn(\$target."base:environment", TAG(Describe(\$actor) + " examines " + Str(\$target."base:objective") + "self.", "social:third"), \$actor);
+    \} else \{
+        EmitTo(\$actor, TAG("You examine " + Describe(\$target) + ".", "social:first"));
+        EmitTo(\$target, TAG(Describe(\$actor) + " examines you.", "social:second"));
+        EmitIn(\$target."base:environment", TAG(Describe(\$actor) + " examines " + Describe(\$target) + ".", "social:third"), \$actor, \$target);
+    \} 
+    
+    if(\$target."combat:weapon:mainhand" \&\& \$target."combat:weapon:offhand") \{
+        main = \$target."combat:weapon:mainhand";
+        off = \$target."combat:weapon:offhand";
+
+        if(main == off) \{
+            wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + " both hands";
+        \} else \{
+            wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " main hand and " + Describe(off, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " off hand";
+        \}
+    \} else if(\$target."combat:weapon:mainhand" \&\& !\$target."combat:weapon:offhand") \{
+        main = \$target."combat:weapon:mainhand";
+        wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " main hand";
+    \} else if(\$target."combat:weapon:offhand" \&\& !\$target."combat:weapon:mainhand") \{
+        off = \$target."combat:weapon:offhand";
+        wielding = Describe(off, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " off hand";
+    \} else if(!main \&\& !off \&\& \$target."base:combat:weapon") \{
+        main = \$target."base:combat:weapon";
+        wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " main hand";
+    \}
+
+    sscanf(description, "%s is wielding %s. %s", beginning, middle, end);
+
+    description = beginning + " is wielding " + wielding + ". " + end;
+    EmitTo(\$actor, UnSAM(ParseXML(description)));
+
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1566601973, "jominey", "E", 1566609828, "jominey", "E", 1566609885, "jominey", "E", 1566609946, "jominey", "E", 1566609996, "jominey", "E", 1566610031, "jominey", "E", 1566610059, "jominey", "E", 1566610098, "jominey", "E", 1566610184, "jominey", "E", 1566610407, "jominey", "E", 1566610430, "jominey", "E", 1566611792, "jominey", "E", 1566611890, "jominey", "E", 1566779636, "jominey", "E", 1566779888, "jominey", "E", 1566924712, "jominey", "E", 1566924738, "jominey", "E", 1566925076, "jominey", "E", 1573498274, "jominey", "P", 1573498328, "jominey", "P", 1573498373, "jominey", "P", 1573498417, "jominey", "P", 1573498467, "jominey", "P", 1573498540, "jominey", "P", 1573498612, "jominey", "P", 1573498639, "jominey", "P", 1573498660, "jominey", "P", 1573498674, "jominey", "P", 1575568466, "jominey", "E", 1578796397, "jominey", "E", 1578796437, "jominey", "E", 1578796461, "jominey", "E", 1578796485, "jominey", "E", 1578809478, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

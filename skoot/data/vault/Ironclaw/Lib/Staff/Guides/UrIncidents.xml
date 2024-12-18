@@ -1,0 +1,556 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="export:html:add_incident">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Guide Incident Tracker\</title\>
+  \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+  \$(this.html:javascript)
+\</head\>
+\<body\>
+\$[/* do we have an account or a character? */           
+\$invalid = nil;           
+if(\$account == "") \$account = nil;           
+if(\$account) \{           
+  \$udat = udat::query_udat(\$name: \$account);           
+\}           
+return nil;]
+\{? \| \$(udat) \|
+  \$[/* set the values for \$incident */          
+  if(!\$incident) return nil;          
+  \$time = Str(\$incident);          
+  if(!Get(this, \$account)) error("Account not found in database.");          
+  if(!\$category \|\| !Get(this, \$account)[Str(\$category)]) error("Category not found.");          
+  if(!(\$incident = Get(this, \$account)[Str(\$category)][Str(\$incident)])) error("Incident not found.");          
+  return nil;]
+  \{? \| \$(incident) \|
+    \<h2\>Update an incident for \$(account)\</h2\>
+  \|
+    \<h2\>File an incident for \$(account)\</h2\>
+  \}
+  \<zform account="\$(account)" staffname="\$(name)" incident="\$(incident)" time="\$(time)" category="\$(category)"\>
+    \{? \| \$(incident) \|
+      Short Description : \<strong\>\$(incident.0)\</strong\>\<br/\>
+    \|
+      Short Description : \<input type="text" name="short_desc" size="80"/\>\<br/\>
+    \}
+    \{? \| \$(incident) \|
+      Additional information:\<br/\>
+    \|
+      Description:\<br/\>
+    \}
+    \<textarea cols="80" name="long_desc" rows="5"\>\</textarea\>\<br/\>
+    \{? \| \$(incident) \|\|
+      Category :
+      \<select name="category"\>
+        \<option VALUE="altabuse" SELECTED="1"\>Alternate Character Abuse\</option\>
+        \<option VALUE="charreveal"\>Character Reveal\</option\>
+        \<option VALUE="misc"\>Miscellaneous\</option\>
+        \<option VALUE="OOCinfo"\>Misuse of Out of Character Information\</option\>
+        \<option VALUE="OOCchan"\>Misuse of @Chat/Msg/OOC Channels\</option\>
+        \<option VALUE="exploit"\>System Exploitation (Bugs or Otherwise)\</option\>
+        \<option VALUE="tos"\>Violating ToS All Other Infractions\</option\>
+        \<option VALUE="tos6"\>Violating ToS Sect. 6 Restrictions\</option\>
+      \</select\>\<br/\>
+    \}
+    TAS number(s) (separate with spaces) : \<input type="text" name="tas"/\> \<br/\>
+    Disciplinary Action:
+    \<select name="sanction"\>
+      \<option VALUE="none" SELECTED="1"\>None/Documentation Purposes\</option\>
+      \<option VALUE="warning"\>Player warned about this behavior\</option\>
+      \<option VALUE="suspension"\>Player suspended over this behavior\</option\>
+      \<option VALUE="banning"\>Player banned over this behavior\</option\>
+    \</select\>\<br/\>
+    Does the host or a guide need to speak with this player?
+    \<select name="guide_needed"\>
+    \{? \| \$[\$incident \&\& \$incident[3]["guide_needed"]] \|
+      \<option VALUE="no"\>No\</option\>
+      \<option VALUE="yes" SELECTED="1"\>Yes\</option\>
+    \|
+      \<option VALUE="no" SELECTED="1"\>No\</option\>
+      \<option VALUE="yes"\>Yes\</option\>
+    \}
+    \</select\>\<br/\>
+    \{? \| \$(incident) \|
+      \<input type="submit" value="Update this incident"/\>
+    \|
+      \<input type="submit" value="File this incident"/\>
+    \}
+  \<action\>
+    \$[/* create account info */          
+    \$info = Get(this, \$account);          
+    if(!\$info) \{          
+      Set(this, \$account, ([ ]) );          
+      \$info = Get(this, \$account);          
+    \}          
+    if(\$incident) \{          
+      if(!\$time) error("Something went wrong passing the \$time variable.");          
+      if(\$long_desc \&\& \$long_desc != "")          
+        \$incident[2] \|= (\{ (\{ \$staffname, time(), \$long_desc \}) \});          
+      \$item = \$incident;          
+    \} else \{          
+      \$time = Str(time());          
+      \$item = (\{ \$short_desc, (\{ \}), (\{ (\{ \$staffname, time(), \$long_desc \}) \}), ([ ]) \});          
+    \}          
+    while(\$tas \&\& strlen(\$tas)) \{          
+      if(sscanf(\$tas, "%d%s", \$found, \$tas) == 2) \{          
+        \$item[1] \|= (\{ \$found \});          
+      \} else if(sscanf(\$tas, "%*s%d%s", \$found, \$tas) == 3) \{          
+        \$item[1] \|= (\{ \$found \});          
+      \} else \{          
+        \$tas = nil;          
+      \}          
+    \}          
+    /* mark any sanctions */          
+    if(\$sanction != "none") \{          
+      if(\$sanction == "warning") \{          
+        if(\$info["warnings"]) \{          
+          \$info["warnings"]++;          
+        \} else \{          
+          \$info["warnings"] = 1;          
+        \}          
+        if(\$item[3]["warnings"]) \{          
+          \$item[3]["warnings"]++;          
+        \} else \{          
+          \$item[3]["warnings"] = 1;          
+        \}          
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has issued a warning to "+Str(\$account)+" for this behavior." \}) \});          
+      \} else if(\$sanction == "suspension") \{          
+        if(\$info["suspensions"]) \{          
+          \$info["suspensions"]++;          
+        \} else \{          
+          \$info["suspensions"] = 1;          
+        \}          
+        if(\$item[3]["suspensions"]) \{          
+          \$item[3]["suspensions"]++;          
+        \} else \{          
+          \$item[3]["suspensions"] = 1;          
+        \}          
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has issued a suspension to "+Str(\$account)+" for this behavior." \}) \});          
+      \} else if(\$sanction == "banning") \{          
+        if(\$info["bannings"]) \{          
+          \$info["bannings"]++;          
+        \} else \{          
+          \$info["bannings"] = 1;          
+        \}          
+        if(\$item[3]["bannings"]) \{          
+          \$item[3]["bannings"]++;          
+        \} else \{          
+          \$item[3]["bannings"] = 1;          
+        \}          
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has banned "+Str(\$account)+" for this behavior." \}) \});          
+      \}          
+    \}          
+    /* mark detention area */          
+    if(\$detention == "yes") \{          
+      if(!\$item[3]["detained"]) \{          
+        if(!this.detained)          
+          this.detained = ([ ]);          
+        if(!this.detained[\$account])          
+          this.detained[\$account] = (\{ \});          
+        \$found = FALSE;          
+        for(\$i=0;\$i\<sizeof(this.detained[\$account]);\$i++) \{          
+          if(this.detained[\$account][\$i][0] == \$category          
+          \&\& this.detained[\$account][\$i][1] == \$time)          
+            \$found = TRUE;          
+        \}          
+        if(!\$found)          
+          this.detained[\$account] += (\{ (\{ \$category, \$time \}) \});          
+        \$item[3]["detained"] = TRUE;          
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has limited "+Str(\$account)+" to the detention room." \}) \});          
+      \}          
+    \} else \{          
+      /* they don't need to be detained */          
+      /* were they previously detained, and do we need to release them? */          
+      if(\$item[3]["detained"]) \{          
+        for(\$i=0;\$i\<sizeof(this.detained[\$account]);\$i++) \{          
+          if(this.detained[\$account][\$i][0] == \$category          
+          \&\& this.detained[\$account][\$i][1] == \$time)          
+            this.detained[\$account][\$i] = nil;          
+        \}          
+        this.detained[\$account] -= (\{ nil \});          
+        if(!sizeof(this.detained[\$account])) this.detained[\$account] = nil;          
+        \$item[3]["detained"] = nil;          
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has released "+Str(\$account)+" from the detention room." \}) \});          
+      \}          
+    \}          
+    /* mark that host or guides need to talk to them */          
+    if(\$guide_needed == "yes") \{          
+      if(!this.guide_needed)          
+        this.guide_needed = ([ ]);          
+      if(!this.guide_needed[\$account])          
+        this.guide_needed[\$account] = (\{ \});          
+      \$found = FALSE;          
+      for(\$i=0;\$i\<sizeof(this.guide_needed[\$account]);\$i++) \{          
+        if(this.guide_needed[\$account][\$i][0] == \$category          
+        \&\& this.guide_needed[\$account][\$i][1] == \$time)          
+          \$found = TRUE;          
+      \}          
+      if(!\$found)          
+        this.guide_needed[\$account] += (\{ (\{ \$category, \$time \}) \});          
+      \$item[3]["guide_needed"] = TRUE;          
+    \} else \{          
+      /* they don't need to talk to the host or guide */          
+      /* did they previously need to, and do we need to remove that mark? */          
+      if(\$item[3]["guide_needed"]) \{          
+        for(\$i=0;\$i\<sizeof(this.guide_needed[\$account]);\$i++) \{          
+          if(this.guide_needed[\$account][\$i][0] == \$category          
+          \&\& this.guide_needed[\$account][\$i][1] == \$time)          
+            this.guide_needed[\$account][\$i] = nil;          
+        \}          
+        this.guide_needed[\$account] -= (\{ nil \});          
+        /*this.guide_needed[\$account] -= (\{ (\{ \$category, \$time \}) \});*/          
+        if(!sizeof(this.guide_needed[\$account])) this.guide_needed[\$account] = nil;          
+        \$item[3]["guide_needed"] = nil;          
+      \}          
+    \}          
+    /* set the category */          
+    if(!\$info[\$category])          
+      \$info[\$category] = ([ ]);          
+    \$info[\$category][\$time] = \$item;          
+    Set(this, \$account, \$info);          
+    return nil;]
+    \<redirect propob="\$(this)" prop="index" account="\$(account)"/\>
+  \</action\>
+  \</zform\>
+  \<p\>[\<a href="index?account=\$(account)"\>Back\</a\>]\</p\>
+\|
+  \{? \| \$[\$char \|\| \$account] \|
+    \<h2\>That is not a valid character name or account.\</h2\>
+  \}
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="export:html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" host="\$(UDat.Host)"\>
+\$[/* security */                 
+if(!\$host \&\& !member(\$name, this.guides)) error("You are not authorized to use these webpages!");                 
+return nil;]
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>StoryGuide Incident Tracker\</title\>
+  \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+  \$(this.html:javascript)
+\</head\>
+\<body\>
+\$[dump_value(this)]
+\$[/* do we have an account or a character? */                 
+\$invalid = nil;                 
+if(\$account == "") \$account = nil;                 
+if(\$char == "") \$char = nil;                 
+if(\$account) \{                 
+  \$udat = udat::query_udat(\$name: \$account);                 
+\} else if (\$char) \{                 
+  if(\$char = Obj("Chatters:IC:"+\$char[0..1]+":"+\$char)) \{                 
+    if(\$char."udat:object") \{                 
+      \$account = \$char."udat:name";                 
+      \$udat = \$char."udat:object";                 
+    \} else if (\$char."skotos:creator") \{                 
+      \$account = \$char."skotos:creator";                 
+      \$udat = udat::query_udat(\$name: \$account);                 
+    \}                 
+  \}                 
+\}                 
+return nil;]
+\<div id="top_strip"\>
+  \<zform char="\$(char)"\>
+    Character: \<input type="text" name="char"/\> \<strong\>OR\</strong\>
+    Account: \<input type="text" name="account"/\>
+    \<input type="submit" value="Go!"/\>
+  \<action\>
+    \<redirect propob="\$(this)" prop="index" char="\$(char)" account="\$(account)"/\>
+  \</action\>
+  \</zform\>
+\</div\>
+\{? \| \$(udat) \|
+  \<h2\>\<i\>Incident Information for Account \$(account)\</i\>\</h2\>
+  \$[\$info = Get(this, \$account); if(!\$info) return nil; if(!sizeof(map_indices(\$info))) \$info = nil; return nil;]
+  \{? \| \$(info) \|
+    \$[if(\$info["linked"]) \{ return "\<h3\>The "+\$account+" account is linked to "+implode(Arr(\$info["linked"])-(\{\$account\}), ", ")+"\</h3\>\\n"; \} return nil;]
+    \{? \| \$[\$info["warnings"]] \| Warnings: \$[\$info["warnings"]]\<br/\> \}
+    \{? \| \$[\$info["suspensions"]] \| \<font color="red"\>Suspensions: \$[\$info["suspensions"]]\</font\>\<br/\> \}
+    \{? \| \$[\$info["bannings"]] \| \<font color="red"\>Bannings: \$[\$info["bannings"]]\</font\>\<br/\> \}
+    \{? \| \$[\$info["exploit"]] \|
+      \<h3\>\<u\>\<b\>System Exploitation (Bugs or Otherwise)\</b\>\</u\>\</h3\>
+      \$[::display_incidents(\$incidents: \$info["exploit"], \$category: "exploit")]
+    \}
+    \{? \| \$[\$info["misc"]] \|
+      \<h3\>\<u\>\<b\>Miscellaneous\</b\>\</u\>\</h3\>
+      \$[::display_incidents(\$incidents: \$info["misc"], \$category: "misc")]
+    \}
+    \{? \| \$[\$info["altabuse"]] \|
+      \<h3\>\<u\>\<b\>Alternative Character Abuse\</b\>\</u\>\</h3\>
+      \$[::display_incidents(\$incidents: \$info["altabuse"], \$category: "altabuse")]
+    \}
+\{? \| \$[\$info["charreveal"]] \|
+      \<h3\>\<u\>\<b\>Character Reveal\</b\>\</u\>\</h3\>
+      \$[::display_incidents(\$incidents: \$info["charreveal"], \$category: "charreveal")]
+    \}
+\{? \| \$[\$info["OOCchan"]] \|
+      \<h3\>\<u\>\<b\>Misuse of @Chat/Msg/OOC Channels\</b\>\</u\>\</h3\>
+      \$[::display_incidents(\$incidents: \$info["OOCchan"], \$category: "OOCchan")]
+    \}
+\{? \| \$[\$info["tos"]] \|
+      \<h3\>\<u\>\<b\>Violating ToS All Other Infractions\</b\>\</u\>\</h3\>
+      \$[::display_incidents(\$incidents: \$info["tos"], \$category: "tos")]
+    \}
+\{? \| \$[\$info["tos6"]] \|
+      \<h3\>\<u\>\<b\>Violating ToS Sect. 6 Restrictions\</b\>\</u\>\</h3\>
+      \$[::display_incidents(\$incidents: \$info["tos6"], \$category: "tos6")]
+    \}
+\{? \| \$[\$info["OOCinfo"]] \|
+      \<h3\>\<u\>\<b\>Misuse of Out of Character Information\</b\>\</u\>\</h3\>
+      \$[::display_incidents(\$incidents: \$info["OOCinfo"], \$category: "OOCinfo")]
+    \}
+  \|
+    \<p\>There are no incidents on record for this account.\</p\>
+  \}
+  \<h3\>\<i\>Logfile for Account \$(account)\</i\>\</h3\>
+  \$[/* list any logs for this account */                
+  string output, name;                
+  output = "";                
+  \$bodies = Udat::query_bodies_in_roster(\$user: \$account);                
+  for(\$i=0;\$i\<sizeof(\$bodies);\$i++) \{                
+   name = name(\$bodies[\$i])[15..];                
+   \$logfile = Obj("Ironclaw:Lib:Characters:Logs:"+name);                
+   if(\$logfile) \{                
+    \$logs = map_indices(Get(\$logfile, "*"));                
+    \$logs -= (\{ "revisions" \});                
+    for(\$j=0;\$j\<sizeof(\$logs);\$j++) \{                
+     output += capitalize(name)+" - \<a href=\\"http://ironclaw.skotos.net/SAM/Prop/Ironclaw%3ALib%3ACharacters%3Alogreader/index?log="+name+"\&timestamp="+\$logs[\$j]+"\\" target=\\"_new\\"\>"+short_time(Int(\$logs[\$j]));                
+     if(typeof(Get(\$logfile, \$logs[\$j])[0]) == T_STRING)                
+      output += " - "+Str(Get(\$logfile, \$logs[\$j])[0]);                
+     output += "\</a\>\<br/\>";                
+    \}                
+   \}                
+  \}                
+  return output;]
+  \<p\>[\<a href="add_incident?account=\$(account)"\>Add an incident for \$(account)\</a\>]\<br/\>
+  [\<a href="link?account=\$(account)"\>Link \$(account) to another account\</a\>]\</p\>
+\|
+  \{? \| \$[\$char \|\| \$account] \|
+    \<h2\>That is not a valid character name or account.\</h2\>
+  \}
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="export:html:javascript">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+function GetXmlHttpObject() \\\{
+  var xmlHttp;
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+function switch_visibility(block) \\\{
+  if(document.getElementById(block).style.display == "block") \\\{
+    document.getElementById(block).style.display = 'none';
+  \\\} else \\\{
+    document.getElementById(block).style.display = 'block';
+  \\\}
+\\\}
+function display_block(block, script, variables) \\\{
+  if(!block) return;
+  if(!script) \\\{
+    document.getElementById("block").innerHTML="";
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById(block).innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="export:html:link">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Guild Incident Tracker\</title\>
+  \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+  \$(this.html:javascript)
+\</head\>
+\<body\>
+\$[/* do we have an account or a character? */  
+\$invalid = nil;  
+if(\$account == "") \$account = nil;  
+if(\$account) \{  
+  \$udat = udat::query_udat(\$name: \$account);  
+\}  
+return nil;]
+\{? \| \$(udat) \|
+  \<zform account="\$(account)"\>
+    Link \$(account) to : \<input type="text" name="link_account"/\>
+    \<input type="submit" value="Link these accounts together"/\>
+  \<action\>
+    \$[/* verify account */  
+    \$db = \$\{Ironclaw:Lib:Staff:Guides:Incidents\};  
+    if(!\$link_account \|\| \$link_account == "" \|\| !udat::query_udat(\$name: \$link_account))  
+      return nil;  
+    if(!Get(\$db, \$account)) Set(\$db, \$account, ([ ]));  
+    if(!Get(\$db, \$account)["linked"]) Get(\$db, \$account)["linked"] = (\{ \$account \});  
+    Get(\$db, \$account)["linked"] = Arr(Get(\$db, \$account)["linked"]) \| (\{ \$link_account \});  
+      
+/*    if(Get(\$db, \$link_account) \&\& Get(\$db, \$account)["linked"])  
+      Get(\$db, \$account)["linked"] \|= Get(\$db, \$link_account)["linked"];    */  
+    /* make sure any other accounts that this links to are also linked */  
+    for(\$i=0;\$i\<sizeof(Get(\$db, \$account)["linked"]);\$i++) \{  
+      if(!Get(\$db, Get(\$db, \$account)["linked"][\$i])) \{  
+        Set(\$db, Get(\$db, \$account)["linked"][\$i], ([   
+"linked": Get(\$db, \$account)["linked"] ]));  
+      \} else \{  
+        if(Get(\$db, Get(\$db, \$account)["linked"][\$i])["linked"]) \{  
+          Get(\$db, Get(\$db, \$account)["linked"][\$i])["linked"] \|= Get(\$db, \$account)["linked"];          
+        \} else \{  
+          Get(\$db, Get(\$db, \$account)["linked"][\$i])["linked"] = Get(\$db, \$account)["linked"];  
+        \}  
+      \}  
+    \}  
+    return nil;]
+    \<redirect propob="\$(this)" prop="index" account="\$(account)"/\>
+  \</action\>
+  \</zform\>
+  \<p\>[\<a href="index?account=\$(account)"\>Back\</a\>]\</p\>
+\|
+  \{? \| \$[\$char \|\| \$account] \|
+    \<h2\>That is not a valid character name or account.\</h2\>
+  \}
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="merry:act-post:login%guide_notification">
+         X[M] \$delay(2, TRUE, "f161");
+/* check if there are any players online who need to speak with a guide */
+\$db = Get(\$actor, "merry:inherit:act-post:login%guide_notification");
+if(!\$db) return TRUE;
+if(!\$db.guide_needed) return TRUE;
+\$indices = map_indices(\$db.guide_needed);
+if(!\$indices \|\| !sizeof(\$indices)) return TRUE;
+
+/* otherwise, look through the list of players to see if any need to speak with a guide */
+\$chars = common::wholist();
+
+\$found = ([ ]);
+for(\$i=0;\$i\<sizeof(\$chars);\$i++) \{
+  if(\$chars[\$i]."udat:name" \&\& member(\$chars[\$i]."udat:name", \$indices)) \{
+    if(!\$found[\$chars[\$i]."udat:name"]) \$found[\$chars[\$i]."udat:name"] = (\{ \});
+    \$found[\$chars[\$i]."udat:name"] \|= (\{ Str(\$chars[\$i]."skotos:playercapname") \});
+  \}
+\}
+
+if(sizeof(map_indices(\$found))) \{
+  \$indices = map_indices(\$found);
+  EmitTo(\$actor, "---");
+  EmitTo(\$actor, "Guides: Players that need to speak with a guide");
+  for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{
+    \$output = TAG(\$indices[\$i], "IMP")+" -";
+    for(\$j=0;\$j\<sizeof(\$found[\$indices[\$i]]);\$j++)
+      \$output += " "+\$found[\$indices[\$i]][\$j];
+    EmitTo(\$actor, \$output);
+  \}
+  EmitTo(\$actor, "Please check the Guides incident tracker for more information:");
+  EmitTo(\$actor, "http://ironclaw.skotos.net/SAM/Prop/Ironclaw:Lib:Staff:Guides:Incidents/");
+  EmitTo(\$actor, "---");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:display_incidents">
+         X[M] /* display incidents */
+string output;
+string *index;
+int i, ix, j, jx;
+
+output = "";
+
+index = map_indices(\$incidents);
+ix = sizeof(index);
+for(i=0;i\<ix;i++) \{
+  \$incident = \$incidents[index[i]];
+  output += "\<h4 onclick=\\"switch_visibility('"+index[i]+"');\\"\>\<u\>"+Str(\$incident[0])+"\</u\>\</h4\>\\n";
+  output += "\<div id=\\""+index[i]+"\\" style=\\"display:none;\\"\>\\n";
+  output += "\<p\>[\<a href=\\"add_incident?account="+Str(\$account)+"\&category="+Str(\$category)+"\&incident="+Str(index[i])+"\\"\>Add more to this incident\</a\>]\<br/\>\\n";
+
+  if(sizeof(Arr(\$incident[1]))) \{
+    \$body = Udat::query_bodies_in_roster(\$user: \$name);
+    if(\$body \&\& sizeof(\$body)) \{
+      \$body = name(\$body[0]);
+    \} else \{
+      \$body = "";
+    \}
+    output += "Assists:";
+    for(j=0;j\<sizeof(\$incident[1]);j++) \{
+      output += " \<a href='/SAM/Prop/Lib:Assist:lib:assistpopup/doinfo?actor=Chatters:IC:az:azrael\&cmd=%2Btas\&command=%2Btas\&data=Data%3ADB%3Aassist%3AAssistGeneralDB\&num="+\$incident[1][j]+"' target='_blank'\>"+\$incident[1][j]+"\</a\>";
+/*      output += " \<a href='/SAM/Prop/Lib:Assist:lib:assistpopup/doinfo?actor="+\$body+"\&cmd=%2Btas\&command=%2Btas\&data=Data%3ADB%3Aassist%3AAssistGeneralDB\&num="+\$incident[1][j]+"' target='_blank'\>"+\$incident[1][j]+"\</a\>";*/
+    \}
+    output += "\<br/\>\\n";
+  \}
+
+  \$incident = \$incident[2];
+  jx = sizeof(\$incident);
+  for(j=0;j\<jx;j++) \{
+    output += "\<p\>\<strong\>"+Str(\$incident[j][0])+" "+ctime(Int(\$incident[j][1]))+"\</strong\>\<br/\>\\n";
+    output += replace_strings(Str(\$incident[j][2]), "\\r\\n", "\<br/\>\\n")+"\</p\>\\n";
+  \}
+  output += "\<p\>[\<a href=\\"add_incident?account="+Str(\$account)+"\&category="+Str(\$category)+"\&incident="+Str(index[i])+"\\"\>Add more to this incident\</a\>]\<br/\>\\n";
+  output += "\<hr/\>\\n";
+  output += "\</div\>\\n";
+\}
+return output;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1523667954, "jominey", "E", 1706153803, "annemairi", "E", 1706156037, "annemairi", "E", 1706156986, "annemairi", "E", 1706157341, "annemairi", "E", 1706157391, "annemairi", "E", 1706157445, "annemairi", "E", 1706157804, "annemairi", "E", 1706158190, "annemairi", "E", 1706158301, "annemairi", "E", 1706158383, "annemairi", "E", 1706158677, "annemairi", "E", 1706159452, "annemairi", "E", 1706159778, "annemairi", "E", 1706159983, "annemairi", "E", 1706160161, "annemairi", "E", 1706160606, "annemairi", "E", 1706160725, "annemairi", "E", 1706161424, "annemairi", "E", 1706161633, "annemairi", "E", 1706161793, "annemairi", "E", 1706162151, "annemairi", "E", 1706163750, "annemairi", "E", 1706163842, "annemairi", "E", 1706163867, "annemairi", "E", 1706163897, "annemairi", "E", 1706163979, "annemairi", "E", 1706163983, "annemairi", "E", 1706164035, "annemairi", "E", 1706164107, "annemairi", "E", 1706164157, "annemairi", "E", 1706165458, "annemairi", "E", 1706165532, "annemairi", "E", 1706165910, "annemairi", "E", 1706166010, "annemairi", "E", 1706166191, "annemairi", "E", 1706166612, "annemairi", "E", 1706166753, "annemairi", "E", 1706166775, "annemairi", "E", 1706167002, "annemairi", "E", 1706167139, "annemairi", "E", 1706167762, "annemairi", "E", 1706168092, "annemairi", "E", 1706168456, "annemairi", "E", 1706168686, "annemairi", "E", 1706168839, "annemairi", "E", 1706169524, "annemairi", "E", 1706169703, "annemairi", "E", 1706170124, "annemairi", "E", 1706171044, "annemairi", "E", 1706171334, "annemairi", "E", 1706171498, "annemairi", "E", 1706171615, "annemairi", "E", 1706171698, "annemairi", "E", 1706171741, "annemairi", "E", 1706171793, "annemairi", "E", 1706171827, "annemairi", "E", 1706485762, "annemairi", "E", 1706485920, "annemairi", "E", 1706652240, "annemairi", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,111 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="@approve" evoke="optional" audible="false" private="true" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="command" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* Builder's approval command */
+int i;
+
+\$words = \$(command:words);
+if(!\$words) \{
+  EmitTo(\$actor, "Invalid command");
+  return FALSE;
+\}
+
+/* Get the approvals propcontainer */
+\$approvals = \$\{Ironclaw:Lib:Objects:AwaitingApproval\};
+\$approver = FALSE;
+if(member(\$actor, Arr(\$approvals.approvers))) \$approver = TRUE;
+
+/* Is \$words[0] an object? */
+/* \$words is lowercase. So try to find the object regardless of case */
+\$object = ironclaw::get_object(\$woe: \$words[0]);
+if(\$object \&\& typeof(\$object) == T_OBJECT) \{
+  if(\$evoke)
+    EmitTo(\$actor, "Evoke is "+\$evoke);
+  /* sanity checks */
+  if(!\$approvals.waiting) \$approvals.waiting = ([ ]);
+  /* save this approval data */
+  if(\$approvals.waiting[\$object]) \{
+    \$approvals.waiting[\$object]["desc"] = Describe(\$object);
+    \$approvals.waiting[\$object]["submitted"] += (\{ (\{ \$actor."udat:name", time(), \$evoke \}) \});
+    if(\$approver) \$resubmission = TRUE;
+  \} else \{
+    \$approvals.waiting[\$object] = ([ "desc":Describe(\$object), "submitted":(\{ (\{ \$actor."udat:name", time(), \$evoke \}) \}) ]);
+  \}
+  if(\$evoke) EmitTo(\$actor, Describe(\$object)+" submitted for approval with the message: "+\$evoke);
+  else EmitTo(\$actor, Describe(\$object)+" submitted for approval.");
+  if(\$resubmission) EmitTo(\$actor, TAG(Describe(\$object)+" already submitted for approval! Did you intend to type: @approve accept "+name(\$object)+" ?", "IMP"));
+
+  /* Inform any online approvers */
+  \$approvers = Arr(\$approvals.approvers);
+  \$approvers -= (\{ nil \});
+  for(i=0;i\<sizeof(\$approvers);i++) \{
+    if(\$approvers[i]."base:environment" \&\& \$approvers[i] != \$actor) \{
+      if(\$evoke) EmitTo(\$approvers[i], TAG(Describe(\$actor)+" has submitted "+Describe(\$object)+" "+name(\$object)+" for approval with the message: "+\$evoke, "IMP"));
+      else EmitTo(\$approvers[i], TAG(Describe(\$actor)+" has submitted "+Describe(\$object)+" "+name(\$object)+" for approval.", "IMP"));
+    \}
+  \}
+  return FALSE;
+\}
+
+/* Are we accepting a submission? */
+/* Is \$words[1] an object? */
+/* \$words is lowercase. So try to find the object regardless of case */
+if(\$approver \&\& sizeof(\$words) \>= 2 \&\& lower_case(\$words[0]) == "accept") \{
+  \$object = ironclaw::get_object(\$woe: \$words[1]);
+  if(\$object) \{
+    if(\$approvals.waiting \&\& \$approvals.waiting[\$object]) \{
+      if(!\$object."approval:submitted") \$object."approval:submitted" = (\{ \});
+      \$object."approval:submitted" += \$approvals.waiting[\$object]["submitted"];
+      if(!\$object."approval:approved") \$object."approval:approved" = (\{ \});
+      \$object."approval:approved" += (\{ (\{ \$actor."udat:name", time(), \$evoke \}) \});
+      if(!\$approvals.approved) \$approvals.approved = ([ ]);
+      \$approvals.approved[\$object] = (\{ \$actor."udat:name", time(), Describe(\$object) \});
+      \$approvals.waiting[\$object] = nil;
+      EmitTo(\$actor, Describe(\$object)+" Approved");
+    \} else \{
+      EmitTo(\$actor, "That object isn't waiting for approval.");
+    \}
+  \} else \{
+    EmitTo(\$actor, "Invalid object");
+  \}
+  return FALSE;
+\}
+
+/* Are we rejecting a submission? */
+/* Is \$words[1] an object? */
+/* \$words is lowercase. So try to find the object regardless of case */
+if(\$approver \&\& sizeof(\$words) \>= 2 \&\& lower_case(\$words[0]) == "reject") \{
+  \$object = ironclaw::get_object(\$woe: \$words[1]);
+  if(\$object) \{
+    EmitTo(\$actor, "Rejecting a submission");
+  \} else \{
+    EmitTo(\$actor, "Invalid object");
+  \}
+  return FALSE;
+\}
+
+
+EmitTo(\$actor, "This command is used to send an object to the builder leads for approval before it is added to the game.");
+EmitTo(\$actor, "To send an object for approval: @approve woe:name 'MESSAGE");
+if(\$approver) \{
+  EmitTo(\$actor, "To approve an object: @approve accept woe:name");
+  EmitTo(\$actor, "To reject an object: @approve reject woe:name 'MESSAGE");
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1317633327, "tonyd", "E", 1317633357, "tonyd", "E", 1318124452, "tonyd", "E", 1318124489, "tonyd", "E", 1318124568, "tonyd", "P", 1318124823, "tonyd", "P", 1318124983, "tonyd", "P", 1318125001, "tonyd", "P", 1318125085, "tonyd", "P", 1318125154, "tonyd", "P", 1318125221, "tonyd", "P", 1318125293, "tonyd", "P", 1318125298, "tonyd", "P", 1318125324, "tonyd", "P", 1318125353, "tonyd", "E", 1318125413, "tonyd", "E", 1318125429, "tonyd", "E", 1318125463, "tonyd", "P", 1318125507, "tonyd", "P", 1318125530, "tonyd", "P", 1318125613, "tonyd", "P", 1318125692, "tonyd", "P", 1318125814, "tonyd", "P", 1318125864, "tonyd", "P", 1318125990, "tonyd", "P", 1318126029, "tonyd", "P", 1318126073, "tonyd", "P", 1318133117, "tonyd", "P", 1318133135, "tonyd", "P", 1318133160, "tonyd", "P", 1318133217, "tonyd", "P", 1318133273, "tonyd", "P", 1318133500, "tonyd", "P", 1318133520, "tonyd", "P", 1318133574, "tonyd", "P", 1318134151, "tonyd", "P", 1318147370, "tonyd", "P", 1318147512, "tonyd", "P", 1318147645, "tonyd", "P", 1318148335, "tonyd", "P", 1318149677, "tonyd", "P", 1318149694, "tonyd", "P", 1318149737, "tonyd", "P", 1318149990, "tonyd", "P", 1318150008, "tonyd", "P", 1318730373, "tonyd", "P", 1318730559, "tonyd", "P", 1318730752, "tonyd", "P", 1318730782, "tonyd", "P", 1318730838, "tonyd", "P", 1318730944, "tonyd", "P", 1318731011, "tonyd", "P", 1318731106, "tonyd", "P", 1318731206, "tonyd", "P", 1318731232, "tonyd", "P", 1318731284, "tonyd", "P", 1318731333, "tonyd", "P", 1318731532, "tonyd", "P", 1318731622, "tonyd", "P", 1318731643, "tonyd", "P", 1318731737, "tonyd", "P", 1318732059, "tonyd", "P", 1319001931, "tonyd", "P", 1319001995, "tonyd", "P", 1319002041, "tonyd", "P", 1319002059, "tonyd", "P", 1319002075, "tonyd", "P", 1319002089, "tonyd", "P", 1319002237, "tonyd", "P", 1319002264, "tonyd", "P", 1319002390, "tonyd", "P", 1319002497, "tonyd", "P", 1319002526, "tonyd", "P", 1319002558, "tonyd", "P", 1319002938, "tonyd", "P", 1319003093, "tonyd", "P", 1319003119, "tonyd", "P", 1319003417, "tonyd", "P", 1319003424, "tonyd", "P", 1319003439, "tonyd", "P", 1319003645, "tonyd", "P", 1319003668, "tonyd", "P", 1319004089, "tonyd", "P", 1319004115, "tonyd", "P", 1319004852, "tonyd", "P" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

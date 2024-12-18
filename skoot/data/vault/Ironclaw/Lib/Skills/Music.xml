@@ -1,0 +1,942 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="#list#">
+         X[M] /*
+
+-----------------------------------
+ LIBRARY CONTENT (Merry/SAM)
+
+ Object:        Ironclaw:Lib:Skills:Music
+ Maintainer:    Death
+ Revision:      1.1
+ Generated:     Mon Sep 16 05:09:31 2013 on IronClaw
+ Last revision: Thu Jul  7 20:21:54 2011 by tunk_bodin (X)
+
+
+
+(Do not modify #list# -- it is automatically constructed.)
+
+
+-----------------------------------------------------------------------------------------------------------------
+ lib:clear-mapping        (M) Clears a character from the 'isplaying' map of the database.
+ lib:find-instrument      (M) Finds current instrument for actor from the 'isplaying' map of the database.
+ lib:find-leader          (M) Finds the leader of a musical group.
+ lib:get-groupstatus      (M) Determines if actor is playing solo, as a member of a group, or as a leader of a 
+                              group.
+ lib:get-members          (M) Finds list of current members in musical group.
+ lib:get-quality          (M) Finds a qualitative adjective used when creating music.
+ lib:get-starttime        (M) Obtains the time an actor or group starting playing an instrument.
+ lib:get-style            (M) Script to determine style of instrumental.
+ lib:get-tools            (M) Finds a list of tools used to create music.
+ lib:get-verbs            (M) Finds a list of verbs used to create music.
+ lib:play-group           (M) Script to handle Group instrumentals.
+ lib:play-helpfile        (M) Handles the Player Help file for using instruments.
+ lib:play-post            (M) Post action for playing instruments.
+ lib:play-pre             (M) Start of playing an instrument.
+ lib:play-solo            (M) Script to handle Solo instrumentals.
+ lib:play-stylefile       (M) Displays a list of styles included in the Music system.
+ lib:play_replace_strings (M) Handles word replacements and music emits.
+ lib:set-data             (M) Places player data into database mapping.
+-----------------------------------------------------------------------------------------------------------------
+
+*/
+      </Core:Property>
+      <Core:Property property="abc:goals">
+         X[M] /*   
+ * D=List and status regarding the goals of the music/instrument system.  
+ *   
+ */  
+/*  
+ * Goals: (COMPLETED STATUS INCLUDES: PRE, POST, SOLO, GROUP)  
+ * Differentiate between each type of instrument (music:type) and act accordingly - DONE(PRE, POST, SOLO, GROUP)  
+ * Allow for lengthier play times thus reducing repetitive commands (make sure the actor maintains possession of instrument) - DONE(SOLO, GROUP)  
+ * Allow for exceptions to possession for standalone instruments such as a piano (music:standalone 1) - DONE(PRE, POST, SOLO, GROUP)  
+ * Solo song length: 3-5 minutes, emit intervals: 25-35 seconds - DONE(SOLO)  
+ * Group song length: 5-8 minutes, emit intervals: 30-45 seconds.  - DONE(GROUP) 
+ * Set map in DB when playing begins to prevent multiple spammed emits (music:isplaying) - DONE(PRE, POST, SOLO, GROUP)   
+ * Allow for different styles of music to be played (melancholy, joyful, sadness, etc) - DONE(PRE, POST, SOLO, GROUP)  
+ * Allow for bonus rolls (music:bonus) based on each type of instrument and correlated careers/skills - DONE(PRE, POST, SOLO, GROUP)  
+ * Assume tools to create music are possible without IG items (violin bow, guitar pick, etc) - DONE(PRE, POST, SOLO, GROUP)   
+ * Set a singular mapping for 'quality' adverbs based on roll results - DONE(PRE, POST, SOLO, GROUP)  
+ * Set a singular mapping for 'style' based on the emotion adverb - DONE(PRE, POST, SOLO, GROUP)  
+ * Set a mapping for verbs based on instrument type - DONE(PRE, POST, SOLO, GROUP)  
+ * Set a singular emit array for each instrument type which changes according to the previous map results - DONE(PRE, POST, SOLO, GROUP)   
+ * Allow for replacement strings for ease of use in emits - DONE(PRE, POST, SOLO, GROUP)  
+ * DIFFICULT GOAL: Allow accompaniment to music, creating groups, which result in singular grouped emits - DONE(PRE, POST, SOLO, GROUP)  
+ */
+      </Core:Property>
+      <Core:Property property="abc:history">
+         X[M] /*
+ * D=Record of instruments RL history and tools used to play them.
+ *
+ */
+
+/* UR, TOOL OPTIONS, \& HISTORY:
+ *
+ * String:
+ *  * Cello - fingers - The first cellos were made in Italy in the 16th century. Composers wanted a lower toned
+ instrument in their music, so an instrument which is an octave lower than violas or an octave and a fifth
+ lower than violins was made. The cello is correctly called violincello, which in Italian means "little violone".
+ It refers to the fact that the cello was developed from the relatively unknown bass violin and not from the
+ viol as many believe. The double bass was later evolved from the cello.
+ *  * Bass - fingers - Actually the 'double bass', 1571-1621 German, a five-stringed specimen tuned DD EE AA D G.
+ While this monster (over 8 feet tall) was tuned very much like the modern bass, it must be considered
+ an unusual bass instrument for any era.
+ *  * Guitar - fingers, pick - Spain, 15th century, http://www.guitarandlute.com/gtrhstry.html
+ *  * Viola - fingers, bow - Italy, 15th century, http://www.viola-in-music.com/history-of-the-viola.html
+ *  * Violin - fingers, bow - Italy, 15th century, http://musiced.about.com/od/beginnersguide/a/halloween.htm
+ *  * Lute - fingers, quill plectrum - Arabic nations, pre 13th century, http://www.lutesoc.co.uk/pages/about-the-lute
+ *  * Sasando - fingers - Indonesia, 15th century, http://therealnembrala.blogspot.com/2009/09/sasando-history.html
+ *  * Bowed Psaltery - fingers, bow - Ireland, early 17th century, http://www.pelicanpickers.com/bowedpsaltery.htm
+ *  * Mandolina - fingers - Italy, 14th to 16th century, http://www.mandolincafe.com/archives/briefhistory.html
+ *  * Vielle - fingers, bow - France, 13th century, http://www.bartruff.com/history/
+ *  * Frame Harp - fingers - Western Europe, 8th - 10th century AD, http://us.harp.com/history-of-the-harp.htm
+ *  * Triple-strung Harp - fingers - Italy, 16th - 17th century, http://us.harp.com/history-of-the-harp.htm
+ *  * Keyed Harp/Fiddle - fingers, keys, bow - Sweden, 1350, http://en.wikipedia.org/wiki/Nyckelharpa
+ *  * Lap Harp - fingers - Europe, 13th century, http://www.alisonvardy.com/harp-info/medieval-harp-history.htm
+ * Wind:
+ *  * Dulcian - breath, tone holes - obscure/Italy, 16th century, http://en.wikipedia.org/wiki/Bassoon
+ *  * Clarinet - breath, tone holes - Germany, 1690, http://inventors.about.com/od/cstartinventions/a/Clarinet.htm
+ *  * Flute - breath, finger holes - Germany, pre 12th century, http://www.uh.edu/~tkoozin/projects/gamez/program.html
+ *  * Oboe - breath, finger keys - France, 16th - 17th century, http://wiki.answers.com/Q/Who_invented_the_oboe
+ *  * Recorder - breath, tone holes - Germany, pre 12th century, http://www.uh.edu/~tkoozin/projects/gamez/program.html
+ *  * Ocarina - finger holes, breath - Italy/Mayan civilization, 17th century/10,000 years ago, http://inventors.about.com/od/ofamousinventions/a/ocarina.htm
+ *  * Cornett - finger holes, breath - Italy, 10th century, http://www.classicol.com/classical.cfm?music=instrumentInfo\&section=BrassHistory\&title=Brass%20Family%20History
+ *  * Bagpipes - finger holes, breath - Middle East, Unknown, http://ezinearticles.com/?The-Bagpipe-and-Its-History\&id=64619
+ *  * Panpipe/Panflute - breath - Ancient Greece, http://panflute.net/instruments/panflute.html
+ *  * Sheng/Harmonica - breath, mouthpieces - China, 200 AD, http://www.britannica.com/EBchecked/topic/539890/sheng
+ * Brass:
+ *  * French Horn - breath, valve levers - Germany, 17th century, http://inventors.about.com/od/fstartinventions/a/French_Horn.htm
+ *  * Trombone - breath, slide - Belgium, mid 15th century, http://www.lysator.liu.se/~backstrom/trombone.html
+ *  * Trumpet - breath - Europe, 1400, http://www.madehow.com/Volume-1/Trumpet.html
+ *  * Serpent - breath, keys/holes - France, 1590, http://www.blackdiamondbrass.com/tbahist/tubahist.htm
+ * Percussion:
+ *  * Cymbals - hands - Asia, pre 1100 BC, http://www.mathcs.duq.edu/~iben/cymbals.htm
+ *  * Drums - hands, striking stick - Mesopotamia, 6000 BC, http://penz4.tripod.com/historyofdrums.html
+ *  * Tambourine - hands, jingles - Arab countries, Obscure/pre 1700, http://ezinearticles.com/?Tambourines:--A-Long-Musical-History\&id=352333
+ *  * Triangle - rod, metal beater - Turkey, 1400s, http://musiced.about.com/od/percussions/p/triangle.htm
+ *  * Hammered Dulcimer - wooden hammers - Persia, 900 AD, http://www.biggerry.com/history.html
+ *  * Xylophone - mallets - Southeast Asia, 9th century, http://en.wikipedia.org/wiki/Xylophone
+ *  * Singing Bowl - mallet - Tibet, 7th century AD, http://www.silverskyimports.com/Shop/Control/fp/SFV/32655/view_page/A_History_of_Singing_Bowls
+ *  * Wood Block - stick - Unknown, Pre Bronze Age, http://www.tititudorancea.com/z/wood_block.htm
+ *  * Rattle Drums - hands, wooden balls - China, Unknown, http://kaleidoscope.cultural-china.com/en/11Kaleidoscope686.html
+ *  * Snare Drum - drumsticks, hands - Medieval Europe, 1300, http://www.drummuffler.com/history-of-the-snare-drum.php
+ *  * Doumbek/Goblet Drum - fingertips - Ancient Egypt, Unknown, http://en.wikipedia.org/wiki/Goblet_drum
+ * Keyboard:
+ *  * Piano - fingers, keys - Italy, 1700, http://www.get-piano-lessons.com/piano-history.html
+ *  * Harpsichord - fingers, keys - Belgium/Italy, 15th century, http://www.ehow.com/about_5373885_history-harpsichord.html
+ *  * Pipe Organ - fingers, keys - Greece, 3rd Century BC, http://www.concertartist.info/organhistory/history/hist001.htm
+ */
+      </Core:Property>
+      <Core:Property property="abc:how-to">
+         X[M] /* Musical Instrument Library
+ *
+ * Complimentary woe names:
+ * Database @ Ironclaw:Lib:Skills:MusicDB
+ * Generic UrInstrument @ Ironclaw:Props:Music:Instruments:UrInstrument
+ * Generic UrWind @ Ironclaw:Props:Music:Instruments:UrWind
+ * Test item: Ocarina @ Ironclaw:Props:Music:Instruments:Wind:Ocarina
+ *
+ * to use this Lib:
+ * The UR Instrument item requires two Call() functions,
+ * In merry:react-pre:play-dob use:
+ * return Call(\$\{Ironclaw:Lib:Skills:Music\}, "music_play_pre", \$actor:\$actor, \$inst: \$this);
+ * In merry:react-post:play-dob use:
+ * if(\$adverb) \{ \$style = "adverb"; \} else \{\$style = "none"; \}
+ * return Call(\$\{Ironclaw:Lib:Skills:Music\}, "music_play_post", \$actor:\$actor, \$inst:\$this, \$style:\$adverb);
+ *
+ * The UrType (UrStrings) item need only set these three properties (The last 2 are optional):
+ * In 'export:music:type' - "strings", or "percussion", etc.
+ * In 'export:music:bonus' - (\{ "careers:combat:assassin", "skill:academics:history" \})
+ * The bonus will be a career/skill(s) that have a natural affinity for the type so gain an extra roll based on that career/skill level
+ * In 'export:music:standalone' - 1. This allows the instrument to be played as long as it is near but not in hand (eg. a piano).
+ *
+ * The actual instrument ur (UrViolin) merely needs to have the correct parent,
+ * no properties -have- to be set,
+ * although you may add a different 'export:music:type' or 'export:music:bonus' for exceptions to the norm,
+ * You -may- also add 'export:music:tools' (array) such as in UrViolin we'd have (\{ "bow" \}), or (\{ "pick" \}) for a guitar, also for exceptions to the norm.
+ *
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:clear-mapping">
+         X[M] /*     
+ * D=Clears a character from the 'isplaying' map of the database.     
+ *     
+ * Script clears the indice of actor in 'isplaying' of database.     
+ * Script also clears actor data from a leader of a musical group, if such exists.     
+ * Script also clears group members if this actor is the leader.     
+ *     
+ * When called, seeks variable \$actor (object) or \$name (\$string)     
+ */     
+     
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};     
+if(!\$name \&\& \$actor) \$name = capitalize(Get(\$actor, "skotos:charname"));     
+\$player_map = Get(\$db, "music:isplaying");     
+if(\$player_map[\$name]) \{ 
+\$player_data = \$player_map[\$name];     
+if(typeof(\$player_data[0])==3) \$lname = \$player_data[0];     
+if(\$lname) \$player_map[\$lname][1][\$name] = nil;     
+\$member_data = \$player_data[1];     
+if(map_sizeof(\$member_data)\>1) \{     
+   \$members = map_indices(\$member_data);     
+   for(\$m=0;\$m\<sizeof(\$members);\$m++) \{       
+      \$player_map[\$members[\$m]] = nil;      
+   \}     
+\}     
+\$player_map[\$name] = nil;     
+Set(\$db, "music:isplaying", \$player_map);  
+\}    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find-instrument">
+         X[M] /*   
+ * D=Finds current instrument for actor from the 'isplaying' map of the database.   
+ *   
+ * Script finds the current instrument being played by actor.   
+ *   
+ * When called, seeks variable \$actor (object) or \$name (\$string)   
+ */   
+   
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};   
+if(!\$name \&\& \$actor) \$name = capitalize(Get(\$actor, "skotos:charname"));   
+\$player_map = Get(\$db, "music:isplaying");   
+\$curr_inst = \$player_map[\$name][1][\$name];   
+   
+return \$curr_inst;
+      </Core:Property>
+      <Core:Property property="merry:lib:find-leader">
+         X[M] /*   
+ * D=Finds the leader of a musical group.   
+ *   
+ * Script returns the name of the leader of actor's group or actor's name if they are the leader (or solo).   
+ *   
+ * When called, seeks variable \$actor (object) and/or \$name (string).   
+ */   
+   
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};   
+if(!\$name \&\& \$actor) \$name = capitalize(Get(\$actor, "skotos:charname"));   
+\$groupstatus = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-groupstatus", \$name: \$name);   
+if(\$groupstatus == "solo" \|\| \$groupstatus == "leader") \$leader = \$name;   
+if(!\$leader) \{   
+\$player_data = Get(\$db, "music:isplaying");   
+\$leader = \$player_data[\$name][0];   
+\}   
+   
+return \$leader;
+      </Core:Property>
+      <Core:Property property="merry:lib:get-groupstatus">
+         X[M] /*    
+ * D=Determines if actor is playing solo, as a member of a group, or as a leader of a group.    
+ *    
+ * Script determines if actor is playing solo, as a member of a group, or as a leader of a group.    
+ *    
+ * When called, seeks variable \$actor (object) and/or \$name (string).    
+ */    
+    
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};   
+\$groupstatus = "solo";   
+if(!\$name \&\& \$actor) \$name = capitalize(Get(\$actor, "skotos:charname"));    
+\$player_map = Get(\$db, "music:isplaying");    
+if(\$player_map[\$name]) \{ 
+\$player_data = \$player_map[\$name];      
+if(typeof(\$player_data[0])==3) \$groupstatus = "member";    
+\$member_data = \$player_data[1];    
+if(map_sizeof(\$member_data)\>1) \$groupstatus = "leader";    
+\} 
+return \$groupstatus;
+      </Core:Property>
+      <Core:Property property="merry:lib:get-members">
+         X[M] /*    
+ * D=Finds list of current members in musical group.    
+ *    
+ * Script lists members of a musical group based on name given.    
+ *    
+ * When called, seeks variable \$actor (object) or \$name (\$string)    
+ */    
+    
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};    
+if(!\$name \&\& \$actor) \$name = capitalize(Get(\$actor, "skotos:charname"));    
+\$player_map = Get(\$db, "music:isplaying");    
+\$member_arr = map_indices(\$player_map[\$name][1]);    
+    
+return \$member_arr;
+      </Core:Property>
+      <Core:Property property="merry:lib:get-quality">
+         X[M] /*  
+ * D=Finds a qualitative adjective used when creating music.  
+ *  
+ * Script determines a quality for the music being emitted.  
+ *  
+ * When called, seeks variable \$actor (object) and/or \$inst (object)  
+ */  
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};  
+\$skill_set = Get(\$db, "music:skills:standard");  
+if(\$inst \&\& Get(\$inst, "music:bonus")) \$skill_set += Get(\$inst, "music:bonus");  
+\$music_quality = 1;  
+for(\$q=0;\$q\<sizeof(\$skill_set);\$q++) \{  
+if(Get(\$actor, \$skill_set[\$q])) \$skill_temp = Int(Get(\$actor, \$skill_set[\$q]));  
+if(\$skill_temp\>\$music_quality) \$music_quality = \$skill_temp;  
+\}  
+\$music_quality = Int(Flt(\$music_quality)*0.5);  
+\$music_quality = \$music_quality + random(3) - random(3);  
+if(\$music_quality\>24) \$music_quality = 24;  
+if(\$music_quality\<1) \$music_quality = 1;  
+\$quality_map = Get(\$db, "music:quality");  
+\$quality_arr = \$quality_map[\$music_quality];  
+\$quality_choice = \$quality_arr[random(sizeof(\$quality_arr))];  
+  
+return \$quality_choice;
+      </Core:Property>
+      <Core:Property property="merry:lib:get-starttime">
+         X[M] /*   
+ * D=Obtains the time an actor or group starting playing an instrument.   
+ *   
+ * Script finds the start time of an actor playing an instrument whether solo or in a group.   
+ *   
+ * When called, seeks variable \$actor (object) or \$name (\$string)   
+ */   
+   
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};   
+if(!\$name \&\& \$actor) \$name = capitalize(Get(\$actor, "skotos:charname"));   
+\$player_map = Get(\$db, "music:isplaying");   
+\$player_data = \$player_map[\$name];   
+if(typeof(\$player_data[0])==3) \$lname = \$player_data[0];   
+if(\$lname) \$player_data = \$player_map[\$lname];   
+\$starttime = \$player_data[0];   
+   
+return \$starttime;
+      </Core:Property>
+      <Core:Property property="merry:lib:get-style">
+         X[M] /* 
+ * D=Script to determine style of instrumental. 
+ * 
+ * The script determines the style of musical instrumentals such as 
+ * joyfully, sadly, angrily, etc. 
+ * It assists in creating an overall mood to the emits. 
+ * 
+ * When called, it seeks the variable \$name which should be the leader if a group else actor's. 
+ */ 
+ 
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\}; 
+\$player_map = Get(\$db, "music:isplaying");   
+\$style = \$player_map[\$name][2]; 
+\$style_map = Get(\$db, "music:style"); 
+\$style_list = map_indices(\$style_map); 
+if(!\$style \|\| \$style == "none") \$style = \$style_list[random(sizeof(\$style_list))]; 
+\$style_arr = \$style_map[\$style]; 
+\$style_choice = \$style_arr[random(sizeof(\$style_arr))]; 
+ 
+return \$style_choice;
+      </Core:Property>
+      <Core:Property property="merry:lib:get-tools">
+         X[M] /*   
+ * D=Finds a list of tools used to create music.   
+ *   
+ * Script finds tools on a per instrument basis such as pick, fingerholes, etc.   
+ *   
+ * When called, seeks variable \$inst_type (string) and/or \$inst_brief (string).   
+ */   
+   
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};   
+if(!\$inst_type) \$inst_type = "none";   
+if(!\$inst_brief) \$inst_brief = "none";   
+\$tool_map = Get(\$db, "music:tools");   
+\$tool_types = map_indices(\$tool_map);   
+if(member(\$inst_type, \$tool_types)) \$tool_set = \$tool_map[\$inst_type];   
+if(member(\$inst_brief, \$tool_types)) \$tool_set = \$tool_map[\$inst_brief];   
+if(!\$tool_set) \$tool_set = (\{ "none" \});   
+   
+return \$tool_set;
+      </Core:Property>
+      <Core:Property property="merry:lib:get-verbs">
+         X[M] /*   
+ * D=Finds a list of verbs used to create music.   
+ *   
+ * Script finds verbs on a per instrument basis such as pick, strum, etc.   
+ *   
+ * When called, seeks variable \$inst_type (string) and/or \$inst_brief (string).   
+ */   
+   
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};   
+if(!\$inst_type) \$inst_type = "none";   
+if(!\$inst_brief) \$inst_brief = "none";   
+\$verb_sets = (\{ (\{ "play", "plays" \}) \});   
+\$verb_map = Get(\$db, "music:verbs");   
+\$verb_types = map_indices(\$verb_map);   
+if(member(\$inst_type, \$verb_types)) \$verb_sets = \$verb_map[\$inst_type];   
+if(member(\$inst_brief, \$verb_types)) \$verb_sets = \$verb_map[\$inst_brief];   
+   
+return \$verb_sets;
+      </Core:Property>
+      <Core:Property property="merry:lib:play-group">
+         X[M] /*
+ * D=Script to handle Group instrumentals.
+ *
+ * This script handles style of play based on leader, timing of emits,
+ * musical skill levels (individually during solos, leader for grouped emits),
+ * bonus skill levels (individually during solos, leader for grouped emits),
+ * type of instrument (individually when needed),
+ * allowance for stand-out performances (solos) by individuals in the group,
+ * bluebooked tools used to play (pick, keys), randomizing emits,
+ * length of playtime (based on leader start time), and several 'checks' to stop midstream
+ * such as: leaving a group, leaving leader's environment, losing instrument.
+ */
+
+/* the group script is central around the leader and all aspects can be found via their name.
+ * the only variable we have is \$lname */
+
+/* The 1st time a player joins another, a group is formed. No need to recall it for subsequent members. */
+\$member_list = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-members", \$name: \$lname);
+if(sizeof(\$member_list)\>2) return FALSE;
+
+/* Set the database. */
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};
+
+/* grab the leader object */
+\$ldr_obj = Obj("Chatters:IC:"+lower_case(\$lname[0..1])+":"+lower_case(\$lname));
+
+/* song length variables - 5 to 8 minutes */
+\$starttime = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-starttime", \$name: \$lname);
+\$endtime = \$starttime+((5*60)+random(180));
+
+/* start loop */
+\$now = time();
+while(\$now\<\$endtime) \{
+\$player_map = Get(\$db, "music:isplaying");
+\$member_list = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-members", \$name: \$lname);
+/* remove any members that left the leader's area */
+for(\$ar=0;\$ar\<sizeof(\$member_list);\$ar++) \{
+   \$tmp_mem_nm = \$member_list[\$ar];
+   \$tmp_mem_ob = Obj("Chatters:IC:"+lower_case(\$tmp_mem_nm[0..1])+":"+lower_case(\$tmp_mem_nm));
+   \$tmp_env = \$tmp_mem_ob."base:environment";
+   \$ldr_env = \$ldr_obj."base:environment";
+   if(\$tmp_env != \$ldr_env) \{
+      EmitIn(\$ldr_env, Describe(\$tmp_mem_ob)+ " has abandoned the musical group.");
+      Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$tmp_mem_nm);
+   \}
+\}
+/* re-establish member list */
+\$member_list = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-members", \$name: \$lname);
+/* remove any members that no longer possess their instrument */
+for(\$ar=0;\$ar\<sizeof(\$member_list);\$ar++) \{
+   \$tmp_mem_nm = \$member_list[\$ar];
+   \$tmp_mem_ob = Obj("Chatters:IC:"+lower_case(\$tmp_mem_nm[0..1])+":"+lower_case(\$tmp_mem_nm));
+   \$tmp_inst = \$player_map[\$tmp_mem_nm][1][\$tmp_mem_nm];
+   \$tmp_env = \$tmp_mem_ob."base:environment";
+   \$inst_env = \$tmp_inst."base:environment";
+   if(\$tmp_inst."music:freestanding" \&\& \$tmp_env != \$inst_env) \{
+      EmitIn(\$ldr_env, Describe(\$tmp_mem_ob)+ " has abandoned the musical group by losing their instrument.");
+      Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$tmp_mem_nm);
+   \} else if(\$inst_env != \$tmp_mem_ob) \{
+      EmitIn(\$ldr_env, Describe(\$tmp_mem_ob)+ " has abandoned the musical group by losing their instrument.");
+      Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$tmp_mem_nm);
+   \}
+\}
+/* re-establish member list */
+\$member_list = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-members", \$name: \$lname);
+/* stop if group became 1 */
+if(sizeof(\$member_list) == 1) \{
+EmitTo(\$ldr_obj, "All your musical group members have stopped playing with you and thus dissolves the group.");
+Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$lname);
+return FALSE;
+\}
+/* style is always based on leader */
+\$style_choice = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-style", \$name: \$lname);
+/* grab verb sets here, may be replaced during solo act */
+\$verb_sets = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-verbs", \$inst_type: "group");
+/* get quality adjective based on leader, may be replaced during solo act */
+\$quality_choice = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-quality", \$actor: \$ldr_obj);
+/* offer a chance of a solo performance midstream */
+\$chance = random(4)+1;
+if(\$chance == 1) \{ \$groupstate = "solo"; \} else \{ \$groupstate = "group"; \}
+/* all the things we do if we are having a solo performance */
+if(\$groupstate == "solo") \{
+\$solo_nm = \$member_list[random(sizeof(\$member_list))];
+\$solo_ob = Obj("Chatters:IC:"+lower_case(\$solo_nm[0..1])+":"+lower_case(\$solo_nm));
+/* get their instrument */
+\$inst = \$player_map[\$solo_nm][1][\$solo_nm];
+/* get type of music to be played eg. wind, string, brass */
+\$inst_type = Get(\$inst, "music:type");
+/* grab instrument brief */
+if(Get(\$inst, "trait:brief")) \$inst_brief = Get(\$inst, "trait:brief");
+/* create list of tools available for instrument eg. fingers, pick, bow */
+\$tool_set = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-tools", \$inst_type: \$inst_type, \$inst_brief: \$inst_brief);
+\$tool = \$tool_set[random(sizeof(\$tool_set))];
+/* grab the verb sets */
+\$verb_sets = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-verbs", \$inst_type: \$inst_type, \$inst_brief: \$inst_brief);
+/* get new quality adjective */
+\$quality_choice = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-quality", \$actor: \$solo_ob, \$inst: \$inst);
+
+
+
+\}
+/* * end solo variables * */
+/* pick a verb pair */
+\$verbs = \$verb_sets[random(sizeof(\$verb_sets))];
+/* call replace strings and send emits */
+\$msgs = Call(\$\{Ironclaw:Lib:Skills:Music\}, "play_replace_strings", \$style_choice: \$style_choice, \$inst: \$inst, \$inst_type: \$inst_type, \$tool: \$tool, \$verbs: \$verbs, \$quality_choice: \$quality_choice, \$groupstate: \$groupstate);
+if(\$groupstate == "solo") \{
+\$emit = oneof( "With a step forward, ", "Leaning inward, ", "Rising above the rest, ", "Making themselves heard, ", "With increasing confidence, ", "Taking advantage of a musical pause, " );
+\$emit += \$msgs[1];
+EmitIn(\$ldr_obj."base:environment", \$emit);
+\} else \{
+EmitIn(\$ldr_obj."base:environment", \$msgs[2]);
+\}
+\$gap = 30+random(10);
+\$delay(\$gap, TRUE, "8243");
+\$now = time();
+\}
+/* * end loop * */
+/* final emit */
+EmitIn(\$ldr_obj."base:environment", "The musical group led by "+Describe(\$ldr_obj)+ " has completed their instrumental.");
+/* clear all pre-existing data for leader and members that reside in the database */  
+Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$lname);
+
+/* Debug */
+/* EmitTo(\$actor, "GROUP PLAYER LIB: \\n "+dump_value( args )); */
+
+/* if they reach this point, carry onward */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:play-helpfile">
+         X[M] /*
+ * D=Handles the Player Help file for using instruments.
+ *
+ * If the evoke 'help' is used, players will receive
+ * the following messages.
+ */
+
+/* making a border */
+\$b = "\\n";
+for(\$bb=0; \$bb\<80; \$bb++) \{  
+\$b += "_";  
+\}
+\$b += "\\n";
+
+\$h1 = \$b+TAG("How to Create Music in Ironclaw Online!", "who")+\$b;
+\$h2 = TAG("Simply Playing: \\n", "imp");
+\$h3 = "play my \<instrument\> \\n";
+\$h4 = "Example: "+TAG("play my ocarina", "who")+" \\n";
+\$h5 = "This will cause you to play for a few minutes and handle the appearance of your playing based on associated skills."+\$b;
+\$h6 = TAG("Playing with Style: \\n", "imp");
+\$h7 = "Adverbs grant style. Lack of an adverb grants random styling. The command would appear as follows: \\n";
+\$h8 = "play my \<instrument\> \<adverb\> \\n";
+\$h9 = "Example: "+TAG("play my ocarina sadly", "who")+" \\n";
+\$h10 = "This would express sadness in the music you play. \\n";
+\$h11 = "The styles possible are limited and may be viewed by typing: \\n";
+\$h12 = "play my \<instrument\> \\'list (or style) \\n";
+\$h13 = "Example: "+TAG("play my ocarina \\'style", "who")+\$b;
+\$h14 = TAG("Musical Groups: \\n", "imp");
+\$h15 = "The only requirement is that the character you join is already playing an instrument. \\n";
+\$h16 = "The command is simply: \\n";
+\$h17 = "play my \<instrument\> with \<name\> \\n";
+\$h18 = "Example: "+TAG("play my ocarina with Sirazad", "who")+" \\n";
+\$h19 = "The style of Group instrumentals will be based on the original player."+\$b;
+\$h20 = TAG("Sending @ideas and @bugs: \\n", "imp");
+\$h21 = "Feedback is always welcome. To make it easier on staff, consider these formats: \\n";
+\$h22 = TAG("@idea ", "imp")+TAG("\\'MUSICAL STYLES: playfully to produce songs of playfulness, childishness, and aloofness. \\n", "who");
+\$h23 = TAG("@idea ", "imp")+TAG("\\'MUSICAL INSTRUMENT: Xylophone! \\n", "who");
+\$h24 = TAG("@bug ", "imp")+TAG("\\'MUSICAL BUG: The group was playing down Market Street and split up but the music continued like we were together still.", "who");
+\$h25 = \$b+TAG("We thank you for participating!", "imp")+\$b;
+
+\$help = \$h1+\$h2+\$h3+\$h4+\$h5+\$h6+\$h7+\$h8+\$h9+\$h10+\$h11+\$h12+\$h13+\$h14+\$h15+\$h16+\$h17+\$h18+\$h19+\$h20+\$h21+\$h22+\$h23+\$h24+\$h25;
+EmitTo(\$actor, \$help);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:play-post">
+         X[M] /*    
+ * D=Post action for playing instruments.    
+ *    
+ * This script handles getting the style of play,    
+ * adding them to existing groups (if that's the expected case),    
+ * adds their solo data to the database (if that is the expected case),    
+ * calls upon the solo script (if that is the expected case).    
+ * Note: If joining an existing group, there need be no additional call made.    
+ */    
+    
+/* Set the database. */    
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};    
+/* Find map of existing instrumentalists and associated data. */    
+if(Get(\$db, "music:isplaying")) \{ \$player_map = Get(\$db, "music:isplaying"); \} else \{ \$player_map = ([ ]); \}    
+/* get name of actor */    
+\$name = capitalize(Get(\$actor, "skotos:charname"));    
+    
+/* checks regarding \$using and whether it is an attempt to join a group */    
+if(\$using \&\& sizeof(\$using) == 1) \{    
+if(contains(Str(NRefOb(\$using[0])), "Chatters" )) \{    
+\$ldr_obj = NRefOb(\$using[0]);    
+\$lname = capitalize(Get(\$ldr_obj, "skotos:charname"));    
+\}    
+\}    
+\$instrumentalists = map_indices(\$player_map);    
+if(\$lname) \{    
+if(!\$player_map[\$lname]) \{    
+EmitTo(\$actor, Describe(\$ldr_obj)+ " is not currently playing an instrument.");    
+return FALSE;    
+\}    
+\$timecheck = \$player_map[\$lname][0];    
+if(typeof(\$timecheck) == 3) \{    
+EmitTo(\$actor, Describe(\$ldr_obj)+ " is currently in a group led by " +\$timecheck+ ". If you wish to join, use the leader's name.");    
+return FALSE;    
+\}    
+\}    
+/* set style */    
+if(\$adverb) \{ \$style = \$adverb; \} else \{ \$style = "none"; \}    
+/* add to database */    
+Call(\$\{Ironclaw:Lib:Skills:Music\}, "set-data", \$name: \$name, \$inst: \$inst, \$lname: \$lname, \$style: \$style);    
+    
+/* call solo lib */    
+if(!\$lname) return Call(\$\{Ironclaw:Lib:Skills:Music\}, "play-solo", \$style: \$style);    
+    
+/* call group lib */    
+if(\$lname \&\& \$lname != "") return Call(\$\{Ironclaw:Lib:Skills:Music\}, "play-group", \$lname: \$lname);    
+    
+/* if they make it thus far, move onward as a standard non-playing action */    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:play-pre">
+         X[M] /*
+ * D=Start of playing an instrument.
+ *
+ * This script handles possession of instrument, players stuck in play mode,
+ * clearing of any existing data regarding player, starting anew.
+ */
+
+/*
+ * check for possession of instrument and
+ * allow for freestanding instruments (piano).
+ */
+if(Get(\$inst, "base:environment") != \$actor \&\& !Get(\$inst, "music:freestanding")) \{
+EmitTo(\$actor, "You are unable to play " +Describe(\$inst, nil, nil, STYLE_NONPOSS)+ " unless it is in your possession.");
+EmitTo(\$actor, "In the case of freestanding instruments (eg. piano), they must be in your current environment to be played.");
+return FALSE;
+\}
+
+/* prevent 'playing with yourself' */
+if(\$using \&\& sizeof(\$using) == 1) \{
+if(NRefOb(\$using[0]) == \$actor ) \{
+EmitTo(\$actor, "That is not a proper use of this item.");
+return FALSE;
+\}
+\}
+if(\$(raw-evoke))\$evo_check = lower_case(\$(raw-evoke));
+/* check evokes for help or style requests */
+if(\$evo_check \&\& \$evo_check == "help") return Call(\$\{Ironclaw:Lib:Skills:Music\}, "play-helpfile");
+if(\$evo_check \&\& \$evo_check == "style") return Call(\$\{Ironclaw:Lib:Skills:Music\}, "play-stylefile");
+if(\$evo_check \&\& \$evo_check == "list") return Call(\$\{Ironclaw:Lib:Skills:Music\}, "play-stylefile");
+
+/* Set the database. */
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};
+
+/* Find map of existing instrumentalists and associated data. */
+if(Get(\$db, "music:isplaying")) \{ \$musicdata = Get(\$db, "music:isplaying"); \} else \{ \$musicdata = ([ ]); Set(\$db, "music:isplaying", \$musicdata); \}
+
+/* Grab array (list) of instrumentalists. */
+\$instrumentalists = map_indices(\$musicdata);
+
+/* Grab name of actor. */
+\$name = capitalize(Get(\$actor, "skotos:charname"));
+
+/* Check if NAME is already playing an instrument. */
+if(member(\$name, \$instrumentalists)) \$isplaying = 1;
+
+/* If playing - determine if stuck, send dissolution emits, clear name from db  */
+if(\$isplaying) \{
+   /* are they solo, group member or group leader */
+   \$groupstatus = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-groupstatus", \$name: \$name);
+   /* check if they are 'stuck' in a previous play mode */
+   \$starttime = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-starttime", \$name: \$name);
+   \$endtime = \$starttime+(9*60);
+   if(time()\>\$endtime) \$stuck = 1;
+   /* grab the leader */
+   \$leader = Call(\$\{Ironclaw:Lib:Skills:Music\}, "find-leader", \$name: \$name);
+   /* get member list based on leader */
+   \$member_arr = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-members", \$name: \$leader);
+   \$ldr_obj = Obj("Chatters:IC:"+lower_case(\$leader[0..1])+":"+lower_case(\$leader));
+   /* send dissolution emits */
+   if(!\$stuck) \{
+      if(\$groupstatus == "solo") EmitTo(\$actor, "You cease your previous instrumental and start anew.");
+      if(\$groupstatus == "member") \{
+         EmitTo(\$actor, "You have abandoned " +Describe(\$ldr_obj)+ "'s musical group in order to start anew.");
+         EmitTo(\$ldr_obj, Describe(\$actor)+ " has left your musical group.");
+         EmitIn(\$actor."base:environment", Describe(\$actor)+ " has left " +Describe(\$ldr_obj)+ "'s musical group.", \$actor, \$ldr_obj);
+      \}
+      if(\$groupstatus == "leader") \{
+         EmitTo(\$actor, "You have dissolved your musical group.");
+         EmitIn(\$actor."base:environment", Describe(\$actor)+ " has dissolved their musical group.", \$actor);
+      \}
+   \}
+   /* clear all pre-existing data for actor that resides in the database */
+   Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$name);
+\}
+
+/* Debug */
+/* EmitTo(\$actor, "PRE LIB: \\n "+dump_value( args )); */
+
+/*
+ * In all cases, the database should have no existing data
+ * regarding this actor by the time this point is reached.
+ * Moving forward is TRUE in all cases.
+ */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:play-solo">
+         X[M] /*
+ * D=Script to handle Solo instrumentals.
+ *
+ * This script handles style of play, timing of emits,
+ * musical skill levels, bonus skill levels, type of instrument,
+ * bluebooked tools used to play (pick, keys), randomizing emits,
+ * length of playtime, and several 'checks' to stop midstream
+ * such as: joining a group, losing instrument.
+ */
+/* Set the database. */
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};
+
+/* start grabbing data constant to this instrumental */
+
+/* name */
+\$name = capitalize(Get(\$actor, "skotos:charname"));
+
+/* get type of music to be played eg. wind, string, brass */
+\$inst_type = Get(\$inst, "music:type");
+
+/* grab instrument brief */
+if(Get(\$inst, "trait:brief")) \$inst_brief = Get(\$inst, "trait:brief");
+
+/* create list of tools available for instrument eg. fingers, pick, bow */
+\$tool_set = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-tools", \$inst_type: \$inst_type, \$inst_brief: \$inst_brief);
+
+/* grab the verb sets */
+\$verb_sets = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-verbs", \$inst_type: \$inst_type, \$inst_brief: \$inst_brief);
+
+/* song length variables - 3 to 5 minutes */
+\$starttime = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-starttime", \$name: \$name);
+\$endtime = \$starttime+((3*60)+random(120));
+
+/* end of constants */
+
+/* run through random variables for initial emit */
+\$style_choice = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-style", \$style: \$style);
+\$tool = \$tool_set[random(sizeof(\$tool_set))];
+\$verbs = \$verb_sets[random(sizeof(\$verb_sets))];
+\$quality_choice = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-quality", \$actor: \$actor, \$inst: \$inst);
+
+/* send initial emits */
+\$msgs = Call(\$\{Ironclaw:Lib:Skills:Music\}, "play_replace_strings", \$style_choice: \$style_choice, \$inst: \$inst, \$inst_type: \$inst_type, \$tool: \$tool, \$verbs: \$verbs, \$quality_choice: \$quality_choice);
+EmitTo(\$actor, \$msgs[0]);
+EmitIn(\$actor."base:environment", \$msgs[1], \$actor);
+
+/* start loop */
+\$now = time();
+while(\$now\<\$endtime) \{
+\$gap = 25+random(10);
+\$delay(\$gap, TRUE, "26c0");
+/* stop checks within the loop */
+/* grab instruments location */
+\$env_i = \$inst."base:environment";
+/* grab actors location */
+\$env = \$actor."base:environment";
+/* make sure freestanding instruments (piano) are in the same location as actor */
+if(\$inst."music:freestanding") \{
+if(\$env_i != \$env) \{
+EmitTo(\$actor, "You are too distant from " +Describe(\$inst, nil, nil, STYLE_NONPOSS)+ " to continue playing.");
+Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$name);
+return FALSE;
+\}
+\}
+/* make sure handheld instruments are in the actor's possession */
+if(\$env_i != \$actor) \{
+EmitTo(\$actor, "You no longer possess " +Describe(\$inst, nil, nil, STYLE_NONPOSS)+ " and therefor have ceased playing.");
+Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$name);
+return FALSE;
+\}
+\$groupstatus = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-groupstatus", \$name: \$name);
+/* check if player joined a group midstream or became the leader of one */
+if(!\$stop) \{
+if(\$groupstatus == "member" \|\| \$groupstatus == "leader" ) \$stop = 1;
+\}
+
+/* check if player started a new solo loop */
+if(!\$stop) \{
+\$newstart = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-starttime", \$name: \$name);
+if(\$newstart != \$starttime) \$stop = 1;
+\}
+
+if(\$stop) \{
+return FALSE;
+\}
+/* end stop checks */
+
+/* run through random variables for each loop */
+\$style_choice = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-style", \$style: \$style);
+\$tool = \$tool_set[random(sizeof(\$tool_set))];
+\$verbs = \$verb_sets[random(sizeof(\$verb_sets))];
+\$quality_choice = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-quality", \$actor: \$actor, \$inst: \$inst);
+
+\$msgs = Call(\$\{Ironclaw:Lib:Skills:Music\}, "play_replace_strings", \$style_choice: \$style_choice, \$inst: \$inst, \$inst_type: \$inst_type, \$tool: \$tool, \$verbs: \$verbs, \$quality_choice: \$quality_choice);
+EmitTo(\$actor, \$msgs[0]);
+EmitIn(\$actor."base:environment", \$msgs[1], \$actor);
+
+\$now = time();
+\}
+/* end loop */
+EmitTo(\$actor, "You finish playing your instrument.");
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " has finished playing " +Describe(\$inst, nil, nil, STYLE_NONPOSS)+ ".", \$actor);
+Call(\$\{Ironclaw:Lib:Skills:Music\}, "clear-mapping", \$name: \$name);
+
+/* if they reach this point, carry onward */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:play-stylefile">
+         X[M] /* 
+ * D=Displays a list of styles included in the Music system. 
+ * 
+ * If the evoke 'style' or 'list' is used, players will receive 
+ * the following messages. 
+ */ 
+ /* set database storing styles */ 
+ \$db = \$\{Ironclaw:Lib:Skills:MusicDB\}; 
+ /* grab the map of styles */ 
+ \$style_m = Get(\$db, "music:style"); 
+ /* grab the indices of map */ 
+ \$style_i = map_indices(\$style_m); 
+ /* implode array of styles */ 
+\$styles = ""; 
+\$sc = 1; 
+for(\$s=0;\$s\<sizeof(\$style_i);\$s++) \{ 
+   if(\$sc == 7) \{ \$styles += "\\n"; \$sc = 1; \} 
+   if(sizeof(\$style_i)-1 == \$s) \{ 
+      \$styles += " and " +\$style_i[\$s]; 
+   \} else if(sizeof(\$style_i)-2 == \$s) \{ 
+      \$styles += \$style_i[\$s]+" "; 
+   \} else \{ 
+      \$styles += \$style_i[\$s]+", "; 
+   \} 
+\$sc = \$sc+1; 
+\} 
+ /* send messages */ 
+ \$s1 = TAG("Creating Music with Style: \\n", "imp")+"__________________________ \\n"; 
+ \$s2 = "Musical styles are adverb based. \\n"; 
+ \$s3 = "play my \<instrument\> \<adverb\> \\n"; 
+ \$s4 = "Example: "+TAG("play my ocarina sadly", "who")+" \\n"+"__________________________ \\n"; 
+ \$s5 = "The current styles available are: \\n"; 
+ \$s6 = TAG(\$styles, "who")+". \\n"; 
+ \$style_msg = \$s1+\$s2+\$s3+\$s4+\$s5+\$S6; 
+ EmitTo(\$actor, \$style_msg); 
+ return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:play_replace_strings">
+         X[M] /*
+ * D=Handles word replacements and music emits.
+ *
+ * Script finds appropriate emits for solo instrumentalists,
+ * replaces predetermined CAPPED words, returns messages
+ * for first and third person.
+ *
+ * For group emits send \$person:\$ldr_obj or one of the members as an object.
+ * If a member of a group is stepping forward for a solo, send \$groupstate:"solo";
+ */
+
+/* Set the database. */
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\};
+if(!\$person) \$person = \$actor;
+\$name = capitalize(Get(\$person, "skotos:charname"));
+if(!\$groupstate) \$groupstate = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-groupstatus", \$name: \$name);
+
+/* get possible emit strings */
+if(\$groupstate == "solo") \{
+\$emit_array = Get(\$db, "music:emits:generic:solo");
+\$emit_temp = "music:emits:"+\$inst_type+":solo";
+if(Get(\$db, \$emit_temp)) \$emit_array += Get(\$db, \$emit_temp);
+\} else \{
+\$emit_array = Get(\$db, "music:emits:generic:group");
+\}
+/* pick an emit */
+\$emit_choice = \$emit_array[random(sizeof(\$emit_array))];
+
+/* describe instrument */
+if(\$groupstate == "solo") \{
+\$inst_desc = Describe(\$inst, nil, nil, STYLE_NONPOSS);
+\} else \{
+\$inst_desc = "instruments";
+\}
+
+/* tool check */
+if(!\$tool) \$tool = "nothing but heart";
+
+/* describe environment */
+\$env_desc = Describe(\$person."base:environment");
+
+/* describe actor */
+\$actor_desc = Describe(\$person);
+
+/* describe group */
+\$lname = Call(\$\{Ironclaw:Lib:Skills:Music\}, "find-leader", \$name: \$name);
+\$members = Call(\$\{Ironclaw:Lib:Skills:Music\}, "get-members", \$name: \$lname);
+\$tmp_members = "";
+for(\$mm=0;\$mm\<sizeof(\$members);\$mm++) \{
+if(sizeof(\$members)-1 == \$mm) \{
+\$tmp_members += " and " +\$members[\$mm];
+\} else if(sizeof(\$members)-2 == \$mm) \{
+\$tmp_members += \$members[\$mm]+" ";
+\} else \{
+\$tmp_members += \$members[\$mm]+ ", ";
+\}
+\}
+\$tmp_gen = "The musical group led by "+\$lname;
+\$group_set = (\{ \$tmp_gen, \$tmp_members \});
+\$group = \$group_set[random(sizeof(\$group_set))];
+/* generic replacements */
+\$msg_generic = replace_strings(\$emit_choice, "INSTRUMENT", \$inst_desc, "ENVIRONMENT", \$env_desc, "QUALITY", \$quality_choice, "STYLE", \$style_choice, "TOOL", \$tool, "GROUP", \$group);
+/* 1st person view (actor) */
+\$msg1 = replace_strings(\$msg_generic, "ACTOR", "You", "POSSESSIVE", "your", "VERB", \$verbs[0]);
+/* 3rd person view (witnesses) */
+\$msg3 = replace_strings(\$msg_generic, "ACTOR", \$actor_desc, "POSSESSIVE", \$actor."base:possessive", "VERB", \$verbs[1]);
+/* group msg - only use this */
+\$msg_group = replace_strings(\$msg_generic, "POSSESSIVE", "their", "VERB", \$verbs[0]);
+
+\$msgs = (\{ \$msg1, \$msg3, \$msg_group \});
+return \$msgs;
+      </Core:Property>
+      <Core:Property property="merry:lib:set-data">
+         X[M] /* 
+ * D=Places player data into database mapping. 
+ * 
+ * Script places data regarding actor into database, 
+ * including name, instrument, and timestamp. 
+ * Acts accordingly in the case of joining groups too. 
+ * Requires \$name, \$inst, \$style. Optional \$lname. 
+ */ 
+ 
+/* Set the database. */ 
+\$db = \$\{Ironclaw:Lib:Skills:MusicDB\}; 
+if(!\$name \&\& \$actor) \$name = capitalize(Get(\$actor, "skotos:charname")); 
+if(Get(\$db, "music:isplaying")) \{ \$player_map = Get(\$db, "music:isplaying"); \} else \{ \$player_map = ([ ]);\} 
+\$time = time(); 
+\$tmp_map = ([ ]); 
+\$tmp_map[\$name] = \$inst; 
+\$tmp_arr = (\{ \$time, \$tmp_map, \$style \}); 
+if(\$lname \&\& \$lname != "") \{ 
+   \$tmp_arr = (\{ \$lname, \$tmp_map, \$style \}); 
+   \$player_map[\$lname][1][\$name] = \$inst; 
+\} 
+\$player_map[\$name] = \$tmp_arr; 
+Set(\$db, "music:isplaying", \$player_map); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1309770113, "tunk_bodin", "E", 1309800454, "tunk_bodin", "P", 1309800650, "tunk_bodin", "P", 1309800673, "tunk_bodin", "P", 1309800832, "tunk_bodin", "P", 1309800991, "tunk_bodin", "P", 1309801133, "tunk_bodin", "P", 1309801428, "tunk_bodin", "P", 1309801837, "tunk_bodin", "P", 1309801930, "tunk_bodin", "P", 1309801958, "tunk_bodin", "P", 1309802235, "tunk_bodin", "P", 1309802311, "tunk_bodin", "P", 1309802490, "tunk_bodin", "P", 1309802791, "tunk_bodin", "X", 1309804951, "tunk_bodin", "P", 1309808158, "tunk_bodin", "X", 1309808167, "tunk_bodin", "X", 1309808217, "tunk_bodin", "X", 1309808255, "tunk_bodin", "X", 1309808292, "tunk_bodin", "X", 1309808316, "tunk_bodin", "X", 1309808324, "tunk_bodin", "X", 1309809944, "tunk_bodin", "P", 1309993770, "tunk_bodin", "P", 1309994085, "tunk_bodin", "P", 1309994346, "tunk_bodin", "P", 1309994411, "tunk_bodin", "P", 1310084418, "tunk_bodin", "X", 1310084514, "tunk_bodin", "X" \})
+      </Core:Property>
+      <Core:Property property="{author}">"Death"</Core:Property>
+      <Core:Property property="{rev}">1</Core:Property>
+      <Core:Property property="{sub_rev_stamp}">
+         1310084514
+      </Core:Property>
+      <Core:Property property="{sub_rev}">1</Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

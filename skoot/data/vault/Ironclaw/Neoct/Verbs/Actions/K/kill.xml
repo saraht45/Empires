@@ -1,0 +1,137 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tonyd">
+  <SkotOS:MerAcHa action_id="kill">
+    <Core:PCProperties>
+      <Core:Property property="merry:global:action">
+         X[M] /* check if the character can be killed */
+
+/* error checking */
+if(!\$dob \|\| !sizeof(\$dob)) \{
+  EmitTo(\$actor, "Who do you plan to kill?");
+  return FALSE;
+\}
+
+if(sizeof(\$dob) != 1) \{
+  EmitTo(\$actor, "You can only kill one thing (or person) at a time.");
+  return FALSE;
+\}
+
+\$target = \$dob[0];
+
+if(NRefOb(\$target) == \$actor) \{
+  EmitTo(\$actor, "[OOC: We would like to avoid themes of suicide within the game. As such, you cannot kill yourself.]");
+  return FALSE;
+\}
+
+if(NRefOb(\$target)."trait:child") \{
+  EmitTo(\$actor, "[OOC: As we don't wish for themes of child abuse or death in the game, killing a child character requires staff permission and assistance.]");
+  return FALSE;
+\}
+
+if(\$actor."trait:child") \{
+  EmitTo(\$actor, "[OOC: As we don't wish for themes of child abuse or death in the game, a child murderer would put the constabulary in an OOC uncomfortable position. As such, child characters cannot kill others.]");
+  return FALSE;
+\}
+
+if(FALSE \&\& NRefOb(\$target)."npc:is_dead") \{
+  EmitTo(\$actor, Describe(NewNRef(NRefOb(\$target), "default"))+" is already dead.");
+  return FALSE;
+\}
+
+if(!NRefOb(\$target)."udat:possessed" \&\& !NRefOb(\$target)."nip:trait:fighting:killable") \{
+  EmitTo(\$actor, "You cannot kill "+Describe(NewNRef(NRefOb(\$target), "default"))+".");
+  return FALSE;
+\}
+
+\$endur = Int(\$target."career:combat:endurance") + Int(\$target."skill:combat:endurance");
+if(Int(NRefOb(\$target)."combat:damage") \<= Int(NRefOb(\$target)."trait:body")+3+\$endur) \{
+  EmitTo(\$actor, "You cannot kill "+Describe(NewNRef(NRefOb(\$target), "default"))+" while "+NRefOb(\$target)."base:pronoun"+" is still able to resist. You will need to beat "+NRefOb(\$target)."base:objective"+" in combat first.");
+  return FALSE;
+\}
+
+if (\$actor."base:environment"."area:dangerarea" \|\| NRefOb(\$target).deathconsent \|\| (!NRefOb(\$target)."udat:possessed" \&\& NRefOb(\$target)."nip:trait:fighting:killable") ) \{
+  /* they can be killed if in a danger area */
+
+  /* if they consented, it only applies to one death */
+  NRefOb(\$target).deathconsent = nil;
+
+  /* show the emote */
+  \$delay(1, TRUE, "a296");
+  /* kill them */
+  if(!NRefOb(\$target)."udat:possessed" \&\& NRefOb(\$target)."nip:trait:fighting:killable") \{
+    /* it's an NPC */
+    Act(NRefOb(\$target), "nip/die"); /* ::shutdown(); */
+    /* Check if there's a further death script in the NIP to run */
+    if(FindMerry( NRefOb(\$target), "lib", "fighting_die")) \{
+      /* There is. Run it */
+      Call(NRefOb(\$target), "fighting_die", \$attacker: \$actor);
+    \}
+  \} else \{
+    /* it's a PC */
+    Call(\$\{Ironclaw:Lib:Characters:Death\}, "die", \$victim: NRefOb(\$target));
+  \}
+  return TRUE;
+\}
+
+/* not in a danger area. Need to ask their permission */
+EmitTo(NRefOb(\$target), TAG(Describe(\$actor)+" wishes to kill "+Describe(NewNRef(NRefOb(\$target), "default"))+".", "IMP"));
+EmitTo(NRefOb(\$target), TAG("As you are currently in a \\"safe\\" part of the game, you do NOT have to consent to this. Only agree if you WANT your character to die.", "IMP"));
+EmitTo(\$actor, TAG("As this is a safe area, "+Describe(\$target)+" does not need to consent to death. (There are \\"danger areas\\" where they would not get the choice.)", "IMP"));
+EmitTo(\$actor, TAG("Requesting permission from "+Describe(\$target)+".", "IMP"));
+
+/* ask if the victim consents to death */
+/*
+interaction::question(\$actor: NRefOb(\$target), \$question: "Are you sure you wish to die?", \$expires: 80, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "kill_allowed", \$no_fun: "kill_denied", \$expire_fun: "kill_expire", \$par: ([ "victim":\$target, "actor":\$actor, "adverb":\$adverb, "evoke":\$evoke, "using":\$using, "using:preposition":\$(using:preposition)]));
+*/
+interaction::question(\$actor: NRefOb(\$target), \$question: "Are you sure you wish to die?", \$expires: 80, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "kill_allowed", \$no_fun: "kill_denied", \$expire_fun: "kill_expire", \$par: ([ "victim":\$target, "killer":\$actor, "adverb":\$adverb, "evoke":\$evoke, "using":\$using, "using:preposition":\$(using:preposition)]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:kill_allowed">
+         X[M] /* decided to consent to death */
+\$victim = \$par["victim"];
+\$killer = \$par["killer"];
+\$adverb = \$par["adverb"];
+\$evoke = \$par["evoke"];
+\$using = \$par["using"];
+\$using_prep = \$par["using:preposition"];
+
+EmitTo(NRefOb(\$victim), "You choose to consent to death.");
+NRefOb(\$victim).deathconsent = TRUE;
+if(\$using) \{
+  Social(\$killer, "kill", \$adverb, \$evoke, nil, \$victim, \$using_prep, \$using);
+\} else \{
+  Social(\$killer, "kill", \$adverb, \$evoke, nil, \$victim);
+\}
+if(NRefOb(\$victim)."tmp:magic:sacrifice:StatsUp:Octagram") \{
+ Call(\$\{Ironclaw:Props:Magic:Necromancy:StatsUp:SacrificeOctagram\}, "sacrificed", \$victim: \$victim);
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:kill_denied">
+         X[M] /* decided not to consent to death */
+
+\$victim = NRefOb(\$par["victim"]);
+\$killer = \$par["killer"];
+
+EmitTo(\$victim, "You choose not to consent to death.");
+EmitTo(\$killer, Describe(\$victim)+" decides not to consent to death.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:kill_expire">
+         X[M] /* decided not to consent to death */
+
+\$victim = NRefOb(\$par["victim"]);
+\$killer = \$par["killer"];
+
+EmitTo(\$victim, "The request for your death has expired.");
+EmitTo(\$killer, Describe(\$victim)+" has not responded, and your request to kill them has expired.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1176287851, "tonyd", "E", 1176287908, "tonyd", "E", 1176288061, "tonyd", "P", 1194142026, "tonyd", "E", 1194142042, "tonyd", "E", 1194142450, "tonyd", "P", 1194142460, "tonyd", "P", 1194142614, "tonyd", "P", 1194142756, "tonyd", "P", 1194142812, "tonyd", "P", 1194143601, "tonyd", "P", 1194143627, "tonyd", "P", 1194143655, "tonyd", "P", 1194144666, "tonyd", "P", 1194144826, "tonyd", "P", 1194144932, "tonyd", "P", 1194145104, "tonyd", "P", 1194145182, "tonyd", "P", 1194146205, "tonyd", "P", 1194146821, "tonyd", "P", 1194146999, "tonyd", "P", 1194147178, "tonyd", "P", 1194148158, "tonyd", "P", 1194148185, "tonyd", "P", 1194148284, "tonyd", "P", 1194148414, "tonyd", "P", 1194148489, "tonyd", "P", 1194148522, "tonyd", "P", 1194148537, "tonyd", "P", 1194148719, "tonyd", "P", 1194148758, "tonyd", "P", 1194148793, "tonyd", "P", 1194148844, "tonyd", "P", 1194148942, "tonyd", "P", 1194149020, "tonyd", "P", 1194149061, "tonyd", "P", 1194149077, "tonyd", "P", 1194149255, "tonyd", "P", 1194149268, "tonyd", "P", 1194149278, "tonyd", "P", 1194149317, "tonyd", "P", 1194149329, "tonyd", "P", 1194149434, "tonyd", "P", 1194149474, "tonyd", "P", 1194149518, "tonyd", "P", 1194149539, "tonyd", "P", 1194149571, "tonyd", "P", 1194149606, "tonyd", "P", 1194149637, "tonyd", "P", 1194150279, "tonyd", "P", 1194150311, "tonyd", "P", 1194150375, "tonyd", "P", 1194150397, "tonyd", "P", 1194150476, "tonyd", "P", 1194150515, "tonyd", "P", 1194150615, "tonyd", "P", 1194150733, "tonyd", "P", 1194150781, "tonyd", "P", 1194150838, "tonyd", "P", 1194399286, "tonyd", "P", 1194399889, "tonyd", "P", 1196565664, "tonyd", "P", 1196565774, "tonyd", "P", 1196565882, "tonyd", "P", 1196565907, "tonyd", "P", 1196565992, "tonyd", "P", 1196566316, "tonyd", "P", 1196567851, "tonyd", "P", 1196568024, "tonyd", "P", 1196577595, "tonyd", "P", 1231104147, "jominey", "E", 1231104326, "jominey", "E", 1231104751, "jominey", "E", 1231104865, "jominey", "E", 1231105197, "jominey", "E", 1231105762, "jominey", "E", 1231106085, "jominey", "E", 1231106096, "jominey", "E", 1231106102, "jominey", "E", 1231106236, "jominey", "E", 1231106248, "jominey", "E", 1231200809, "jominey", "E", 1256969309, "tonyd", "E", 1256969387, "tonyd", "E", 1256969715, "tonyd", "E", 1256970155, "tonyd", "E", 1256970216, "tonyd", "E", 1256970317, "tonyd", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

@@ -1,0 +1,238 @@
+<object clone="/base/obj/thing" owner="balkaar">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.2" density="0.5"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="true"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="false" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="grass"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="grasses"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:state) $(this.trait:color) $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="look">
+             <describe what="$(this)" nonposs="1" cap="1"/>.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="head-fore"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:alteration:add:default:dye">
+         ([ "noslay":"true", "properties":(\{ (\{ "trait:color", "trait:color" \}) \}) ])
+      </Core:Property>
+      <Core:Property property="export:decaydelay">
+         172800
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "grass"
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "grass"
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "heavily layered, sour herbs"
+      </Core:Property>
+      <Core:Property property="export:trait:taste">
+         "sour, metallic"
+      </Core:Property>
+      <Core:Property property="export:trait:trash">1</Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] /* make flowers decay over time */ 
+Call(this, "decay"); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:decay">
+         X[M] /* Make flowers decay over time */ 
+ 
+/* check if this is a spawn */ 
+if(sscanf(name(this), "%s]#%s", \$tmp, \$tmp) != 2) \{ 
+  /* NOT a spawn. Don't decay */ 
+  return TRUE; 
+\} 
+ 
+if(!this."trait:quality") 
+  this."trait:quality" = 4; 
+ 
+while(this."trait:quality") \{ 
+  \$delay(this.decaydelay, TRUE, "0fe5"); 
+ 
+  /* check if this is a spawn */ 
+  if(sscanf(name(this), "%s]#%s", \$tmp, \$tmp) != 2) \{ 
+    /* NOT a spawn. Don't decay */ 
+    return TRUE; 
+  \} 
+  this."trait:quality"--; 
+ 
+/*  EmitTo(this."base:environment", "I am "+Describe(this)); 
+  EmitTo(this."base:environment", "Quality of "+Str(this."trait:quality")); */ 
+\} 
+ 
+\$delay(this.decaydelay*5, TRUE, "93f0"); 
+ 
+/* check if this is a spawn */ 
+if(sscanf(name(this), "%s]#%s", \$tmp, \$tmp) != 2) \{ 
+  /* NOT a spawn. Don't decay */ 
+  return TRUE; 
+\} 
+ 
+/* send destruction message */ 
+if(this."base:environment") 
+  EmitIn(this."base:environment", Describe(\$this)+" disintegrates."); 
+if(this."base:environment"."base:environment") \{ 
+  EmitTo(this."base:environment", Describe(\$this, nil, this."base:environment")+" disintegrates."); 
+  EmitIn(this."base:environment"."base:environment", Describe(\$this)+" disintegrates.", this."base:environment"); 
+\} 
+Slay(this); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:grind-dob">
+         X[M] /* check if there is a mortar */
+
+if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You need to be holding " + Describe(\$this) + " to do that.");
+    return FALSE;
+\}
+
+if(!\$using) \{
+ EmitTo(\$actor, "You need something to grind the grass with.");
+ return FALSE;
+\}
+if(sizeof(\$using) != 1) \{
+ EmitTo(\$actor, "You don't need that many things to grind the grass with.");
+ return FALSE;
+\}
+
+\$mortar = Match(\$actor, "mortar");
+   if(!sizeof(\$mortar)) \{ 
+      EmitTo(\$actor, "You should use a mortar for grinding the grass.");
+      return FALSE; \} 
+
+for(\$i = 0; \$i \< sizeof(\$mortar); \$i++) \{
+    \$mortar[\$i] = NRefOb(\$mortar[\$i]);
+\}
+
+\$tool = NRefOb(\$using[0]);
+    if(!member(\$tool, \$mortar)) \{ 
+    EmitTo(\$actor, "You need a mortar to properly grind the grass with.");
+    return FALSE; \} 
+
+/* check if they have skill */
+\$gardener = Int(\$actor."skill:career:gardener") + Int(\$actor."skill:alteration:gardening")+ Int(\$actor."skill:career:healer")/2;
+
+if(!\$gardener) \{
+   EmitTo(\$actor, "Your awkward attempt to grind the grass results in some torn pieces of plant which fall from your hand.");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+"'s awkward attempt to grind the grass results in some torn pieces of plant which fall to the ground.", \$actor); 
+   /* slay grass */
+   Slay(this);
+   return FALSE;
+\} else if(\$gardener \<= 8) \{
+   EmitTo(\$actor, "You are not quite accustomed for this type of fine work and you do not manage to properly grind the grass, but you can save the grass for someone more skilled.");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+" tries to grind the grass into some paste, but does not manage to. At least the grass isn't ruined beyond recognition.", \$actor); 
+/* if they have skill make paste from it */ 
+\} else if (\$gardener \> 8) \{
+   EmitTo(\$actor, "Your toss your grass into your mortar and grind it with practiced moves until the leaves mash into a uniform paste. You collect the paste into a little clay pot.");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+" puts the grass into a mortar and grinds the plant into a uniform paste which is then collected into a little clay pot.", \$actor); 
+   /* exchange grass for paste */
+   Slay(this);
+   \$paste = Spawn(\$\{Ironclaw:Props:Herbalism:Pastes:UrPaste\});  
+   Set(\$paste,"base:environment", \$actor);
+   Set(\$paste,"trait:material", "snake grass");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quality">
+         X[M] /* set the description for the flower, based on quality */ 
+ 
+switch(this."trait:quality") \{ 
+  case 12: 
+    this."trait:state" = "perfect"; 
+    break; 
+  case 11: 
+    this."trait:state" = "perfect"; 
+    break; 
+  case 10: 
+    this."trait:state" = "immaculate"; 
+    break; 
+  case 9: 
+    this."trait:state" = "amazing"; 
+    break; 
+  case 8: 
+    this."trait:state" = "pristine"; 
+    break; 
+  case 7: 
+    this."trait:state" = "crisp"; 
+    break; 
+  case 6: 
+    this."trait:state" = "fresh"; 
+    break; 
+  case 5: 
+    this."trait:state" = "lively"; 
+    break; 
+  case 2: 
+    this."trait:state" = (\{ "dull", "faded" \})[random(2)]; 
+    break; 
+  case 1: 
+    this."trait:state" = (\{ "limp", "listless" \})[random(2)]; 
+    break; 
+  case 0: 
+    this."trait:state" = "wilted"; 
+    break; 
+  default: 
+    this."trait:state" = nil; 
+    break; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1127923051, "tunk_bodin", "X", 1127923345, "tunk_bodin", "X", 1127923680, "tunk_bodin", "X", 1127923815, "tunk_bodin", "X", 1127924823, "tunk_bodin", "X", 1127925274, "tunk_bodin", "X", 1127969669, "tunk_bodin", "X", 1127972865, "tunk_bodin", "E", 1128055550, "tunk_bodin", "X", 1128994062, "tunk_bodin", "X", 1128994433, "tunk_bodin", "X", 1129002244, "tunk_bodin", "X", 1129002340, "tunk_bodin", "X", 1129003413, "tunk_bodin", "X", 1129009397, "tunk_bodin", "X", 1129009472, "tunk_bodin", "X", 1129009530, "tunk_bodin", "X", 1129009687, "tunk_bodin", "X", 1129009719, "tunk_bodin", "X", 1129010041, "tunk_bodin", "X", 1129998731, "tunk_bodin", "X", 1130464862, "tunk_bodin", "X", 1130464966, "tunk_bodin", "X", 1136426932, "tonyd", "E", 1136427157, "tonyd", "E", 1136428919, "tonyd", "E", 1136428952, "tonyd", "E", 1136843255, "tunk_bodin", "X", 1136843491, "tunk_bodin", "X", 1136927070, "tunk_bodin", "E", 1137612759, "roccon", "X", 1137612768, "roccon", "X", 1139783822, "tunk_bodin", "X", 1139783869, "tunk_bodin", "X", 1147075374, "tonyd", "E", 1147075383, "tonyd", "E", 1147081607, "tonyd", "E", 1147081667, "tonyd", "E", 1147081750, "tonyd", "E", 1147676204, "tonyd", "E", 1147676653, "tonyd", "P", 1147676697, "tonyd", "P", 1147676737, "tonyd", "P", 1147676793, "tonyd", "P", 1147676844, "tonyd", "P", 1147676933, "tonyd", "P", 1147676978, "tonyd", "P", 1147677036, "tonyd", "P", 1147677054, "tonyd", "P", 1147677167, "tonyd", "P", 1147677239, "tonyd", "P", 1147677305, "tonyd", "S", 1147677343, "tonyd", "P", 1147677349, "tonyd", "P", 1147677395, "tonyd", "P", 1147677441, "tonyd", "P", 1147677808, "tonyd", "P", 1147678044, "tonyd", "P", 1147678102, "tonyd", "P", 1147678147, "tonyd", "P", 1147678338, "tonyd", "P", 1147678360, "tonyd", "P", 1147678406, "tonyd", "P", 1147680163, "tonyd", "E", 1147849231, "tonyd", "E", 1148004976, "tonyd", "P", 1168391752, "tunk_bodin", "X", 1201549234, "jsfox", "X", 1203348078, "slurpeeslurp", "E", 1249993709, "balkaar", "E", 1249993882, "balkaar", "E", 1249994140, "balkaar", "E", 1249994166, "balkaar", "E", 1249994211, "balkaar", "E", 1249994238, "balkaar", "E", 1250002008, "balkaar", "E", 1250004026, "balkaar", "E", 1250009152, "balkaar", "E", 1250087715, "balkaar", "E", 1250087766, "balkaar", "E", 1250087790, "balkaar", "E", 1250090901, "balkaar", "E", 1250092527, "jominey", "E", 1250092594, "jominey", "E", 1250092629, "jominey", "E", 1250092678, "jominey", "E", 1250092717, "jominey", "E", 1250093031, "jominey", "E", 1250093733, "jominey", "E", 1250095737, "balkaar", "E", 1250096071, "balkaar", "E", 1250096346, "balkaar", "E", 1250096425, "balkaar", "E", 1250096436, "balkaar", "E", 1250096822, "balkaar", "E", 1250096988, "balkaar", "E", 1250097238, "balkaar", "E", 1250097432, "balkaar", "E", 1250114049, "jominey", "E", 1250291874, "balkaar", "E", 1250783072, "jominey", "E", 1251683169, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

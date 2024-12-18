@@ -1,0 +1,216 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tunk_bodin">
+  <Socials:Verb imp="+search" evoke="optional" audible="true" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* search chatters for specific properties */
+
+/* help files */
+\$help = Call(\$this, "help_files");
+
+/* no words = help file */
+if(!\$(dob:words)) \{
+EmitTo(\$actor, \$help);
+return FALSE;
+\}
+
+/* sort the words */
+\$line = implode(\$(dob:words), ", ");
+\$line = lower_case(\$line);
+\$line = explode(\$line, ", ");
+
+/* do we want to search inactive chatters? */
+\$all = "n";
+if(\$line[0] == "all") \{
+\$all = "y";
+\$line -= (\{ "all" \});
+EmitTo(\$actor, "Decided to search all chatters! \\n");
+\}
+
+/* make sure we still have a line to work with */
+if(sizeof(\$line) \< 1) \{
+EmitTo(\$actor, \$help);
+return FALSE;
+\}
+
+/* we looking for religion? */
+if(\$line[0] == "religion") \{
+if(sizeof(\$line) \< 2) \{
+EmitTo(\$actor, \$help);
+return FALSE;
+\}
+\$type = "trait";
+\$search = "religion";
+\$value = \$line[1];
+EmitTo(\$actor, "Listing chatters with a trait:religion of " +\$value+ ": \\n");
+\}
+
+/* we looking for appearance trait? */
+if(\$line[0] == "appearance") \{
+if(sizeof(\$line) \< 3) \{
+EmitTo(\$actor, \$help);
+return FALSE;
+\}
+\$type = "appearance";
+\$search = \$line[1];
+\$value = \$line[2];
+EmitTo(\$actor, "Listing chatters using appearance wildcard of " +\$search+ " containing " +\$value+ ": \\n");
+\}
+
+/* skill or career? */
+if(\$line[0] == "skill" \|\| \$line[0] == "career") \{
+if(sizeof(\$line) \< 2) \{
+EmitTo(\$actor, \$help);
+return FALSE;
+\}
+\$type = "skill";
+\$search = "none";
+\$value = \$line[1];
+EmitTo(\$actor, "Listing chatters with a skill and/or career of " +\$value+ ": \\n");
+\}
+
+/* if we didn't get expected values, return false */
+if(!\$type) \{
+EmitTo(\$actor, \$help);
+return FALSE;
+\}
+
+/* grab chatters */
+\$folder = "Chatters:IC";
+EmitTo(\$actor, "Search started...");
+\$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+for(\$i=0;\$i\<sizeof(\$folders);\$i++) \{
+  \$folder = "Chatters:IC:"+\$folders[\$i];
+  \$characters = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+  for(\$j=0;\$j\<sizeof(\$characters);\$j++) \{
+    Call(\$this, "search_function", \$char: Obj("Chatters:IC:"+\$folders[\$i]+":"+\$characters[\$j]), \$type: \$type, \$search: \$search, \$value: \$value, \$all: \$all );
+    \$delay(0.002, TRUE, "0fb1");
+  \}
+\}
+
+EmitTo(\$actor, "Search ended.");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:help_files">
+         X[M] \$msg = "";
+\$msg += "This command will search chatters for specified values and return a list. \\n \\n";
+\$msg += "USAGE: \\n";
+\$msg += "+search skill \\\<value\\\> -- +search skill pickpocket \\n";
+\$msg += "+search religion \\\<value\\\> -- +search religion lutara \\n";
+\$msg += "+search appearance \\\<type\\\> \\\<value\\\> -- +search appearance fur blue \\n";
+\$msg += "\\n NOTE: Standard search only includes active chatters. For a full search use... \\n";
+\$msg += "+search all \\\<type\\\> \\\<value\\\>, etc. \\n";
+\$msg += "\\n HINTS: \\n";
+\$msg += "Using \\'fur\\' will search furcolor, furtexture, etc. \\n";
+\$msg += "Using \\'blue\\' will return \\'blue roan\\', \\'icy blue\\', etc.";
+
+return \$msg;
+      </Core:Property>
+      <Core:Property property="merry:lib:search_function">
+         X[M] /* active vs. inactive */
+\$proceed = "y";
+if(\$all == "n") \{
+if(\$char."cdat:lastlogin") \{
+\$timing = Int(\$char."cdat:lastlogin")+60*60*24*5;
+\} else \{
+\$timing = time();
+\}
+\$time = time();
+if(Int(\$time) \> Int(\$timing)) \$proceed = "n";
+\}
+
+/* proceed */
+if(\$proceed == "y") \{
+
+/* religion */
+if(\$search == "religion") \{
+if(\$char."trait:religion" \&\& contains(\$char."trait:religion", \$value)) EmitTo(\$actor, Describe(\$char)+ "\\n");
+\}
+
+/* appearance */
+if(\$type == "appearance") \{
+\$map = ([ ]);
+\$map += prefixed_map(\$char."*", "appearance:");
+for(\$ob = \$char."core:ur:parent"; \$ob; \$ob = \$ob."core:ur:parent") \{
+    \$map = prefixed_map(\$ob."*", "export:appearance:") + \$map;
+\}
+
+\$tags = (\{ \});
+\$tags += map_indices(\$map);
+\$t_sz = sizeof(\$tags);
+
+\$tmp = (\{ \});
+for(\$s=0; \$s \< \$t_sz; \$s++) \{
+if(!contains(\$tags[\$s], \$search)) \{
+\$tmp += (\{ \$tags[\$s] \});
+\}
+\}
+
+\$m_sz = sizeof(\$tmp);
+for(\$v=0; \$v\<\$m_sz; \$v++) \{
+\$tags -= (\{ \$tmp[\$v] \});
+\}
+
+\$t_sz = sizeof(\$tags);
+for(\$t=0; \$t \< \$t_sz; \$t++) \{
+if(contains(\$map[\$tags[\$t]], \$value)) EmitTo(\$actor, Describe(\$char) + " -- " +\$tags[\$t]+ " = " +\$map[\$tags[\$t]]+ " \\n");
+\}
+
+\}
+
+/* skills and careers */
+if(\$type == "skill") \{
+\$map = ([ ]);
+\$map += prefixed_map(\$char."*", "skill:");
+for(\$ob = \$char."core:ur:parent"; \$ob; \$ob = \$ob."core:ur:parent") \{
+    \$map = prefixed_map(\$ob."*", "export:skill:") + \$map;
+\}
+\$map += prefixed_map(\$char."*", "career:");
+for(\$ob = \$char."core:ur:parent"; \$ob; \$ob = \$ob."core:ur:parent") \{
+    \$map = prefixed_map(\$ob."*", "export:career:") + \$map;
+\}
+/* for some reason all objects have skill:fatigue */
+\$map -= (\{ "skill:fatigue" \});
+\$tags = (\{ \});
+\$tags += map_indices(\$map);
+\$t_sz = sizeof(\$tags);
+
+\$tmp = (\{ \});
+for(\$s=0; \$s \< \$t_sz; \$s++) \{
+if(!contains(\$tags[\$s], \$value)) \{
+\$tmp += (\{ \$tags[\$s] \});
+\}
+\}
+
+\$m_sz = sizeof(\$tmp);
+for(\$v=0; \$v\<\$m_sz; \$v++) \{
+\$tags -= (\{ \$tmp[\$v] \});
+\}
+
+\$t_sz = sizeof(\$tags);
+for(\$t=0; \$t \< \$t_sz; \$t++) \{
+\$int = Int(\$map[\$tags[\$t]]);
+EmitTo(\$actor, Describe(\$char) + " -- " +\$tags[\$t]+ " = " +Str(\$int)+ " \\n");
+\}
+
+
+\}
+/* EmitTo(\$actor, \$type+ ", "+ \$search + ", " + \$value + ", " +\$all); */
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1299690962, "tunk_bodin", "X", 1299690977, "tunk_bodin", "X", 1299691035, "tunk_bodin", "P", 1299691046, "tunk_bodin", "P", 1299691058, "tunk_bodin", "P", 1299691098, "tunk_bodin", "P", 1299691160, "tunk_bodin", "P", 1299691200, "tunk_bodin", "P", 1299691200, "tunk_bodin", "P", 1299691233, "tunk_bodin", "P", 1299691246, "tunk_bodin", "P", 1299691258, "tunk_bodin", "P", 1299691270, "tunk_bodin", "P", 1299691637, "tunk_bodin", "P", 1299691711, "tunk_bodin", "P", 1299691786, "tunk_bodin", "P", 1299691888, "tunk_bodin", "P", 1299691929, "tunk_bodin", "P", 1299691955, "tunk_bodin", "P", 1299692038, "tunk_bodin", "P", 1299692202, "tunk_bodin", "P", 1299692257, "tunk_bodin", "P", 1299692302, "tunk_bodin", "P", 1299692419, "tunk_bodin", "P", 1299692528, "tunk_bodin", "P", 1299693204, "tunk_bodin", "P", 1299693340, "tunk_bodin", "P", 1299693597, "tunk_bodin", "P", 1299693884, "tunk_bodin", "P", 1299694455, "tunk_bodin", "P", 1299694528, "tunk_bodin", "P", 1299694561, "tunk_bodin", "P", 1299694641, "tunk_bodin", "P", 1299694656, "tunk_bodin", "P", 1299695631, "tunk_bodin", "P", 1299695698, "tunk_bodin", "P", 1299695776, "tunk_bodin", "P", 1299696034, "tunk_bodin", "P", 1299696111, "tunk_bodin", "P", 1299696205, "tunk_bodin", "P", 1299696387, "tunk_bodin", "P", 1299696436, "tunk_bodin", "P", 1299696578, "tunk_bodin", "P", 1299696705, "tunk_bodin", "P", 1299696788, "tunk_bodin", "P", 1299696828, "tunk_bodin", "P", 1299696888, "tunk_bodin", "P", 1299697314, "tunk_bodin", "P", 1299697485, "tunk_bodin", "P", 1299697508, "tunk_bodin", "P", 1299697812, "tunk_bodin", "P", 1299697847, "tunk_bodin", "P", 1299697898, "tunk_bodin", "P", 1299697947, "tunk_bodin", "P", 1299698050, "tunk_bodin", "P", 1299698107, "tunk_bodin", "P", 1299698692, "tunk_bodin", "P", 1299698850, "tunk_bodin", "P", 1299698892, "tunk_bodin", "P", 1299698917, "tunk_bodin", "P" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

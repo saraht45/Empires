@@ -1,0 +1,75 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:reduce_stock">
+         X[M] /* reduce the stock for the traders */
+
+\$min = nil;
+
+/* the fishmonger */
+::reduction_loop(\$inventory: \$\{Allegory:NPCs:NIPs:TradingLists:Southeast:FishingSupplies:Fishmonger\}, \$reduction: (\{ 0, 0, 0, 0, 0, 1, 1, 2 \}), \$scaling: TRUE, \$max: 200, \$items: (\{ "tradingitem:abalone", "tradingitem:bandedrudderfish", "tradingitem:blackdrum", "tradingitem:blackgrouper", "tradingitem:bluefish", "tradingitem:bluemarlin", "tradingitem:bluerunner", "tradingitem:bonefish", "tradingitem:cobia", "tradingitem:croaker", "tradingitem:gag", "tradingitem:jewfish", "tradingitem:lefteyeflounder", "tradingitem:oldboot", "tradingitem:reddrum", "tradingitem:redgrouper", "tradingitem:rustybucket", "tradingitem:sandseatrout", "tradingitem:scamp", "tradingitem:seaweed", "tradingitem:shad", "tradingitem:silverperch", "tradingitem:silverseatrout", "tradingitem:spearfish", "tradingitem:spottedseatrout", "tradingitem:weakfish", "tradingitem:whitegrunt", "tradingitem:yellowfingrouper", "tradingitem:yellowmouthgrouper" \}));
+
+/* the dye merchant */
+::reduction_loop(\$inventory: \$\{Ironclaw:NIP:Traders:DyeMerchant\}, \$items: (\{ "tradingitem:dye-misc" \}), \$max: 120, \$scaling: TRUE, \$reduction: (\{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 \}));
+
+/* the vermin catcher */
+::reduction_loop(\$inventory: \$\{Allegory:NPCs:NIPs:Buyers:Southwest:RatCatcher\}, \$items: (\{ "tradingitem:skink" \}), \$min: nil, \$max: 600, \$reduction: (\{ 0, 0, 0, 1, 2, 3, 4, 5 \}), \$scaling: TRUE);
+
+
+/* restock fish in the bay */
+\$maxfish = 3;
+\$delay = 6;
+
+\$rooms = (\{ \$\{Allegory:Setting:Rinascita:Coast:Pier:Pier04:02\}, \$\{Allegory:Setting:Rinascita:Coast:Pier:Pier02:01\},  \$\{Allegory:Setting:Rinascita:Coast:Pier:Pier01:01\}, \$\{Allegory:Setting:Rinascita:Coast:Pier:Pier03:01\}, \$\{Allegory:Setting:Rinascita:Coast:Pier:Pier04:01\}, \$\{Allegory:Setting:Rinascita:Coast:Pier:Pier03:02\}, \$\{Allegory:Setting:Rinascita:Coast:Pier:Pier02:02\} \});
+
+for(\$i=0;\$i\<sizeof(\$rooms);\$i++) \{
+ \$room = \$rooms[\$i];
+ if(Int(\$room."fishing:stock") \< 10) \$room."fishing:stock" = Int(\$room."fishing:stock") + 1;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:reduction_loop">
+         X[M] int i, sz;
+
+/* reduce each of these items */
+if(!\$inventory) return TRUE;
+if(!\$items) return TRUE;
+if(!\$reduction) return TRUE;
+
+sz = sizeof(\$items);
+for(i=0;i\<sz;i++) \{
+  \$tmp = Get(\$inventory, \$items[i]);
+  /* check we have \$tmp */
+  if(!\$tmp \|\| !\$tmp["stock"]) continue;
+  /* check if we want to deplete stock */
+  if(\$scaling) \{
+    if(\$tmp["maxstock"]) \{
+      if(random(\$tmp["maxstock"]) \>= \$tmp["stock"])
+        continue;
+    \} else if(\$max) \{
+      if(random(\$max) \>= \$tmp["stock"])
+        continue;
+    \}
+  \}
+  if(typeof(\$reduction) == T_ARRAY)
+    \$reduction = \$reduction[random(sizeof(\$reduction))];
+  if(\$tmp["stock"] \>= Int(\$min)+\$reduction) \{
+    \$tmp["stock"] -= \$reduction;
+    if(\$tmp["stock"] \< Int(\$min)) \$tmp["stock"] = Int(\$min);
+  \}
+  if(\$max \&\& \$tmp["stock"] \> Int(\$tmp["maxstock"])+Int(\$max)) \{
+    \$tmp["stock"] = Int(\$tmp["maxstock"])+\$max;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1179024833, "tonyd", "P", 1179024899, "tonyd", "P", 1179024941, "tonyd", "P", 1179024992, "tonyd", "P", 1179025078, "tonyd", "P", 1179025143, "tonyd", "P", 1179025210, "tonyd", "P", 1179025250, "tonyd", "P", 1179025291, "tonyd", "P", 1179025393, "tonyd", "P", 1179025453, "tonyd", "P", 1179025517, "tonyd", "P", 1182746909, "tonyd", "P", 1200971318, "tonyd", "E", 1201437122, "tonyd", "P", 1201437218, "tonyd", "P", 1201437345, "tonyd", "P", 1201437387, "tonyd", "P", 1201439822, "tonyd", "P", 1201439846, "tonyd", "P", 1201443327, "tonyd", "P", 1201659286, "tonyd", "E", 1201789648, "tonyd", "E", 1201790786, "tonyd", "P", 1201790864, "tonyd", "P", 1201790889, "tonyd", "P", 1201791089, "tonyd", "P", 1201791219, "tonyd", "P", 1201791305, "tonyd", "P", 1201791412, "tonyd", "P", 1201791433, "tonyd", "P", 1201791458, "tonyd", "P", 1201794319, "tonyd", "P", 1201794513, "tonyd", "P", 1203725463, "tonyd", "E", 1203728169, "tonyd", "P", 1224295182, "tonyd", "E", 1224295339, "tonyd", "E", 1230015019, "tonyd", "P", 1234864990, "tonyd", "P", 1235175214, "tonyd", "P", 1309201200, "tunk_bodin", "R", 1309215066, "tunk_bodin", "R", 1451258214, "tonyd", "P", 1451258247, "tonyd", "P", 1451258422, "tonyd", "P", 1598197943, "jominey", "E", 1598198844, "jominey", "E", 1598212629, "jominey", "E", 1598234926, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

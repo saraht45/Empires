@@ -1,0 +1,198 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:arr_to_set">
+         X[M] /* \$arr */
+
+mapping set;
+int i;
+
+set = ([ ]);
+for(i = 0; i \< sizeof(\$arr); i++) \{
+    if(set[\$arr[i]]) \{
+        set[\$arr[i]]++;
+    \} else \{
+        set[\$arr[i]] = 1;
+    \}
+\}
+
+return set;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_haggle">
+         X[M] \$haggle_roll = ironclaw::roll(\$roller: \$actor, \$skills: (\{"social:trading"\}), \$bonus: 0);
+
+if(\$act == "selling") \{
+    if(\$sellprice \> 0.0) \{
+      \$sellprice = \$sellprice * Flt(100+\$haggle_roll)/100.0;
+      if(\$sellprice \< 1.0) \$sellprice = 1.0;
+    \}
+\} else \{
+    if(\$sellprice \> 0.0) \{
+      \$sellprice = \$sellprice * Flt(100-\$haggle_roll)/100.0;
+      if(\$sellprice \< 1.0) \$sellprice = 1.0;
+    \}
+\}
+
+return \$sellprice;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_cost">
+         X[M] \$cost = format_float(Flt(\$cost), 2);
+
+if(Flt(\$cost) \< Flt(0.01)) \$cost = 0.01;
+
+\$temp = explode(Str(\$cost), ".");
+
+\$florins = Int(\$temp[0]);
+\$brass = Int(Str(\$temp[1][0..0]));
+\$bronze = Int(Str(\$temp[1][1..1]));
+
+\$currency = (\{ \});
+if(Int(\$florins) \> 0) \{
+    \$currency += (\{ Str(\$florins) + " florins" \});
+\}
+
+if(Int(\$brass) \> 0) \{
+    \$currency += (\{ Str(\$brass) + " brass bits" \});
+\}
+
+if(Int(\$bronze) \> 0) \{
+    \$currency += (\{ Str(\$bronze) + " bronze bits" \});
+\}
+
+return common::string_list(\$list: \$currency);
+      </Core:Property>
+      <Core:Property property="merry:lib:get_quality_modifier">
+         X[M] mapping modifiers;
+
+if(\$quality \> 12) \$quality = 12;
+
+modifiers = ([ 0:0.2, 1:0.4, 2:0.6, 3:0.8, 4:1.0, 5:1.0, 6:1.1, 7:1.2, 8:1.3, 9:1.4, 10:1.5, 11:1.6, 12:1.6 ]);
+
+return modifiers[\$quality];
+      </Core:Property>
+      <Core:Property property="merry:lib:makeroll">
+         X[M] /* 
+** Make the skill roll 
+** \$num - seed number
+** \$bonus - bonus
+*/
+
+\$percentileMap = Get(\$\{Allegory:Data:SkillsDB\}, "skills:percentile");
+
+\$debug = nil;
+\$roo = \$\{Chatters:AE:ro:roo\};
+
+\$percentile = \$percentileMap[\$num];
+\$roll = random(100) + Int(\$bonus) + 1;
+
+if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "ROLL IS " + Str(\$roll));
+if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "PERCENTILE IS " + dump_value(\$percentile));
+
+\$total = 0;
+for(\$j = 0; \$j \< sizeof(\$percentile); \$j++) \{
+    \$total += \$percentile[\$j];
+
+    if(\$roll \<= \$total) \{
+        return \$j+1;
+    \}
+\}
+
+return 12;
+      </Core:Property>
+      <Core:Property property="merry:lib:roll">
+         X[M] /* 
+** Do a skill roll 
+** \$roller - actor
+** \$skills - array of skills to roll for
+** \$bonus - attributes or other bonuses to account for
+*/
+
+\$debug = nil;
+\$roo = \$\{Chatters:AE:ro:roo\};
+
+\$highest = 0;
+if(!\$skills \|\| !sizeof(\$skills)) \{
+    \$skills = (\{ "noskills" \});
+\}
+
+\$highestBonus = 0;
+if(\$bonus) \{
+    \$bonus = Arr(\$bonus);
+    for(\$i=0; \$i \< sizeof(\$bonus); \$i++) \{
+        if(typeof(\$bonus[\$i]) == 3) \{
+            \$bonus[\$i] = Int(Get(\$roller, \$bonus[\$i]));
+        \} else \{
+            \$bonus[\$i] = Int(\$bonus[\$i]);
+        \}
+
+        if(\$bonus[\$i] \> \$highestBonus) \$highestBonus = \$bonus[\$i];
+    \}
+\}
+
+if(\$highestBonus \> 0) \$highestBonus = random(\$highestBonus) + 1;
+
+for(\$i = 0; \$i \< sizeof(\$skills); \$i++) \{
+
+    \$skill = Int(Get(\$roller, \$skills[\$i]));
+
+    if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "SKILL IS " + Str(\$skills[\$i]));
+    if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "SKILL LVL IS " + Str(\$skill));
+    if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "BONUS IS " + Str(\$highestbonus));
+ 
+    if(\$skill \> 24) \{
+        \$leftover = \$skill - 24;
+        \$skill = 24;
+    \}
+
+    if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "ROLLING SKILL LEVEL OF " + Str(\$skill));
+    \$result = allegory::makeroll(\$num: \$skill, \$bonus: \$highestBonus);
+    if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "RESULT IS " + Str(\$result));
+
+    if(\$result \> \$highest) \$highest = \$result;
+
+    if(Int(\$leftover) \> 0) \{
+        if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "ROLLING LEFTOVER OF " + Str(\$skill));
+        \$result = allegory::makeroll(\$num: \$leftover, \$bonus: \$highestBonus);
+        if(\$debug) EmitTo(\$\{Chatters:AE:ro:roo\}, "RESULT IS " + Str(\$result));
+        if(\$result \> \$highest) \$highest = \$result;
+    \}
+\}
+
+return \$highest;
+      </Core:Property>
+      <Core:Property property="merry:lib:sendscroll">
+         X[M] \$scroll = Spawn(\$\{NPC:misc:scroll\});
+
+\$scroll."details:objskin:description:delivery-from" = Describe(\$writer);
+\$scroll."details:objskin:description:delivery-from:local" = Describe(\$writer);
+\$scroll."details:objskin:description:delivery-to" = Str(\$addressee."skotos:charname");
+\$scroll."details:objskin:description:delivery-to:local" = Str(\$addressee."skotos:charname");
+\$scroll."details:objskin:description:writing" = \$body;
+\$scroll."details:objskin:description:writing:local" = \$body;
+\$scroll."lastsigner:object" = \$writer;
+\$scroll.lastwriter = capitalize(\$writer."skotos:charname");
+\$scroll.lastwriter_object = \$writer;
+\$scroll.lastwritetime = time();
+\$scroll."nip:delivery:recipient" = \$addressee;
+
+\$courier = \$\{Data:NIP:couriers:database\};
+\$db = \$courier."nip:delivery";
+
+if(\$db[\$addressee]) \{
+    \$db[\$addressee] += (\{ \$scroll \});
+\} else \{
+    \$db[\$addressee] = (\{ \$scroll \});
+\}
+
+\$courier."nip:delivery" = \$db;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1598481135, "jominey", "E", 1598481191, "jominey", "E", 1598482285, "jominey", "E", 1598482441, "jominey", "E", 1598482527, "jominey", "E", 1598482852, "jominey", "E", 1598483031, "jominey", "E", 1598483097, "jominey", "E", 1598483333, "jominey", "E", 1598483354, "jominey", "E", 1598483829, "jominey", "E", 1598483880, "jominey", "E", 1598483931, "jominey", "E", 1598483964, "jominey", "E", 1598483993, "jominey", "E", 1598484035, "jominey", "E", 1598484065, "jominey", "E", 1598484098, "jominey", "E", 1598486925, "jominey", "E", 1598486933, "jominey", "E", 1598487551, "jominey", "E", 1598548327, "jominey", "E", 1598548336, "jominey", "E", 1598548741, "jominey", "E", 1598548757, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

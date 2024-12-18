@@ -1,0 +1,194 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="parrot"/>
+          </Base:SNames>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             red and green feathered lizard
+          </Base:Description>
+          <Base:Description type="examine">
+             $[/*Let's give folks an occasional surprise.*/  
+if (random(10)) {  
+  EmitTo($actor, "A red and green, feathered lizard with a curved, protruding beak.");  
+} else {  
+  EmitIn($actor."base:environment", "What choo lookin' at? What choo Lookin' at? SQAWK!");  
+}  
+   
+return nil;]
+          </Base:Description>
+          <Base:Description type="look">
+             $[/*Let's give folks an occasional surprise.*/  
+if (random(10)) {  
+  EmitTo($actor, "A red and green, feathered lizard with a curved, protruding beak.");  
+} else {  
+  EmitIn($actor."base:environment", "I'm a beauty! I'm a beauty SQAWK!");  
+}  
+   
+return nil;]
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:writable">1</Core:Property>
+      <Core:Property property="merry:lib:record-words">
+         X[M] /* Ms. Parrot */
+
+/*Ms. Parrot doesn't record everything she hears, only random samples.*/
+/*Those repeating the same phrase to Ms. Parrot repeatedly, will help her remember-- sometimes.*/
+int i; /*(This is here for a subsequent loop.)*/
+
+if (random(5)) \{
+  return FALSE;
+  /* Stops the program from proceeding 80% of the time. */
+\}
+
+/* Also, set a maximum phrase length:*/
+if (strlen(\$emote) \> 35) \{
+  return FALSE;
+\}
+
+/* check if we have somewhere to record it to */
+if(!\$this."words:remembered") \{
+  \$this."words:remembered" = allocate(24);
+\}
+
+/* what did we hear? */
+/* we heard \$evoke (remove before final deployment)*/
+
+EmitIn(\$this."base:environment", "SQUAWK! I heard "+\$evoke);
+
+/* The \$evoke included quote marks. Let's strip that off */
+
+\$words = \$evoke[1..strlen(\$evoke)-2];
+
+/* and now let's make space in our array for the new words. */
+
+
+\$this."words:remembered" = \$this."words:remembered"[0..22];
+      
+\$this."words:remembered" = Arr(\$words) + \$this."words:remembered";
+    
+
+/* and let's tell the audience something we've previously heard. Ms. Parrot repeats recently heard emotes earlier, timing and choice of saved emotes are linked via "\$dtime", so old emotes might appear to come out at random. */
+
+
+\$dtime = random(24);
+
+\$delay((3 + 3 * \$dtime), TRUE, "454");
+\$newwords = \$this."words:remembered"[\$dtime];
+
+/* adding a bit of variety to Ms. Parrot's responses.*/
+
+i = random(10);
+
+/* BECAUSE YOU USED SEPERATE IF CLAUSES, INSTEAD OF \} else if() \{ THIS MEANS MULTIPLE CASES CAN HAPPEN
+FOR EXAMPLE, IF i == 2 THEN IT WILL MATCH THE ONE WITH THE STARTING SQUAWK AND THE ONE WITHOUT. *Smile* That was my intent.
+*/
+
+
+if (i \< 5) \{
+  EmitIn(\$this."base:environment", "SQUAWK! "+\$newwords);
+\}
+
+if (i \< 8) \{
+  EmitIn(\$this."base:environment", \$newwords);
+  /* Yes, in this particular case, Polly repeats.*/
+\}
+
+if (i \>= 8) \{
+  EmitIn(\$this."base:environment", \$newwords + " SQUAWK!");
+  /* Only difference here is the squawk comes afterwards, not before.*/
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-desc:poke-dob">
+         X[M] /* play the cootie catcher game */
+if(!\$this.predictions) \{
+  EmitTo(\$actor, "Nothing is written on "+Describe(\$this, \$actor)+" yet.");
+  return FALSE;
+\}
+
+\$message = \$this.predictions[random(sizeof(\$this.predictions))];
+
+EmitTo(\$actor, "You oscilate the jaws on "+Describe(\$this, \$actor)+", until you finally arrive on a message that says \\""+\$message+"\\"");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" oscilates the jaws on "+Describe(\$this, nil, \$actor)+", until "+\$actor."base:pronoun"+" finally arrive on a message that says \\""+\$message+"\\"");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:evoke-dob">
+         X[M] return Call(\$this, "record-words");
+      </Core:Property>
+      <Core:Property property="merry:react-post:evoke-iob">
+         X[M] return Call(\$this, "record-words");
+      </Core:Property>
+      <Core:Property property="merry:react:write-what">
+         X[M] /*This code is meant to allow player-written modifications on their cootie catchers */
+/*August 2006*/
+/*merry:react:write-what !*/
+/**/
+/**/
+
+/* allow them to write up to eight predictions on this */
+
+/* check if we have somewhere to store the predictions */
+if(!\$this.predictions)
+  \$this.predictions = (\{ \});
+
+/* check that there aren't already eight predictions */
+if(sizeof(\$this.predictions) \> 7) \{
+  EmitTo(\$actor, "All the partitions of "+Describe(\$this, \$actor)+" have already been written on.");
+  return FALSE;
+\}
+
+/* add the prediction */
+\$this.predictions += (\{ \$(raw-evoke) \});
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1155580396, "colavina", "E", 1155580419, "colavina", "E", 1155580457, "colavina", "E", 1155581365, "colavina", "E", 1155581390, "colavina", "E", 1155581468, "colavina", "E", 1155582675, "colavina", "E", 1155582784, "colavina", "E", 1155592427, "colavina", "E", 1157074111, "tonyd", "P", 1157074131, "tonyd", "P", 1157074359, "tonyd", "P", 1157074518, "tonyd", "P", 1157074545, "tonyd", "P", 1157074556, "tonyd", "P", 1157074612, "tonyd", "P", 1157074632, "tonyd", "P", 1157074719, "tonyd", "P", 1157074847, "tonyd", "P", 1157075327, "tonyd", "P", 1157075345, "tonyd", "P", 1157075846, "tonyd", "P", 1157076322, "tonyd", "P", 1157113990, "colavina", "E", 1157114151, "colavina", "E", 1157115114, "colavina", "E", 1157115210, "colavina", "E", 1157115351, "colavina", "E", 1157115395, "colavina", "E", 1157115976, "colavina", "E", 1157119926, "colavina", "E", 1157120009, "colavina", "E", 1157120036, "colavina", "E", 1157122095, "colavina", "E", 1157122592, "colavina", "E", 1157122922, "colavina", "E", 1157122996, "colavina", "E", 1157123091, "colavina", "E", 1157123241, "colavina", "E", 1157128753, "colavina", "E", 1157132949, "colavina", "E", 1157133253, "colavina", "E", 1157133682, "colavina", "E", 1157153900, "tonyd", "P", 1157153948, "tonyd", "P", 1157153979, "tonyd", "P", 1157654286, "colavina", "E", 1158331659, "colavina", "E", 1158332052, "colavina", "E", 1158332060, "colavina", "E", 1158332265, "colavina", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

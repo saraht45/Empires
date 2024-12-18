@@ -1,0 +1,132 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="@donate" second="donate" third="donates" evoke="optional" audible="false" private="true" secret="false" obscured="true" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] if(\$actor."base:environment"."env:type" != "bank") \{
+  EmitTo(\$actor, "Donating money to your guild is best done from inside a banking establishment. Please escort yourself to the closest financial institution and try again.");
+  EmitTo(\$actor, "If you only need to check how much money you have, you can use the @money command.");
+  return FALSE;
+\}
+
+/* check if the player has a guild */
+if(!\$actor.guild) \{
+  EmitTo(\$actor, "You don't belong to a guild or house. Why are you throwing away good money?");
+  return FALSE;
+\}
+
+/* What did the user ask for? */
+if(\$evoke) \{
+  \$matches = sscanf(\$(raw-evoke), "%d %s token", \$donated, \$token_type);
+\}
+
+/* check if we're told how much to donate */
+if(!\$matches \|\| !\$donated) \{
+  EmitTo(\$actor, "Format is: @donate '5 to donate 5 florins to your guild. Replace the number 5 with however many florins you want to donate. Obviously.");
+  Social(\$actor, "@money");
+  return FALSE;
+\}
+
+if(\$donated \<= 0) \{
+  EmitTo(\$actor, "With creative accounting like that, you'll fit right in with the other moneylenders. But in this case... nice try. Next time, donate a positive amount.");
+  return FALSE;
+\}
+
+/* Are we donating tokens or money? */
+if(!\$token_type) \{
+  /* Donating money */
+  \$donated = \$donated * 100;
+  \$available = \$actor."trait:money";
+
+  if(Int(\$available) \< 100) \{
+      EmitTo(\$actor, "You have no money to donate.");
+      return FALSE;
+  \}
+
+  if(\$available \< \$donated) \{
+    /* can't donate the full amount. Offer the donation amount. */
+    \$available = Int(floor(Flt(\$available/100)))*100;
+    EmitTo(\$actor, "You do not have that much money available for donations. You can only donate "+ironclaw::describe_money(\$amount: \$available)+".");
+    \$donated = \$available;
+    \$donated = Int(floor(Flt(\$available/100)))*100; /* Round down to the nearest florin */
+  \}
+
+  /* ask if the player wants to donate the money */
+  interaction::question(\$question: "Are you sure you want to donate "+ironclaw::describe_money(\$amount: \$donated)+" to "+\$actor.guild.fullname+"?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "donate", \$no_fun: "donate_expired", \$expire_fun: "donate_expired", \$par: ([ "donated": \$donated, "actor":\$actor ]));
+  
+\} else \{
+  /* Donating tokens */
+  \$available = Int(Get(\$actor, "tokens:"+lower_case(\$token_type)));
+
+  if(!\$available) \{
+    EmitTo(\$actor, "You don't have any of those tokens.\\n\\n");
+    Social(\$actor, "@money");
+    return FALSE;
+  \}
+
+  if(\$available \< \$donated) \{
+    /* can't donate the full amount. Offer the donation amount. */
+    EmitTo(\$actor, "You do not have "+\$donated+" "+lower_case(\$token_type)+" tokens. You can only donate "+\$available+" tokens.");
+    \$donated = \$available;
+  \}
+
+  /* ask if the player wants to donate the money */
+  interaction::question(\$question: "Are you sure you want to donate "+\$donated+" "+lower_case(\$token_type)+" tokens to "+\$actor.guild.fullname+"?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "donate", \$no_fun: "donate_expired", \$expire_fun: "donate_expired", \$par: ([ "donated": \$donated, "token_type":\$token_type, "actor":\$actor ]));
+  
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:donate">
+         X[M] /* donating money to guild */
+\$donated = \$par["donated"];
+\$token_type = \$par["token_type"];
+\$actor = \$par["actor"];
+\$guild = \$actor.guild;
+
+if(!\$token_type) \{
+  /* Donating money */
+  \$actor."trait:money" -= \$donated;  
+  if(!\$guild.kitty) \$guild.kitty = 0; /* make sure the guild has a kitty */
+  \$guild.kitty += \$donated;
+
+  if(!\$guild.donations) \$guild.donations = (\{ \});
+  \$guild.donations += (\{ (\{ \$actor, \$donated, time() \}) \});
+
+  EmitTo(\$actor, "You donate "+ironclaw::describe_money(\$amount: \$donated)+" to "+\$actor.guild.fullname+".");
+\} else \{
+  /* Donating tokens */
+
+  /* Add tokens to the guild */
+  Set(\$guild, "tokens:"+lower_case(\$token_type), Int(Get(\$guild, "tokens:"+lower_case(\$token_type)))+\$donated );
+  
+  /* Subtract tokens from PC */
+  Set(\$actor, "tokens:"+lower_case(\$token_type), Int(Get(\$actor, "tokens:"+lower_case(\$token_type)))-\$donated );
+  /* If they have no tokens left, clear this entry */
+  if(!Get(\$actor, "tokens:"+lower_case(\$token_type))) Set(\$actor, "tokens:"+lower_case(\$token_type), nil);
+  
+
+  if(!\$guild.token_transfers) \$guild.token_transfers = (\{ \});
+  \$guild.token_transfers += (\{ (\{ \$actor, \$donated, lower_case(\$token_type), \$guild, time(), "receiving", "Token donation from member." \}) \});
+
+/*
+(\{ \<Chatters:IC:se:serafina\>, 10, "trade:merchant", \<Ironclaw:Guilds:rinaldi\>, 1445886191, "remove", "Import of 1 polished mahogany lap harp." \})
+(\{ \<Chatters:IC:ba:bayushi\>, 8000, "martial", \<Ironclaw:Guilds:servants\>, 1436634797, "receiving" \})
+*/
+
+  EmitTo(\$actor, "You donate "+\$donated+" "+lower_case(\$token_type)+" tokens to "+\$actor.guild.fullname+".");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:donate_expired">
+         X[M] EmitTo(\$actor, "You decide not to donate anything.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1141007304, "tunk_bodin", "X", 1141007646, "tunk_bodin", "X", 1141007813, "tunk_bodin", "X", 1141023686, "tonyd", "P", 1141024173, "tonyd", "P", 1149391348, "tonyd", "E", 1149591899, "tonyd", "P", 1149592545, "tonyd", "P", 1149592685, "tonyd", "P", 1149592710, "tonyd", "P", 1149592793, "tonyd", "P", 1149592919, "tonyd", "P", 1149592968, "tonyd", "P", 1149592995, "tonyd", "P", 1149593064, "tonyd", "P", 1149593134, "tonyd", "P", 1149593319, "tonyd", "P", 1149595484, "tonyd", "P", 1149595530, "tonyd", "P", 1149595558, "tonyd", "P", 1149595584, "tonyd", "P", 1149595849, "tonyd", "P", 1149595914, "tonyd", "P", 1149595980, "tonyd", "P", 1149596000, "tonyd", "P", 1149596037, "tonyd", "P", 1149596169, "tonyd", "P", 1149596191, "tonyd", "P", 1149596229, "tonyd", "P", 1167700027, "tonyd", "P", 1167700098, "tonyd", "P", 1167700160, "tonyd", "P", 1167700202, "tonyd", "P", 1167700289, "tonyd", "P", 1168398370, "necate", "E", 1172498468, "librarysage", "R", 1186892164, "tonyd", "E", 1194417439, "tonyd", "P", 1346728008, "jominey", "E", 1346728120, "jominey", "E", 1461909042, "tonyd", "P", 1461910214, "tonyd", "E", 1461910341, "tonyd", "P", 1461910353, "tonyd", "P", 1461910384, "tonyd", "P", 1461910458, "tonyd", "P", 1461910473, "tonyd", "P", 1461910490, "tonyd", "P", 1461910511, "tonyd", "P", 1461910532, "tonyd", "P", 1461910677, "tonyd", "P", 1461910774, "tonyd", "P", 1461910805, "tonyd", "P", 1461910817, "tonyd", "P", 1461910957, "tonyd", "P", 1461910971, "tonyd", "P", 1461911003, "tonyd", "P", 1461911050, "tonyd", "P", 1461911155, "tonyd", "P", 1461911189, "tonyd", "P", 1461911203, "tonyd", "P", 1461911221, "tonyd", "P", 1461911239, "tonyd", "P", 1461911252, "tonyd", "P", 1461911267, "tonyd", "P", 1461911276, "tonyd", "P", 1461911298, "tonyd", "P", 1461911420, "tonyd", "P", 1461911487, "tonyd", "P", 1461911648, "tonyd", "P", 1461911657, "tonyd", "P", 1461912575, "tonyd", "P", 1461912602, "tonyd", "P", 1461912643, "tonyd", "P", 1461912683, "tonyd", "P", 1461912697, "tonyd", "P", 1461912713, "tonyd", "P", 1461912740, "tonyd", "P", 1461912773, "tonyd", "P", 1461912811, "tonyd", "P", 1461912889, "tonyd", "P", 1461912894, "tonyd", "P", 1461912933, "tonyd", "P", 1461913061, "tonyd", "P", 1461913163, "tonyd", "P", 1461913171, "tonyd", "P", 1461913192, "tonyd", "P", 1461913250, "tonyd", "P", 1461913282, "tonyd", "P", 1461913335, "tonyd", "P", 1461913412, "tonyd", "P", 1461913417, "tonyd", "P", 1461913430, "tonyd", "P", 1461913493, "tonyd", "P", 1461913512, "tonyd", "P", 1461913547, "tonyd", "P", 1461913591, "tonyd", "P", 1461913657, "tonyd", "P", 1461913685, "tonyd", "P", 1461913702, "tonyd", "P", 1461914173, "tonyd", "P", 1461914198, "tonyd", "P", 1461914281, "tonyd", "P", 1465865407, "jominey", "E", 1465865571, "jominey", "E", 1465865711, "jominey", "E", 1465865733, "jominey", "E", 1465865751, "jominey", "E", 1465865843, "jominey", "E", 1465865887, "jominey", "E", 1497672432, "jominey", "E", 1497672514, "jominey", "E", 1571957599, "jominey", "R", 1571957676, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

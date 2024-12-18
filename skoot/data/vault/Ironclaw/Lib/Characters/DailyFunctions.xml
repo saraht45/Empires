@@ -1,0 +1,161 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="gimli:lib:learningpoints_loop">
+         "E[G]\\n/* loop every half-hour, for a day */\\nobject char, *bodies;\\nint j;\\n\\n/* offset the time when it starts checking */\\n\$delay(random(60*30), TRUE, \\"8bcc\\");\\n\\nfor(\$i=0;\$i\<48;\$i++) \{\\n  /* check what characters are online */\\n  bodies = common::wholist();\\n  for(j=0;j\<sizeof(bodies);j++) \{\\n    char = bodies[j];\\n    if(!char.\\"student:todayspoints\\") char.\\"student:todayspoints\\" = 0;\\n    if(!char.\\"student:learningpoints\\") char.\\"student:learningpoints\\" = 0;\\n    if(char.\\"student:todayspoints\\" \< 6 \&\& char.\\"student:learningpoints\\" \< 400) \{\\n      /* if they are not idle */\\n      if(char.\\"base:environment\\" \&\& char.\\"udat:object\\" \&\& Int(char.\\"udat:idle\\") \< 60*10) \{\\n        char.\\"student:learningpoints\\"++;\\n        char.\\"student:todayspoints\\"++;\\n      \}\\n    \}\\n  \}\\n  /* wait 30 minutes between checks */\\n  \$delay(60*30, TRUE, \\"b8fa\\");\\n\}\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:run_daily_functions">
+         "E[G]\\nstring *folders, *characters, *rooms;\\nobject char, room;\\nint i, j, k;\\n\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\\n// give four learning points, income etc. to every character\\nEmitTo(\$az, \\"Assigning learning points\\");\\n\$folder = \\"Chatters:IC\\";\\nfolders = Call(\$\{/usr/System/sys/idd\}, \\"idd:get-folders\\");\\nfor(i=0;i\<sizeof(folders);i++) \{\\n  \$folder = \\"Chatters:IC:\\"+folders[i];\\n  characters = Call(\$\{/usr/System/sys/idd\}, \\"idd:get-objects\\");\\n  for(j=0;j\<sizeof(characters);j++) \{\\n    char = Obj(\\"Chatters:IC:\\"+folders[i]+\\":\\"+characters[j]);\\n\\n    // Should we mothball this character?\\n    if(Int(char.\\"cdat:lastlogin\\")+(60*60*24*60) \< time()) \{\\n      char.mothballed = TRUE;\\n      continue;\\n    \}\\n\\n    /* EmitTo(\$az, dump_value( char )); */\\n    /*EmitTo(\$spot, dump_value( char ));*/\\n    // assign learning points\\n    if(!char.\\"student:learningpoints\\") \{\\n      char.\\"student:learningpoints\\" = 4;\\n    \} else if(char.\\"student:learningpoints\\" \< 400) \{\\n      char.\\"student:learningpoints\\" += 4;\\n      if(char.\\"student:learningpoints\\" \> 400)\\n        char.\\"student:learningpoints\\" = 400;\\n    \}\\n    // reset today's points\\n    char.\\"student:todayspoints\\" = 0;\\n\\n    // We should replace this rent section with a \\"give income\\" script (that gives income and takes rent, as appropriate)\\n    // Charge them rent from any rented rooms\\n    rooms = map_indices(prefixed_map(char.\\"*\\", \\"virtualhome:\\"));\\n    for(k=0;k\<sizeof(rooms);k++) \{\\n      if( typeof(Get(char, rooms[k])) != T_OBJECT ) continue;\\n      room = Get(char, rooms[k]);\\n      if((char.\\"cdat:lastlogin\\" + 60*60*24*5) \< time()) \$inactiveChar = TRUE;\\n      if(room.cost \&\& char.\\"trait:money\\" \&\& char.\\"trait:money\\" \> 0 \&\& rooms[k] != \\"virtualhome:home\\" \&\& !\$inactiveChar) \{\\n        EmitTo(\$\{Chatters:IC:ro:roo\}, Str(char) + \\" - \\" + Str(room) + \\" - \\" + Str(room.cost));\\n        char.\\"trait:money\\" -= room.cost;\\n      \}\\n    \}\\n\\n  \}\\n\}\\nEmitTo(\$az, \\"Learning points assigned\\");\\n\\n// run other functions\\n::learningpoints_loop();\\n\\n/* run guild trading */\\nCall(\$\{Ironclaw:Lib:Guilds:New\}, \\"run_daily_functions\\");\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="merry:lib:learningpoints_loop">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:learningpoints_loop instead! */
+/* loop every half-hour, for a day */
+object char, *bodies;
+int j, max, rate;
+string accountType;
+
+/* offset the time when it starts checking */
+\$delay(random(60*30), TRUE, "8bcc");
+
+for(\$i=0;\$i\<48;\$i++) \{
+  /* check what characters are online */
+  bodies = common::wholist();
+  for(j=0;j\<sizeof(bodies);j++) \{
+    char = bodies[j];
+    if(!char."student:todayspoints") char."student:todayspoints" = 0;
+    if(!char."student:learningpoints") char."student:learningpoints" = 0;
+
+    if(char."udat:object") \{
+        accountType = general::getAccountType(\$udat: char."udat:object");
+    \} else \{
+        accountType = "free";
+    \}
+
+    switch(accountType) \{
+        case "free": \{
+            rate = 2; 
+            max = 6;
+            break;
+        \}
+
+        case "premium": \{
+            rate = 6;
+            max = 22;
+            break;
+        \}
+
+        default: \{
+            rate = 4;
+            max = 16;
+            break;
+        \}
+    \}
+
+    if(char."student:todayspoints" \< max \&\& char."student:learningpoints" \< 400) \{
+      /* if they are not idle */
+      if(char."base:environment" \&\& char."udat:object" \&\& Int(char."udat:idle") \< 60*10) \{
+        char."student:learningpoints" += rate;
+        char."student:todayspoints" += rate;
+      \} 
+    \} 
+  \}
+
+  /* wait 30 minutes between checks */
+  \$delay(60*30, TRUE, "b8fa");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_daily_functions">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:run_daily_functions instead! */
+string *folders, *characters, *rooms;
+object char, room;
+int i, j, k;
+
+\$az = \$\{Chatters:AE:ro:roo\};
+
+/* give four learning points, income etc. to every character */
+EmitTo(\$az, "Assigning learning points");
+\$folder = "Chatters:AE";
+folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+for(i=0;i\<sizeof(folders);i++) \{
+  \$folder = "Chatters:AE:"+folders[i];
+  characters = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+  for(j=0;j\<sizeof(characters);j++) \{
+    char = Obj("Chatters:AE:"+folders[i]+":"+characters[j]);
+
+    /* Should we mothball this character? */
+    if(Int(char."cdat:lastlogin")+(60*60*24*60) \< time()) \{
+      char.mothballed = TRUE;
+       
+      /* Remove mothballed character's patron */
+      favor::remove_patron(\$patron: char.patron, \$protege: char);
+
+      /* Remove mothballed character's proteges */
+      favor::remove_proteges(\$patron: char);
+
+      continue;
+    \}
+
+    /* Check to see if char's patron is a deleted character */
+    if(char.patron) \{
+        if(contains(name(char.patron), "Backup")) \{
+            favor::remove_patron(\$patron: char.patron, \$protege: char);
+        \}
+    \}
+
+    /* EmitTo(\$az, dump_value( char )); */
+    /*EmitTo(\$spot, dump_value( char ));*/
+    /* assign learning points */
+    if(!char."student:learningpoints") \{
+      char."student:learningpoints" = 4;
+    \} else if(char."student:learningpoints" \< 400) \{
+      char."student:learningpoints" += 4;
+      if(char."student:learningpoints" \> 400)
+        char."student:learningpoints" = 400;
+    \}
+    /* reset today's points */
+    char."student:todayspoints" = 0;
+
+    if(char."trait:extraincome") \{
+        char."trait:money" += char."trait:extraincome";
+    \}
+
+    if(char."trait:income") \{
+        char."trait:money" += Int(char."trait:income");
+    \}
+
+    /* We should replace this rent section with a "give income" script (that gives income and takes rent, as appropriate) */
+    /* Charge them rent from any rented rooms */
+    rooms = map_indices(prefixed_map(char."*", "virtualhome:"));
+    for(k=0;k\<sizeof(rooms);k++) \{
+      if( typeof(Get(char, rooms[k])) != T_OBJECT ) continue;
+      room = Get(char, rooms[k]);
+      if((char."cdat:lastlogin" + 60*60*24*5) \< time()) \$inactiveChar = TRUE;
+      if(room.cost \&\& char."trait:money" \&\& char."trait:money" \> 0 \&\& rooms[k] != "virtualhome:home" \&\& !\$inactiveChar) \{
+        char."trait:money" -= room.cost;
+      \}
+    \}
+    char."dailyfunction:lastran" = time();
+  \}
+\}
+EmitTo(\$az, "Learning points assigned");
+
+/* run other functions */
+ ::learningpoints_loop(); 
+
+/* run guild trading */
+Call(\$\{Allegory:Lib:Guilds:New\}, "run_daily_functions");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1169344870, "tonyd", "P", 1169344977, "tonyd", "P", 1169344996, "tonyd", "P", 1169345031, "tonyd", "P", 1169345087, "tonyd", "P", 1169345179, "tonyd", "P", 1169345233, "tonyd", "P", 1169345268, "tonyd", "P", 1169345511, "tonyd", "P", 1169345726, "tonyd", "P", 1169345962, "tonyd", "P", 1169346262, "tonyd", "P", 1169346441, "tonyd", "P", 1169346482, "tonyd", "P", 1169346657, "tonyd", "P", 1169346690, "tonyd", "P", 1169346734, "tonyd", "P", 1169346830, "tonyd", "P", 1169346879, "tonyd", "P", 1169347027, "tonyd", "P", 1169347147, "tonyd", "P", 1169347179, "tonyd", "P", 1169347495, "tonyd", "P", 1169347535, "tonyd", "P", 1169347542, "tonyd", "P", 1169347602, "tonyd", "P", 1169347893, "tonyd", "P", 1169347960, "tonyd", "P", 1169347986, "tonyd", "P", 1169348119, "tonyd", "R", 1169354460, "tonyd", "E", 1169424164, "tonyd", "E", 1175086787, "tonyd", "P", 1175087273, "tonyd", "P", 1187436051, "tonyd", "P", 1224316394, "tonyd", "E", 1224316719, "tonyd", "E", 1224388661, "tonyd", "P", 1224388727, "tonyd", "P", 1232322897, "tonyd", "P", 1232323868, "tonyd", "P", 1232324323, "tonyd", "P", 1232324503, "tonyd", "P", 1232324798, "tonyd", "P", 1246765908, "tonyd", "E", 1292204640, "tonyd", "P", 1292204780, "tonyd", "P", 1292204834, "tonyd", "P", 1338599715, "tonyd", "E", 1338600153, "tonyd", "E", 1338601304, "tonyd", "E", 1339346458, "rastalabor", "X", 1339635657, "rastalabor", "X", 1339635880, "rastalabor", "X", 1339636284, "rastalabor", "X", 1339761030, "tonyd", "E", 1379371821, "tonyd", "P", 1397890112, "tonyd", "P", 1397890124, "tonyd", "P", 1397890189, "tonyd", "P", 1397890195, "tonyd", "P", 1397890245, "tonyd", "P", 1397890297, "tonyd", "P", 1397890318, "tonyd", "P", 1399304829, "jominey", "E", 1401510795, "jominey", "E", 1401510836, "jominey", "E", 1420480999, "jominey", "E", 1434451198, "tonyd", "P", 1434451221, "tonyd", "P", 1434451247, "tonyd", "P", 1434451616, "tonyd", "P", 1434451732, "tonyd", "P", 1434451759, "tonyd", "P", 1434451822, "tonyd", "P", 1434451888, "tonyd", "P", 1434451905, "tonyd", "P", 1434451963, "tonyd", "P", 1434451982, "tonyd", "P", 1434452777, "tonyd", "P", 1500428541, "tonyd", "P", 1525014301, "jominey", "E", 1525014568, "jominey", "E", 1572148445, "jominey", "E", 1572148550, "jominey", "E", 1572235107, "jominey", "E", 1572305613, "jominey", "E", 1572746491, "jominey", "E", 1575419027, "jominey", "E", 1575419101, "jominey", "E", 1575419146, "jominey", "E", 1575419192, "jominey", "E", 1582567730, "jominey", "E", 1596212904, "jominey", "E", 1596213150, "jominey", "E", 1596221623, "jominey", "E", 1596671675, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

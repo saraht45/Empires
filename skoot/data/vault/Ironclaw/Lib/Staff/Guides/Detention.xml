@@ -1,0 +1,87 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:detention:start">
+         X[M] /* This lib will send all characters on associated account
+/* to the IronClaw:Rooms:Backstage:Tower detention area.
+/* It will work the same whether the \$line is a name or
+/* an account.
+/* All bodies associated with attached account will be
+/* sent to the tower requiring staff attention. This
+/* includes any offline bodies.
+/* TO BE ADDED: removal of bodies from detention area
+/* upon resolution.
+*/
+
+/* set the room to be detained in */
+\$jail = \$\{Ironclaw:Backstage:OLD:Tower\};
+
+/* Make msgs */
+\$help = "Command Usage: +detention \\\<name\\\> or \\\<account\\\>.";
+\$noacct = "Unable to find a name or account. Please try again or report as a bug.";
+\$nobody = "Unable to find any bodies. Please try again or report as a bug.";
+\$jailed = " has been successfully OOC detained.";
+\$dcd = " has been disconnected as they are not online.";
+/* check for a line */
+if(!\$line) \{
+EmitTo(\$actor, \$help);
+return FALSE;
+\}
+
+/* At the moment, the line can only be one word */
+\$line = explode(\$line, " ");
+if(sizeof(\$line) \> 1) \{
+EmitTo(\$actor, \$help);
+return FALSE;
+\}
+
+\$line = \$line[0];
+
+/* check if line is a character name */
+if(common::lookup(\$name: \$line)) \{
+\$obj = common::lookup(\$name: \$line);
+\$acct = Get(\$obj, "skotos:creator");
+\}
+
+/* if no acct yet, check if line is acct */
+if(!\$acct) \{
+if(udat::query_udat(\$name: \$line)) \$acct = \$line;
+\}
+
+/* if we lack an account by now, return false */
+if(!\$acct) \{
+EmitTo(\$actor, \$noacct);
+return FALSE;
+\}
+/* grab bodies as objects */
+\$bodies = udat::query_bodies_in_roster(\$user: \$acct);
+
+/* make sure bodies is not empty */
+if(sizeof(\$bodies) \< 1) \{
+EmitTo(\$actor, \$nobody);
+return FALSE;
+\}
+
+/* send all bodies to the tower */
+\$sz = sizeof(\$bodies);
+for(\$i=0; \$i \< \$sz; \$i++) \{
+\$bodies[\$i]."base:environment" = \$jail;
+\$char = Describe(\$bodies[\$i]);
+EmitTo(\$actor, \$char+\$jailed);
+/* if not online, disconnect them */
+if(!\$bodies[\$i]."udat:possessed") \{ 
+Act(\$bodies[\$i], "disconnect");
+EmitTo(\$actor, \$char+\$dcd);
+\}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1298146274, "tunk_bodin", "P", 1298146347, "tunk_bodin", "P", 1298148433, "tunk_bodin", "P", 1298148446, "tunk_bodin", "P", 1298148458, "tunk_bodin", "P", 1298148479, "tunk_bodin", "P", 1298148533, "tunk_bodin", "P", 1298148584, "tunk_bodin", "P", 1298148739, "tunk_bodin", "P", 1298148745, "tunk_bodin", "P", 1298148809, "tunk_bodin", "P", 1298148842, "tunk_bodin", "P", 1298148972, "tunk_bodin", "P", 1298148983, "tunk_bodin", "P", 1298149189, "tunk_bodin", "P", 1298149225, "tunk_bodin", "P", 1298149321, "tunk_bodin", "P", 1298149388, "tunk_bodin", "P", 1298149473, "tunk_bodin", "P", 1298149553, "tunk_bodin", "P", 1298150051, "tunk_bodin", "P", 1298150289, "tunk_bodin", "P", 1298150290, "tunk_bodin", "P", 1298150320, "tunk_bodin", "P", 1298150370, "tunk_bodin", "P", 1298150389, "tunk_bodin", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

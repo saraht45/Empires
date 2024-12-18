@@ -1,0 +1,253 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="100" verb2="are carrying" verb3="is carrying"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="aiml:replacements">
+         (\{ (\{ "i", "I" \}), (\{ "you", "me" \}), (\{ "myself", "yourself" \}), (\{ "yourself", "myself" \}), (\{ "are", "am" \}), (\{ "am", "are" \}), (\{ "your", "my" \}), (\{ "my", "your" \}) \})
+      </Core:Property>
+      <Core:Property property="export:aiml:conversationarr:base">
+         (\{ (\{ " %s", "\<srai\>%1\</srai\>" \}), (\{ "%*sFUCK%*s", "please don't swear." \}), (\{ "HI", "hello to you!", "Hiya", "How are you?", "Good to see you", "hey there" \}), (\{ "HI THERE%1", "\<srai\>HI%1\</srai\>" \}), (\{ "HELLO%s", "\<srai\>HI%1\</srai\>" \}), (\{ "HEY YOU%s", "\<srai\>HI%1\</srai\>" \}), (\{ "hey%s", "\<srai\>HI%1\</srai\>" \}), (\{ "bye", "Fare thee well!", "goodbye.", "see you later." \}), (\{ "goodbye%s", "\<srai\>BYE%1\</srai\>" \}), (\{ "cya%s", "\<srai\>BYE%1\</srai\>" \}), (\{ "see you%s", "\<srai\>BYE%1\</srai\>" \}), (\{ "yes", "Good." \}), (\{ "yes, %s", "\<srai\>YES\</srai\> \<srai\>%1\</srai\>" \}), (\{ "yes %s", "\<srai\>YES\</srai\> \<srai\>%1\</srai\>" \}), (\{ "yep%s", "\<srai\>YES%1\</srai\>" \}), (\{ "yeah%s", "\<srai\>YES%1\</srai\>" \}), (\{ "I am %s", "So you are %1, right?" \}), (\{ "I'm %s", "\<srai\>I am %1\</srai\>" \}), (\{ "i%slike %s", "I didn't know that you %1 liked %2.", "I like %2 too." \}), (\{ "%*syou are %s", "I don't think that I am %1.", "How do you know that I'm %1." \}), (\{ "i %s you", "I %1 myself too." \}), (\{ "i %s you %s", "I also %1 myself %2." \}), (\{ "do you %s", "Yes, I think that I do %1." \}), (\{ "you are %*s", "no I'm not!" \}), (\{ "how are %*s", "Not bad at all.", "pretty good really.", "can't complain." \}), (\{ "how is %*s", "Not bad at all.", "pretty good really.", "can't complain.", "I'm not sure.", "Not sure, really." \}), (\{ "please %s", "ok, I'll %1. \<srai\>%1\</srai\>" \}), (\{ "%s for me", "ok, I'll %1 for you. \<srai\>%1\</srai\>" \}), (\{ "sing%*s", "la la la!" \}), (\{ "_FALLBACK", "I dont understand what you mean.", "I dont get you.", "It seems that you said something to which I have no response.", "what was that you said, again?", "Please rephrase that last sentence.", "Was that meant to be funny?" \}), (\{ "%*s", "\<srai\>_FALLBACK\</srai\>" \}) \})
+      </Core:Property>
+      <Core:Property property="merry:lib:get_conversations">
+         X[M] /* this function returns an array containing the conversation information */
+return this."aiml:conversationarr:base";
+      </Core:Property>
+      <Core:Property property="merry:lib:get_response">
+         X[M] /* steps through a conversation file, looking for a match */
+int index;
+string output;
+
+/* search through the conversations to see if any match */
+for(index = 0; index \< sizeof(\$conversation_file); index++)
+\{
+  if(output = Call(this, "match_pattern", \$input_string: \$input_string, \$pattern: \$conversation_file[index])) break;
+\}
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:match_pattern">
+         X[M] /* attempts to match a string to a pattern */
+int wildstar_matches;
+int index;
+int tmp_number;
+string response;
+string * response_arr;
+string var1;
+string var2;
+string var3;
+string var4;
+string input;
+string output;
+\$input_string = lower_case(\$input_string);
+
+/* if we don't need to check if the patterns match by wildstars, then just check if they are equal */
+if(sscanf(\$pattern[0], "%*s%%%*s", var1) == 0)
+\{
+  if(\$input_string == lower_case(\$pattern[0]))
+  \{
+    response = \$pattern[random(sizeof(\$pattern)-1)+1];
+
+    /* check for recursion in the response */
+    while(sscanf(response, "%*s\<srai\>%s\</srai\>%*s", input) == 3)
+    \{
+      /* we need recursion, so try to match recursion to a pattern */
+      /* search through the conversations to see if any match */
+      output = Call(this, "get_response", \$input_string: input, \$conversation_file: \$conversations);
+      /*once we have the result of the recursion, replace the current response*/
+      if(sscanf(response, "%s\<srai\>" + input + "\</srai\>%s", var1, var2) == 2)
+      \{
+        response = var1 + output + var2;
+      \}
+    \}
+    return response;
+  \} else \{
+    return nil;
+  \}
+\}
+
+/* if we need to check using wildcards, check, then make sure we have the right number of matches */
+wildstar_matches = sscanf( \$input_string, lower_case(\$pattern[0]), var1, var2, var3, var4);
+if(wildstar_matches != 0)
+\{
+
+  /* check we don't have leftovers*/
+  if(\$pattern[0][strlen(\$pattern[0])-2..strlen(\$pattern[0])-1] != "%s" \&\& \$pattern[0][strlen(\$pattern[0])-3..strlen(\$pattern[0])-1] != "%*s")
+  \{
+    wildstar_matches = sscanf( \$input_string, lower_case(\$pattern[0] + "%s"), var1, var2, var3, var4);
+    if(wildstar_matches == 2) if(strlen(var2) != 0) return FALSE;
+    if(wildstar_matches == 3) if(strlen(var3) != 0) return FALSE;
+    if(wildstar_matches == 4) if(strlen(var4) != 0) return FALSE;
+  \}
+
+  /*EmitTo(\$actor, "Generating response");*/
+  response = \$pattern[random(sizeof(\$pattern)-1)+1];
+
+  /* make any replacements in the response */
+  response_arr = explode(response, " ");
+  for(index = 0; index \< sizeof(response_arr); index++)
+  \{
+    /*EmitTo(\$actor, response_arr[index]);*/
+    while(sscanf(response_arr[index], "%s%%%d%s", input, tmp_number, output) == 3)
+    \{
+      if(tmp_number == 1) response_arr[index] = Call(this, "replace_var", \$var: input+var1+output);
+      if(tmp_number == 2) response_arr[index] = Call(this, "replace_var", \$var: input+var2+output);
+      if(tmp_number == 3) response_arr[index] = Call(this, "replace_var", \$var: input+var3+output);
+      if(tmp_number == 4) response_arr[index] = Call(this, "replace_var", \$var: input+var4+output);
+      /*EmitTo(\$actor, "replaced with: " + response_arr[index]);*/
+    \}
+  \}
+  response = implode(response_arr, " ");
+
+  /* check for recursion in the response */
+  /*EmitTo(\$actor, "testing for recursion");*/
+  /*EmitTo(\$actor, "testing against " + response);*/
+  while(sscanf(response, "%*s\<srai\>%s\</srai\>%*s", input) == 3)
+  \{
+    /* we need recursion, so try to match recursion to a pattern */
+    /*EmitTo(\$actor, "Recursion found");*/
+    /*EmitTo(\$actor, "recursion of " + input);*/
+
+    /* search through the conversations to see if any match */
+    output = Call(this, "get_response", \$input_string: input, \$conversation_file: \$conversations);
+    /*EmitTo(\$actor, "recursion response of " + output);*/
+
+    /* once we have the result of the recursion, replace the current response */
+    if(sscanf(response, "%s\<srai\>" + input + "\</srai\>%s", var1, var2) == 2)
+    \{
+      response = var1 + output + var2;
+    \}
+  \}
+
+  return response;
+\}
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:replace_var">
+         X[M] /* takes in \$var and returns \$var, with some substitutions made */
+int index;
+\$var = explode(\$var, " ");
+\$replacements = this."aiml:replacements";
+for(index = 0; index \< sizeof(\$var); index++)
+\{
+  for(\$replacement_index = 0; \$replacement_index \< sizeof(\$replacements); \$replacement_index++)
+  \{
+    /*EmitTo(\$actor, "Testing: " + \$var[index]);*/
+    /*EmitTo(\$actor, "Against: " + \$replacements[\$replacement_index][0]);*/
+    if(\$var[index] == \$replacements[\$replacement_index][0]) \{ \$var[index] = \$replacements[\$replacement_index][1]; EmitTo(\$actor, "Replaced"); break; \}
+  \}
+\}
+
+/*
+for(index = 0; index \< sizeof(\$var); index++)
+\{
+  if(\$var[index] == "you") \{ \$var[index] = "me"; break; \}
+  if(\$var[index] == "myself") \{ \$var[index] = "yourself"; break; \}
+  if(\$var[index] == "yourself") \{ \$var[index] = "myself"; break; \}
+  if(\$var[index] == "are") \{ \$var[index] = "am"; break; \}
+  if(\$var[index] == "am") \{ \$var[index] = "are"; break; \}
+\}
+*/
+\$var = implode(\$var, " ");
+return \$var;
+      </Core:Property>
+      <Core:Property property="merry:react-post:tell-dob">
+         X[M] \$room = \$actor."base:environment";
+
+/*
+\$conversations = (\{
+(\{ " %s", "\<srai\>%1\</srai\>" \}),
+(\{ "%*sfuck%*s", "please don't swear." \}),
+(\{ "hi", "hello to you!", "Hiya", "How are you?", "Good to see you", "hey there" \}),
+(\{ "hi there%1", "\<srai\>HI%1\</srai\>" \}),
+(\{ "hello%s", "\<srai\>HI%1\</srai\>" \}),
+(\{ "hey you%s", "\<srai\>HI%1\</srai\>" \}),
+(\{ "hey there%s", "\<srai\>HI%1\</srai\>" \}),
+(\{ "hey%s", "\<srai\>HI%1\</srai\>" \}),
+(\{ "bye", "Fare thee well!", "goodbye.", "see you later." \}),
+(\{ "goodbye%s", "\<srai\>BYE%1\</srai\>" \}),
+(\{ "cya%s", "\<srai\>BYE%1\</srai\>" \}),
+(\{ "see you%s", "\<srai\>BYE%1\</srai\>" \}),
+(\{ "yes", "Good." \}),
+(\{ "yes, %s", "\<srai\>YES\</srai\> \<srai\>%1\</srai\>" \}),
+(\{ "yes %s", "\<srai\>YES\</srai\> \<srai\>%1\</srai\>" \}),
+(\{ "yep%s", "\<srai\>YES%1\</srai\>" \}),
+(\{ "yeah%s", "\<srai\>YES%1\</srai\>" \}),
+(\{ "I am %s", "So you are %1, right?" \}),
+(\{ "I'm %s", "\<srai\>I am %1\</srai\>" \}),
+(\{ "i%slike %s", "I didn't know that you %1 liked %2.", "I like %2 too."\}),
+(\{ "%*syou are %s", "I don't think that I am %1.", "How do you know that I'm %1." \}),
+(\{ "i %s you", "I %1 myself too." \}),
+(\{ "i %s you %s", "I also %1 myself %2." \}),
+(\{ "do you %s", "Yes, I think that I do %1." \}),
+(\{ "you are %*s", "no I'm not!" \}),
+(\{ "how are %*s", "Not bad at all.", "pretty good really.", "can't complain." \}),
+(\{ "how is %*s", "Not bad at all.", "pretty good really.", "can't complain.", "I'm not sure.", "Not sure, really." \}),
+(\{ "please %s", "ok, I'll %1. \<srai\>%1\</srai\>" \}),
+(\{ "%s for me", "ok, I'll %1 for you. \<srai\>%1\</srai\>" \}),
+(\{ "sing%*s", "la la la!" \}),
+(\{ "_fallback", "I dont understand what you mean.", "I dont get you.", "It seems that you said something to which I have no response.", "what was that you said, again?", "Please rephrase that last sentence.", "Was that meant to be funny?" \}),
+(\{ "%*s", "\<srai\>_FALLBACK\</srai\>" \}),
+\});
+*/
+
+\$conversations = Call(this, "get_conversations");
+/*\$conversations = this."aiml:conversationarr:base";*/
+
+if(\$evoke)
+\{
+  \$response = "I have no response to that";
+
+  /*EmitTo(\$actor, "want to parse: " + \$evoke);*/
+  \$evoke = \$evoke[1..strlen(\$evoke)-3];
+  /*EmitTo(\$actor, "Going to parse: " + \$evoke);*/
+
+  /* search through the conversations to see if any match */
+  \$response = Call(this, "get_response", \$input_string: \$evoke, \$conversation_file: \$conversations);
+
+  Social(this, "say", nil, \$response, "to", \$actor);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1067307981, "tonyd", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes>
+      <Notes:Category cat="QA" catstate="Open">
+        <Notes:Note ix="966637404" state="Open" user="tony">
+           some merry scripts for dice rolling in Ironclaw
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Base:Thing>
+</object>

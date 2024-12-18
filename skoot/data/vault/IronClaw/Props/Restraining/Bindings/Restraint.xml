@@ -1,0 +1,271 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Clothing:UrClothing)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="belt"/>
+            <Base:SName sname="toy"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="toys"/>
+            <Base:PName pname="belts"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="chastity"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:material) chastity belt
+          </Base:Description>
+          <Base:Description type="examine">
+             This $(this.trait:material) chastity belt has a waist belt, and a second belt going between the legs, which flares out in an hourglass shape around the crotch area. This gives more coverage in front and in back, while narrowing between the legs to conform to pelvic anatomy. The thigh harnesses are attached to a sturdy strip of leather that connects at the crotch.
+          </Base:Description>
+          <Base:Description type="look">
+             This $(this.trait:material) chastity belt has a waist belt, and a second belt going between the legs, which flares out in an hourglass shape around the crotch area. This gives more coverage in front and in back, while narrowing between the legs to conform to pelvic anatomy. The thigh harnesses are attached to a sturdy strip of leather that connects at the crotch.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="groin"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:lock:difficulty">
+         6
+      </Core:Property>
+      <Core:Property property="export:trait:material">
+         "brass"
+      </Core:Property>
+      <Core:Property property="merry:lib:restraint_allowed">
+         X[M] /* Attach the handcuffs to the victim */  
+\$actor = \$par["actor"];  
+\$victim = \$par["victim"];  
+  
+/* Check the handcuffer and handcuffee are still in the same room */  
+if(\$actor."base:environment" == \$victim."base:environment") \{  
+  /* first move the handcuffs into the victims inventory */  
+  \$this."base:environment" = \$victim;  
+  /* then make them be worn */  
+  \$this."base:worn-by" = \$victim;  
+  /* mark the handcuffs as locked */  
+  \$this."trait:locked" = 1;  
+  
+  /* Output a message */  
+  EmitTo(\$actor, "You restrain "+Describe(NewNRef(\$victim, "default"), \$actor, \$actor)+".");  
+  /* Don't emit a second emote if we're handcuffing ourselves */  
+  if(!NRefsEqual(NewNRef(\$actor, "default"), NewNRef(\$victim, "default")))  
+    EmitTo(\$victim, Describe(\$actor)+" restrains you.");  
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" collars "+Describe(NewNRef(\$victim, "default"))+".", \$actor, \$victim);  
+\} else \{  
+  EmitTo(\$actor, "You are no longer in the same room as "+Describe(NewNRef(\$victim, "default"))+".");  
+  EmitTo(\$victim, "You are no longer in the same room as "+Describe(\$actor)+".");  
+\}  
+  
+  
+/* Suppress the usual "attach" emote */  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:restraint_denied">
+         X[M] \$actor = \$par["actor"];  
+\$victim = \$par["victim"];  
+EmitTo(\$actor, Describe(NewNRef(\$victim, "default"))+" refuses to be restrained.");  
+EmitTo(\$victim, "You refuse "+Describe(NewNRef(\$actor, "default"))+" consent to restrain you.");  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:restraint_expire">
+         X[M] \$actor = \$par["actor"];  
+\$victim = \$par["victim"];  
+if(\$this."base:environment" == \$actor) \{  
+  EmitTo(\$actor, "Consent to restrain "+Describe(NewNRef(\$victim, "default"))+" has expired.");  
+  EmitTo(\$victim, Describe(NewNRef(\$actor, "default"))+" has asked to restrain you, but time has expired.");  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:pick-what">
+         X[M] /* Trying to pick the lock on the handcuffs */  
+  
+/* Check if the handcuffs are locked */  
+if(!\$this."trait:locked") \{  
+  EmitTo(\$actor, Describe(\$this)+" is not locked.");  
+  return FALSE;  
+\}  
+  
+/* Check if we have some lockpicks */  
+if(!sizeof(Match(\$actor, "key", \$actor, "handcuff"))) \{  
+  EmitTo(\$actor, "You do not have any lockpicking tools.");  
+  return FALSE;  
+\}  
+  
+/* check we aren't trying to unlock our own handcuffs */  
+if(\$actor == \$this."base:environment") \{  
+  EmitTo(\$actor, "You cannot pick your own restraint. You'll need to find someone else to do it.");  
+\}  
+  
+if(\$this."trait:jammed") \{  
+  EmitTo(\$actor, Describe(\$this)+" appears to be jammed. There's nothing more you can do.");  
+  return FALSE;  
+\}  
+  
+/* make the lockpicking roll */  
+\$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:dexterity", \$actor."skill:thief:lock-picking", \$actor."career:thief:lock-picking" \}));  
+  
+if(\$result \> \$this."lock:difficulty") \{  
+  EmitTo(\$actor, "You hear a click as you unlock "+Describe(\$this)+".");  
+  EmitTo(\$this."base:environment", "You hear a click as "+Describe(\$actor)+" unlocks "+Describe(\$this, nil, \$this."base:environment")+".");  
+  EmitIn(\$actor."base:environment", "You hear a click as "+Describe(\$actor)+" unlocks "+Describe(\$this)+".");  
+  
+  \$this."trait:locked" = nil;  
+\} else if(\$result \< 6) \{  
+  EmitTo(\$actor, "You hear a click as the locking mechanism twists sickeningly.");  
+  EmitTo(\$this."base:environment", "You hear a click as the locking mechanism in "+Describe(\$this, nil, \$this."base:environment")+" twists sickeningly.");  
+  \$this."trait:jammed" = 1;  
+\} else \{  
+  EmitTo(\$actor, "You don't manage to unlock "+Describe(\$this)+".");  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unlock-what">
+         X[M] /* send an emit about removing the handcuffs */  
+  
+/* Check if the handcuffs are locked */  
+if(!\$this."trait:locked") \{  
+  EmitTo(\$actor, Describe(\$this)+" is not locked.");  
+  return FALSE;  
+\}  
+  
+/* Check if we have the key to the handcuffs */  
+if(!sizeof(Match(\$actor, "key", \$actor, "restraint"))) \{  
+  EmitTo(\$actor, "You do not have a restraint key.");  
+  return FALSE;  
+\}  
+  
+if(\$actor != \$this."base:environment") \{  
+  /* If someone else is removing your handcuffs */  
+  if(\$this."trait:jammed") \{  
+    EmitTo(\$actor, "For a moment the key does not turn, as if the lock is jammed. Then, with a click, you unlock and remove "+Describe(\$this)+".");  
+  \} else \{  
+    EmitTo(\$actor, "With a click, you unlock and remove "+Describe(\$this)+".");  
+  \}  
+  EmitTo(\$this."base:environment", "With a click, "+Describe(\$actor)+" unlocks and removes "+Describe(\$this, nil, \$this."base:environment")+".");  
+  EmitIn(\$actor."base:environment", "With a click, "+Describe(\$actor)+" unlocks and removes "+Describe(\$this)+".", \$actor, \$this."base:environment");  
+\} else \{  
+  /* If you are removing your own handcuffs */  
+  EmitTo(\$actor, "With a click, you unlock and remove "+Describe(\$this, nil, \$actor)+".");  
+  EmitIn(\$actor."base:environment", "With a click, "+Describe(\$actor)+" unlocks and removes "+Describe(\$this, \$actor)+".", \$actor);  
+\}  
+  
+/* unlock and remove the handcuffs */  
+\$this."trait:locked" = nil;  
+\$this."trait:jammed" = nil;  
+\$this."base:worn-by" = nil;  
+\$this."base:environment" = \$actor;  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unwear">
+         X[M] /* if the handcuffs are locked */  
+if(\$this."trait:locked") \{  
+  EmitTo(\$actor, "You cannot remove this restraint, it is locked.");  
+  return FALSE;  
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:attach-dob">
+         X[M] /* The X[M] tells us that we're writing a merry script */  
+/* We are handcuffing someone */  
+  
+/* Check if we have something to attach the handcuffs TO */  
+if(!\$iob)  
+  return TRUE;  
+  
+/* Check that we are only attaching the handcuff to one object */  
+if(sizeof(\$iob) \> 1) \{  
+  EmitTo(\$actor, "You can only attach "+Describe(\$this)+" to one thing at a time.");  
+  return FALSE;  
+\}  
+  
+\$victim = NRefOb(\$iob[0]);  
+  
+/* Check if the target is a person */  
+if(!\$victim."base:volition") return TRUE;  
+  
+/* check that the handcuffs aren't locked */  
+if(\$this."trait:locked") \{  
+  EmitTo(\$actor, Describe(\$this)+" is already locked.");  
+  return FALSE;  
+\}  
+  
+/* make the handcuffs be worn by the victim */  
+  
+/* Check if we need consent */  
+/* check if combat:damage is larger than trait:body */  
+/* Also check if we're handcuffing ourselves (and hence don't need consent) */  
+if((\$victim."combat:damage" \<= \$victim."trait:body") \&\& !NRefsEqual(NewNRef(\$actor, "default"), NewNRef(\$victim, "default"))) \{  
+  EmitTo(\$actor, "Asking "+Describe(\$iob[0])+" for consent, as "+\$victim."base:pronoun"+" is still able to resist.");  
+  interaction::question(\$actor: \$victim, \$question: Describe(\$actor)+" is attempting to restrain you. Will you allow this?", \$expires: 80, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "restraint_allowed", \$no_fun: "restraint_denied", \$expire_fun: "restraint_expire", \$par: ([ "victim": \$victim, "room": \$room, "actor": \$actor]));  
+\} else \{  
+  Call(\$this, "restraint_allowed", \$par: ([ "victim": \$victim, "room": \$room, "actor": \$actor]));  
+\}  
+  
+/* we're done here. squash the normal emote for attach */  
+return FALSE;  
+  
+  
+/* first move the handcuffs into the victims inventory */  
+\$this."base:environment" = \$victim;  
+/* then make them be worn */  
+\$this."base:worn-by" = \$victim;  
+  
+/* Output a message */  
+EmitTo(\$actor, "You collar "+Describe(\$iob[0])+".");  
+EmitTo(\$victim, Describe(\$actor)+" restrains you.");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+" restrains "+Describe(\$iob[0])+".");  
+  
+/* Suppress the usual "attach" emote */  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Allegory:Props:Crafting:UrCrafting\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1107209474, "zwoc", "E", 1140298763, "barbra18", "K", 1140298781, "barbra18", "X", 1140298861, "barbra18", "X", 1140299556, "barbra18", "X", 1140299575, "barbra18", "E", 1140299595, "barbra18", "E", 1140301222, "barbra18", "E", 1142474918, "barbra18", "K" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

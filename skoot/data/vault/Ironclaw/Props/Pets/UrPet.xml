@@ -1,0 +1,218 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="tag" prime="false" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="tag"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="tags"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="name"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $[Describe($this, nil, nil, STYLE_NONPOSS)]'s small $(this.trait:tag:material) name tag
+          </Base:Description>
+          <Base:Description type="look">
+             A small $(this.trait:material) name tag reveals that this pet is {? | $(this.trait:name) | named '$(this.trait:name)' and is | } owned by $[$this."trait:master"."skotos:playercapname"].
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:friends"/>
+      <Core:Property property="merry:lib:yes-name">
+         X[M] \$actor = \$par["actor"];
+\$name = \$par["name"];
+
+/* Tell the actor that this was successful */  
+EmitTo(\$actor, Describe(this) + " will now respond to " + \$name + ".");  
+  
+/* Set the name */  
+\$this."trait:name" = \$name;
+
+\$names = explode(\$name, " ");
+for(\$i = 0; \$i \< sizeof(\$names); \$i++) \{
+    /* set the sname */  
+    Set(this, "details:default:sname:" + lower_case(\$names[\$i]), 1);
+    Set(this, "details:default:adjective:" + lower_case(\$names[\$i]), 1);
+\}  
+
+\$this."trait:master" = \$actor;
+\$this."nip:trait:movement:frequency" = 0;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:share-dob">
+         X[M] if(!\$with \|\| !sizeof(\$with)) return TRUE;
+
+if(\$this."trait:master" != \$actor) return TRUE;
+
+if(sizeof(\$with)) \{
+    for(\$i = 0; \$i \< sizeof(\$with); \$i++) \{
+        \$friend = NRefOb(\$with[\$i]);
+        
+        if(\$friend."udat:possessed") \{
+            if(!member(\$friend, \$this."trait:friends")) \{
+                \$this."trait:friends" \|= (\{ \$friend \});
+            \} else \{
+                \$this."trait:friends" -= (\{ \$friend \});
+            \}
+        \}
+    \}
+\}
+
+\$this."trait:friends" -= (\{ \$actor \});
+if(sizeof(\$this."trait:friends")) \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " will now also obey " + Describe(\$this."trait:friends") + ".");
+\} else \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " will now only obey you.");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:force-dob">
+         X[M] int i, sz;    
+string d_actor;
+
+if(!\$evoke) return TRUE;
+\$line = \$evoke;
+
+if(\$actor != \$this."trait:master" \&\& !member(\$actor, \$this."trait:friends")) \{
+    EmitTo(\$actor, Describe(\$this) + " does not obey you.");
+    return FALSE;
+\}
+
+Call(\$\{Ironclaw:Neoct:Verbs:EmoteLib\}, "prepare_emit");    
+    
+d_actor     = Describe(\$this);    
+sz          = sizeof(\$targets);    
+ 
+if(\$line[0] == '\\'') \{ 
+\$spacer = ""; 
+\} else \{ 
+\$spacer = " "; 
+\} 
+ 
+for (i = 0; i \< sz; i++)   
+if(\$targets[i]."base:environment" == \$this."base:environment") \{   
+  EmitTo(\$targets[i], d_actor + \$spacer + \$emits[\$targets[i]]);    
+\}  
+    
+EmitIn(\$actor."base:environment", d_actor + \$spacer + \$emits["*"], \$targets...);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:name-dob">
+         X[M] if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You  must be holding " + Describe(\$this) + " to name it.");
+    return FALSE;
+\}
+
+if(this."trait:name") \{  
+    EmitTo(\$actor, Describe(this)+" already has a name.");  
+    return FALSE;  
+\}  
+  
+\$name = capitalize(replace_strings(\$evoke, "\\"", "", ".", "", "?", "", "!", ""));
+
+EmitTo(\$actor, "You name " + Describe(\$this, nil, \$actor) + " " + \$name + ".");
+interaction::question(\$question: "This CANNOT be undone. Are you sure that's the name you want?", \$env: "TRUE", \$expires: 60, \$yes_ob: \$this, \$yes_fun: "yes-name", \$no: "You decide to think about it some more.", \$expire: "You decide to think about it some more.", \$par: ([ "actor": \$actor, "name":\$name ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] if(\$actor != \$this."trait:master" \&\& !member(\$actor, \$this."trait:friends")) \{
+    EmitTo(\$actor, Describe(\$this) + " edges away from your touch.");
+    return FALSE;
+\}
+
+if(\$this."base:environment"."udat:possessed") \{
+    EmitTo(\$actor, "You cannot take " + Describe(\$this) + ".");
+    return FALSE;
+\}
+
+EmitIn(\$actor."base:environment", Describe(\$actor) + " picks up " + Describe(\$this) + ".", \$actor);
+EmitTo(\$actor, "You pick up " + Describe(\$this) + ".");
+
+\$this."base:environment" = \$actor;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:catch-dob">
+         X[M] if(\$actor != \$this."trait:master" \&\& !member(\$actor, \$this."trait:friends")) \{
+    EmitTo(\$actor, Describe(\$this) + " edges away from your touch.");
+    return FALSE;
+\}
+
+if(\$this."base:environment"."base:possessed") \{
+    EmitTo(\$actor, "You cannot take " + Describe(\$this) + ".");
+    return FALSE;
+\}
+
+EmitIn(\$actor."base:environment", Describe(\$actor) + " catches " + Describe(\$this) + ".", \$actor);
+EmitTo(\$actor, "You catch " + Describe(\$this) + ".");
+
+\$this."base:environment" = \$actor;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:retrieve-dob">
+         X[M] if(\$actor != \$this."trait:master" \&\& !member(\$actor, \$this."trait:friends")) \{
+    EmitTo(\$actor, Describe(\$this) + " edges away from your touch.");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:snatch-dob">
+         X[M] if(\$actor != \$this."trait:master" \&\& !member(\$actor, \$this."trait:friends")) \{
+    EmitTo(\$actor, Describe(\$this) + " edges away from your touch.");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1441336202, "jominey", "E", 1441338079, "jominey", "E", 1441338117, "jominey", "E", 1441338132, "jominey", "E", 1441338297, "jominey", "E", 1441338393, "jominey", "E", 1441338455, "jominey", "E", 1441338483, "jominey", "E", 1441338819, "jominey", "E", 1441338877, "jominey", "E", 1441338882, "jominey", "E", 1441338888, "jominey", "E", 1441338893, "jominey", "E", 1507909060, "jominey", "E", 1507909092, "jominey", "E", 1507909196, "jominey", "E", 1507909216, "jominey", "E", 1507909231, "jominey", "E", 1507909252, "jominey", "E", 1507910955, "jominey", "E", 1507911593, "jominey", "E", 1560384094, "jominey", "E", 1560384126, "jominey", "E", 1560384173, "jominey", "E", 1560384186, "jominey", "E", 1560384237, "jominey", "E", 1560384312, "jominey", "E", 1560384354, "jominey", "E", 1560384378, "jominey", "E", 1560384465, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

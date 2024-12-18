@@ -1,0 +1,93 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:change_religion">
+         X[M] if(\$line) \{             
+    if(\$actor.religionchange)\{                       
+        if(\$actor.religionchange+60*60*24 \> time()) \{                       
+            EmitTo(\$actor, "You have recently altered your religious affiliation and cannot adjust it again until a full day has passed from the time of change.");                       
+            return FALSE;                       
+        \}                       
+    \}   
+        
+    if(!\$actor."trait:religion") \{       
+        if(lower_case(\$line) == "catholic") \{    
+            \$rel = "catholic";    
+        \} else if(lower_case(\$line) == "protestant") \{    
+            \$rel = "protestant";      
+        \}    
+                                             
+        if(\$rel == "protestant" \|\| \$rel == "catholic") \{                   
+            \$actor."trait:religion" = Str(\$rel);    
+            if(\$rel == "catholic") \{    
+                \$out = "Catholic";    
+            \} else if(\$rel == "protestant") \{    
+                \$out = "Protestant";       
+            \}    
+                          
+            EmitTo(\$actor, "You have chosen your religion to be " +\$out+ "."); 
+              
+            \$rel = capitalize(\$actor."trait:religion");        
+            \$send = Describe(\$actor)+ " has changed " +\$actor."base:possessive"+ " religion to - " +\$out;        
+            chat::send_msg(\$message: \$send, \$line: "pray", \$actor: \$actor);       
+            \$actor.religionchange = time();           
+        \} else if(\$rel == "none" \|\| \$rel == "nothing" \|\| \$rel == "nil") \{                   
+            Call(\$this, "reset_religion");                   
+        \} else \{                    
+            EmitTo(\$actor, "That is not a viable option at this time. Current options include Catholic and Protestant.");                   
+        \}                   
+    \} else \{                     
+        Call(\$this, "consent_religion");                 
+        return TRUE;                   
+    \}                     
+\} else \{                       
+    Call(\$this, "current_religion");                 
+     return TRUE;                       
+\}                       
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:consent_religion">
+         X[M] EmitTo(\$actor, "You have already chosen the religion of " +capitalize(\$actor."trait:religion")+ ". Changing religion is a viable option but requires a period of resolution. If you choose to remove yourself from your current affiliation, you may choose a new religion (or the old one again) after a days time has passed.");                  
+/* Add consent_demand asking if they are sure they want to change. */               
+  interaction::question(\$actor: \$actor, \$question: "Do you desire to alter your current religious affiliation?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "reset_religion", \$no_fun: "religion_decline", \$expire_fun: "religion_expire");          
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:current_religion">
+         X[M] if(\$actor."trait:religion") \{               
+\$religion = capitalize(\$actor."trait:religion");               
+\} else \{               
+\$religion = "unchosen";               
+\}               
+EmitTo(\$actor, "You are currently a " +\$religion+ ". Changing religion is a viable option but requires a period of resolution. If you choose to remove yourself from your current affiliation, you may choose a new religion (or the old one again) after a days time has passed. OOC: Syntax: @religion NEW_RELIGION or NONE. Current options include Catholic and Protestant.");               
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:religion_decline">
+         X[M] if(\$actor."trait:religion" == "catholic") \{    
+    \$rel = "Catholic";    
+\} else \{    
+    \$rel = "Protestant";    
+\}    
+
+EmitTo(\$actor, "You have chosen to keep your current religion of " +\$rel+ ".");              
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:religion_expire">
+         X[M] EmitTo(\$actor, "Your religious action has expired. Please try again.");              
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:reset_religion">
+         X[M] \$actor."trait:religion" = nil;              
+EmitTo(\$actor, "You have chosen to forego any religious affiliation at this time or have chosen to enter a state of transition while you ponder a new religious affiliation.");         
+\$send = Describe(\$actor)+ " has changed " +\$actor."base:possessive"+ " religion to - nil";       
+chat::send_msg(\$message: \$send, \$line: "pray", \$actor: \$actor);            
+\$actor.religionchange = time();        
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1140069743, "tunk_bodin", "X", 1140070053, "tunk_bodin", "X", 1140070422, "tunk_bodin", "X", 1140070789, "tunk_bodin", "X", 1140070945, "tunk_bodin", "X", 1140071601, "tunk_bodin", "X", 1140071772, "tunk_bodin", "X", 1140072234, "tunk_bodin", "X", 1140072271, "tunk_bodin", "X", 1140072323, "tunk_bodin", "X", 1140105104, "tunk_bodin", "X", 1140105951, "tunk_bodin", "X", 1140138118, "tunk_bodin", "X", 1140139179, "tunk_bodin", "X", 1140139725, "tunk_bodin", "X", 1140139852, "tunk_bodin", "X", 1140139916, "tunk_bodin", "X", 1140140201, "tunk_bodin", "X", 1344384139, "meandmine", "E", 1344384542, "meandmine", "E", 1344384934, "meandmine", "E", 1358977389, "meandmine", "E", 1358977426, "meandmine", "E", 1574871213, "jominey", "E", 1574871250, "jominey", "E", 1574871281, "jominey", "E", 1574871932, "jominey", "E", 1574871963, "jominey", "E", 1574872015, "jominey", "E", 1574875961, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

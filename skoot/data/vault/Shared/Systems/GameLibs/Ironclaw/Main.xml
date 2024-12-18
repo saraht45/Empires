@@ -1,0 +1,1415 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Shared:Systems:GameLibs:Ironclaw:Characters)"/>
+    <Core:PCProperties>
+      <Core:Property property="gimli:lib:evoke_to_array">
+         "E[G]\\nint i, j;\\nstring *input, *output, word;\\n\\noutput = (\{\});\\nif(!\$evoke \|\| !strlen(\$evoke)) return output;\\n\\ninput = explode(lower_case(\$evoke), \\" \\");\\n\\nfor(i=0; i\<sizeof(input); i++) \{\\n  word = \\"\\";\\n  for(j=0; j\<strlen(input[i]); j++) \{\\n    if(input[i][j] \>= 97 \&\& input[i][j] \<= 122) \{\\n      word += char_to_string(input[i][j]);\\n    \}\\n  \}\\n  if(strlen(word)) output += (\{ word \});\\n\}\\nreturn output;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_udat">
+         "E[G]\\nstring accountname;\\nobject *roster;\\nif(!\$char) error(\\"No \$char provided\\");\\n\\n// If they are possessing the PC, great!\\nif(\$char.\\"udat:object\\") \{\\n    if(\$output \&\& \$output==\\"udat_name\\") return \$char.\\"udat:name\\";\\n    return \$char.\\"udat:object\\";\\n\}\\n\\naccountname = \$char.\\"skotos:creator\\";\\nif(!accountname) \{\\n  error(\\"No skotos:creator property found in this body!\\");\\n  return FALSE;\\n\}\\nroster = udat::query_bodies_in_roster(\$user: accountname);\\nif(!member(\$char, roster)) \{\\n  error(\\"We don't know what account \\"+name(\$char)+\\" belongs to! Skotos:creator is \\"+accountname+\\" but body is not found in that roster\\");\\n  return FALSE;\\n\}\\n\\nif(\$output \&\& \$output==\\"udat_name\\") return accountname;\\nreturn udat::query_udat(\$name: accountname);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:ictime">
+         "E[G]\\n// Retrieve the time/day/date in the Ironclaw gameworld.\\nstring month;\\nint day_code, year; \\nstring *daynames;\\n\\nif(\$output_style \&\& lower_case(\$output_style) == \\"doloreaux\\")\\n  daynames = (\{ \\"De Domhnaigh\\", \\"De Luan\\", \\"De Mairt\\", \\"De Ceadaoin\\", \\"Deardaoin\\", \\"De Haoine\\", \\"De Sathairn\\" \});\\nelse\\n  daynames = (\{ \\"Dimache\\", \\"Lundi\\", \\"Mardi\\", \\"Mercredi\\", \\"Jeudi\\", \\"Vendredi\\", \\"Samedi\\" \});\\n\\nif(!\$timestamp) \$timestamp = time();\\nif(\$needed) \$needed = (\{ \\"all\\" \});\\n\\n\$output = ([ ]);\\n// Find the details we need\\n\\nif(member(\\"all\\", \$needed)\\n\|\| member(\\"day\\", \$needed)\\n\|\| member(\\"day_code\\", \$needed)\\n\|\| member(\\"month\\", \$needed)\\n\|\| member(\\"season\\", \$needed)\\n\|\| member(\\"special\\", \$needed)) \{\\n\\n  sscanf(ctime( \$timestamp ), \\"%*s %s %d %*s %d\\", month, day_code, year);  \\n\\n  if(member(\\"all\\", \$needed) \|\| member(\\"day_code\\", \$needed)) \$output[\\"day_code\\"] = day_code;\\n  if(member(\\"all\\", \$needed) \|\| member(\\"year\\", \$needed)) \$output[\\"year\\"] = year-1119;\\n\\n  if(member(\\"all\\", \$needed) \|\| member(\\"day\\", \$needed)) \{\\n    // find in-character day of week\\n    \$output[\\"day\\"] = daynames[\$timestamp/(60*60*16)%7]; \\n  \}\\n\\n  if(member(\\"all\\", \$needed) \|\| member(\\"season\\", \$needed)) \{\\n    if(month == \\"Mar\\"\\n    \|\| month == \\"Apr\\"\\n    \|\| month == \\"May\\") \{\\n      \$output[\\"season\\"] = \\"spring\\";\\n    \} else if(month == \\"Jun\\"\\n    \|\| month == \\"Jul\\"\\n    \|\| month == \\"Aug\\") \{\\n      \$output[\\"season\\"] = \\"summer\\";\\n    \} else if(month == \\"Sep\\"\\n    \|\| month == \\"Oct\\"\\n    \|\| month == \\"Nov\\") \{\\n      \$output[\\"season\\"] = \\"autumn\\";\\n    \} else if(month == \\"Dec\\"\\n    \|\| month == \\"Jan\\"\\n    \|\| month == \\"Feb\\") \{\\n      \$output[\\"season\\"] = \\"winter\\";\\n    \}\\n  \}\\n\\n  if(member(\\"all\\", \$needed) \|\| member(\\"month\\", \$needed)) \{\\n    \$output[\\"month\\"] = replace_strings(month, \\"Jan\\", \\"Yule\\", \\"Feb\\", \\"Snow\\", \\"Mar\\", \\"Sap\\", \\"Apr\\", \\"Grass\\", \\"May\\", \\"Flower\\", \\"Jun\\", \\"Strawberry\\", \\"Jul\\", \\"Thunder\\", \\"Aug\\", \\"Green\\", \\"Sep\\", \\"Harvest\\", \\"Oct\\", \\"Hunter's\\", \\"Nov\\", \\"Frost\\", \\"Dec\\", \\"Night\\" );\\n    // Still need to add calculation for Doloreaux months!\\n    if(\$output_style \&\& lower_case(\$output_style) == \\"doloreaux\\") \{\\n      \$dol_months = (\{ \\"Birch\\", \\"Rowan\\", \\"Ash\\", \\"Alder\\", \\"Willow\\", \\"Hawthorn\\", \\"Oak\\", \\"Holly\\", \\"Hazel\\", \\"Vine\\", \\"Ivy\\", \\"Reed\\", \\"Elder\\" \});\\n\\n      // standard month and day variables\\n      // \$a == the dol day num on the 1st of the Sallumer month\\n      // \$b == array number for dol month on the 1st day of the Sallumer month\\n\\n      if(\$output[\\"month\\"] == \\"Yule\\") \{\\n        \$a = 9;\\n        \$b = 0;\\n      \} else if(\$output[\\"month\\"] == \\"Snow\\") \{\\n        \$a = 12;\\n        \$b = 1;\\n        // this month has exceptions for Leap Day\\n        if(year%4 == 0) \$leap = TRUE;\\n      \} else if(\$output[\\"month\\"] == \\"Sap\\") \{\\n        \$a = 12;\\n        \$b = 2;\\n      \} else if(\$output[\\"month\\"] == \\"Grass\\") \{\\n        \$a = 15;\\n        \$b = 3;\\n      \} else if(\$output[\\"month\\"] == \\"Flower\\") \{\\n        \$a = 17;\\n        \$b = 4;\\n      \} else if(\$output[\\"month\\"] == \\"Strawberry\\") \{\\n        \$a = 20;\\n        \$b = 5;\\n      \} else if(\$output[\\"month\\"] == \\"Thunder\\") \{\\n        \$a = 22;\\n        \$b = 6;\\n      \} else if(\$output[\\"month\\"] == \\"Green\\") \{\\n        \$a = 25;\\n        \$b = 7;\\n      \} else if(\$output[\\"month\\"] == \\"Harvest\\") \{\\n        \$a = 28;\\n        \$b = 8;\\n      \} else if(\$output[\\"month\\"] == \\"Hunter's\\") \{\\n        // this month has exceptions as it crosses three dol months\\n        \$a = 2;\\n        \$b = 9;\\n      \} else if(\$output[\\"month\\"] == \\"Frost\\") \{\\n        \$a = 5;\\n        \$b = 11;\\n      \} else if(\$output[\\"month\\"] == \\"Night\\") \{\\n        // this month has exceptions for Unhewn Stone - see below\\n        \$a = 7;\\n        \$b = 12;\\n      \}\\n\\n      // formulate\\n      // days in a month so we can add exceptions \\n      \$days_in_a_month = 28;\\n      // exception for leap year and Unhewn Stone (Elder 29th or Night 23th)\\n      if(\$leap \|\| \$output[\\"month\\"] == \\"Night\\") \$days_in_a_month +=1;\\n      // \$changeover_day == the Sallumer day num that is the last day of the dol month\\n      \$changeover_day = (\$days_in_a_month-\$a)+1;\\n\\n      // grab the new months\\n      // \$m1 == The dol month coinciding with the 1st day of the Sallumer month\\n      // \$m2 == The new dol month that it will change to\\n      // \$m3 == Strictly for Hunter's as it changes twice\\n      \$m1 = \$dol_months[\$b];\\n      \$b += 1;\\n      if(\$b == 13) \$b = 0; // cycle back to 1st month\\n      \$m2 = \$dol_months[\$b];\\n\\n      // add a new month for the Harvest's exception\\n      if(\$month == \\"Harvest\\") \{\\n        \$b +=1;\\n        \$m3 = \$dol_months[\$b];\\n      \}\\n\\n      if(day_code \> 0 \&\& \$changeover_day \>= day_code) \{\\n        \$output[\\"month\\"] = \$m1;\\n        day_code = day_code + (\$a-1);\\n      \} else \{\\n        \$output[\\"month\\"] = \$m2;\\n        day_code = day_code - \$changeover_day;\\n      \}\\n\\n      // exception for Harvest\\n      if(day_code == 29 \&\& \$month == \\"Harvest\\") \{\\n        day_code = 1;\\n        \$output[\\"month\\"] = \$m3;\\n      \}\\n\\n      if(member(\\"all\\", \$needed) \|\| member(\\"day_code\\", \$needed)) \$output[\\"day_code\\"] = day_code; // Don't forget to re-set the day code!\\n    \}\\n    \\n    \\n  \}\\n  \\n  if(member(\\"all\\", \$needed) \|\| member(\\"special\\", \$needed)) \{\\n    \$output[\\"special\\"] = \\"\\";\\n    if(\$timestamp/(60*60*16)%7 == 0) \{\\n      // Dimache (Sunday)\\n      \$output[\\"special\\"] = \\"a \\"+TAG(\\"Holy Day\\", \\"imp\\")+\\" for those who follow S'Allumer. Trade and dueling are restricted.\\";\\n    \}\\n    if(\$output[\\"special\\"] == \\"\\") \$output[\\"special\\"] = nil;\\n  \}\\n\}\\n\\nif(member(\\"all\\", \$needed)\\n\|\| member(\\"time_period\\", \$needed)\\n\|\| member(\\"time_period_name\\", \$needed)\\n\|\| member(\\"time_period_description\\", \$needed)\\n\|\| member(\\"time_of_day\\", \$needed)) \{\\n\\n  \$time_period = \\"\\";\\n  \$time_period_name = \\"\\";\\n  \$time_of_day = \\"day\\";\\n  switch((\$timestamp/(60*60))%16) \{\\n    case 0:\\n        \$time_period = \\"dawn\\";\\n        \$time_period_name = \\"Office of Prime\\";\\n        \$time_period_description = \\"the short office\\";\\n        \$time_of_day = \\"day\\";\\n        break;\\n    case 1:\\n    case 2:\\n    case 3:\\n        \$time_period = \\"morning\\";\\n        \$time_period_name = \\"Office of Tierce\\";\\n        \$time_period_description = \\"the third office\\";\\n        \$time_of_day = \\"day\\";\\n        break;\\n    case 4:\\n        \$time_period = \\"midday\\";\\n        \$time_period_name = \\"Office of Sext\\";\\n        \$time_period_description = \\"the midday break\\";\\n        \$time_of_day = \\"day\\";\\n        break;\\n    case 5:\\n    case 6:\\n    case 7:\\n        \$time_period = \\"afternoon\\";\\n        \$time_period_name = \\"Office of Nones\\";\\n        \$time_period_description = \\"a time for church devotions\\";\\n        \$time_of_day = \\"day\\";\\n        break;\\n    case 8:\\n        \$time_period = \\"dusk\\";\\n        \$time_period_name = \\"Office of Lucernarim\\";\\n        \$time_period_description = \\"a time to recite the 'Lucernales' in praise of the Miracle of Helloise\\";\\n        \$time_of_day = \\"night\\";\\n        break;\\n    case 9:\\n    case 10:\\n    case 11:\\n        \$time_period = \\"evening\\";\\n        \$time_period_name = \\"Office of Compline\\";\\n        \$time_period_description = \\"the completion of the day\\";\\n        \$time_of_day = \\"night\\";\\n        break;\\n    case 12:\\n        \$time_period = \\"midnight\\";\\n        \$time_period_name = \\"Office of Matins\\";\\n        \$time_period_description = \\"the night vigil\\";\\n        \$time_of_day = \\"night\\";\\n        break;\\n    default:\\n        \$time_period = \\"aftermidnight\\";\\n        \$time_period_name = \\"Office of Lauds\\";\\n        \$time_period_description = \\"a time of devotionals\\";\\n        \$time_of_day = \\"night\\";\\n        break;\\n  \}\\n\\n  if(member(\\"all\\", \$needed) \|\| member(\\"time_period\\", \$needed)) \$output[\\"time_period\\"] = \$time_period;\\n  if(member(\\"all\\", \$needed) \|\| member(\\"time_period_name\\", \$needed)) \$output[\\"time_period_name\\"] = \$time_period_name;\\n  if(member(\\"all\\", \$needed) \|\| member(\\"time_period_description\\", \$needed)) \$output[\\"time_period_description\\"] = \$time_period_description;\\n  if(member(\\"all\\", \$needed) \|\| member(\\"time_of_day\\", \$needed)) \$output[\\"time_of_day\\"] = \$time_of_day;\\n\}\\n\\nreturn \$output;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:integrate">
+         "E[G]\\n// Integrate item into location\\n\\n// Sanity check\\nif(!\$object \|\| !\$env) return FALSE;\\n\\nif(typeof(\$object) == T_STRING) \{\\n  \$object = Obj(\$object);\\n  if(!\$object) return FALSE;\\n  \$object = Spawn(\$object);\\n  \$object.\\"base:environment\\" = \$env;\\n  // Did something go wrong? (such as the environment not being able to hold the object?)\\n  if(\$object.\\"base:environment\\" != \$env) \{\\n    Slay(\$object);\\n    error(\\"Integration script failed to move object into environment\\");\\n    return FALSE;\\n  \}\\n\} else \{\\n  \$object.\\"base:environment\\" = \$env;\\n\}\\n\\n\\n\\n// set prox\\n\$object.\\"base:proximity\\" = \$prox;\\n\$object.\\"base:stancestring\\" = \$stancestring;\\n\$object.\\"base:prepositionstring\\" = \$prepositionstring;\\n\$object.\\"base:immobile\\" = TRUE;\\n\\n// integrate item\\n\$id =\\"auto-trait:integration:\\" + Str(random( 999999 ));\\nwhile(Get(\$env, \$id)) \$id =\\"auto-trait:integration:\\" + Str(random( 999999 ));\\n\\n// Is this a virtual room?\\nif(\$creating_virtual_room)\\n  \$object.\\"room:startitem\\" = TRUE;\\n\\nSet(\$env, \$id, \$object);\\n\$object.\\"base:integration\\" = \$id;\\n\\nreturn \$object;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:make_opposed_roll">
+         "E[G]\\n// Allows opposed dice rolls using the \\"no capped limit\\" method\\n\\nif(typeof(\$val1) != T_INT) error(\\"\$val1 not passed to make_opposed_roll function\\");\\nif(typeof(\$val2) != T_INT) error(\\"\$val2 not passed to make_opposed_roll function\\");\\nif(!\$opposed_roll_cutoff) \$opposed_roll_cutoff = 20;\\nif(!\$opposed_roll_range) \$opposed_roll_range = 12;\\n\\nif(\$val1 \>= \$val2) \{\\n  \$highest = \$val1;\\n  \$lowest = \$val2;\\n  \$highest_lowest_multiplier = 1;\\n\} else \{\\n  \$highest = \$val2;\\n  \$lowest = \$val1;\\n  \$highest_lowest_multiplier = -1;\\n\}\\n\\n// Avoid potential divide-by-zero\\nif(\$highest \< 1) \{ \$highest = 1; \$lowest += 1; \}\\nif(\$lowest \< 1) \{ \$lowest = 1; \$highest += 1; \}\\n\\n// Give the lower roll a bonus of higher/lower or of higher/20, whichever is highest. (This is to give them at least a 10% chance of success)\\nif(\$highest/\$lowest \> \$highest/\$opposed_roll_cutoff) \{\\n  \$lowest += \$highest/\$lowest;\\n\} else \{\\n  \$lowest += \$highest/\$opposed_roll_cutoff;\\n\}\\nif(\$lowest \> \$highest) \$lowest = \$highest;\\n\\n\$highest_result = random(\$highest);\\n\$lowest_result = random(\$lowest);\\n\\nif(\$highest_result \> \$lowest_result) \{\\n  // Calculate span\\n  \$span = \$highest/\$opposed_roll_range;\\n\} else \{\\n  \$tmp = \$highest_result;\\n  \$highest_result = \$lowest_result;\\n  \$lowest_result = \$tmp;\\n  \$highest_lowest_multiplier *= -1;\\n  // Calculate span\\n  \$span = \$lowest/\$opposed_roll_range;\\n\}\\n\\n\$remainder = \$highest_result - \$lowest_result;\\n\$result = \$remainder/(\$span+1);\\n\\nreturn \$result*\$highest_lowest_multiplier;"
+      </Core:Property>
+      <Core:Property property="merry:lib:busy_check">
+         X[M] /* this function checks if a character is busy */
+
+if(!\$character) \$character = \$actor;
+if(!\$character) return nil;
+
+if(\$id \&\& \$character."busy:id" == \$id) return nil;
+
+if(\$character."busy:action")
+  return \$character."busy:action";
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:busy_start">
+         X[M] /* this function sets a character as busy */
+
+if(!\$character) \$character = \$actor;
+if(!\$character) return nil;
+if(!\$action) \$action = "working";
+
+\$id = Str(time())+Str(random(10000));
+\$character."busy:id" = \$id;
+
+\$character."busy:action" = \$action;
+
+if(\$timer \&\& typeof(\$timer) == T_INT \&\& \$timer \> 0) \{
+  /* We have a timer. Automatically end the busy script after the delay */
+  \$delay(\$timer, \$id, "8f78");
+  ironclaw::busy_stop(\$character: \$character, \$id: \$id);
+\}
+
+return \$id;
+      </Core:Property>
+      <Core:Property property="merry:lib:busy_stop">
+         X[M] /* this function sets a character as no longer busy */
+
+if(!\$character) \$character = \$actor;
+if(!\$character) return nil;
+
+if(\$id \&\& \$character."busy:id" != \$id) return FALSE;
+
+\$character."busy:action" = nil;
+if(\$character."teaching:npc:lesson_end_time") \{
+    \$character."busy:id" = nil;
+\}
+
+if(\$character."teaching:teacher") \{
+    ironclaw::busy_stop(\$character: \$character."teaching:teacher");
+\}
+
+/* \$character."busy:id" = nil; */ /* Disabling this - keeping the id is good in case other scripts have race conditions */
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:countcharacterslots">
+         X[M] /* How many characters does this account get? */
+\$allowed = Get(\$\{Ironclaw:Theatre:CreateCharacter\}, "characterslots");
+
+if(\$account_type == "free") return 1;
+if(\$account_type == "premium")
+    \$allowed += Get(\$\{Ironclaw:Theatre:CreateCharacter\}, "premium_bonus_characterslots");
+if(\$udat) \{
+    /* If we have our own extra slots */                                                      
+    if(Get(\$udat, "roster:extra"))
+        \$allowed += Get(\$udat, "roster:extra");                                                      
+
+    /* and extra slots that aren't attached to the +roster command */       
+    if(Get(\$udat, "Ironclaw:extra_character_slots"))
+        \$allowed += Get(\$udat, "Ironclaw:extra_character_slots");       
+\}
+return \$allowed;
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_money">
+         X[M] /* this function converts a number into a description of ironclaw money */
+if(!\$amount) return "no money";
+
+\$amount = Flt(\$amount)/100.0;
+
+if(\$amount == 1.0) return "1 florin";
+
+return Str(\$amount)+" florins";
+      </Core:Property>
+      <Core:Property property="merry:lib:dicepool_highest">
+         X[M] /* This function will return the highest result in an array */
+int i, j;
+if(!\$dicearray) return 0;
+
+if(typeof(\$dicearray) != T_ARRAY) error("\$dicearray passed is not an array");
+
+j = 0;
+for(i=0;i\<sizeof(\$dicearray);i++)
+  if(\$dicearray[i] \> j) j = \$dicearray[i];
+
+return j;
+      </Core:Property>
+      <Core:Property property="merry:lib:dicepool_target">
+         X[M] /* This function will return the number of results that beat the target */
+int i, j, target, botch;
+
+if(!\$dicearray) return 0;
+
+if(!\$target \|\| typeof(\$target) != T_INT)
+  target = 4;
+else
+  target = Int(\$target);
+
+j = 0;
+botch = TRUE;
+for(i=0;i\<sizeof(\$dicearray);i++) \{
+  if(\$dicearray[i] \>= target) j++;
+  
+  if(\$dicearray[i] == 1) \{
+      /* Autofail. Roll for botch. */
+      if(random(2) == 1) \{ 
+          j = 0;
+          botch = FALSE;
+      \}
+  \} else \{
+      if(\$dicearray[i] \> 1) botch = FALSE;
+  \}
+\}
+
+if(botch) return -1;
+return j;
+      </Core:Property>
+      <Core:Property property="merry:lib:evoke_to_array">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:evoke_to_array instead! */
+int i, j;
+string *input, *output, word;
+
+output = (\{\});
+if(!\$evoke \|\| !strlen(\$evoke)) return output;
+
+input = explode(lower_case(\$evoke), " ");
+
+for(i=0; i\<sizeof(input); i++) \{
+  word = "";
+  for(j=0; j\<strlen(input[i]); j++) \{
+    if(input[i][j] \>= 97 \&\& input[i][j] \<= 122) \{
+      word += char_to_string(input[i][j]);
+    \}
+  \}
+  if(strlen(word)) output += (\{ word \});
+\}
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_owner">
+         X[M] /* This function will find the in-game owner of an item or location */
+if(!\$object) return nil;
+
+/* Search for properties in the object that imply the owner */
+/* Dunno what those would be...? */
+
+/* Search in the object's environment for an owner */
+\$possibility = nil;
+while(\$object."base:environment") \{
+  \$object = \$object."base:environment";
+  /* Is this a PC? */
+  if(name(\$object)[..8] == "Chatters:")
+    return \$object;
+  /* Is this a room owned by a PC? */
+  if(\$object.homeowner)
+    return \$object.homeowner;
+  if(\$object.isvirtual \&\& !\$object.homeowner \&\& !\$object."base:environment") \{
+    /* The item is in a virtual room without an owner. Something went wrong here! */
+    return -1;
+  \}
+  /* Is the object in a package in the post? */
+  if(\$object."nip:delivery:recipient" \&\& !\$object."base:environment")
+    return \$object."nip:delivery:recipient";
+  if(\$object."nip:delivery:recipient")
+    \$possibility = \$object."nip:delivery:recipient";
+\}
+
+if(\$possibility) return \$possibility;
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:gather_dicepool">
+         X[M] /* This function will convert the skills to roll into numbers, and return it as an array */
+int i, sz, *dicearray;
+
+if(!\$roller) \$roller = \$actor;
+if(\$dicearray) \{
+  dicearray = copy(\$dicearray);
+\} else \{
+  dicearray = (\{ \});
+\}
+
+if(\$debug \&\& typeof(\$debug) != T_OBJECT)
+  \$debug = \$\{Chatters:AE:az:azrael\};
+if(\$debug) \{
+  EmitTo(\$debug, "Roller is "+dump_value(\$roller));
+  EmitTo(\$debug, "Array is "+dump_value(dicearray));
+  EmitTo(\$debug, "Skills are "+dump_value(\$skills));
+  EmitTo(\$debug, "Bonus is "+dump_value(\$bonus));
+  EmitTo(\$debug, "Limit is "+dump_value(\$limit));
+\}
+
+if(\$bonus) \{
+ \$bonus = Arr(\$bonus);
+ for(i=0;i\<sizeof(\$bonus);i++) \{
+  if(typeof(\$bonus[i]) == T_STRING) \{
+    if(Get(\$roller, "bonus:"+\$bonus[i])) \{
+      \$bonus[i] = Int(Get(\$roller, \$bonus[i])) + Int(Get(\$roller, "bonus:"+\$bonus[i]));
+    \} else \{
+      \$bonus[i] = Int(Get(\$roller, \$bonus[i]));
+    \}
+  \} else \{
+    \$bonus[i] = Int(\$bonus[i]);
+  \}
+ \}
+ if(\$debug)
+  EmitTo(\$debug, "Bonus is "+dump_value(\$bonus));
+ sz = 0;
+ for(i=0;i\<sizeof(\$bonus);i++) sz += \$bonus[i];
+ \$bonus = sz;
+\} else \{
+  \$bonus = 0;
+\}
+
+if(\$debug) \{
+  EmitTo(\$debug, "Bonus is "+dump_value(\$bonus));
+  EmitTo(\$debug, "Skills are "+dump_value(\$skills));
+\}
+if(\$skills) \{
+  sz = sizeof(\$skills);
+  for(i=0;i\<sz;i++) \{
+    \$tmpbonus = \$bonus;
+    if(Get(\$roller, "bonus:"+Str(\$skills[i])))
+      \$tmpbonus += Int(Get(\$roller, "bonus:"+Str(\$skills[i])));
+    if(typeof(\$skills[i]) == T_STRING) \{
+      if(Get(\$roller, Str(\$skills[i])))
+        dicearray += (\{ Int(Get(\$roller, Str(\$skills[i])))+\$tmpbonus \});
+      if(Get(\$roller, "skill:"+Str(\$skills[i])))
+        dicearray += (\{ Int(Get(\$roller, "skill:"+Str(\$skills[i])))+\$tmpbonus \});
+      if(Get(\$roller, "career:"+Str(\$skills[i])))
+        dicearray += (\{ Int(Get(\$roller, "career:"+Str(\$skills[i])))+\$tmpbonus \});
+      if(Get(\$roller, "species:"+Str(\$skills[i])))
+        dicearray += (\{ Int(Get(\$roller, "species:"+Str(\$skills[i])))+\$tmpbonus \});
+    \} else if(typeof(\$skills[i]) == T_INT \|\| typeof(\$skills[i]) == T_FLOAT) \{
+      dicearray += (\{ Int(\$skills[i])+\$tmpbonus \});
+    \}
+  \}
+  dicearray -= (\{ nil \});
+\}
+/* if they have no skills, still let them roll their bonus */
+if(!\$requireskills \&\& !sizeof(dicearray) \&\& \$bonus \&\& \$bonus \> 1)
+  dicearray = (\{ \$bonus \});
+if(\$debug) EmitTo(\$debug, "Array with bonus "+dump_value(dicearray));
+if(dicearray \&\& sizeof(dicearray) \&\& \$modifier) \{
+  sz = sizeof(dicearray);
+  for(i=0;i\<sz;i++) \{
+    dicearray[i] += \$modifier;
+  \}
+\}
+if(\$debug) EmitTo(\$debug, "Array with modifier "+dump_value(dicearray));
+
+/* Reduce any dice over 24 */
+for(i=0;i\<sizeof(dicearray);i++) \{
+  while(dicearray[i] \> 24) \{
+    dicearray += (\{ 24 \}); /* Add another dice worth 24 to the array */
+    dicearray[i] -= 24; /* And reduce this value by 24 */
+    if(dicearray[i] \< 4) dicearray[i] = 4; /* But make sure we're left with a reasonably sized dice */
+  \}
+\}
+if(\$debug) EmitTo(\$debug, "Array with reductions "+dump_value(dicearray));
+
+return dicearray;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_object">
+         X[M] /* Takes a string called \$woe and returns an object or nil */
+int i;
+
+if(!\$woe) error("No \$woe string passed to library");
+
+\$object = nil;
+\$parts = explode(\$woe, ":");
+\$woe = "";
+while(sizeof(\$parts)) \{
+  \$folder = \$woe;
+  if(sizeof(\$parts) == 1) \{
+    /* Can we find this object? */
+    \$objects = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+    for(i=0;i\<sizeof(\$objects);i++) \{
+      if(lower_case(\$parts[0]) == lower_case(\$objects[i]))
+        \$object = Obj(\$woe+":"+\$objects[i]);
+    \}
+  \} else \{
+    /* Can we find this folder? */
+    \$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+    for(i=0;i\<sizeof(\$folders);i++) \{
+      if(lower_case(\$parts[0]) == lower_case(\$folders[i])) \{
+        if(\$woe != "") \$woe += ":";
+        \$woe += \$folders[i];
+      \}
+    \}
+  \}
+  \$parts -= (\{ \$parts[0] \});
+\}
+
+return \$object;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_udat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_udat instead! */
+string accountname;
+object *roster;
+if(!\$char) error("No \$char provided");
+
+/* If they are possessing the PC, great! */
+if(\$char."udat:object") \{
+    if(\$output \&\& \$output=="udat_name") return \$char."udat:name";
+    return \$char."udat:object";
+\}
+
+accountname = \$char."skotos:creator";
+if(!accountname) \{
+  error("No skotos:creator property found in this body!");
+  return FALSE;
+\}
+roster = udat::query_bodies_in_roster(\$user: accountname);
+if(!member(\$char, roster)) \{
+  error("We don't know what account "+name(\$char)+" belongs to! Skotos:creator is "+accountname+" but body is not found in that roster");
+  return FALSE;
+\}
+
+if(\$output \&\& \$output=="udat_name") return accountname;
+return udat::query_udat(\$name: accountname);
+      </Core:Property>
+      <Core:Property property="merry:lib:has_gift">
+         X[M] /* Checks if \$char has a specific gift */
+if(!\$char) return FALSE;
+if(!\$gift) return FALSE;
+
+if(Get(NRefOb(\$char), "gifts:"+Str(\$gift))) return TRUE;
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:ictime">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:ictime instead! */
+/* Retrieve the time/day/date in the Ironclaw gameworld. */
+string month;
+int day_code, year; 
+string *daynames;
+
+if(\$output_style \&\& lower_case(\$output_style) == "doloreaux")
+  daynames = (\{ "De Domhnaigh", "De Luan", "De Mairt", "De Ceadaoin", "Deardaoin", "De Haoine", "De Sathairn" \});
+else
+  daynames = (\{ "Dimache", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi" \});
+
+if(!\$timestamp) \$timestamp = time();
+if(\$needed) \$needed = (\{ "all" \});
+
+\$output = ([ ]);
+/* Find the details we need */
+
+if(member("all", \$needed)
+\|\| member("day", \$needed)
+\|\| member("day_code", \$needed)
+\|\| member("month", \$needed)
+\|\| member("season", \$needed)
+\|\| member("special", \$needed)) \{
+
+  sscanf(ctime( \$timestamp ), "%*s %s %d %*s %d", month, day_code, year);  
+
+  if(member("all", \$needed) \|\| member("day_code", \$needed)) \$output["day_code"] = day_code;
+  if(member("all", \$needed) \|\| member("year", \$needed)) \$output["year"] = year-1119;
+
+  if(member("all", \$needed) \|\| member("day", \$needed)) \{
+    /* find in-character day of week */
+    \$output["day"] = daynames[\$timestamp/(60*60*16)%7]; 
+  \}
+
+  if(member("all", \$needed) \|\| member("season", \$needed)) \{
+    if(month == "Mar"
+    \|\| month == "Apr"
+    \|\| month == "May") \{
+      \$output["season"] = "spring";
+    \} else if(month == "Jun"
+    \|\| month == "Jul"
+    \|\| month == "Aug") \{
+      \$output["season"] = "summer";
+    \} else if(month == "Sep"
+    \|\| month == "Oct"
+    \|\| month == "Nov") \{
+      \$output["season"] = "autumn";
+    \} else if(month == "Dec"
+    \|\| month == "Jan"
+    \|\| month == "Feb") \{
+      \$output["season"] = "winter";
+    \}
+  \}
+
+  if(member("all", \$needed) \|\| member("month", \$needed)) \{
+    \$output["month"] = replace_strings(month, "Jan", "Yule", "Feb", "Snow", "Mar", "Sap", "Apr", "Grass", "May", "Flower", "Jun", "Strawberry", "Jul", "Thunder", "Aug", "Green", "Sep", "Harvest", "Oct", "Hunter's", "Nov", "Frost", "Dec", "Night" );
+    /* Still need to add calculation for Doloreaux months! */
+    if(\$output_style \&\& lower_case(\$output_style) == "doloreaux") \{
+      \$dol_months = (\{ "Birch", "Rowan", "Ash", "Alder", "Willow", "Hawthorn", "Oak", "Holly", "Hazel", "Vine", "Ivy", "Reed", "Elder" \});
+
+      /* standard month and day variables */
+      /* \$a == the dol day num on the 1st of the Sallumer month */
+      /* \$b == array number for dol month on the 1st day of the Sallumer month */
+
+      if(\$output["month"] == "Yule") \{
+        \$a = 9;
+        \$b = 0;
+      \} else if(\$output["month"] == "Snow") \{
+        \$a = 12;
+        \$b = 1;
+        /* this month has exceptions for Leap Day */
+        if(year%4 == 0) \$leap = TRUE;
+      \} else if(\$output["month"] == "Sap") \{
+        \$a = 12;
+        \$b = 2;
+      \} else if(\$output["month"] == "Grass") \{
+        \$a = 15;
+        \$b = 3;
+      \} else if(\$output["month"] == "Flower") \{
+        \$a = 17;
+        \$b = 4;
+      \} else if(\$output["month"] == "Strawberry") \{
+        \$a = 20;
+        \$b = 5;
+      \} else if(\$output["month"] == "Thunder") \{
+        \$a = 22;
+        \$b = 6;
+      \} else if(\$output["month"] == "Green") \{
+        \$a = 25;
+        \$b = 7;
+      \} else if(\$output["month"] == "Harvest") \{
+        \$a = 28;
+        \$b = 8;
+      \} else if(\$output["month"] == "Hunter's") \{
+        /* this month has exceptions as it crosses three dol months */
+        \$a = 2;
+        \$b = 9;
+      \} else if(\$output["month"] == "Frost") \{
+        \$a = 5;
+        \$b = 11;
+      \} else if(\$output["month"] == "Night") \{
+        /* this month has exceptions for Unhewn Stone - see below */
+        \$a = 7;
+        \$b = 12;
+      \}
+
+      /* formulate */
+      /* days in a month so we can add exceptions  */
+      \$days_in_a_month = 28;
+      /* exception for leap year and Unhewn Stone (Elder 29th or Night 23th) */
+      if(\$leap \|\| \$output["month"] == "Night") \$days_in_a_month +=1;
+      /* \$changeover_day == the Sallumer day num that is the last day of the dol month */
+      \$changeover_day = (\$days_in_a_month-\$a)+1;
+
+      /* grab the new months */
+      /* \$m1 == The dol month coinciding with the 1st day of the Sallumer month */
+      /* \$m2 == The new dol month that it will change to */
+      /* \$m3 == Strictly for Hunter's as it changes twice */
+      \$m1 = \$dol_months[\$b];
+      \$b += 1;
+      if(\$b == 13) \$b = 0; /* cycle back to 1st month */
+      \$m2 = \$dol_months[\$b];
+
+      /* add a new month for the Harvest's exception */
+      if(\$month == "Harvest") \{
+        \$b +=1;
+        \$m3 = \$dol_months[\$b];
+      \}
+
+      if(day_code \> 0 \&\& \$changeover_day \>= day_code) \{
+        \$output["month"] = \$m1;
+        day_code = day_code + (\$a-1);
+      \} else \{
+        \$output["month"] = \$m2;
+        day_code = day_code - \$changeover_day;
+      \}
+
+      /* exception for Harvest */
+      if(day_code == 29 \&\& \$month == "Harvest") \{
+        day_code = 1;
+        \$output["month"] = \$m3;
+      \}
+
+      if(member("all", \$needed) \|\| member("day_code", \$needed)) \$output["day_code"] = day_code; /* Don't forget to re-set the day code! */
+    \}
+    
+    
+  \}
+  
+  if(member("all", \$needed) \|\| member("special", \$needed)) \{
+    \$output["special"] = "";
+    if(\$timestamp/(60*60*16)%7 == 0) \{
+      /* Dimache (Sunday) */
+      \$output["special"] = "a "+TAG("Holy Day", "imp")+" for those who follow S'Allumer. Trade and dueling are restricted.";
+    \}
+    if(\$output["special"] == "") \$output["special"] = nil;
+  \}
+\}
+
+if(member("all", \$needed)
+\|\| member("time_period", \$needed)
+\|\| member("time_period_name", \$needed)
+\|\| member("time_period_description", \$needed)
+\|\| member("time_of_day", \$needed)) \{
+
+  \$time_period = "";
+  \$time_period_name = "";
+  \$time_of_day = "day";
+  /*switch((\$timestamp/(60*60))%16) \{*/
+  switch(Int(smalltime(time())[0..2])) \{
+    case 0:
+        \$time_period = "midnight";
+        \$time_period_name = "Office of Matins";
+        \$time_period_description = "the night vigil";
+        \$time_of_day = "night";
+        break;
+    case 1:
+        \$time_period = "midnight";
+        \$time_period_name = "Office of Matins";
+        \$time_period_description = "the night vigil";
+        \$time_of_day = "night";
+        break;
+    case 2:
+        \$time_period = "aftermidnight";
+        \$time_period_name = "Office of Lauds";
+        \$time_period_description = "a time of devotionals";
+        \$time_of_day = "night";
+        break;
+    case 3:
+        \$time_period = "aftermidnight";
+        \$time_period_name = "Office of Lauds";
+        \$time_period_description = "a time of devotionals";
+        \$time_of_day = "night";
+        break;
+    case 4:
+        \$time_period = "aftermidnight";
+        \$time_period_name = "Office of Lauds";
+        \$time_period_description = "a time of devotionals";
+        \$time_of_day = "night";
+        break;
+    case 5:
+        \$time_period = "dawn";
+        \$time_period_name = "Office of Prime";
+        \$time_period_description = "the short office";
+        \$time_of_day = "day";
+        break;
+    case 6:
+        \$time_period = "dawn";
+        \$time_period_name = "Office of Prime";
+        \$time_period_description = "the short office";
+        \$time_of_day = "day";
+        break;
+    case 7:
+        \$time_period = "dawn";
+        \$time_period_name = "Office of Prime";
+        \$time_period_description = "the short office";
+        \$time_of_day = "day";
+        break;
+    case 8:
+        \$time_period = "morning";
+        \$time_period_name = "Office of Tierce";
+        \$time_period_description = "the third office";
+        \$time_of_day = "day";
+        break;
+    case 9:
+        \$time_period = "morning";
+        \$time_period_name = "Office of Tierce";
+        \$time_period_description = "the third office";
+        \$time_of_day = "day";
+        break;
+    case 10:
+        \$time_period = "morning";
+        \$time_period_name = "Office of Tierce";
+        \$time_period_description = "the third office";
+        \$time_of_day = "day";
+        break;
+    case 11:
+        \$time_period = "midday";
+        \$time_period_name = "Office of Sext";
+        \$time_period_description = "the midday break";
+        \$time_of_day = "day";
+        break;
+    case 12:
+        \$time_period = "midday";
+        \$time_period_name = "Office of Sext";
+        \$time_period_description = "the midday break";
+        \$time_of_day = "day";
+        break;
+    case 13:
+        \$time_period = "midday";
+        \$time_period_name = "Office of Sext";
+        \$time_period_description = "the midday break";
+        \$time_of_day = "day";
+        break;
+    case 14:
+        \$time_period = "afternoon";
+        \$time_period_name = "Office of Nones";
+        \$time_period_description = "a time for church devotions";
+        \$time_of_day = "day";
+        break;
+    case 15:
+        \$time_period = "afternoon";
+        \$time_period_name = "Office of Nones";
+        \$time_period_description = "a time for church devotions";
+        \$time_of_day = "day";
+        break;
+    case 16:
+        \$time_period = "afternoon";
+        \$time_period_name = "Office of Nones";
+        \$time_period_description = "a time for church devotions";
+        \$time_of_day = "day";
+        break;
+    case 17:
+        \$time_period = "dusk";
+        \$time_period_name = "Office of Lucernarim";
+        \$time_period_description = "a time to recite the 'Lucernales' in praise of the Miracle of Helloise";
+        \$time_of_day = "night";
+        break;
+    case 18:
+        \$time_period = "dusk";
+        \$time_period_name = "Office of Lucernarim";
+        \$time_period_description = "a time to recite the 'Lucernales' in praise of the Miracle of Helloise";
+        \$time_of_day = "night";
+        break;
+    case 19:
+        \$time_period = "dusk";
+        \$time_period_name = "Office of Lucernarim";
+        \$time_period_description = "a time to recite the 'Lucernales' in praise of the Miracle of Helloise";
+        \$time_of_day = "night";
+        break;
+    case 20:
+        \$time_period = "evening";
+        \$time_period_name = "Office of Compline";
+        \$time_period_description = "the completion of the day";
+        \$time_of_day = "night";
+        break;
+    case 21:
+        \$time_period = "evening";
+        \$time_period_name = "Office of Compline";
+        \$time_period_description = "the completion of the day";
+        \$time_of_day = "night";
+        break;
+    case 22:
+        \$time_period = "evening";
+        \$time_period_name = "Office of Compline";
+        \$time_period_description = "the completion of the day";
+        \$time_of_day = "night";
+        break;
+    case 23:
+        \$time_period = "midnight";
+        \$time_period_name = "Office of Matins";
+        \$time_period_description = "the night vigil";
+        \$time_of_day = "night";
+        break;
+    default:
+        \$time_period = "aftermidnight";
+        \$time_period_name = "Office of Lauds";
+        \$time_period_description = "a time of devotionals";
+        \$time_of_day = "night";
+        break;
+  \}
+
+  if(member("all", \$needed) \|\| member("time_period", \$needed)) \$output["time_period"] = \$time_period;
+  if(member("all", \$needed) \|\| member("time_period_name", \$needed)) \$output["time_period_name"] = \$time_period_name;
+  if(member("all", \$needed) \|\| member("time_period_description", \$needed)) \$output["time_period_description"] = \$time_period_description;
+  if(member("all", \$needed) \|\| member("time_of_day", \$needed)) \$output["time_of_day"] = \$time_of_day;
+\}
+
+return \$output;
+      </Core:Property>
+      <Core:Property property="merry:lib:integrate">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:integrate instead! */
+/* Integrate item into location */
+
+/* Sanity check */
+if(!\$object \|\| !\$env) return FALSE;
+
+if(typeof(\$object) == T_STRING) \{
+  \$object = Obj(\$object);
+  if(!\$object) return FALSE;
+  \$object = Spawn(\$object);
+  \$object."base:environment" = \$env;
+  /* Did something go wrong? (such as the environment not being able to hold the object?) */
+  if(\$object."base:environment" != \$env) \{
+    Slay(\$object);
+    error("Integration script failed to move object into environment");
+    return FALSE;
+  \}
+\} else \{
+  \$object."base:environment" = \$env;
+\}
+
+
+
+/* set prox */
+\$object."base:proximity" = \$prox;
+\$object."base:stancestring" = \$stancestring;
+\$object."base:prepositionstring" = \$prepositionstring;
+\$object."base:immobile" = TRUE;
+
+/* integrate item */
+\$id ="auto-trait:integration:" + Str(random( 999999 ));
+while(Get(\$env, \$id)) \$id ="auto-trait:integration:" + Str(random( 999999 ));
+
+/* Is this a virtual room? */
+if(\$creating_virtual_room)
+  \$object."room:startitem" = TRUE;
+
+Set(\$env, \$id, \$object);
+\$object."base:integration" = \$id;
+
+return \$object;
+      </Core:Property>
+      <Core:Property property="merry:lib:make_opposed_roll">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:make_opposed_roll instead! */
+/* Allows opposed dice rolls using the "no capped limit" method */
+
+if(typeof(\$val1) != T_INT) error("\$val1 not passed to make_opposed_roll function");
+if(typeof(\$val2) != T_INT) error("\$val2 not passed to make_opposed_roll function");
+if(!\$opposed_roll_cutoff) \$opposed_roll_cutoff = 20;
+if(!\$opposed_roll_range) \$opposed_roll_range = 12;
+
+if(\$val1 \>= \$val2) \{
+  \$highest = \$val1;
+  \$lowest = \$val2;
+  \$highest_lowest_multiplier = 1;
+\} else \{
+  \$highest = \$val2;
+  \$lowest = \$val1;
+  \$highest_lowest_multiplier = -1;
+\}
+
+/* Avoid potential divide-by-zero */
+if(\$highest \< 1) \{ \$highest = 1; \$lowest += 1; \}
+if(\$lowest \< 1) \{ \$lowest = 1; \$highest += 1; \}
+
+/* Give the lower roll a bonus of higher/lower or of higher/20, whichever is highest. (This is to give them at least a 10% chance of success) */
+if(\$highest/\$lowest \> \$highest/\$opposed_roll_cutoff) \{
+  \$lowest += \$highest/\$lowest;
+\} else \{
+  \$lowest += \$highest/\$opposed_roll_cutoff;
+\}
+if(\$lowest \> \$highest) \$lowest = \$highest;
+
+\$highest_result = random(\$highest);
+\$lowest_result = random(\$lowest);
+
+if(\$highest_result \> \$lowest_result) \{
+  /* Calculate span */
+  \$span = \$highest/\$opposed_roll_range;
+\} else \{
+  \$tmp = \$highest_result;
+  \$highest_result = \$lowest_result;
+  \$lowest_result = \$tmp;
+  \$highest_lowest_multiplier *= -1;
+  /* Calculate span */
+  \$span = \$lowest/\$opposed_roll_range;
+\}
+
+\$remainder = \$highest_result - \$lowest_result;
+\$result = \$remainder/(\$span+1);
+
+return \$result*\$highest_lowest_multiplier;
+      </Core:Property>
+      <Core:Property property="merry:lib:makeroll">
+         X[M] /*
+This function will make a dice roll. Depending on the values of \$dicearray passed, it will roll and return the highest dice roll
+*/
+/*variables for this function*/
+int i;
+int thisRoll;
+int currentHighest;
+
+if(!\$dicearray) return 1;
+currentHighest = 0;
+\$dicearray -= (\{ nil \});
+
+/*roll each dice, and record the highest value*/
+for (i = 0; i \< sizeof(\$dicearray); i ++) \{
+  if(\$dicearray[i] \> 24) \{
+    EmitTo(\$debug, "Dice is \> 24");
+    /* special code for flowover */
+    /* calculate how much of the value above 24 gets added to the roll */
+    /* (two points over = +1, every four more points = another +1) */
+
+    thisRoll = \$dicearray[i] - 24;
+    thisRoll = (thisRoll+2)/4;
+
+    EmitTo(\$debug, "Flowover is " + dump_value(thisRoll));
+
+    /*thisRoll = random(\$dicearray[i]+thisRoll); */
+    thisRoll = random(24+thisRoll);
+
+    EmitTo(\$debug, "Roll is " + dump_value(thisRoll));
+
+    if (thisRoll \> 23) thisRoll = 23;
+    if (thisRoll \> currentHighest) currentHighest = thisRoll;
+  \} else \{
+    EmitTo(\$debug, "Dice is \< 24");
+
+    thisRoll = random(\$dicearray[i]);
+    if (thisRoll \> currentHighest) currentHighest = thisRoll;
+  \}
+
+\}
+
+return currentHighest+1;
+      </Core:Property>
+      <Core:Property property="merry:lib:mothballandsortroster">
+         X[M] /* Expects an array of \$bodies, returns a mapping with them sorted into active and mothballed */
+\$output = ([ "active":(\{\}), "mothballed":(\{\}), "nocost":(\{\}) ]);
+if(typeof(\$bodies) != T_ARRAY) return \$output;
+
+for(\$i=0; \$i\<sizeof(\$bodies); \$i++) \{
+    if(\$bodies[\$i].mothballed) \{
+        \$output["mothballed"] += (\{ \$bodies[\$i] \});
+    \} else if(\$bodies[\$i].nocharcost) \{
+        \$output["nocost"] += (\{ \$bodies[\$i] \});
+    \} else \{
+        \$output["active"] += (\{ \$bodies[\$i] \});
+    \}
+\}
+
+/* Were we given a \$max_active variable? */
+if(\$max_active) \{
+    if(sizeof(\$output["active"]) \> \$max_active) \{
+        /* We need an actor for the logging command to work */
+        /* Try to use one of this player's characters first. If that fails, just use azrael */
+        if(!\$actor \&\& sizeof(\$output["active"]) \> 0) \$actor = \$output["active"][0];
+        else if(!\$actor) \$actor = \$\{Chatters:AE:az:azrael\}; 
+        chat::chat(\$chat_staff: TRUE, \$chat_channel: "logs", \$line: nil, \$(raw-evoke): "Too many active PCs. Freezing them all so the right ones can be unfrozen.", \$no_channel_warnings: TRUE);
+        chat::chat(\$chat_staff: TRUE, \$chat_channel: "logs", \$line: nil, \$(raw-evoke): "Max should be "+\$max_active+". Currently is: "+dump_value(\$output), \$no_channel_warnings: TRUE);
+        /* We have too many active PCs! Freeze them, and let the player unfreeze the ones they want. */
+        while(sizeof(\$output["active"])) \{
+            \$output["mothballed"] += (\{ \$output["active"][0] \});
+            \$output["active"][0].mothballed = TRUE;
+            \$output["active"] -= (\{ \$output["active"][0] \});
+        \}
+    \}
+\}
+
+return \$output;
+      </Core:Property>
+      <Core:Property property="merry:lib:pay_money">
+         X[M] /* this function pays money from one PC or NPC to another */
+string text;
+if(!\$from) error("No \$from value specified");
+if(!\$to) error("No \$to value specified");
+if(!\$amount) \{
+    return TRUE;
+\}
+\$from = NRefOb(\$from);
+\$to = NRefOb(\$to);
+\$amount = Int(\$amount);
+
+if(\$amount \< 0) return Describe(\$from)+" cannot pay a negative amount of money.";
+
+if(Int(\$from."trait:money") \< \$amount) return Describe(\$from)+" does not have "+ironclaw::describe_money(\$amount: \$amount)+".";
+\$from."trait:money" -= \$amount;
+\$to."trait:money" = Int(\$to."trait:money")+\$amount;
+
+if(\$emit) \{
+    if(\$evoke) text = ", "+\$evoke;
+    else text = ".";
+    EmitTo(\$from, "You give "+ironclaw::describe_money(\$amount: \$amount)+" to "+Describe(\$to)+text);
+    EmitTo(\$to, Describe(\$from)+" gives you "+ironclaw::describe_money(\$amount: \$amount)+text);
+    EmitIn(\$from."base:environment", Describe(\$from)+" gives "+ironclaw::describe_money(\$amount: \$amount)+" to "+Describe(\$to)+text, \$to, \$from);
+\}
+
+return nil; /* No error to return */
+      </Core:Property>
+      <Core:Property property="merry:lib:replace_prop">
+         X[M] /* this function resets a property, based on the original value in an array */
+/* expects \$obj, \$prop and \$id or \$value */
+mixed *array;
+int i;
+
+if(!\$obj) return FALSE;
+
+if(!\$prop \&\& !\$property) return FALSE;
+if(!\$prop \&\& \$property) \$prop = \$property;
+
+if(Get(\$obj, "savedprop:"+\$prop)) \{
+  /* we have the array */
+  array = Get(\$obj, "savedprop:"+\$prop);
+  if(\$id) \{
+    /* loop through looking for the matching \$id */
+    for(i=sizeof(array)-1;i\>=0;i--) \{
+      if(sizeof(Arr(array[i])) \> 1) \{
+        if(array[i][0] == \$id) \{
+          /* match */
+          /* replace the property */
+          array[i][1] = \$value;
+          Set(\$obj, "savedprop:"+\$prop, array);
+          if(i==sizeof(array)-1) \{
+            /* set the property */
+            if(sizeof(Arr(array[i])) \> 1) \{
+              Set(\$obj, \$prop, array[i-1][1]);
+            \}
+          \}
+          return TRUE;
+        \}
+      \}
+    \}
+  \} else \{
+    /* loop through looking for the matching \$value */
+    for(i=sizeof(array)-1;i\>=0;i--) \{
+      if(sizeof(Arr(array[i])) \> 1) \{
+        if(array[i][1] == \$oldvalue) \{
+          /* match */
+          /* remove the property */
+          array[i][1] = \$value;
+          Set(\$obj, "savedprop:"+\$prop, array);
+          if(i==sizeof(array)-1) \{
+            /* set the property */
+            if(sizeof(Arr(array[i])) \> 1) \{
+              Set(\$obj, \$prop, array[i-1][1]);
+            \}
+          \}
+          return TRUE;
+        \}
+      \}
+
+    \}
+  \}
+\}
+
+/* no array or match! */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:roll">
+         X[M] /* This function will convert the skills to roll into numbers, then call to make the roll */
+int i, sz, *dicearray;
+
+/*
+Example: ironclaw::roll(\$roller: \$actor, \$skills: (\{ "disguise_writer" \}), \$bonus: 0);
+Example: ironclaw::roll(\$roller: \$actor, \$skills: (\{ "alteration:tailoring" \}), \$bonus: 0);
+*/
+
+if(!\$roller) \$roller = \$actor;
+if(\$dicearray) \{
+  dicearray = copy(\$dicearray);
+\} else \{
+  dicearray = (\{ \});
+\}
+
+if(\$debug \&\& typeof(\$debug) != T_OBJECT)
+  \$debug = nil;
+if(\$debug) \{
+  EmitTo(\$debug, "Roller is "+dump_value(\$roller));
+  EmitTo(\$debug, "Array is "+dump_value(dicearray));
+  EmitTo(\$debug, "Bonus is "+dump_value(\$bonus));
+\}
+
+if(\$bonus) \{
+ \$bonus = Arr(\$bonus);
+ for(i=0;i\<sizeof(\$bonus);i++) \{
+  if(typeof(\$bonus[i]) == 3) \{
+    if(Get(\$roller, "bonus:"+\$bonus[i])) \{
+      \$bonus[i] = Int(Get(\$roller, \$bonus[i])) + Int(Get(\$roller, "bonus:"+\$bonus[i]));
+    \} else \{
+      \$bonus[i] = Int(Get(\$roller, \$bonus[i]));
+    \}
+  \} else \{
+    \$bonus[i] = Int(\$bonus[i]);
+  \}
+ \}
+ if(\$debug)
+  EmitTo(\$debug, "Bonus is "+dump_value(\$bonus));
+ sz = 0;
+ for(i=0;i\<sizeof(\$bonus);i++) \{
+  sz += \$bonus[i];
+ \}
+ \$bonus = sz;
+\} else \{
+  \$bonus = 0;
+\}
+
+if(\$debug) \{
+  EmitTo(\$debug, "Bonus is "+dump_value(\$bonus));
+  EmitTo(\$debug, "Skills are "+dump_value(\$skills));
+\}
+if(\$skills) \{
+  for(i=0;i\<sizeof(\$skills);i++) \{
+    if(!contains(\$skills[i], ":")) \{
+      /* Check which specific skills should be rolled for a skill roll of this type */
+      if( this.skill_rolls[lower_case(\$skills[i])] ) \{
+        \$skills += this.skill_rolls[lower_case(\$skills[i])];
+      \}
+      /* And check if we should add bonuses from any gifts or other situations */
+      /* NOT WRITTEN YET */
+    \} else \{
+      \$tmpbonus = \$bonus;
+      if(Get(\$roller, "bonus:"+Str(\$skills[i])))
+        \$tmpbonus += Int(Get(\$roller, "bonus:"+Str(\$skills[i])));
+
+      if(Get(\$roller, Str(\$skills[i])))
+        dicearray += (\{ Int(Get(\$roller, Str(\$skills[i])))+\$tmpbonus \});
+      if(Get(\$roller, "skill:"+Str(\$skills[i])))
+        dicearray += (\{ Int(Get(\$roller, "skill:"+Str(\$skills[i])))+\$tmpbonus \});
+      if(Get(\$roller, "career:"+Str(\$skills[i])))
+        dicearray += (\{ Int(Get(\$roller, "career:"+Str(\$skills[i])))+\$tmpbonus \});
+    \}
+  \}
+  dicearray -= (\{ nil \});
+\}
+/* if they have no skills, still let them roll their bonus */
+if(!\$requireskills \&\& !sizeof(dicearray) \&\& \$bonus \&\& \$bonus \> 1)
+  dicearray = (\{ \$bonus \});
+if(\$debug) EmitTo(\$debug, "Array with bonus "+dump_value(dicearray));
+if(dicearray \&\& sizeof(dicearray) \&\& \$modifier) \{
+  sz = sizeof(dicearray);
+  for(i=0;i\<sz;i++) \{
+    dicearray[i] += \$modifier;
+  \}
+\}
+if(\$debug) EmitTo(\$debug, "Array with modifier "+dump_value(dicearray));
+return ironclaw::makeroll(\$dicearray: dicearray);
+      </Core:Property>
+      <Core:Property property="merry:lib:roll_dicepool">
+         X[M] /* This function will convert the skills to roll into numbers, then call to make the roll */
+int i, j, *dicearray;
+
+dicearray = ::gather_dicepool();
+
+/* roll each of the dice */
+for(i=0;i\<sizeof(dicearray);i++)
+  dicearray[i] = random(dicearray[i])+1;
+
+/* return the appropriate result (depending on what we asked to have returned) */
+if(\$rolltype \&\& typeof(\$rolltype) == T_STRING \&\& \$rolltype == "highest")
+  return ::dicepool_highest(\$dicearray: dicearray);
+
+if(\$rolltype \&\& typeof(\$rolltype) == T_STRING \&\& \$rolltype == "target")
+  return ::dicepool_target(\$dicearray: dicearray, \$target: \$target);
+  
+
+
+return dicearray;
+      </Core:Property>
+      <Core:Property property="merry:lib:roll_dicepools">
+         X[M] /* This function will roll two dicepools, then compare the results. Return number of successes (or negative number of successes if pool2 wins */
+int i, tmp, count;
+
+if(!\$pool1) return 0;
+if(!\$pool2) return 0;
+if(!\$roller1) \$roller1 = \$roller;
+if(!\$roller2) \$roller2 = \$roller;
+
+\$pool1 = ::roll_dicepool(\$roller: \$roller1, \$skills: \$pool1, \$rolltype: nil);
+\$pool2 = ::roll_dicepool(\$roller: \$roller2, \$skills: \$pool2, \$rolltype: nil);
+
+/* Sort the pools into descending order */
+for(i=1;i\<sizeof(\$pool1);i++) \{
+  if(i\<1) continue;
+  if(\$pool1[i] \> \$pool1[i-1]) \{
+    tmp = \$pool1[i];
+    \$pool1[i] = \$pool1[i-1];
+    \$pool1[i-1] = tmp;
+    i = i-2;
+  \}
+\}
+for(i=1;i\<sizeof(\$pool2);i++) \{
+  if(i\<1) continue;
+  if(\$pool2[i] \> \$pool2[i-1]) \{
+    tmp = \$pool2[i];
+    \$pool2[i] = \$pool2[i-1];
+    \$pool2[i-1] = tmp;
+    i = i-2;
+  \}
+\}
+
+if(\$debug) \{
+  EmitTo(\$debug, dump_value(\$pool1));
+  EmitTo(\$debug, dump_value(\$pool2));
+\}
+
+/* If one pool is empty, the number of successes is the size of the other pool */
+if(!sizeof(\$pool2)) return sizeof(\$pool1);
+if(!sizeof(\$pool1)) return sizeof(\$pool2)*-1;
+
+
+/* Loop through counting how many successes there are */
+count = 0;
+if(\$pool1[0] == \$pool2[0]) return 0;
+if(\$pool1[0] \> \$pool2[0]) \{
+  /* \$pool1 wins */
+  for(i=0;i\<sizeof(\$pool1);i++)
+    if(\$pool1[i] \> \$pool2[0]) count++;
+\} else \{
+  /* \$pool2 wins */
+  for(i=0;i\<sizeof(\$pool2);i++)
+    if(\$pool2[i] \> \$pool1[0]) count--;
+\}
+
+return count;
+      </Core:Property>
+      <Core:Property property="merry:lib:safedelete">
+         X[M] /* this function takes a list of objects, and deletes them */
+/* it will have checks so it doesn't delete anything unique */
+int i;
+
+if(!\$what) return FALSE;
+
+\$what = Arr(\$what);
+for(i=0;i\<sizeof(\$what);i++) \{
+  if(typeof(\$what[i]) == T_OBJECT) \{
+    /* Should have better checks here, so we don't delete anything important (e.g. corpses) */
+    Slay(NRefOb(\$what[i]));
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_prop">
+         X[M] /* this function sets a property, while storing the original value in an array */
+/* expects \$obj, \$prop and \$value */
+
+/* Instructions here: http://twiki.skotos.net/twiki/bin/view/Builders/TempProperties */
+/* Example: \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:fingers", \$value: "skeletal", \$timer: 60); */
+
+mixed *array;
+int id, i;
+if(!\$obj) return FALSE;
+
+if(\$propmapping \&\& typeof(\$propmapping) == T_MAPPING) \{
+  array = (\{ \});
+  \$indices = map_indices(\$propmapping);
+  for(i=0;i\<sizeof(\$indices);i++) \{
+    array += (\{ (\{ \$obj, \$indices[i], ironclaw::set_prop(\$obj: \$obj, \$prop: \$indices[i], \$value: \$propmapping[\$indices[i]], \$timer: \$timer, \$propmapping: nil) \}) \});
+  \}
+  return array;
+\}
+
+if(!\$prop \&\& !\$property) return FALSE;
+if(!\$prop \&\& \$property) \$prop = \$property;
+
+id = time()+random(10000);
+
+if(Get(\$obj, "savedprop:"+\$prop)) \{
+  /* already have an array */
+  array = Get(\$obj, "savedprop:"+\$prop);
+  array += (\{ (\{ id, \$value \}) \});
+  Set(\$obj, "savedprop:"+\$prop, array);
+\} else \{
+  /* create the array */
+  Set(\$obj, "savedprop:"+\$prop, (\{ Get(\$obj, \$prop), (\{ id, \$value \}) \}));
+\}
+/* now set the value */
+Set(\$obj, \$prop, \$value);
+
+/* if there is a timer, run it, then unset the value */
+if(\$timer) \{
+  \$id = id;
+  \$delay(\$timer, id, "5e4f");
+  ironclaw::unset_prop(\$obj: \$obj, \$prop: \$prop, \$id: \$id);
+  return TRUE;
+\}
+return id;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_prop_add">
+         X[M] /* this function sets a property, while storing the original value in an array */
+/* expects \$obj, \$prop and \$value */
+mixed *array;
+int id;
+if(!\$obj) return FALSE;
+
+if(!\$prop \&\& !\$property) return FALSE;
+if(!\$prop \&\& \$property) \$prop = \$property;
+
+id = time()+random(10000);
+
+if(Get(\$obj, "savedprop:"+\$prop)) \{
+  /* already have an array */
+  array = Get(\$obj, "savedprop:"+\$prop);
+  array += (\{ (\{ id, \$value \}) \});
+  Set(\$obj, "savedprop:"+\$prop, array);
+\} else \{
+  /* create the array */
+  Set(\$obj, "savedprop:"+\$prop, (\{ Get(\$obj, \$prop), (\{ id, \$value \}) \}));
+\}
+/* now set the value */
+Set(\$obj, \$prop, Int(Get(\$obj, \$prop))+Int(\$value));
+
+/* if there is a timer, run it, then unset the value */
+if(\$timer) \{
+  \$id = id;
+  \$delay(\$timer, id, "5e4f");
+  ironclaw::unset_prop_add(\$obj: \$obj, \$prop: \$prop, \$id: \$id);
+  return TRUE;
+\}
+return id;
+      </Core:Property>
+      <Core:Property property="merry:lib:text_clean">
+         X[M] /* Cleans some text */
+int i;
+if(!\$string) error("No \$string variable passed.");
+if(!\$type) \$type = "no punctuation";
+
+if(TRUE) \{
+  /* Only cleaning at the moment is to remove punctuation */
+  for(i=0;i\<strlen(\$string);i++) \{
+    /* Is this a letter? */
+    if(
+      !(lower_case(\$string[i..i]) \>= "a" \&\& lower_case(\$string[i..i]) \<= "z")
+      \&\& \$string[i..i] != " "
+    ) \{
+      /* Not a letter. Remove it */
+      if(strlen(\$string) == 1) return ""; /* This is the only letter in the string, return an empty string */
+      if(i == 0) \$string = \$string[1..]; /* We were at the start of the string */
+      else if(i == strlen(\$string)-1) \$string = \$string[..i-1]; /* We were at the end of the string */
+      else \$string = \$string[0..i-1]+\$string[i+1..]; /* We were in the middle of the string */
+      i--;
+    \}
+  \}
+\}
+
+
+return \$string;
+      </Core:Property>
+      <Core:Property property="merry:lib:unset_prop">
+         X[M] /* this function resets a property, based on the original value in an array */
+/* expects \$obj, \$prop and \$id or \$value */
+mixed *array;
+int i;
+
+/* Should we unset multiple properties? */
+if(\$proplist \&\& typeof(\$proplist) == T_ARRAY) \{
+  /* Loop through the list backwards (so we can remove items from the list without interfering with our loop) */
+  for(i=sizeof(\$proplist)-1;i\>= 0;i--) \{
+    if(sizeof(\$proplist) \> i
+    \&\& typeof(\$proplist[i]) == T_ARRAY
+    \&\& sizeof(\$proplist[i]) \>= 3) \{
+      if(ironclaw::unset_prop(\$obj: \$proplist[i][0], \$prop: \$proplist[i][1], \$id: \$proplist[i][2], \$proplist: nil))
+        \$proplist -= (\{ \$proplist[i] \});
+    \}
+  \}
+  return \$proplist;
+\}
+
+/* Just unset one property */
+if(!\$obj) return FALSE;
+
+if(!\$prop \&\& !\$property) return FALSE;
+if(!\$prop \&\& \$property) \$prop = \$property;
+
+if(Get(\$obj, "savedprop:"+\$prop)) \{
+  /* we have the array */
+  array = Get(\$obj, "savedprop:"+\$prop);
+  if(\$id) \{
+    /* loop through looking for the matching \$id */
+    for(i=sizeof(array)-1;i\>=0;i--) \{
+      if(sizeof(Arr(array[i])) \> 1) \{
+        if(array[i][0] == \$id) \{
+          /* match */
+          /* remove the property */
+          array -= (\{ array[i] \});
+          Set(\$obj, "savedprop:"+\$prop, array);
+          if(i==sizeof(array)) \{
+            /* set the property */
+            if(sizeof(Arr(array[i-1])) \> 1) \{
+              Set(\$obj, \$prop, array[i-1][1]);
+              Set(\$obj, \$prop, array[0]);
+            \} else \{
+              Set(\$obj, \$prop, array[i-1]);
+              Set(\$obj, "savedprop:"+\$prop, nil);
+            \}
+          \}
+          return TRUE;
+        \}
+      \} else \{
+        if(i==sizeof(array)-1) \{
+          /* set the property */
+          Set(\$obj, \$prop, array[0]);
+          Set(\$obj, "savedprop:"+\$prop, nil);
+          return TRUE;
+        \} else \{
+          /* didn't find a match */
+          return FALSE;
+        \}
+      \}
+    \}
+  \} else \{
+    /* loop through looking for the matching \$value */
+    for(i=sizeof(array)-1;i\>=0;i--) \{
+      if(sizeof(Arr(array[i])) \> 1) \{
+        if(array[i][1] == \$value) \{
+          /* match */
+          /* remove the property */
+          array -= (\{ array[i] \});
+          Set(\$obj, "savedprop:"+\$prop, array);
+          if(i==sizeof(array)) \{
+            /* set the property */
+            if(sizeof(Arr(array[i-1])) \> 1) \{
+              Set(\$obj, \$prop, array[i-1][1]);
+            \} else \{
+              Set(\$obj, \$prop, array[i-1]);
+              Set(\$obj, "savedprop:"+\$prop, nil);
+            \}
+          \}
+          return TRUE;
+        \}
+      \} else \{
+        if(i==sizeof(array)-1) \{
+          /* set the property */
+          Set(\$obj, \$prop, array[0]);
+          Set(\$obj, "savedprop:"+\$prop, nil);
+          return TRUE;
+        \} else \{
+          /* didn't find a match */
+          return FALSE;
+        \}
+      \}
+
+    \}
+  \}
+\}
+
+/* no array or match! */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:unset_prop_add">
+         X[M] /* this function resets a property, based on the original value in an array */
+/* expects \$obj, \$prop and \$id or \$value */
+mixed *array;
+int i;
+if(!\$obj) return FALSE;
+
+if(!\$prop \&\& !\$property) return FALSE;
+if(!\$prop \&\& \$property) \$prop = \$property;
+
+
+if(Get(\$obj, "savedprop:"+\$prop)) \{
+  /* we have the array */
+  array = Get(\$obj, "savedprop:"+\$prop);
+  if(\$id) \{
+    /* loop through looking for the matching \$id */
+    for(i=sizeof(array)-1;i\>=0;i--) \{
+      if(sizeof(Arr(array[i])) \> 1) \{
+        if(array[i][0] == \$id) \{
+          /* match */
+          /* store the value */
+          \$value = array[i][1];
+          /* remove the property */
+          array -= (\{ array[i] \});
+          Set(\$obj, "savedprop:"+\$prop, array);
+          /* set the property */
+          if(sizeof(array) \> 1) \{
+            Set(\$obj, \$prop, Int(Get(\$obj, \$prop))-Int(\$value));
+          \} else \{
+            Set(\$obj, \$prop, array[0]);
+            Set(\$obj, "savedprop:"+\$prop, nil);
+          \}
+          return TRUE;
+        \}
+      \} else \{
+        /* set the property */
+        Set(\$obj, \$prop, array[0]);
+        Set(\$obj, "savedprop:"+\$prop, nil);
+        return TRUE;
+      \}
+    \}
+  \}
+\}
+
+/* no array or match! */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1446349044, "tonyd", "P", 1446349093, "tonyd", "P", 1446349253, "tonyd", "P", 1446349327, "tonyd", "P", 1446349334, "tonyd", "P", 1446349359, "tonyd", "P", 1446349374, "tonyd", "P", 1446349611, "tonyd", "P", 1446349863, "tonyd", "P", 1446349900, "tonyd", "P", 1446350130, "tonyd", "P", 1446350146, "tonyd", "P", 1446350157, "tonyd", "P", 1446350583, "tonyd", "P", 1446350638, "tonyd", "P", 1446350711, "tonyd", "P", 1446350769, "tonyd", "P", 1446350834, "tonyd", "P", 1446350866, "tonyd", "P", 1446350921, "tonyd", "P", 1446350927, "tonyd", "P", 1446351004, "tonyd", "P", 1446351071, "tonyd", "P", 1446351117, "tonyd", "P", 1446351136, "tonyd", "P", 1446351169, "tonyd", "P", 1446351270, "tonyd", "P", 1446351318, "tonyd", "P", 1446351327, "tonyd", "P", 1446351358, "tonyd", "P", 1446351392, "tonyd", "P", 1446351428, "tonyd", "P", 1446351438, "tonyd", "P", 1446351448, "tonyd", "P", 1446351455, "tonyd", "P", 1446351538, "tonyd", "P", 1446351599, "tonyd", "P", 1446351608, "tonyd", "P", 1446351623, "tonyd", "P", 1446351710, "tonyd", "P", 1446351728, "tonyd", "P", 1446352990, "tonyd", "P", 1446353000, "tonyd", "P", 1446353073, "tonyd", "P", 1446353243, "tonyd", "P", 1446353481, "tonyd", "P", 1446353708, "tonyd", "P", 1446353799, "tonyd", "P", 1446353818, "tonyd", "P", 1446353849, "tonyd", "P", 1446354068, "tonyd", "P", 1446354096, "tonyd", "P", 1446354153, "tonyd", "P", 1446354206, "tonyd", "P", 1446354248, "tonyd", "P", 1446354366, "tonyd", "P", 1446354396, "tonyd", "P", 1446354459, "tonyd", "P", 1449645746, "tonyd", "P", 1449646108, "tonyd", "P", 1449646173, "tonyd", "P", 1449646189, "tonyd", "P", 1449646202, "tonyd", "P", 1449646264, "tonyd", "P", 1449646277, "tonyd", "P", 1449646300, "tonyd", "P", 1449646315, "tonyd", "P", 1449646323, "tonyd", "P", 1449646338, "tonyd", "P", 1449646360, "tonyd", "P", 1449646378, "tonyd", "P", 1449646389, "tonyd", "P", 1449646424, "tonyd", "P", 1449646465, "tonyd", "P", 1449646507, "tonyd", "P", 1449646526, "tonyd", "P", 1449646563, "tonyd", "P", 1449646581, "tonyd", "P", 1449646591, "tonyd", "P", 1449646610, "tonyd", "P", 1449646648, "tonyd", "P", 1449646685, "tonyd", "P", 1449647459, "tonyd", "P", 1449647534, "tonyd", "P", 1449647554, "tonyd", "P", 1449647562, "tonyd", "P", 1449647607, "tonyd", "P", 1449647636, "tonyd", "P", 1449647714, "tonyd", "P", 1449647877, "tonyd", "P", 1449647952, "tonyd", "P", 1449647965, "tonyd", "P", 1449648091, "tonyd", "P", 1449648165, "tonyd", "P", 1449648228, "tonyd", "P", 1449648273, "tonyd", "P", 1449648291, "tonyd", "P", 1449648296, "tonyd", "P", 1449648338, "tonyd", "P", 1449648375, "tonyd", "P", 1449648387, "tonyd", "P", 1449721144, "tonyd", "P", 1449721160, "tonyd", "P", 1449727618, "tonyd", "P", 1449727720, "tonyd", "P", 1449727753, "tonyd", "P", 1449727786, "tonyd", "P", 1449727796, "tonyd", "P", 1449727808, "tonyd", "P", 1449727820, "tonyd", "P", 1449727839, "tonyd", "P", 1449729256, "tonyd", "P", 1449729410, "tonyd", "P", 1449729780, "tonyd", "P", 1449729954, "tonyd", "P", 1449729986, "tonyd", "P", 1449730007, "tonyd", "P", 1449730065, "tonyd", "P", 1449730089, "tonyd", "P", 1449730126, "tonyd", "P", 1449730155, "tonyd", "P", 1449730181, "tonyd", "P", 1449730266, "tonyd", "P", 1449730494, "tonyd", "P", 1449730517, "tonyd", "P", 1449730581, "tonyd", "P", 1449730611, "tonyd", "P", 1449730631, "tonyd", "P", 1449730645, "tonyd", "P", 1449730680, "tonyd", "P", 1449730711, "tonyd", "P", 1449730735, "tonyd", "P", 1449730755, "tonyd", "P", 1449730789, "tonyd", "P", 1449730861, "tonyd", "P", 1449730896, "tonyd", "P", 1449731027, "tonyd", "P", 1449731131, "tonyd", "P", 1449731218, "tonyd", "P", 1449731226, "tonyd", "P", 1449731332, "tonyd", "P", 1449731383, "tonyd", "P", 1449731423, "tonyd", "P", 1449732244, "tonyd", "P", 1449732488, "tonyd", "P", 1449739258, "tonyd", "P", 1449739482, "tonyd", "P", 1449739519, "tonyd", "P", 1449739634, "tonyd", "P", 1449739680, "tonyd", "P", 1449739721, "tonyd", "P", 1449739753, "tonyd", "P", 1449739831, "tonyd", "P", 1449739862, "tonyd", "P", 1449739930, "tonyd", "P", 1449739957, "tonyd", "P", 1450153526, "tonyd", "P", 1450153540, "tonyd", "P", 1450153847, "tonyd", "P", 1450153862, "tonyd", "P", 1450153944, "tonyd", "P", 1451262500, "tonyd", "P", 1451262519, "tonyd", "P", 1451262556, "tonyd", "P", 1451262578, "tonyd", "P", 1451262598, "tonyd", "P", 1451262627, "tonyd", "P", 1451262659, "tonyd", "P", 1451262682, "tonyd", "P", 1451262700, "tonyd", "P", 1451262753, "tonyd", "P", 1451262778, "tonyd", "P", 1451262825, "tonyd", "P", 1451262915, "tonyd", "P", 1451265906, "tonyd", "P", 1451266143, "tonyd", "P", 1457934959, "tonyd", "P", 1458866819, "tonyd", "P", 1458867020, "tonyd", "P", 1463640835, "tonyd", "P", 1463640861, "tonyd", "P", 1463640872, "tonyd", "P", 1464421813, "tonyd", "P", 1464421840, "tonyd", "P", 1464421847, "tonyd", "P", 1464422135, "tonyd", "P", 1464422154, "tonyd", "P", 1464422238, "tonyd", "P", 1464422271, "tonyd", "P", 1464422349, "tonyd", "P", 1464422356, "tonyd", "P", 1464422409, "tonyd", "P", 1464422472, "tonyd", "P", 1464422486, "tonyd", "P", 1464422939, "tonyd", "P", 1495693626, "tonyd", "P", 1495693632, "tonyd", "P", 1495694045, "tonyd", "P", 1495694150, "tonyd", "P", 1495694311, "tonyd", "P", 1495696658, "tonyd", "P", 1495696688, "tonyd", "P", 1495696819, "tonyd", "P", 1495696920, "tonyd", "P", 1495696987, "tonyd", "P", 1495697056, "tonyd", "P", 1495697216, "tonyd", "P", 1495697555, "tonyd", "P", 1495697580, "tonyd", "P", 1495697842, "tonyd", "P", 1495698082, "tonyd", "P", 1495698244, "tonyd", "P", 1495698350, "tonyd", "P", 1495698419, "tonyd", "P", 1495698450, "tonyd", "P", 1495698472, "tonyd", "P", 1495698539, "tonyd", "P", 1496726042, "tonyd", "P", 1496726112, "tonyd", "P", 1496727894, "tonyd", "P", 1496886202, "tonyd", "P", 1496886327, "tonyd", "P", 1496886378, "tonyd", "P", 1496886545, "tonyd", "P", 1496886579, "tonyd", "P", 1496886601, "tonyd", "P", 1496886612, "tonyd", "P", 1496886704, "tonyd", "P", 1515721024, "jominey", "P", 1515721135, "jominey", "P", 1515721158, "jominey", "P", 1515721202, "jominey", "P", 1515721409, "jominey", "P", 1515721842, "jominey", "P", 1528301520, "jominey", "P", 1528572333, "jominey", "P", 1528572354, "jominey", "P", 1528572385, "jominey", "P", 1528572756, "jominey", "P", 1528572878, "jominey", "P", 1547008057, "jominey", "P", 1547008247, "jominey", "P", 1547008306, "jominey", "P", 1547008385, "jominey", "P", 1547008420, "jominey", "P", 1547008498, "jominey", "P", 1547008547, "jominey", "P", 1547008581, "jominey", "P", 1547008606, "jominey", "P", 1547008642, "jominey", "P", 1547008653, "jominey", "P", 1571862917, "jominey", "E", 1571956482, "jominey", "E", 1575570638, "jominey", "E", 1576682075, "jominey", "E", 1576682237, "jominey", "E", 1576682705, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill_rolls">
+         ([ "appraise":(\{ "trait:intelligence", "social:appraise" \}), "disguise_writer":(\{ "trait:intelligence", "trait:perception" \}), "dodge_explosion":(\{ "trait:speed", "combat:dodge" \}), "haggle":(\{ "trait:charisma", "social:trading" \}), "identify_writer":(\{ "trait:intelligence", "trait:perception" \}), "skin_animal":(\{ "skill:hunting:skinning" \}) ])
+      </Core:Property>
+      <Core:Property property="sys:sync:clearing">0</Core:Property>
+      <Core:Property property="sys:sync:idpsource">
+         "ironclaw"
+      </Core:Property>
+      <Core:Property property="sys:sync:igdipro">
+         "propose"
+      </Core:Property>
+      <Core:Property property="sys:sync:imported">
+         1293610429
+      </Core:Property>
+      <Core:Property property="sys:sync:proposing-revision">
+         1309075265
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes>
+      <Notes:Category cat="comment" catstate="Open">
+        <Notes:Note ix="1178476754" state="Open" user="zwoc">
+           This object has been duplicated and stolen to the Shared folder project. See the Shared: folder for further details. Unless this object should be modified for the local game, it should most likely not be used any more, and should be slain in favor of the categorized version.
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Core:PropertyContainer>
+</object>

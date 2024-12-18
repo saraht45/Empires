@@ -1,0 +1,381 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="list"/>
+            <Base:SName sname="wholist"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="lists"/>
+            <Base:PName pname="wholists"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="who"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             the WHO list
+          </Base:Description>
+          <Base:Description type="look">
+             $[Call($this, "general_who");          
+return FALSE]
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:general_who">
+         X[M] string bodystr, bodyname, output, words, *indices, *arr, stridle;      
+int i, sz_i, sz, n, rows, idlelen;      
+object *bodylist, body;      
+mapping whofour, staff, idle, players, hidden, hiddenidle, away;      
+      
+\{      
+  bodylist   = common::wholist();      
+  sz_i       = sizeof(bodylist);      
+  staff      = ([ ]);      
+  idle       = ([ ]);      
+  players    = ([ ]);      
+  hidden     = ([ ]);      
+  hiddenidle = ([ ]);      
+  whofour    = ([ ]);      
+  away       = ([ ]);      
+  words      = (\$(dob:words) ? implode(\$(dob:words), " ") : nil);      
+  idlelen    = 0;      
+      
+if(words == "guild") \{      
+EmitTo(\$actor, "okies.");  
+  
+  for (i = 0; i \< sz_i; i++) \{      
+    body     = bodylist[i];      
+    bodystr  = Str(body);      
+    bodyname = (\$actor."udat:host" == 1 ? (body.disguised == 1 ? Describe(body) + " (" + body."skotos:playercapname" + ")" : Describe(body)) : Describe(body));      
+    /* bodyname = strip(UnSAM(body."detail:description:brief", \$this: body)); */      
+    if (!body."udat:possessed") \{      
+      continue;      
+    \} else if (\$actor.guild \&\& body.guild != \$actor.guild) \{      
+        continue;      
+    \} else if (\$whofour) \{      
+      stridle = common::convsecs(\$secs: body."udat:idle", \$short: TRUE);      
+      idlelen = ((\$r1 = strlen(stridle)) \> idlelen ? \$r1 : idlelen);      
+      whofour[bodyname] = stridle;      
+      continue;      
+    \} else if (body."theatre:notwhobody" \&\&      
+               body."udat:idle" \>= 3600) \{      
+      hiddenidle[bodyname] = TRUE;      
+      continue;      
+    \} else if (body."theatre:notwhobody") \{      
+      hidden[bodyname] = TRUE;      
+      continue;      
+    \}      
+      
+    if (body."udat:idle" \>= 3600) \{      
+      idle[bodyname] = TRUE;      
+      continue;      
+    \} else if (sizeof(explode(bodyname, " ")) \>= 2 \&\& contains(bodyname, "Story")) \{      
+      staff[bodyname] = TRUE;      
+      continue;      
+    \} else if (body."cdat:away") \{      
+      away[bodyname] = TRUE;      
+      continue;      
+    \} else \{      
+      players[bodyname] = TRUE;      
+    \}      
+  \}      
+      
+  output  = "";      
+      
+  if (\$whofour) \{      
+    if (map_sizeof(whofour) \> 0) \{      
+      sz_i    = map_sizeof(whofour);      
+      indices = map_indices(whofour);      
+      rows    = Int(ceil(Flt(sz_i) / Flt(3)));      
+      arr     = (\{ (\{ "Characters", "Idle", "Characters", "Idle", "Characters", "Idle" \}) \});      
+      
+      for (i = 0; i \< rows; i++) \{      
+        arr += (\{ (\{ ( i \>= sz_i ? "" : indices[i]),      
+                     ( i \>= sz_i ? "" : pad_left(whofour[indices[i]], idlelen)),      
+                     ((n = i + rows) \>= sz_i ? "" : indices[n]),      
+                     ((n = i + rows) \>= sz_i ? "" : pad_left(whofour[indices[n]], idlelen)),      
+                     ((n = i + rows + rows) \>= sz_i ? "" : indices[n]),      
+                     ((n = i + rows + rows) \>= sz_i ? "" : pad_left(whofour[indices[n]], idlelen)) \}) \});      
+      \}      
+      EmitTo(\$actor, ascii::table(\$content: arr, \$ignoreseparator: "top bottom left right"));      
+      return FALSE;      
+    \}      
+  \}      
+      
+  if (\$actor."who:alternate") \{      
+    if (map_sizeof(players) \> 0) \{      
+      sz_i    = map_sizeof(players);      
+      indices = map_indices(players);      
+      rows    = Int(ceil(Flt(sz_i) / Flt(4)));      
+      arr     = (\{ (\{ "Characters", "Characters", "Characters", "Characters" \}) \});      
+      
+      for (i = 0; i \< rows; i++) \{      
+        arr += (\{ (\{ ( i \>= sz_i ? "" : indices[i]),      
+                     ((n = i + rows) \>= sz_i ? "" : indices[n]),      
+                     ((n = i + rows + rows) \>= sz_i ? "" : indices[n]),      
+                     ((n = i + rows + rows + rows) \>= sz_i ? "" : indices[n]) \}) \});      
+      \}      
+      EmitTo(\$actor, PRE( "Online[" + Str(sz_i) + "] (" + smalltime(time()) + " EST): \\n" + ascii::table(\$content: arr, \$skipfirst: TRUE)));      
+    \}      
+  \} else \{      
+    if (map_sizeof(players) \> 0) \{      
+      sz      = map_sizeof(players);      
+      indices = map_indices(players);      
+      output += "Online[" + Str(sz) + "] (" + smalltime(time()) + " EST): " + TAG(      
+                                            (sz \> 1 ?      
+                                             implode(indices[..sz - 2], ", ") + " and " +      
+                                             indices[sz - 1] :      
+                                             indices[0]) + ".", "who") + "\\n";      
+    \}      
+  \}      
+      
+  if (map_sizeof(staff) \> 0) \{      
+    sz      = map_sizeof(staff);      
+    indices = map_indices(staff);      
+    output += "Staff[" + Str(sz) + "]: " + TAG(      
+                                          (sz \> 1 ?      
+                                           implode(indices[..sz - 2], ", ") + " and " +      
+                                           indices[sz - 1] :      
+                                           indices[0]) + ".", "who") + "\\n";      
+  \}      
+      
+  if (map_sizeof(idle) \> 0) \{      
+    sz      = map_sizeof(idle);      
+    indices = map_indices(idle);      
+    output += "Idle[" + Str(sz) + "]: " + TAG(      
+                                                   (sz \> 1 ?      
+                                                    implode(indices[..sz - 2], ", ") + " and " +      
+                                                    indices[sz - 1] :      
+                                                    indices[0]) + ".", "who") + "\\n";      
+  \}      
+      
+  if (map_sizeof(away) \> 0) \{      
+    sz      = map_sizeof(away);      
+    indices = map_indices(away);      
+    output += "Away[" + Str(sz) + "]: " + TAG(      
+                                                   (sz \> 1 ?      
+                                                    implode(indices[..sz - 2], ", ") + " and " +      
+                                                    indices[sz - 1] :      
+                                                    indices[0]) + ".", "who") + "\\n";      
+  \}      
+      
+  if (\$actor."udat:host") \{      
+      if (map_sizeof(hidden) \> 0) \{      
+       sz      = map_sizeof(hidden);      
+       indices = map_indices(hidden);      
+       output += "Dark[" + Str(sz) + "]: " + TAG(      
+                                                   (sz \> 1 ?      
+                                                    implode(indices[..sz - 2], ", ") + " and " +      
+                                                    indices[sz - 1] :      
+                                                    indices[0]) + ".", "who") + "\\n";      
+    \}      
+      if (map_sizeof(hiddenidle) \> 0) \{      
+        sz      = map_sizeof(hiddenidle);      
+        indices = map_indices(hiddenidle);      
+        output += "Dark and idle[" + Str(sz) + "]: " + TAG(      
+                                                   (sz \> 1 ?      
+                                                    implode(indices[..sz - 2], ", ") + " and " +      
+                                                    indices[sz - 1] :      
+                                                    indices[0]) + ".", "who") + "\\n";      
+    \}      
+  \}      
+      
+  if (strlen(output) \< 1) \{      
+    output += "Unable to locate anyone online" + (words ? " in your \\'" + words + "\\'." : ".");      
+  \}        
+  EmitTo(\$actor, output);   
+return FALSE;      
+\} else \{    
+      
+  for (i = 0; i \< sz_i; i++) \{      
+    body     = bodylist[i];      
+    bodystr  = Str(body);      
+    bodyname = (\$actor."udat:host" == 1 ? (body.disguised == 1 ? Describe(body) + " (" + body."skotos:playercapname" + ")" : Describe(body)) : Describe(body));      
+    /* bodyname = strip(UnSAM(body."detail:description:brief", \$this: body)); */      
+    if (!body."udat:possessed") \{      
+      continue;      
+    \} else if (words \&\& !contains(lower_case(bodyname), words)) \{      
+        continue;      
+    \} else if (\$whofour) \{      
+      stridle = common::convsecs(\$secs: body."udat:idle", \$short: TRUE);      
+      idlelen = ((\$r1 = strlen(stridle)) \> idlelen ? \$r1 : idlelen);      
+      whofour[bodyname] = stridle;      
+      continue;      
+    \} else if (body."theatre:notwhobody" \&\&      
+               body."udat:idle" \>= 3600) \{      
+      hiddenidle[bodyname] = TRUE;      
+      continue;      
+    \} else if (body."theatre:notwhobody") \{      
+      hidden[bodyname] = TRUE;      
+      continue;      
+    \}      
+      
+    if (body."udat:idle" \>= 3600) \{      
+      idle[bodyname] = TRUE;      
+      continue;      
+    \} else if (sizeof(explode(bodyname, " ")) \>= 2 \&\& contains(bodyname, "Story")) \{      
+      staff[bodyname] = TRUE;      
+      continue;      
+    \} else if (body."cdat:away") \{      
+      away[bodyname] = TRUE;      
+      continue;      
+    \} else \{      
+      players[bodyname] = TRUE;      
+    \}      
+  \}      
+      
+  output  = "";      
+      
+  if (\$whofour) \{      
+    if (map_sizeof(whofour) \> 0) \{      
+      sz_i    = map_sizeof(whofour);      
+      indices = map_indices(whofour);      
+      rows    = Int(ceil(Flt(sz_i) / Flt(3)));      
+      arr     = (\{ (\{ "Characters", "Idle", "Characters", "Idle", "Characters", "Idle" \}) \});      
+      
+      for (i = 0; i \< rows; i++) \{      
+        arr += (\{ (\{ ( i \>= sz_i ? "" : indices[i]),      
+                     ( i \>= sz_i ? "" : pad_left(whofour[indices[i]], idlelen)),      
+                     ((n = i + rows) \>= sz_i ? "" : indices[n]),      
+                     ((n = i + rows) \>= sz_i ? "" : pad_left(whofour[indices[n]], idlelen)),      
+                     ((n = i + rows + rows) \>= sz_i ? "" : indices[n]),      
+                     ((n = i + rows + rows) \>= sz_i ? "" : pad_left(whofour[indices[n]], idlelen)) \}) \});      
+      \}      
+      EmitTo(\$actor, ascii::table(\$content: arr, \$ignoreseparator: "top bottom left right"));      
+      return FALSE;      
+    \}      
+  \}      
+      
+  if (\$actor."who:alternate") \{      
+    if (map_sizeof(players) \> 0) \{      
+      sz_i    = map_sizeof(players);      
+      indices = map_indices(players);      
+      rows    = Int(ceil(Flt(sz_i) / Flt(4)));      
+      arr     = (\{ (\{ "Characters", "Characters", "Characters", "Characters" \}) \});      
+      
+      for (i = 0; i \< rows; i++) \{      
+        arr += (\{ (\{ ( i \>= sz_i ? "" : indices[i]),      
+                     ((n = i + rows) \>= sz_i ? "" : indices[n]),      
+                     ((n = i + rows + rows) \>= sz_i ? "" : indices[n]),      
+                     ((n = i + rows + rows + rows) \>= sz_i ? "" : indices[n]) \}) \});      
+      \}      
+      EmitTo(\$actor, PRE( "Online[" + Str(sz_i) + "] (" + smalltime(time()) + " EST): \\n" + ascii::table(\$content: arr, \$skipfirst: TRUE)));      
+    \}      
+  \} else \{      
+    if (map_sizeof(players) \> 0) \{      
+      sz      = map_sizeof(players);      
+      indices = map_indices(players);      
+      output += "Online[" + Str(sz) + "] (" + smalltime(time()) + " EST): " + TAG(      
+                                            (sz \> 1 ?      
+                                             implode(indices[..sz - 2], ", ") + " and " +      
+                                             indices[sz - 1] :      
+                                             indices[0]) + ".", "who") + "\\n";      
+    \}      
+  \}      
+      
+  if (map_sizeof(staff) \> 0) \{      
+    sz      = map_sizeof(staff);      
+    indices = map_indices(staff);      
+    output += "Staff[" + Str(sz) + "]: " + TAG(      
+                                          (sz \> 1 ?      
+                                           implode(indices[..sz - 2], ", ") + " and " +      
+                                           indices[sz - 1] :      
+                                           indices[0]) + ".", "who") + "\\n";      
+  \}      
+      
+  if (map_sizeof(idle) \> 0) \{      
+    sz      = map_sizeof(idle);      
+    indices = map_indices(idle);      
+    output += "Idle[" + Str(sz) + "]: " + TAG(      
+                                                   (sz \> 1 ?      
+                                                    implode(indices[..sz - 2], ", ") + " and " +      
+                                                    indices[sz - 1] :      
+                                                    indices[0]) + ".", "who") + "\\n";      
+  \}      
+      
+  if (map_sizeof(away) \> 0) \{      
+    sz      = map_sizeof(away);      
+    indices = map_indices(away);      
+    output += "Away[" + Str(sz) + "]: " + TAG(      
+                                                   (sz \> 1 ?      
+                                                    implode(indices[..sz - 2], ", ") + " and " +      
+                                                    indices[sz - 1] :      
+                                                    indices[0]) + ".", "who") + "\\n";      
+  \}      
+      
+  if (\$actor."udat:host") \{      
+      if (map_sizeof(hidden) \> 0) \{      
+       sz      = map_sizeof(hidden);      
+       indices = map_indices(hidden);      
+       output += "Dark[" + Str(sz) + "]: " + TAG(      
+                                                   (sz \> 1 ?      
+                                                    implode(indices[..sz - 2], ", ") + " and " +      
+                                                    indices[sz - 1] :      
+                                                    indices[0]) + ".", "who") + "\\n";      
+    \}      
+      if (map_sizeof(hiddenidle) \> 0) \{      
+        sz      = map_sizeof(hiddenidle);      
+        indices = map_indices(hiddenidle);      
+        output += "Dark and idle[" + Str(sz) + "]: " + TAG(      
+                                                   (sz \> 1 ?      
+                                                    implode(indices[..sz - 2], ", ") + " and " +      
+                                                    indices[sz - 1] :      
+                                                    indices[0]) + ".", "who") + "\\n";      
+    \}      
+  \}      
+      
+  if (strlen(output) \< 1) \{      
+    output += "Unable to locate anyone online" + (words ? " containing \\'" + words + "\\'." : ".");      
+  \}      
+      
+  EmitTo(\$actor, output);      
+\}      
+      
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1191798742, "rorschakovacs", "E", 1191798763, "rorschakovacs", "E", 1191798771, "rorschakovacs", "E", 1191798777, "rorschakovacs", "E", 1191798793, "rorschakovacs", "X", 1191798823, "rorschakovacs", "E", 1191798856, "rorschakovacs", "E", 1191799226, "rorschakovacs", "E", 1191799315, "rorschakovacs", "E", 1191799340, "rorschakovacs", "E", 1191799362, "rorschakovacs", "E", 1191799388, "rorschakovacs", "E", 1191799427, "rorschakovacs", "E", 1191799474, "rorschakovacs", "E", 1191799491, "rorschakovacs", "E", 1309489994, "rorschakovacs", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

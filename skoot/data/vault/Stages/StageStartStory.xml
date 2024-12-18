@@ -1,0 +1,328 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Theatre:Lib:stages)"/>
+    <Core:PCProperties>
+      <Core:Property property="export:html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */                
+   ::initialize();       
+   ::figureState();]
+\<html\>
+   \<head\>
+      \<title\>\$(scenariodesc): \$(title)\</title\>
+      \$(this.xtra:stylesheet)
+      \$(this.xtra:jsstd-include-aliceclient)
+   \</head\>
+   \<body\>
+      \<div id="main"\>
+      \$[\$snippet = Get(\$this, "xtra:state:" + \$state);]
+      \{? \| \$(snippet) \| \$(snippet) \|
+            \<div id="infobox"\>Erk! No definition for state: '\$(state)'.\</div\>
+      \}
+      \</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="export:html:link">
+         X[S] \<button onClick="open('Index', 'foo', 'width=640,height=390,menubar=no,scrollbar=no,resizable=no');"\>foo\</button\>
+      </Core:Property>
+      <Core:Property property="export:xtra:jsstd-include-aliceclient">
+         X[S] \<script language="javascript"\>
+  function bareWin(filename, windowname, remWinWdh, remWinHgt) \\\{
+      var adj4NN    = (navigator.appName == "Netscape" ? -5 : 0 );
+      var scrLeft = parseInt((screen.availWidth / 2) -  (remWinWdh / 2));
+      var scrTop  = parseInt((screen.availHeight / 2) -  (remWinHgt / 2));
+      helpWin = open(filename, windowname, 'width=' + (remWinWdh + adj4NN)
+ + ',height=' + remWinHgt + ',left=' + scrLeft + ',top='
+ + scrTop + ',menubar=no,location=no,directories=no,toolbars=no,status=no,resizable=yes,hotkeys=no');
+  \\\}
+  function bareWinNoResize(filename, windowname, remWinWdh, remWinHgt) \\\{
+      var adj4NN    = (navigator.appName == "Netscape" ? -5 : 0 );
+      var scrLeft = parseInt((screen.availWidth / 2) -  (remWinWdh / 2));
+      var scrTop  = parseInt((screen.availHeight / 2) -  (remWinHgt / 2));
+      helpWin = open(filename, windowname, 'width=' + (remWinWdh + adj4NN)
+ + ',height=' + remWinHgt + ',left=' + scrLeft + ',top='
+ + scrTop + ',menubar=no,location=no,directories=no,toolbars=no,status=no,resizable=no,hotkeys=no');
+  \\\}
+  function sanitize_charname(str) \\\{
+      var i;
+      i = str.indexOf(' ');
+      while (i != -1) \\\{
+          str = str.substring(0, i) + '_' +
+                str.substring(i + 1);
+          i = str.indexOf(' ');
+      \\\}
+      i = str.indexOf(':');
+      while (i != -1) \\\{
+          str = str.substring(0, i) + '_' +
+                str.substring(i + 1);
+          i = str.indexOf(' ');
+      \\\}
+      return str;
+  \\\}
+  function alice_client(name) \\\{
+      bareWin('/SAM/Prop/IronClaw:Theatre:Web:AliceClient/Alice?char=' + name,
+              'AliceClient', 760, 480);
+  \\\}
+  function java_client(name) \\\{
+      bareWin('/Theatre/Java/Top.sam?char=' + escape(name),
+                      'SkotosJavaClient_' + sanitize_charname(name), 760, 525);
+  \\\}
+  function moz_java_client(name) \\\{
+      bareWin('/Theatre/Java/Top.sam?char=' + escape(name),
+                      'SkotosJavaClient_' + sanitize_charname(name), 760, 525);
+  \\\}
+  function old_java_client(name) \\\{
+      bareWinNoResize('/Theatre/Java/Top.sam?char=' + name,
+                      'MarrachJavaClient', 760, 480);
+  \\\}
+///\</script\>
+      </Core:Property>
+      <Core:Property property="export:xtra:state:alreadycast">
+         X[S] \\\<!-- confirm user is cast; offer chance to cancel --\\\>
+\<div id="bigbox"\>
+   \\\<!-- CHARACTER --\\\>
+   \<b\>\$[Describe(\$scenarioMap["roles"][\$role]["body"])]\</b\>:
+\<br/\>
+\\\<!-- DESCRIPTION --\\\>
+\$[Get(this, "scenarios:" + \$stage + ":roles:" + \$role + ":description")]
+\<br/\>
+   You may \<b\>confirm\</b\> your role role as "\$[Describe(\$scenarioMap["roles"][\$role]["body"])]" for the next session of "\$(scenarioMap.name)".
+\<br/\>
+\<zact actrole="\$(role)"\>
+  CONFIRM
+  \<action\>
+    \<z name="\$(UDat.name)"\>\$[\$username = \$name;]\</z\>\<br/\>
+    \<redirect propob="\$(this)"/\>
+    \$[/* add the character to this users roster */   
+\$stage = this."current:id";   
+\$theatre = this."theatre:id";   
+   
+/* if the selected character has no body, return an error */   
+if(!Obj(Get(this, "scenarios:" + \$stage + ":roles:" + \$actrole + ":body"))) Error("Character body not found");   
+   
+/* if the player already has a body for this stage, destroy it */   
+if(Obj("Chatters:" + \$theatre + ":" + \$stage + ":" + \$username))   
+\{   
+  Slay(Obj("Chatters:" + \$theatre + ":" + \$stage + ":" + \$username));   
+\}   
+   
+/* create a body for the player (by copying the original characters body */   
+\$newbody = Spawn(Get(this, "scenarios:" + \$stage + ":roles:" + \$actrole + ":body"));   
+\$newbody."base:objectname" = "Chatters:" + \$theatre + ":" + \$stage + ":" + \$username; 
+\$newbody."theatre:id" = \$theatre;   
+   
+/* set the characters description */   
+/* ironclaw only */   
+/* should probably put a switch here if multiple theatres need special code */   
+if(\$theatre == "IC")   
+\{   
+Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$newbody);   
+\}   
+   
+/*   
+Act( \$actor, "wear", \$articles: (\{ object \}) )   
+*/   
+   
+Udat::add_body_to_roster(\$body: \$newbody, \$user: \$username);   
+Udat::add_name_for_body(\$body: \$newbody, \$name: \$actrole); 
+ 
+/*Udat::add_body_to_roster(\$body: Get(this, "scenarios:mmf:roles:" + \$actrole + ":body"), \$user: \$username);*/   
+/* set the body as confirmed */   
+Set(Get(this, "scenarios:" + \$stage + ":roles:" + \$actrole + ":body"), "stage:confirmed", "yes");]
+  \</action\>
+\</zact\>
+\<br/\>
+You may
+  \<zact actrole="\$(role)"\>
+    cancel
+    \<action\>
+      \$[::clearRole(\$stageDB: \$this, \$role: \$actrole);]
+      \<redirect propob="\$(this)"/\>
+    \</action\>
+  \</zact\>
+  your commitment and free up this role for somebody else to play.
+\</div\>
+      </Core:Property>
+      <Core:Property property="export:xtra:state:noroles">
+         X[S] \<div id="infobox"\>
+   Sorry, all the roles have been cast. We plan to re-run this scenario again in the future. Please check the forums for date and time.\<sbr/\>
+   \<button onClick="window.close();"\>Close Window\</button\>
+\</div\>
+      </Core:Property>
+      <Core:Property property="export:xtra:state:noshow">
+         X[S] \\\<!-- slam user for being a noshow --\\\>
+\<div id="infobox"\>
+   You previously registered for a role in a Skotos stage but failed to show up, and you have been marked a 'no-show'. Please contact the GMs to have this flag removed.\<sbr/\>
+   \<button onClick="window.close();"\>Close Window\</button\>
+\</div\>
+      </Core:Property>
+      <Core:Property property="export:xtra:state:playnow">
+         X[S] \\\<!-- allow the user to start the stage --\\\>
+\<div id="bigbox"\>
+   \<b\>\<capitalize what="\$(Name)"/\>\</b\>:
+   You are now confirmed to play.\<br/\>
+   Your character is "\$[Describe(\$scenarioMap["roles"][\$role]["body"])]" for the next session of "\$(scenarioMap.name)".
+\<br/\>
+\$[Get(this, "scenarios:" + \$stage + ":roles:" + \$role + ":description")]
+\<br/\>
+   The game begins at 11am, on Saturday the 18th.
+\<br/\>
+\<a href="javascript:alice_client('\$(this.theatre:id):\$(role)')"\>ENTER LOBBY NOW\</a\>
+\<br/\>
+You may
+  \<zact actrole="\$(role)"\>
+    cancel
+    \<action\>
+      \<z name="\$(UDat.name)"\>\$[\$username = \$name;]\</z\>
+      \$[::clearRole(\$stageDB: \$this, \$role: \$actrole);      
+\$stage = this."current:id";       
+\$theatre = this."theatre:id";     
+     
+/* stuff Act( \$actor, "wear", \$articles: (\{ object \}) ) */              
+      
+        /* set the body as unconfirmed */      
+        Set(Get(this, "scenarios:" + \$stage + ":roles:" + \$actrole + ":body"), "stage:confirmed", "no");      
+      
+        /* remove body from players roster */      
+        Udat::remove_body_from_roster(\$body: Obj("Chatters:" + \$theatre + ":" + \$stage + ":" + \$username), \$user: \$username);      
+      
+        /* delete the body */      
+        Slay(Obj("Chatters:" + \$theatre + ":" + \$stage + ":" + \$username));]
+      \<redirect propob="\$(this)"/\>
+    \</action\>
+  \</zact\>
+  your commitment and free up this role for somebody else to play.
+\</div\>
+      </Core:Property>
+      <Core:Property property="export:xtra:state:welcome">
+         X[S] \<div id="bigbox"\>
+\$(scenarioMap.description)
+\</div\>
+\<div id="castlist"\>
+  These roles are still uncast:\<br/\>
+  \<for var="role" val="\$(uncastRoles)"\>
+    \<span id="role"\>
+      \<zact actrole="\$(role)" actuser="\$(name)"\>
+        \$[Describe(\$scenarioMap["roles"][\$role]["body"])]
+        \<action\>
+          \$[::castInRole(\$stageDB: \$this, \$user: \$actuser, \$role: \$actrole);]
+          \<redirect propob="\$(this)"/\>
+        \</action\>
+      \</zact\>
+    \</span\>\<sbr/\>
+  \</for\>
+\</div\>
+      </Core:Property>
+      <Core:Property property="export:xtra:stylesheet">
+         X[S] \<style type="text/css"\>
+    body \\\{
+      padding: 0px;
+      background: black;
+           \\\}
+    #main \\\{
+      background: black;
+      position: absolute;
+      left: 0px; top: 0px;
+      width: 640px;
+      height: 390px;
+      border: none;
+           \\\}
+    #mainbox \\\{
+      position:absolute; left: 20px; top:50px;
+      border: groove 2px;
+      padding: 4px;
+      width: 140px;
+      height: 240px;
+      background: #404040;
+      color: yellow;
+      font-family: cursive;
+    \\\}
+    #infobox \\\{
+      position:absolute; right: 20px; top:180px;
+      border: groove 2px;
+      padding: 4px;
+      width: 240px;
+      height: 160px;
+      background: #404040;
+      color: yellow;
+      font-family: cursive;
+    \\\}
+    \</style\>
+      </Core:Property>
+      <Core:Property property="merry:lib:figurestate">
+         X[M] /*
+  ** Now a bunch of code to figure out which state we're in; further
+  ** down the SAM will act on this information to include the right
+  ** sub-page.
+  */
+
+  /* did we fail to show up in any previous stage on this server? */
+  if (\$dat."stage:no-show") \{
+     \$state = "noshow";
+     \$title = "You have been marked as a 'no-show' in some previous stage.";
+     return nil;
+  \}
+  if (\$currentMap["cast-roles"] == nil \|\|
+      \$currentMap["id"] == nil) \{
+     \$state = "nocurrent";
+     \$title = "There is no currently running stage.";
+     return nil;
+  \}
+  \$scenarioMap = ::getScenarioData(\$scenarioID: \$currentMap["id"]);
+
+  /* are we already registered for the upcoming stage session */
+  \$cast = Map(\$currentMap["cast-roles"]);
+
+  /* seek for the user name among the values of the cast mapping */
+  \$role = reverse_lookup(\$cast, \$name);
+  if (\$role != nil) \{
+
+    /* check if the character is confirmed ready to play */
+    if(Get(\$scenarioMap["roles"][\$role]["body"], "stage:confirmed") == "yes")
+    \{
+      \$state = "playnow";
+      \$title = "Character Information";
+      return nil;
+    \}
+
+     \$state = "alreadycast";
+     \$title = "You have already been cast for a role in this stage.";
+     return nil;
+  \}
+  /* next see if there's any roles for us to fill */
+
+  \$uncastRoles = ::getUncastRoles();
+  if (sizeof(\$uncastRoles) == 0) \{
+     \$state = "noroles";
+     \$title = "All the roles for this scenario have been cast.";
+     return nil;
+  \}
+  \$state = "welcome";
+  \$title = "Welcome!";
+  return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:initialize">
+         X[M] /* first basic sanity checks -- these should never happen */
+  if (\$dat == nil) \{
+     error("page reached without a udat");
+  \}
+  if (\$name == nil) \{
+     error("page reached without a name");
+  \}
+
+  \$stage = this."current:id";
+  /*\$scenariodesc = this."scenarios:mmf:name";*/
+  \$scenariodesc = Get(this, "scenarios:" + \$stage + ":name");
+  /* then set fundamental values used later in the page */
+
+  ::ensureStageData(\$stageDB: \$this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1057954974, "zell", "E", 1057955041, "zell", "E", 1057955061, "zell", "E", 1057955102, "zell", "E", 1057955139, "zell", "E", 1057955161, "zell", "E", 1057955934, "zell", "E", 1057956169, "zell", "E", 1057956512, "zell", "E", 1057958949, "zell", "E", 1057959625, "zell", "E", 1057959787, "zell", "E", 1057959855, "zell", "E", 1057959998, "zell", "E", 1057961204, "zell", "E", 1057961275, "zell", "E", 1057961547, "zell", "E", 1057961572, "zell", "E", 1057961591, "zell", "E", 1057961619, "zell", "E", 1057961684, "zell", "E", 1057961921, "zell", "E", 1057961938, "zell", "E", 1057961964, "zell", "E", 1057962121, "zell", "E", 1057962256, "zell", "E", 1057962289, "zell", "E", 1057962325, "zell", "E", 1057962343, "zell", "E", 1057962495, "zell", "E", 1057962661, "zell", "E", 1057962918, "zell", "E", 1057963144, "zell", "E", 1057963161, "zell", "E", 1057963178, "zell", "E", 1057963198, "zell", "E", 1057963229, "zell", "E", 1057963525, "zell", "E", 1057963563, "zell", "E", 1057963608, "zell", "E", 1057963672, "zell", "E", 1057963887, "zell", "E", 1057963921, "zell", "E", 1057964043, "zell", "E", 1057964063, "zell", "E", 1057964083, "zell", "E", 1057964192, "zell", "E", 1057964259, "zell", "E", 1057964294, "zell", "E", 1057964439, "zell", "E", 1057964875, "zell", "E", 1057964904, "zell", "E", 1057964916, "zell", "E", 1057964931, "zell", "E", 1057965288, "zell", "E", 1057965465, "zell", "E", 1057965494, "zell", "E", 1057965553, "zell", "E", 1057965782, "zell", "E", 1057965992, "zell", "E", 1057966098, "zell", "E", 1057966237, "zell", "E", 1057966275, "zell", "E", 1057966298, "zell", "E", 1057966334, "zell", "E", 1057966363, "zell", "E", 1057966405, "zell", "E", 1057966851, "zell", "E", 1057967042, "zell", "E", 1057968046, "zell", "E", 1057968095, "zell", "E", 1057968112, "zell", "E", 1057968153, "zell", "E", 1058996095, "zell", "E", 1058996847, "zell", "E", 1058996865, "zell", "E", 1058997456, "zell", "E", 1058997624, "zell", "E", 1058997672, "zell", "E", 1058998068, "zell", "X", 1059001927, "zell", "X", 1059002958, "zell", "X", 1059002991, "zell", "X", 1059072657, "zell", "E", 1059072834, "zell", "E", 1059072864, "zell", "E", 1059082087, "zell", "E", 1059082199, "zell", "E", 1059082248, "zell", "E", 1059510315, "zell", "E", 1059510374, "zell", "E", 1059510925, "zell", "E", 1059511759, "zell", "E", 1059511857, "zell", "E", 1059531894, "zell", "E", 1059532005, "zell", "E", 1059533794, "zell", "E", 1059533972, "zell", "E", 1059534019, "zell", "E", 1059536978, "zell", "E", 1059537023, "zell", "E", 1059537686, "zell", "E", 1059768522, "zell", "E", 1059768619, "zell", "E", 1059768674, "zell", "E", 1059768737, "zell", "E", 1059768778, "zell", "E", 1059768834, "zell", "E", 1059768843, "zell", "E", 1059768898, "zell", "E", 1059769731, "zell", "E", 1059769782, "zell", "E", 1059772051, "zell", "E", 1059772118, "zell", "E", 1059772157, "zell", "E", 1059772190, "zell", "E", 1059772320, "zell", "E", 1059775714, "zell", "E", 1059775887, "zell", "E", 1059775908, "zell", "E", 1059776201, "zell", "E", 1059780205, "zell", "E", 1059780833, "zell", "E", 1059781443, "zell", "E", 1059781491, "zell", "E", 1059781502, "zell", "E", 1059781725, "zell", "E", 1059781806, "zell", "E", 1059781892, "zell", "E", 1059781964, "zell", "E", 1059782174, "zell", "E", 1059782193, "zell", "E", 1059782205, "zell", "E", 1066528024, "tonyd", "P", 1066528191, "tonyd", "P", 1066528841, "tonyd", "E", 1066528957, "tonyd", "P", 1066529755, "tonyd", "P", 1066529795, "tonyd", "P", 1066531418, "tonyd", "P", 1066531432, "tonyd", "P", 1066531474, "tonyd", "P", 1066534032, "tonyd", "P", 1066534372, "tonyd", "P", 1066534435, "tonyd", "P", 1066534453, "tonyd", "P", 1066534737, "tonyd", "P", 1066534824, "tonyd", "P", 1066534914, "tonyd", "P", 1066534951, "tonyd", "P", 1066535182, "tonyd", "P", 1066535415, "tonyd", "P", 1066535439, "tonyd", "P", 1066535471, "tonyd", "P", 1066535629, "tonyd", "P", 1066535778, "tonyd", "P", 1066535809, "tonyd", "P", 1066535933, "tonyd", "P", 1066536032, "tonyd", "P", 1066536075, "tonyd", "P", 1066537341, "tonyd", "P", 1066537785, "tonyd", "P", 1066537879, "tonyd", "P", 1066537899, "tonyd", "P", 1066538815, "tonyd", "P", 1066538863, "tonyd", "P", 1066538888, "tonyd", "P", 1066539414, "tonyd", "P", 1066539522, "tonyd", "P", 1066539662, "tonyd", "P", 1066539678, "tonyd", "P", 1066539704, "tonyd", "P", 1066539720, "tonyd", "P", 1066539846, "tonyd", "P", 1066540066, "tonyd", "P", 1066540218, "tonyd", "P", 1066540235, "tonyd", "P", 1066540412, "tonyd", "P", 1066540493, "tonyd", "P", 1066540493, "tonyd", "P", 1066540956, "tonyd", "P", 1066541036, "tonyd", "P", 1066541406, "tonyd", "P", 1066541646, "tonyd", "P", 1066541659, "tonyd", "P", 1066541766, "tonyd", "P", 1069554383, "tonyd", "P", 1069554822, "tonyd", "P", 1069555861, "tonyd", "P", 1069555996, "tonyd", "P", 1069556321, "tonyd", "P", 1069558380, "tonyd", "P", 1069558457, "tonyd", "P", 1069558581, "tonyd", "P", 1069558624, "tonyd", "P", 1069558827, "tonyd", "P", 1069558976, "tonyd", "P", 1069559045, "tonyd", "P", 1069559178, "tonyd", "P", 1070754588, "tonyd", "P", 1070754780, "tonyd", "P", 1070754893, "tonyd", "P", 1070754916, "tonyd", "P", 1070754946, "tonyd", "P", 1070754989, "tonyd", "P", 1070756798, "tonyd", "P", 1070756885, "tonyd", "P", 1070756922, "tonyd", "P", 1070757015, "tonyd", "P", 1070757310, "tonyd", "P", 1070757690, "tonyd", "P", 1070758656, "tonyd", "P", 1073715289, "tonyd", "P", 1073715445, "tonyd", "P", 1073715485, "tonyd", "P", 1073715621, "tonyd", "P", 1073715671, "tonyd", "P", 1073715767, "tonyd", "P", 1073715909, "tonyd", "P", 1073716679, "tonyd", "P", 1073716747, "tonyd", "P", 1073718607, "tonyd", "P", 1073719104, "tonyd", "P", 1073720020, "tonyd", "P", 1073720338, "tonyd", "P", 1073795678, "tonyd", "P", 1073796036, "tonyd", "P", 1073796395, "tonyd", "P", 1073796623, "tonyd", "P", 1073796655, "tonyd", "P", 1073797639, "tonyd", "P", 1073798062, "tonyd", "P", 1073798081, "tonyd", "P", 1073798179, "tonyd", "P", 1074152491, "tonyd", "P", 1074152636, "tonyd", "P", 1074652871, "tonyd", "P", 1074653935, "tonyd", "P", 1074654059, "tonyd", "P", 1074654091, "tonyd", "P", 1074654127, "tonyd", "P", 1074654164, "tonyd", "P", 1074654216, "tonyd", "P", 1074654344, "tonyd", "P", 1074654496, "tonyd", "P", 1074654612, "tonyd", "P", 1074654693, "tonyd", "P", 1074654754, "tonyd", "P", 1074655377, "tonyd", "P", 1074655460, "tonyd", "P", 1074655501, "tonyd", "P", 1074655534, "tonyd", "P", 1074655567, "tonyd", "P", 1074655591, "tonyd", "P", 1074655603, "tonyd", "P", 1074655653, "tonyd", "P", 1074655672, "tonyd", "P", 1074655744, "tonyd", "P", 1074655768, "tonyd", "P", 1074655799, "tonyd", "P", 1074655885, "tonyd", "P", 1074657631, "tonyd", "P", 1074657749, "tonyd", "P", 1074657777, "tonyd", "P", 1074657802, "tonyd", "P", 1074657859, "tonyd", "P", 1074657874, "tonyd", "P", 1074657886, "tonyd", "P", 1074658116, "tonyd", "P", 1074658133, "tonyd", "P", 1074658347, "tonyd", "P", 1074658405, "tonyd", "P", 1074658422, "tonyd", "P", 1074658571, "tonyd", "P", 1074658656, "tonyd", "P", 1074658716, "tonyd", "P", 1074658871, "tonyd", "P", 1074658891, "tonyd", "P", 1074659015, "tonyd", "P", 1074659108, "tonyd", "P", 1074659153, "tonyd", "P", 1074659203, "tonyd", "P", 1074659306, "tonyd", "P", 1074659574, "tonyd", "P", 1074659650, "tonyd", "P", 1074659685, "tonyd", "P", 1074659734, "tonyd", "P", 1074659755, "tonyd", "P", 1074659774, "tonyd", "P", 1074660291, "tonyd", "P", 1074660337, "tonyd", "P", 1074660396, "tonyd", "P", 1074660433, "tonyd", "P", 1074660507, "tonyd", "P", 1074660546, "tonyd", "P", 1074660587, "tonyd", "P", 1074660760, "tonyd", "P", 1074660842, "tonyd", "P", 1074660898, "tonyd", "P", 1074661045, "tonyd", "P", 1074661112, "tonyd", "P", 1074661160, "tonyd", "P", 1074661266, "tonyd", "P", 1074661300, "tonyd", "P", 1074661378, "tonyd", "P", 1074661433, "tonyd", "P", 1074661466, "tonyd", "P", 1074661524, "tonyd", "P", 1074661623, "tonyd", "P", 1074661768, "tonyd", "P", 1074661834, "tonyd", "P", 1074661902, "tonyd", "P", 1074661968, "tonyd", "P", 1074662010, "tonyd", "P", 1074662039, "tonyd", "P", 1074662063, "tonyd", "P", 1074662115, "tonyd", "P", 1074662142, "tonyd", "P", 1074662177, "tonyd", "P", 1074662200, "tonyd", "P", 1074662250, "tonyd", "P", 1074662375, "tonyd", "P", 1076129555, "tonyd", "P", 1076130347, "tonyd", "P", 1076131956, "tonyd", "P", 1076132057, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

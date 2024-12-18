@@ -1,0 +1,133 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="false" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="hourglass"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="hourglasses"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="NEW"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             hourglass
+          </Base:Description>
+          <Base:Description type="look">
+             $[/* An hour glass which reports sand remaining within 10% */       
+   
+   
+$fraction = (Flt($this.remainingtime) -  Flt(time()) + Flt($this.starttime)) /Flt($this.glasstime) * 10.0;                                    
+                  
+/*The above calculation gives me a floating number 0-10 representing the amount of sand remaining.* Once I have a fraction, I want to do an INTEGER evaluation as follows:*/                  
+                  
+$percentage = Int($fraction) * 10;                  
+                  
+/* this is intended to give me values like 10, 20, 30... i.e, approximate percentages.*/                  
+/* Finally, I prepare an emit: */                    
+                                             
+if ($percentage <= 0) {                                               
+  EmitTo($actor, "An hourglass of simple design with no sand remaining in the upper chamber.");                                               
+}           
+          
+if (($percentage > 0) & ($percentage <= 90)){                                             
+  EmitTo($actor, "An hourglass of simple design with approximately " + $percentage + " percent of its sand remaining in the upper chamber.");                                               
+}                                           
+if ($percentage == 100) {        
+  EmitTo($actor, "An hourglass of simple design with almost all of its sand remaining in the upper chamber.");         
+}      
+return nil;]
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:act:start">
+         X[M] \$this.glasstime = 600;
+/* Software is written so you can change the total time of the hourglass simply by...*/
+/*...changing this one value above. (time is in seconds).                            */
+
+/*If the hourglass was never used before, the below is necessary:            */
+if (!\$this.starttime) \{
+  \$this.remainingtime = 0;
+  \$this.starttime = 0;
+  /*These values are the most important that we pass to the "look/examine"  */  
+\}
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:react-post:flip-dob">
+         X[M] /*remainingtime represents the amount of sand in the top of the hourglass whenever we flip it.*/
+
+
+/*We must consider two options: the sand all flowed to the bottom when we flip the glass, or...       */
+/*Some of the sand was still in the top.                                                              */
+/*We queery the condition of previous "starttime" and "remainingtime" to determine the conditions now.*/
+/*It needs to work even after multiple flips.                                                         */
+
+\$deltastarttime = time() - \$this.starttime;
+
+/*How much sand remains in the top when we flip it?                                                    */
+/*If we flipped it after it ran out, then all the sand is in the bottom, and we can move it to the top.*/
+
+if(\$deltastarttime \>= \$this.remainingtime) \{
+   \$this.remainingtime = \$this.glasstime;
+   EmitTo(\$actor, "You have set your hourglass to run for its total time.");
+\} else \{
+  /* But if some of the sand remains in the top...                          */
+  \$this.remainingtime = \$this.glasstime - \$this.remainingtime + \$deltastarttime;
+  EmitTo(\$actor, "You have turned your hourglass over before it ran out of sand.");
+  
+\}
+/* No matter which option is true, we finally reset the starttime.*/
+\$this.starttime = time();
+
+return nil;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1157846366, "colavina", "E", 1157846382, "colavina", "E", 1157846562, "colavina", "E", 1157926125, "colavina", "E", 1157926171, "colavina", "E", 1157926178, "colavina", "E", 1157997375, "colavina", "E", 1157997527, "colavina", "E", 1158071765, "colavina", "E", 1158071785, "colavina", "E", 1158071835, "colavina", "E", 1158071856, "colavina", "E", 1158072142, "colavina", "E", 1158072443, "colavina", "E", 1158072946, "colavina", "E", 1158073043, "colavina", "E", 1158073164, "colavina", "E", 1158073277, "colavina", "E", 1158073343, "colavina", "E", 1158073406, "colavina", "E", 1158073496, "colavina", "E", 1158073551, "colavina", "E", 1158073773, "colavina", "E", 1158074134, "colavina", "E", 1158074282, "colavina", "E", 1158074432, "colavina", "E", 1158074543, "colavina", "E", 1158074620, "colavina", "E", 1158074710, "colavina", "E", 1158074783, "colavina", "E", 1158075491, "colavina", "E", 1158075557, "colavina", "E", 1158082653, "colavina", "E", 1158082726, "colavina", "E", 1158082930, "colavina", "E", 1158083008, "colavina", "E", 1158083092, "colavina", "E", 1158083121, "colavina", "E", 1158083228, "colavina", "E", 1158084210, "colavina", "E", 1158084287, "colavina", "E", 1158084344, "colavina", "E", 1158084494, "colavina", "E", 1158086705, "colavina", "E", 1158086839, "colavina", "E", 1158087109, "colavina", "E", 1158169655, "colavina", "E", 1158170263, "colavina", "E", 1158170407, "colavina", "E", 1158170552, "colavina", "E", 1158172140, "colavina", "E", 1158172357, "colavina", "E", 1158172390, "colavina", "E", 1158172845, "colavina", "E", 1158173168, "colavina", "E", 1158173235, "colavina", "E", 1158173310, "colavina", "E", 1158173370, "colavina", "E", 1158173435, "colavina", "E", 1158173503, "colavina", "E", 1158173565, "colavina", "E", 1158173955, "colavina", "E", 1158174112, "colavina", "E", 1158175177, "colavina", "E", 1158175592, "colavina", "E", 1158175675, "colavina", "E", 1158175899, "colavina", "E", 1158176090, "colavina", "E", 1158176339, "colavina", "E", 1158176409, "colavina", "E", 1158176525, "colavina", "E", 1158176633, "colavina", "E", 1158176700, "colavina", "E", 1158177972, "colavina", "E", 1158178168, "colavina", "E", 1158182724, "colavina", "E", 1158183228, "colavina", "E", 1158183639, "colavina", "E", 1158184024, "colavina", "E", 1158184322, "colavina", "E", 1158184407, "colavina", "E", 1158184526, "colavina", "E", 1158184626, "colavina", "E", 1158184672, "colavina", "E", 1158185494, "colavina", "E", 1158185850, "colavina", "E", 1158243100, "colavina", "E", 1158283969, "tonyd", "E", 1158326520, "colavina", "E", 1158327076, "colavina", "E", 1158327221, "colavina", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

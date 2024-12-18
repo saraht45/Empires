@@ -1,0 +1,348 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="bribe:counter">
+         1209600
+      </Core:Property>
+      <Core:Property property="clerk:topics">
+         (\{ "rank" \})
+      </Core:Property>
+      <Core:Property property="clerk:topics:rank:aliases">
+         (\{ "rank", "ranks", "promotions" \})
+      </Core:Property>
+      <Core:Property property="clerk:topics:rank:cost">
+         2400
+      </Core:Property>
+      <Core:Property property="clerk:topics:rank:property">
+         "rank:name"
+      </Core:Property>
+      <Core:Property property="dependency:needs">
+         (\{ \<IC:NIP:lib:trading-advanced\> \})
+      </Core:Property>
+      <Core:Property property="init:merry">
+         (\{ "lib:handler-post:ask-about", "lib:handler:ask-about", "lib:handler-post:ask", "react-pre:bribe-dob" \})
+      </Core:Property>
+      <Core:Property property="merry:inherit:lib:core_clean_currency">
+         \<Ironclaw:Lib:Old:Trading:Trading\>
+      </Core:Property>
+      <Core:Property property="merry:inherit:lib:core_trading_query_assets">
+         \<Ironclaw:Lib:Old:Trading:Trading\>
+      </Core:Property>
+      <Core:Property property="merry:lib:do_bribe">
+         X[M] object person, lib, clerk, CDO;
+string cost;
+
+lib = \$\{Ironclaw:Staff:Roo:NIP:lib:clerk\};
+person = \$par["actor"];
+clerk = \$par["clerk"];
+
+cost = "12000";
+
+if(Int(cost) \> Int(\$actor."trait:money")) \{
+    EmitTo(\$actor, "You do not have enough money to pay for this information.");
+    return TRUE;
+\}
+
+\$actor."trait:money" = Int(\$actor."trait:money") - Int(cost);
+
+if(!clerk."clerk:bribed") \{
+    clerk."clerk:bribed" = ([ ]);
+\}
+
+clerk."clerk:bribed" += ([ \$actor:time() ]);
+
+Social(clerk, "grin", "secretly", "Pleasure doing business with you.", "at", \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_pay">
+         X[M] object person, lib, clerk, CDO;
+string topic, cost, prop, info, rstr;
+mapping list;
+int counter, timer;
+
+lib = \$\{Ironclaw:Staff:Roo:NIP:lib:clerk\};
+
+person = \$par["person"];
+topic = \$par["topic"];
+cost = \$par["cost"];
+clerk = \$par["clerk"];
+
+if(!clerk."clerk:bribed") \{
+    clerk."clerk:bribed" = ([ ]);
+\}
+
+list = clerk."clerk:bribed";
+
+if(list[person]) \{
+    counter = lib."bribe:counter";
+    timer = list[person];
+    if((time() - timer) \> counter) \{
+        list[person] = nil;
+    \} else \{
+        Social(clerk, "frown", "apologetically", "Oh dear, I cannot seem to find the proper documents at the moment. Try coming back on another day. I am sure they will turn up by then.", "at", \$actor);
+        return FALSE;
+    \}
+\}
+
+if(Int(cost) \> Int(\$actor."trait:money")) \{
+    EmitTo(\$actor, "You do not have enough money to pay for this information.");
+    return TRUE;
+\}
+
+\$actor."trait:money" = Int(\$actor."trait:money") - Int(cost);
+
+prop = Get(lib, "clerk:topics:" + topic + ":property");
+info = Get(person, prop);
+
+if(FindMerry(lib, "lib", "return_" + topic)) \{
+    rstr = Call(lib, "return_" + topic, \$prop: prop, \$info: info, \$person: person);
+\} else \{
+    EmitTo(\$actor, dump_value(info));
+    rstr = capitalize(person."skotos:charname") + " is rank " + info + ".";
+\}
+
+if(person."loyalty:group") \{
+    if(person."loyalty:group" == "underworld") \{
+        Social(clerk, "tell", nil, capitalize(person."skotos:charname") + " holds the rank of freedman.", nil, \$actor);
+    \} else \{
+        Social(clerk, "tell", nil, rstr, nil, \$actor); 
+    \}
+\} else \{
+    Social(clerk, "tell", nil, capitalize(person."skotos:charname") + " holds the rank of freedman.", nil, \$actor);
+\}
+
+\$info = info;
+\$person = person;
+\$topic = topic;
+\$clerk = clerk;
+\$lib = lib;
+
+\$delay(2, FALSE, "6f51");
+
+Social(\$clerk, "ask", nil, "Would you like an official document of confirmation for a fee of five lira?", nil, \$actor);
+
+interaction::question(\$question: "This will cost you an extra " + Str(Int(12000)/100) + " florins. Do you want to pay?", \$env: "TRUE", \$expires: 160, \$yes_ob: \$lib, \$yes_fun: "do_pay_doc", \$no_ob: \$lib, \$no_fun: "no_pay_doc", \$expire_ob: \$lib, \$expire_fun: "no_pay_doc", \$par: ([ "topic":\$topic, "person":\$person, "info":\$info, "cost":12000, "clerk":\$clerk ]));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_pay_doc">
+         X[M] object person, lib, clerk, CDO;
+string topic, prop, info, rstr;
+int cost;
+object scroll;
+
+lib = \$\{Ironclaw:Staff:Roo:NIP:lib:clerk\};
+
+person = \$par["person"];
+topic = \$par["topic"];
+info = \$par["info"];
+cost = \$par["cost"];
+clerk = \$par["clerk"];
+scroll = Spawn(\$\{Ironclaw:Staff:Roo:props:official-document\});
+
+if(Int(cost) \> Int(\$actor."trait:money")) \{
+    EmitTo(\$actor, "You do not have enough money to pay for this information.");
+    return TRUE;
+\}
+
+\$actor."trait:money" = Int(\$actor."trait:money") - Int(cost);
+
+if(FindMerry(lib, "lib", "return_" + topic + "_doc")) \{
+    if(person."loyalty:group") \{
+        if(person."loyalty:group" == "underworld") info = "freedman";
+    \} else \{
+        info = "freedman";
+    \}
+    rstr = Call(lib, "return_" + topic + "_doc", \$info: info, \$person: person);
+\} else \{
+    if(person."loyalty:group") \{
+        if(person."loyalty:group" == "underworld") \{
+            rstr = capitalize(person."skotos:charname") + " holds the rank of freedman.";
+        \} else \{
+            rstr = capitalize(person."skotos:charname") + " holds the rank of " + info + ".";
+        \}
+    \} else \{
+        rstr = capitalize(person."skotos:charname") + " holds the rank of freedman.";
+    \}
+\}
+
+EmitIn(clerk."base:environment", Describe(clerk) + " writes something on an official looking document and hands it to " + Describe(\$actor) + ".", \$actor);
+EmitTo(\$actor, Describe(clerk) + " writes something on an official looking document and hands it to you.");
+
+scroll."details:objskin:description:writing" = rstr;
+scroll."details:objskin:description:writing:local" = rstr;
+scroll."details:objskin:description:delivery-end";
+scroll."details:objskin:description:delivery-end:local";
+scroll."details:objskin:description:delivery-from" = "Clerk Almodium";
+scroll."details:objskin:description:delivery-from:local" = "Clerk Almodium";
+
+scroll."base:environment" = \$actor;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:handler-post:ask">
+         X[M] mixed* topics;
+int i;
+object lib;
+string rstr;
+
+lib = \$\{Ironclaw:Staff:Roo:NIP:lib:clerk\};
+topics = lib."clerk:topics";
+
+for(i = 0; i \< sizeof(topics); i++) \{
+    rstr = "NAME's " + topics[i];
+
+    if(i == (sizeof(topics) - 1)) \{
+        rstr += ".";
+    \} else if(i == (sizeof(topics) - 2)) \{
+        rstr += ", and ";
+    \} else \{
+        rstr += ", ";
+    \}  
+\}
+Social(this, "tell", nil, "I can tell you about: " + rstr, nil, \$actor);
+      </Core:Property>
+      <Core:Property property="merry:lib:handler-post:ask-about">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:handler:ask-about">
+         X[M] string name, query, list, cost, topic, prop;
+mixed* topics, aliases;
+object person, lib;
+int i, j;
+
+EmitTo(\$actor, "You have a word with " + Describe(this) + ".");
+EmitIn(this."base:environment", Describe(\$actor) + " has a word with " + Describe(this) + ".", \$actor);
+\$delay(1, FALSE, "fab9");
+lib = \$\{Ironclaw:Staff:Roo:NIP:lib:clerk\};
+
+name = replace_strings(\$(about:words)[0], "'s", "", "'", "");
+
+if(!common::lookup(\$name: name)) \{
+    Social(this, "tell", nil, "I do not have any information on " + capitalize(Str(name)) + ".", nil, \$actor); 
+\} else \{
+    person = common::lookup(\$name: name);
+    name = capitalize(person."skotos:charname");
+
+    if(sizeof(\$(about:words)) \< 2) \{
+        Social(this, "query", nil, "What did you want to know about " + name + "?", nil, \$actor); 
+        return FALSE;
+    \}
+
+    query = replace_strings(implode(\$(about:words), " "), \$(about:words)[0], "");
+
+    topics = Get(lib, "clerk:topics");
+    for(i = 0; i \< sizeof(topics); i++) \{
+        topic = topics[i];
+
+        aliases = Get(lib, "clerk:topics:" + topic + ":aliases");
+        for(j = 0; j \< sizeof(aliases); j++) \{
+            if(replace_strings(query, " ", "") == replace_strings(aliases[j], " ", "")) \{
+                cost = Str(Get(lib, "clerk:topics:" + topic + ":cost"));
+                Social(this, "query", nil, "You want to know about " + name + "'s " + query + "?", nil, \$actor);
+                interaction::question(\$question: "Do you want to pay " + Str(Int(cost)/100) + " florins to find out this information?", \$env: "TRUE", \$expires: 160, \$yes_ob: lib, \$yes_fun: "do_pay", \$no_ob: lib, \$no_fun: "no_pay", \$expire_ob: lib, \$expire_fun: "no_pay", \$par: ([ "topic":topic, "person": person, "cost":cost, "clerk":this ]));
+                return FALSE;
+            \}
+        \}
+    \}
+
+    Social(this, "tell", nil, "I do not have any information on " + name + "'s " + query + ".", nil, \$actor); 
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:no_bribe">
+         X[M] \$clerk = NRefOb(\$par["clerk"]);
+
+EmitTo(\$actor, "You decide not to bribe " + Describe(\$clerk) + ".");
+      </Core:Property>
+      <Core:Property property="merry:lib:no_pay">
+         X[M] object person;
+string topic, cost;
+
+person = \$par["person"];
+topic = \$par["topic"];
+cost = \$par["cost"];
+
+EmitTo(\$actor, "You decide not to pay for this information.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:no_pay_doc">
+         X[M] EmitTo(\$actor, "You decide not to pay for the document.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:return_rank">
+         X[M] return capitalize(\$person."skotos:charname") + " holds the rank of " + \$info;
+      </Core:Property>
+      <Core:Property property="merry:lib:return_rank_doc">
+         X[M] string icmonth, days;     
+int daynumber, year;     
+string *daynames;  
+string rstr;   
+     
+daynames = (\{ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" \});     
+     
+/* Find the details we want */     
+sscanf(ctime( time() ), "%*s %s %d %*s %d", icmonth, daynumber, year);     
+     
+/* find in-character day of week */     
+days = daynames[time()/(60*60*16)%7];     
+     
+/* Replace strings */     
+icmonth = replace_strings(icmonth, "Jan", "January", "Feb", "February", "Mar", "March", "Apr", "April", "May", "May", "Jun", "June", "Jul", "July", "Aug", "August", "Sep", "September", "Oct", "October", "Nov", "November", "Dec", "December" );
+     
+rstr = Str(days) +", the " + desc_ordinal(daynumber) + " day of " + Str(icmonth) + ", in the year of "+ Str(year-420);     
+   
+return rstr + "\\n\\n" + "By the power entrusted to me by the City of Rinascita, I hereby attest that " + capitalize(\$person."skotos:charname") + " holds the lands and privileges associated with the rank of " + \$info + "." + "\\n";
+      </Core:Property>
+      <Core:Property property="merry:react-pre:bribe-dob">
+         X[M] mapping list;
+int counter, timer;
+
+\$lib = \$\{Ironclaw:Staff:Roo:NIP:lib:clerk\};
+\$clerk = this;
+
+EmitTo(\$actor, "You have a word with " + Describe(this) + ".");
+EmitIn(this."base:environment", Describe(\$actor) + " has a word with " + Describe(this) + ".", \$actor);
+\$delay(1, FALSE, "b160");
+
+if(!this."clerk:bribed") \{
+    this."clerk:bribed" = ([ ]);
+\}
+
+list = this."clerk:bribed";
+
+if(list[\$actor]) \{
+    counter = \$lib."bribe:counter";
+    timer = list[\$actor];
+    if((time() - timer) \> counter) \{
+        list[\$actor] = nil;
+    \} else \{
+        EmitTo(\$actor, Describe(\$clerk) + " whispers to you awkwardly, \\"" + "But your information is already... missing. Come back in a few days.\\"");
+        EmitIn(\$actor."base:environment", Describe(this) + " blushes awkwardly before whispering something back to " + Describe(\$actor) + ".", \$actor);
+        return FALSE;
+    \}
+\} 
+
+EmitTo(\$actor, "A " + Describe(\$clerk) + " whispers to you suggestively, \\"" + "Certain documents have been know to go missing for a couple of weeks. They are usually found depending on how motivated... or not motivated... we are to look.\\"");
+
+EmitIn(\$actor."base:environment", Describe(this) + " glances around the room before whispering something back to " + Describe(\$actor) + ".", \$actor);
+
+interaction::question(\$actor: \$actor, \$question: "Bribe the clerk 5 florins to keep your information private for two weeks?", \$env: "TRUE", \$expires: 160, \$yes_ob: \$lib, \$yes_fun: "do_bribe", \$no_ob: \$lib, \$no_fun: "no_bribe", \$expire_ob: \$lib, \$expire_fun: "no_bribe", \$par: ([ "actor":\$topic, "clerk":\$clerk ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1230052246, "jominey", "E", 1230053353, "jominey", "E", 1230053435, "jominey", "E", 1230053486, "jominey", "E", 1230053616, "jominey", "E", 1230053692, "jominey", "E", 1230053752, "jominey", "E", 1230053809, "jominey", "E", 1230053852, "jominey", "E", 1230053885, "jominey", "E", 1230053897, "jominey", "E", 1230053913, "jominey", "E", 1230053958, "jominey", "E", 1230054065, "jominey", "E", 1230054727, "jominey", "E", 1230054812, "jominey", "E", 1230054921, "jominey", "E", 1230055362, "jominey", "E", 1230055486, "jominey", "E", 1230055751, "jominey", "E", 1230572004, "jominey", "E", 1230572034, "jominey", "E", 1230572142, "jominey", "E", 1230572176, "jominey", "E", 1230572629, "jominey", "E", 1230572635, "jominey", "E", 1230572684, "jominey", "E", 1230572751, "jominey", "E", 1230572772, "jominey", "E", 1230573095, "jominey", "E", 1230573218, "jominey", "E", 1230573285, "jominey", "E", 1230573319, "jominey", "E", 1230573326, "jominey", "E", 1230573348, "jominey", "E", 1230573403, "jominey", "E", 1230573405, "jominey", "E", 1230573471, "jominey", "E", 1230573496, "jominey", "E", 1230573502, "jominey", "E", 1230573868, "jominey", "E", 1230574442, "jominey", "E", 1230574475, "jominey", "E", 1230574603, "jominey", "E", 1230574646, "jominey", "E", 1230574836, "jominey", "E", 1230575177, "jominey", "E", 1230575211, "jominey", "E", 1230575236, "jominey", "E", 1230575283, "jominey", "E", 1230575377, "jominey", "E", 1230575858, "jominey", "E", 1528334857, "jominey", "E", 1528334872, "jominey", "E", 1528334977, "jominey", "E", 1528335056, "jominey", "E", 1528335381, "jominey", "E", 1573493649, "jominey", "E", 1573493846, "jominey", "E", 1578763314, "jominey", "E", 1578763327, "jominey", "E", 1578763425, "jominey", "E", 1578763598, "jominey", "E", 1578763650, "jominey", "E", 1578764043, "jominey", "E", 1578764166, "jominey", "E", 1578764189, "jominey", "E", 1578764308, "jominey", "E", 1578764419, "jominey", "E", 1578764497, "jominey", "E", 1578764517, "jominey", "E", 1578764614, "jominey", "E", 1578764723, "jominey", "E", 1705013686, "annemairi", "E", 1705013708, "annemairi", "E", 1705014235, "annemairi", "E", 1705014508, "annemairi", "E", 1705014881, "annemairi", "E", 1705015102, "annemairi", "E", 1705017062, "annemairi", "E", 1705017237, "annemairi", "E", 1705017292, "annemairi", "E", 1705017307, "annemairi", "E", 1705017404, "annemairi", "E", 1705020580, "annemairi", "E", 1705020608, "annemairi", "E", 1705020736, "annemairi", "E", 1705020776, "annemairi", "E", 1705020956, "annemairi", "E", 1705020963, "annemairi", "E", 1705021168, "annemairi", "E", 1705021171, "annemairi", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

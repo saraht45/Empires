@@ -1,0 +1,289 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="2" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="false" on="true" inside="false" near="true" over="false" behind="false" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="shield"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="shields"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.combat:broken) |$(this.combat:broken) |{? | $(this.combat:damaged) |$(this.combat:damaged) }}$(this.trait:color) $(this.trait:material) $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="examine">
+             <describe what="$(this)" nonposs="1" cap="1"/>.
+<quality-full/>
+          </Base:Description>
+          <Base:Description type="look">
+             <describe what="$(this)" nonposs="1" cap="1"/>.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="shield"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:armor:rating">
+         3
+      </Core:Property>
+      <Core:Property property="export:ironclawshield">
+         1
+      </Core:Property>
+      <Core:Property property="export:nip:item:cost">
+         200
+      </Core:Property>
+      <Core:Property property="export:shield:defence">
+         1
+      </Core:Property>
+      <Core:Property property="export:shield:name">
+         "shield"
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "shield"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "A shield."
+      </Core:Property>
+      <Core:Property property="export:trait:look">
+         "A shield."
+      </Core:Property>
+      <Core:Property property="export:trait:superbrief">
+         "shield"
+      </Core:Property>
+      <Core:Property property="export:trait:trash">1</Core:Property>
+      <Core:Property property="merry:lib:defence_script">
+         X[M] /* check if we block the attack with the shield */
+int shield_defence;
+
+/* make sure there is a \$target_ob */
+if(!\$target_ob) \{
+  if(\$this."base:environment") \{
+    \$target_ob = \$this."base:environment";
+  \} else \{
+    return nil;
+  \}
+\}
+
+/* make sure there is a quality set */
+if(!\$this."trait:quality") \$this."trait:quality" = 4;
+
+shield_defence = ironclaw::roll(\$roller: \$target_ob, \$skills: (\{ "combat:shield" \}), \$bonus: "trait:agility", \$modifier: \$this."combat:bonus:block");
+
+
+/* if the shield defence is more than the attack, it blocks */
+if(shield_defence \> \$attack_roll) \{
+  /* we blocked the attack. so end the attack. */
+  \$attackdesc[0] += " and "+\$target_ob."base:pronoun"+" blocks it with "+\$target_ob."base:possessive"+" shield.";
+  \$attackdesc[1] += " and you block it with your shield.";
+  \$attackdesc[2] += " and "+Describe(NewNRef(\$target_ob, "default"))+" blocks it with "+\$target_ob."base:possessive"+" shield.";
+
+  EmitTo(\$attacker, \$attackdesc[0]);
+  EmitTo(\$target_ob, \$attackdesc[1]);
+  EmitIn(\$target_ob."base:environment", \$attackdesc[2], \$attacker, \$target_ob);
+
+  /* does it get any cosmetic damage? */
+  if(!\$this."combat:damage" \&\& ironclaw::roll(\$roller: \$attacker, \$skills: (\{ \}), \$bonus: "trait:body") \> ironclaw::roll(\$roller: \$this, \$skills: (\{ \}), \$bonus: "trait:quality", \$modifier: \$this."combat:bonus:strength") ) \{
+    /* the shield gets some cosmetic damage */
+    switch(\$attack) \{
+    case "cut":
+      \$damage = "chipped";
+      break;
+    case "stab":
+      \$damage = "dented";
+      break;
+    case "strike":
+      \$damage = "dented";
+      break;
+    default:
+      \$damage = "damaged";
+      break;
+    \}
+
+    /* mark the new damage */
+    \$this."combat:damaged" = \$damage;
+    /* set adjectives */
+    Set(\$this, "details:default:adjective:"+\$damage, TRUE);
+
+  \}
+  return nil;
+
+\}
+
+/* didn't block. compare attackers strength to shield quality */
+if( ironclaw::roll(\$roller: \$attacker, \$skills: (\{ \}), \$bonus: "trait:body") \> ironclaw::roll(\$roller: \$this, \$skills: (\{ \}), \$bonus: "trait:quality", \$modifier: \$this."combat:bonus:strength")) \{
+  /* yup. the shield gets smashed */
+  switch(\$attack) \{
+  case "cut":
+    \$impact = "cleaving";
+    \$damage = "cleft";
+  case "stab":
+    \$impact = "shattering";
+    \$damage = "shattered";
+  case "strike":
+    \$impact = "smashing";
+    \$damage = "smashed";
+  default:
+    \$impact = "breaking";
+    \$damage = "broken";
+    break;
+  \}
+
+  /* we blocked the attack, but our shield got smashed
+  /* we blocked the attack. so end the attack. */
+  \$attackdesc[0] += ", "+oneof("connecting with and ", "", "")+\$impact+" "+\$target_ob."base:possessive"+" shield.";
+  \$attackdesc[1] += ", "+oneof("connecting with and ", "", "")+\$impact+" your shield.";
+  \$attackdesc[2] += ", "+oneof("connecting with and ", "", "")+\$impact+" "+Describe(NewNRef(\$target_ob, "default"))+"'s shield.";
+
+  EmitTo(\$attacker, \$attackdesc[0]);
+  EmitTo(\$target_ob, \$attackdesc[1]);
+  EmitIn(\$target_ob."base:environment", \$attackdesc[2], \$attacker, \$target_ob);
+
+  if(\$this."trait:type" \&\& \$this."trait:type" == "wooden") \{
+    /* the shield is utterly smashed */
+    \$delay(0.5, nil, "1c4f");
+    EmitTo(\$defender, "Your shield is no more.");
+    \$defender."combat:defenceitems" -= (\{ \$this \});
+    Slay(\$this);
+    return nil;
+  \} else \{
+  /* mark the shield as smashed */
+  /* remove any minor damage from before */
+  if(\$this."combat:damaged") \{
+    Set(\$this, "details:default:adjective:"+\$this."combat:damaged", nil);
+    \$this."combat:damaged" = nil;
+  \}
+
+  /* mark the new damage */
+  \$this."combat:broken" = \$damage;
+  /* set adjectives */
+  Set(\$this, "details:default:adjective:"+\$damage, TRUE);
+
+  /* force the player to remove the shield */
+  Act(\$target_ob, "remove", \$articles: (\{ \$this \}));
+  \}
+
+  return nil;
+\}
+
+/* we didn't block the attack. 1 in 6 times, tell us that */
+if(!random(6))
+  return (\{ " and "+\$target_ob."base:pronoun"+" doesn't get "+\$target_ob."base:possessive"+" shield up in time", " and you don't get your shield up in time", " and "+Describe(NewNRef(\$target_ob, "default"))+" doesn't get "+\$target_ob."base:possessive"+" shield up in time" \});
+
+return 1;
+      </Core:Property>
+      <Core:Property property="merry:react-post:unwear">
+         X[M] /*
+This function sets the statistics when a shield is unwielded
+*/
+
+/* set the new armor covering settings for this armor */
+\$tmpArray = \$actor."combat:armor:covers";
+\$tmpArray -= (\{ "shield" \});
+\$actor."combat:armor:covers" = \$tmpArray;
+
+/* set the defense items */
+\$tmpArray = \$actor."combat:defenceitems";
+\$tmpArray -= (\{ this \});
+\$actor."combat:defenceitems" = \$tmpArray;
+
+/* remove armor bonus/penalty to the player */
+\$actor."combat:armor:rating" = \$actor."combat:armor:rating" - Int(this."armor:rating");
+
+/* set weapon statistics */
+\$actor."combat:shield:name" = nil;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:wear">
+         X[M] /*
+This function sets the statistics when a shield is wielded
+*/
+
+/* set the new armor coverring settings for this armor */
+\$tmpArray = (\{ "shield" \});
+\$tmpArray \|= \$actor."combat:armor:covers";
+\$actor."combat:armor:covers" = \$tmpArray;
+
+/* set the defense items */
+\$tmpArray = (\{ this \});
+\$tmpArray += \$actor."combat:defenceitems";
+\$actor."combat:defenceitems" = \$tmpArray;
+
+/* give armor bonus/penalty to the player */
+\$actor."combat:armor:rating" = Int(\$actor."combat:armor:rating") + Int(this."armor:rating");
+
+/* set weapon statistics */
+\$actor."combat:shield:name" = this."shield:name";
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:wear">
+         X[M] /*
+This function checks that we can wear the shield
+*/
+
+/* checks the actor is not trying to wear this shield over another shield */
+
+if(!\$actor."combat:armor:covers")
+  \$actor."combat:armor:covers" = (\{\});
+
+if(!\$actor."combat:defenceitems")
+  \$actor."combat:defenceitems" = (\{\});
+
+\$tmpArray = (\{ "shield" \});
+\$tmpArray \&= \$actor."combat:armor:covers";
+if(sizeof(\$tmpArray) \> 0) \{
+    EmitTo(\$actor, "You are already wearing a shield");
+    return FALSE;
+\}
+
+if(this."combat:broken") \{
+  EmitTo(\$actor, "You cannot wear "+Describe(\$this, nil, nil, STYLE_NONPOSS));
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1203566332, "necate", "E", 1210028927, "tonyd", "P", 1218281263, "slurpeeslurp", "E", 1237643753, "morwenlorelie", "R", 1237643765, "morwenlorelie", "R", 1239044350, "morwenlorelie", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

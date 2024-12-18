@@ -1,0 +1,299 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="db">
+         ([ "alder":5, "ash":5, "beech":5, "black alder":20, "black pine":10, "black poplar":20, "blackthorn":20, "cherry laurel":20, "chestnut":5, "cork oak":10, "cypress":10, "dogwood":10, "downy oak":20, "elm":5, "field elm":5, "field maple":10, "fir":10, "hawthorn":20, "hazel":20, "holm oak":10, "hop hornbeam":20, "hornbeam":10, "juniper":10, "larch":10, "laurel":10, "manna ash":10, "mountain pine":10, "myrtle":10, "oak":5, "olive":10, "pine":5, "poplar":5, "silver fir":20, "silver poplar":10, "spruce":5, "stone pine":20, "truffle oak":20, "white poplar":10, "white willow":20, "willow":10 ])
+      </Core:Property>
+      <Core:Property property="merry:lib:do_not_fell_tree">
+         X[M] \$tree = \$par["tree"];
+
+/* EmitTo(\$actor, "You decide not to fell " + Describe(\$tree) + " at this time."); */
+
+EmitTo(\$actor, "You decide not to fell " + common::aan(\$what: \$tree) + " tree at this time.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_nothing">
+         X[M] \$log = \$par["log"];
+\$npc = \$par["npc"];
+\$actor = \$par["actor"];
+
+Act(\$npc, "refuse", \$what: (\{ \$log \}), \$who: \$actor);
+Social(\$npc, "nod", "easily", "Come back when ye make yer mind up.", "to", \$actor);
+
+\$npc.busy = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fell_tree">
+         X[M] \$tree = \$par["tree"];
+\$quality = \$par["quality"];
+
+\$qty = random(100) + 1;
+
+if(\$qty \> 0 \&\& \$qty \<= 40) \{
+    \$logs = (\{ "small" \});
+\} else if(\$qty \> 40 \&\& \$qty \<= 70) \{
+    \$logs = (\{ "small", "small" \});
+\} else if(\$qty \> 70 \&\& \$qty \<= 90) \{
+    \$logs = (\{ "medium", "small" \});
+\} else if(\$qty \> 90 \&\& \$qty \<= 95) \{
+    \$logs = (\{ "medium", "medium", "small" \});
+\} else if(\$qty \> 95) \{
+    \$logs = (\{ "large", "medium", "small" \});
+\}
+
+for(\$i = 0; \$i \< sizeof(\$logs); \$i++) \{
+    \$log = Spawn(\$\{Allegory:Props:Crafting:Raw:Log\});
+    if(\$logs[\$i] != "medium") \$log."trait:size" = \$logs[\$i];
+    \$log."trait:quality" = \$quality;
+    \$log."trait:material" = \$tree;
+    \$log."base:environment" = \$actor."base:environment";
+\}
+
+EmitTo(\$actor, "You fell " + common::aan(\$what: \$tree) + " tree.");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " fells " + common::aan(\$what: \$tree) + ".", \$actor);
+
+if(!\$this."crafting:override") \{
+    status::change_status(\$char: \$actor, \$type: "energy", \$amount: 20);
+\}
+
+\$actor."woodcutting:limit"++;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:mill_log">
+         X[M] \$log = \$par["log"];
+\$actor = \$par["actor"];
+\$npc = \$par["npc"];
+\$millprice = \$par["millprice"];
+\$yield = \$par["yield"];
+
+if(Int(\$actor."trait:money") \< \$millprice) \{
+    Act(\$npc, "refuse", \$what: (\{ \$log \}), \$who: \$actor);
+    Social(\$npc, "scowl", "irritably", "Bah, dun waste me time. Come back when ye kin pay me for me work!", "at", \$actor);
+    \$npc.busy = nil;
+    return FALSE;
+
+    return FALSE;
+\}
+
+Act(\$npc, "accept", \$what: (\{ \$log \}), \$who: \$actor);
+
+\$actor."trait:money" -= \$millprice;
+
+\$lumbers = (\{ \});
+for(\$i = 0; \$i \< \$yield; \$i++) \{
+    \$lumber = Spawn(\$\{Allegory:Props:Materials:Carpentry:UrLumber\});
+    \$lumber."base:environment" = \$actor;
+    \$lumber."trait:material" = \$log."trait:material";
+    \$lumber."trait:quality" = \$log."trait:quality";
+    if(Int(\$lumber."trait:quality") \< 4) \$lumber."trait:quality" = 4;
+    \$lumbers += (\{ \$lumber \});
+\}
+
+\$delay(1, FALSE, "b317");
+
+EmitTo(\$actor, "After a short while, " + Describe(\$npc) + " hands you " + Describe(\$lumbers, nil, nil, STYLE_NONPOSS) + ".");
+EmitIn(\$actor."base:environment", "After a short while, " + Describe(\$npc) + " hands " + Describe(\$actor) + " " + Describe(\$lumbers, nil, nil, STYLE_NONPOSS) + ".", \$actor);
+
+\$delay(3, FALSE, "41f2");
+
+Social(\$npc, "wave", "casually", "Thank ye! Have a good'n!", "to", \$actor);
+
+\$npc.busy = nil;
+
+Slay(\$log);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:sell_log">
+         X[M] \$log = \$par["log"];
+\$actor = \$par["actor"];
+\$sellprice = \$par["sellprice"];
+\$npc = \$par["npc"];
+
+Act(\$npc, "accept", \$what: (\{ \$log \}), \$who: \$actor);
+
+/* Do a haggling roll, to see how much more the PC gets */
+\$original_price = \$sellprice;
+
+\$sellprice = allegory::do_haggle(\$price: \$sellprice, \$act: "selling");
+
+if(\$sellprice \> \$original_price) \{
+    EmitTo(\$actor, TAG("You manage to haggle " + Describe(\$npc) + " from " + Str(allegory::get_cost(\$cost: Flt(\$original_price)/100.0)) + " to " + Str(allegory::get_cost(\$cost: Flt(\$sellprice)/100.0)) + ".", "imp"));
+\} else \{
+    EmitTo(\$actor, TAG(capitalize(Describe(\$npc)) + " pays you " + allegory::get_cost(\$cost: Flt(\$sellprice)/100.0) + ".", "imp"));
+\}
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$npc)) + " hands " + Describe(\$actor) + " some coins.", "social:third"), \$actor);
+
+\$actor."trait:money" = Int(\$actor."trait:money") + Int(\$sellprice);
+
+Slay(\$log);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:woodcut">
+         X[M] /* woodcutting somewhere */
+
+/* We started woodcutting here */
+
+/* Make the woodcutting roll */
+\$attribute = "trait:strength";
+\$penalty = 0;
+\$woodcuttingskills = (\{ "skill:alteration:woodcutting" \});
+
+/* mark them as busy */
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "woodcutting");
+\$forest = \$actor."base:environment";
+
+\$delay(60*2, FALSE, "ff06");
+
+\$delay(5, FALSE, "af3a");
+
+/* mark them as not busy */
+ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+
+/* check if they still hold the original tool */
+if(\$axe."base:environment" != \$actor) \{
+   EmitTo(\$actor, "You seem to have misplaced " +Describe(NRefOb(\$iob[0]), nil, nil, STYLE_NONPOSS)+ ". Surveying has ceased.");
+   return FALSE;
+\}
+
+/* We've waited for our catch, make another woodcutting roll to see if we catch anything */
+\$result = allegory::roll(\$roller: \$actor, \$skills: \$woodcuttingskills, \$bonus: \$attribute, \$modifier: \$penalty);
+
+/* reset settings */
+\$reducestock = nil;
+
+/* have they used up their number of trees for the day? */
+if(!\$actor."woodcutting:limit") \$actor."woodcutting:limit" = 0;
+if(\$actor."woodcutting:limit" \>= Int(\$actor."skill:alteration:woodcutting") + 10) \{
+  /* hit the limit. Should the limit be reset? */
+  if(\$actor."woodcutting:timelimit" \&\& \$actor."woodcutting:timelimit" \> time()) \{
+    /* hit limit, and the limit isn't yet reset */
+    /* are there trees here anyway? */
+    if(!\$target."woodcutting:stock" \|\| \$target."woodcutting:stock" \< 1) \{
+      \$result = 0;
+    \} else \{
+      \$reducestock = TRUE;
+    \}
+  \} else \{
+    /* reset the time limit */
+    \$actor."woodcutting:timelimit" = time()+60*60*20;
+    /* reset the woodcutting limit */
+    \$actor."woodcutting:limit" = 0;
+  \}
+\}
+
+/* figure out the tree they got */
+if(\$reducestock \&\& \$result) NRefOb(\$target)."woodcutting:stock"--;
+
+/* Pick a tree from the array, and let the actor find it */
+\$treearray = Get(\$target, "woodcutting:"+\$detail+":array");
+
+\$result = Int((Flt(\$result)/24.0)*Flt(sizeof(\$treearray)));
+
+\$result = random(\$result);
+
+if(\$result) \{
+    \$tree = \$treearray[\$result];
+
+    /* Set the quality of the tree */
+    \$quality = allegory::roll(\$roller: \$actor, \$skills: (\{ "skill:alteration:woodcutting" \}), \$bonus: \$attribute);
+
+    \$question = "You spot " + common::aan(\$what: \$tree) + " tree. Do you want to chop it down?";
+    \$yes_ob = \$\{Allegory:Lib:Tradesmen:Milling\};
+    \$yes_fun = "fell_tree";
+    \$no_ob = \$\{Allegory:Lib:Tradesmen:Milling\};
+    \$no_fun = "do_not_fell_tree";
+  
+    interaction::question(\$par: ([ "tree":\$tree, "quantity":\$quantity, "quality":\$quality ]));
+
+    return FALSE;
+\} else \{
+    /* didn't find anything */
+    EmitTo(\$actor, "After a few minutes of surveying, you fail to find anything.");
+    EmitIn(\$actor."base:environment", "After a few minutes of surveying, " + Describe(\$actor) + " fails to find anything.", \$actor);
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:offer-who%milling">
+         X[M] if(!\$what) \{
+    EmitTo(\$actor, "What did you want to offer to " + Describe(\$this) + "?");
+    return FALSE;
+\}
+
+if(!sizeof(\$what)) \{ 
+    EmitTo(\$actor, "What did you want to offer to " + Describe(\$this) + "?");
+    return FALSE;
+\}
+
+if(sizeof(\$what) \> 1) \{
+    EmitTo(\$actor, "You can only offer " + Describe(\$this) + " one thing at a time.");
+    return FALSE;
+\}
+
+if(\$this.busy) \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "smile", "distractedly", "Be wit ye in a moment.", "at", \$actor);
+    return FALSE;
+\}
+
+if(NRefOb(\$what[0])."trait:objecttype" != "log") \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "tell", "", "Sorry, can't do nuthin' wit that. Bring me some logs'n we'll talk.", nil, \$actor);
+    return FALSE;
+\}
+
+\$log = NRefOb(\$what[0]);
+
+\$db = Get(\$\{Allegory:Lib:Tradesmen:Milling\}, "db");
+
+\$material = Str(\$log."trait:material");
+
+if(\$db[\$material]) \{
+    \$sellprice = \$db[\$material]*100;
+\} else \{
+    \$sellprice = 600;
+\}
+
+\$millprice = \$sellprice * 2;
+
+\$yield = 2;
+
+if(Str(\$log."trait:size") == "large") \{
+    \$sellprice = \$sellprice * 2;
+    \$millprice = \$millprice * 2;
+    \$yield = \$yield * 2;
+\}
+
+if(Str(\$log."trait:size") == "small") \{
+    \$sellprice = \$sellprice/2;
+    \$millprice = \$millprice/2;
+    \$yield = \$yield/2;
+\}
+
+\$sellprice = Flt(\$sellprice) * allegory::get_quality_modifier(\$quality: Int(\$log."trait:quality"));
+
+Social(\$this, "suppose", "eventually", "I kin mill this inta " + Str(\$yield) + " pieces o' lumber. Will cost ye " + allegory::get_cost(\$cost: Flt(\$millprice)/100.0) + ". Or if'n ye wanna sell it, I'll give ye " + allegory::get_cost(\$cost: Flt(\$sellprice)/100.0) + ".", "to", \$actor);
+
+\$a = "Mill it (" + allegory::get_cost(\$cost: Flt(\$millprice)/100.0) + ")";
+\$b = "Sell it (" + allegory::get_cost(\$cost: Flt(\$sellprice)/100.0) + ")";
+\$c = "I need more time to think about it.";
+
+interaction::question(\$question: "", \$b_ob: \$\{Allegory:Lib:Tradesmen:Milling\}, \$b_fun: "sell_log", \$a_ob: \$\{Allegory:Lib:Tradesmen:Milling\}, \$a_fun: "mill_log", \$c_ob: \$\{Allegory:Lib:Tradesmen:Milling\}, \$c_fun: "do_nothing", \$expires: 30, \$env: FALSE, \$expire_ob: \$\{Allegory:Lib:Tradesmen:Milling\}, \$par: ([ "log":\$log, "actor":\$actor, "sellprice":\$sellprice, "millprice":\$millprice, "yield":\$yield, "npc":\$this ]));
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1589150597, "jominey", "E", 1589150632, "jominey", "E", 1589150659, "jominey", "E", 1589150696, "jominey", "E", 1589150725, "jominey", "E", 1592364730, "jominey", "E", 1592364995, "jominey", "E", 1604155674, "jominey", "E", 1604155986, "jominey", "E", 1624760747, "sendnoodlez", "E", 1624760791, "sendnoodlez", "E", 1624760895, "sendnoodlez", "E", 1624761022, "sendnoodlez", "E", 1624761082, "sendnoodlez", "E", 1624801804, "sendnoodlez", "E", 1624802775, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

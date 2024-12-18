@@ -1,0 +1,162 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.3" density="1.1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="sphere"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="spheres"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             time sphere
+          </Base:Description>
+          <Base:Description type="examine">
+             A fist-sized silver ball, created from a smooth space-age alloy. This is the object that signals a change in the time of day to the citizens of Calabria. Most of them don't realize what sorcery is involved, and never notice the sphere going about its business.
+          </Base:Description>
+          <Base:Description type="look">
+             A fist-sized silver ball.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "remote"
+      </Core:Property>
+      <Core:Property property="merry:lib:gather_children">
+         X[M] object *roomlist;
+object firstchild;
+object currentroom;
+
+int counter;
+
+EmitTo(nil /* defunct */, "Redirecting for gather_children");
+return Call(\$\{Ironclaw:Systems:Time:TimeCounter\}, "gather_children");
+
+
+/*EmitTo(\$actor, "Gathering children for room " + name(\$room));*/
+
+if(!\$object)
+  \$object = \$this;
+
+if(!\$object.gathering_children) \{
+  \$object.gathering_children = 1;
+\} else \{
+  \$object.gathering_children++;
+\}
+
+\$delay(0.1, TRUE, "5480");
+
+if(!\$object.roomlist) \{
+  \$object.roomlist = (\{\});
+\}
+
+if(\$room."base:firsturchild")
+\{
+  firstchild = \$room."base:firsturchild";
+  currentroom = firstchild;
+
+  /* We have a child, so add it to the list */
+  \$object.roomlist \|= (\{ currentroom \});
+  Call(this, "gather_children", \$room: currentroom);
+  currentroom = currentroom."base:nextursibling";
+
+  /* While we have more than one child, add them to the list too */
+  while(currentroom."base:nextursibling" != firstchild)
+  \{
+    \$object.roomlist \|= (\{ currentroom \});
+    Call(this, "gather_children", \$room: currentroom);
+    currentroom = currentroom."base:nextursibling";
+  \}
+\}
+
+\$object.gathering_children--;
+if(\$object.gathering_children \< 1) \{
+  \$object.gathering_children = nil;
+\}
+return roomlist;
+      </Core:Property>
+      <Core:Property property="merry:lib:send_time_of_day">
+         X[M] if(\$time)
+\{
+  this.signal = \$time;
+\} else \{
+  this.signal = "time/morning";
+\}
+
+/*EmitTo(\$actor, "The time sphere has been activated, and will now send it's signal to the citizens of calabria.");*/
+
+/* get a list of rooms */
+\$roomlist = Get(\$\{Ironclaw:Systems:Time:TimeCounter\}, "roomlist");
+/*EmitTo(\$actor, "Visiting and Emitting to Child Rooms");*/
+
+/* Send the signal to each of these rooms, by moving into the room and signalling */
+for(\$counter = 0; \$counter \< sizeof(\$roomlist); \$counter++)
+\{
+/*  EmitTo(\$actor, Str(\$counter) +":"+ name(\$roomlist[\$counter]));*/
+  this."base:environment" = \$roomlist[\$counter];
+  Act(this, this.signal);
+
+  \$delay(0.1, TRUE, "8ead");
+
+/* Call the time of day script in the room */
+  if(\$roomlist[\$counter] \&\& (Get(\$roomlist[\$counter], "merry:lib:" + this.signal)))
+  \{
+    catch(Call(\$roomlist[\$counter], this.signal));
+  \}
+
+\}
+
+/* Destroy the time sphere, now that its job is done */
+Slay(this);
+EmitTo(\$actor, "Done!");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:press-dob">
+         X[M] return Call(\$this, "send_time_of_day");
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1103000566, "tonyd", "E", 1103000641, "tonyd", "E", 1103000704, "tonyd", "E", 1108464004, "tonyd", "X", 1108464078, "tonyd", "E", 1108464240, "tonyd", "E", 1108464284, "tonyd", "E", 1108464309, "tonyd", "E", 1108464384, "tonyd", "E", 1108464412, "tonyd", "E", 1108766975, "tonyd", "E", 1108767147, "tonyd", "E", 1108767978, "tonyd", "P", 1108768060, "tonyd", "P", 1108768255, "tonyd", "P", 1108768381, "tonyd", "P", 1108769075, "tonyd", "P", 1108769103, "tonyd", "P", 1108769120, "tonyd", "P", 1108769203, "tonyd", "P", 1108769262, "tonyd", "P", 1108769439, "tonyd", "P", 1108769531, "tonyd", "P", 1108769965, "tonyd", "P", 1108770028, "tonyd", "P", 1108770105, "tonyd", "P", 1108770189, "tonyd", "P", 1108770385, "tonyd", "P", 1108770447, "tonyd", "P", 1108770489, "tonyd", "P", 1108770830, "tonyd", "P", 1108771035, "tonyd", "P", 1108771199, "tonyd", "P", 1108771501, "tonyd", "P", 1108771554, "tonyd", "P", 1108771581, "tonyd", "P", 1108771602, "tonyd", "P", 1108774696, "tonyd", "P", 1108774950, "tonyd", "P", 1108775107, "tonyd", "P", 1108775153, "tonyd", "P", 1108775187, "tonyd", "P", 1108775339, "tonyd", "P", 1108775372, "tonyd", "P", 1108775517, "tonyd", "P", 1108775640, "tonyd", "P", 1108775846, "tonyd", "P", 1108775876, "tonyd", "P", 1108775971, "tonyd", "P", 1108776252, "tonyd", "P", 1108776472, "tonyd", "P", 1108776525, "tonyd", "P", 1108776590, "tonyd", "P", 1108776647, "tonyd", "P", 1108784577, "tonyd", "E", 1110014439, "tonyd", "P", 1110014705, "tonyd", "P", 1110014907, "tonyd", "P", 1110014928, "tonyd", "P", 1110016626, "tonyd", "P", 1135645034, "tonyd", "P", 1135926042, "???", "P", 1139722505, "tonyd", "P", 1139722900, "tonyd", "P", 1139722940, "tonyd", "P", 1139722954, "tonyd", "P", 1139723002, "tonyd", "P", 1139723059, "tonyd", "P", 1139723129, "tonyd", "P", 1139723218, "tonyd", "P", 1139723261, "tonyd", "P", 1139723337, "tonyd", "P", 1139723505, "tonyd", "P", 1139723615, "tonyd", "P", 1139723692, "tonyd", "P", 1139723832, "tonyd", "P", 1139724045, "tonyd", "P", 1139724101, "tonyd", "P", 1139724386, "tonyd", "P", 1139724453, "tonyd", "P", 1139724677, "tonyd", "P", 1140318314, "tonyd", "P", 1140318354, "tonyd", "P", 1140318482, "tonyd", "P", 1140318571, "tonyd", "P", 1140318633, "tonyd", "P", 1141016347, "tonyd", "P", 1141020444, "tonyd", "P", 1141020483, "tonyd", "P", 1141020646, "tonyd", "P", 1141020755, "tonyd", "P", 1141020777, "tonyd", "P", 1141020800, "tonyd", "P", 1141020949, "tonyd", "P", 1309489377, "rorschakovacs", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

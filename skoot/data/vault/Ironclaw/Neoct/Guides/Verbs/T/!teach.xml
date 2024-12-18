@@ -1,0 +1,67 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="!teach" second="teach" third="teaches" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="false" requirement="required" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* refund a skill or career */
+if(!\$dob) \{
+  EmitTo(\$actor, "Something went wrong.");
+  return FALSE;
+\}
+if(!\$evoke) \{
+  EmitTo(\$actor, "Format is: !teach \<character\> 'career:spy");
+  EmitTo(\$actor, "(or whatever skill or career you want to teach)");
+  return FALSE;
+\}
+\$skillname = "skill:"+lower_case(\$(raw-evoke));
+for(\$i=0;\$i\<sizeof(\$dob);\$i++) \{
+ \$char = NRefOb(\$dob[\$i]);
+  if(Get(\$char, \$skillname)) \{
+   \$level = Get(\$char, \$skillname);
+  \} else \{
+   \$level = 0;
+  \}
+  \$multiplier = 5;
+  if(strlen(\$skillname) \> 12 \&\& \$skillname[..12] == "skill:career:") \{
+   \$multiplier = 10;
+  \} else if(strlen(\$skillname) \> 10 \&\& \$skillname[..10] == "skill:lang:") \{
+   \$multiplier = 3;
+  \}
+  \$cost = (\$level+1) * \$multiplier;
+  if(strlen(\$skillname) \> 12 \&\& \$skillname[..12] == "skill:career:") \{
+   if(\$cost \> 100) \$cost = 100;
+  \} else if(strlen(\$skillname) \> 10 \&\& \$skillname[..10] == "skill:lang:") \{
+   if(\$cost \> 30) \$cost = 30;
+  \} else \{
+   if(\$cost \> 50) \$cost = 50;
+  \}
+
+  if(\$char."student:learningpoints" \>= \$cost) \{
+   EmitTo(\$actor, "Teaching level "+dump_value(\$level+1)+" of "+\$skillname+" to "+Describe(\$char)+" - "+dump_value(\$cost)+" lps.");
+   EmitTo(\$char, "Your "+\$skillname+" has been increased from "+dump_value(\$level)+" to "+dump_value(\$level+1)+" and you have been charged "+dump_value(\$cost)+" learning points.");
+   if(\$level \< 1) \{
+    Set(\$char, \$skillname, 1);
+   \} else \{
+    Set(\$char, \$skillname, \$level+1);
+   \}
+   \$char."student:learningpoints" -= \$cost;
+  \} else \{
+   EmitTo(\$actor, Describe(\$char)+" cannot afford to increase "+\$skillname+" to "+dump_value(\$level+1)+" - that would cost "+dump_value(\$cost)+" lps.");
+  \}
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1224388504, "tonyd", "E", 1224388561, "tonyd", "E", 1224388568, "tonyd", "E", 1224388636, "tonyd", "E", 1224388876, "tonyd", "P", 1224389045, "tonyd", "P", 1224389225, "tonyd", "P", 1224389331, "tonyd", "P", 1224389717, "tonyd", "P", 1224389755, "tonyd", "P", 1224389831, "tonyd", "P", 1224390099, "tonyd", "P", 1224390472, "tonyd", "P", 1224390840, "tonyd", "P", 1224390934, "tonyd", "P", 1224390986, "tonyd", "E", 1224391076, "tonyd", "P", 1309202149, "tunk_bodin", "R" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

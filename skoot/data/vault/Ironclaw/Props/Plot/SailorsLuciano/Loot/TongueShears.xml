@@ -1,0 +1,141 @@
+<object clone="/base/obj/thing" owner="ezralee">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(IronClaw:Props:Furniture:UrObject)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="shear"/>
+            <Base:SName sname="scissor"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="shears"/>
+            <Base:PName pname="scissors"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="tongue"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             iron tongue shears
+          </Base:Description>
+          <Base:Description type="examine">
+             Shaped like a crude pair of hedge shears, the semicircle-shaped end this iron device can be forced into the mouth and around the tongue of the victim. The act of closing the handles of the shears causes the circular end of the shears to sink into the flesh of the victim's tongue, eventually severing it.
+          </Base:Description>
+          <Base:Description type="look">
+             Shaped like a crude pair of hedge shears, the semicircle-shaped end this iron device can be forced into the mouth and around the tongue of the victim. The act of closing the handles of the shears causes the circular end of the shears to sink into the flesh of the victim's tongue, eventually severing it.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:remove-no">
+         X[M] \$actor = \$par["actor"];  
+\$victim = \$par["victim"];  
+\$tongue = \$par["tongue"];  
+  
+EmitTo(\$actor, TAG(Describe(\$victim) + " does not consent to this action.", "social:third"));  
+EmitTo(\$victim, TAG("You do not consent to this action.", "social:first"));  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove-yes">
+         X[M] \$actor = \$par["actor"];  
+\$victim = \$par["victim"];  
+\$tongue = \$par["tongue"];  
+\$tongueD = NewNRef(\$victim, \$tongue);  
+  
+/* Change description of tongue to "mutilated" */  
+Set(\$victim, "appearance:" + \$tongu, "mutilated");  
+    
+EmitTo(\$actor, TAG("You slip " + Describe(\$this, nil, \$actor) + " over " + Describe(\$tongueD) +", slamming down with full force. A sickening slice is heard as a piece of tongue falls from the mouth.", "social:first"));  
+  
+EmitTo(\$victim, TAG(Describe(\$actor) + " slips " + Describe(\$this, \$actor) + " over " + Describe(\$tongueD) + ", slamming down with full force. A sickening slice is heard as a piece of your tongue falls from your mouth.", "social:first"));  
+  
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " slips " + Describe(\$this, \$actor) + " over " + Describe(\$tongueD) + ", slamming down with full force. A sickening slice is heard as a piece of tongue falls from the mouth.", "social:third"), \$actor, \$victim);  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:cut-using">
+         X[M] /* Are we targeting something? */  
+if(!\$dob) \{  
+    EmitTo(\$actor, TAG("What are you trying to cut with " + Describe(\$this, nil, \$actor) + "?", "social:first"));  
+    return FALSE;  
+\}  
+  
+/* Target just one thang plz */  
+if(sizeof(\$dob) \> 1) \{  
+    EmitTo(\$actor, TAG("You can only cut off one thing at a time.", "social:first"));  
+    return FALSE;  
+\}  
+  
+\$victim = NRefOb(\$dob[0]);  
+\$tongue = NRefDetail(\$dob[0]); 
+ 
+if(Get(\$victim, "appearance:" + \$tongue) == "mutilated") \{ 
+    EmitTo(\$actor, TAG("The tongue has already been mutilated.", "social:first"));  
+    return FALSE;  
+\} 
+  
+if(\$victim == \$actor) \{  
+    EmitTo(\$actor, TAG("You, sir, are a sicko.", "social:first"));  
+    return FALSE;  
+\}  
+  
+/* Make sure our victim is a PC */  
+if(!\$victim."udat:possessed") \{  
+    EmitTo(\$actor, TAG("You can only use " + Describe(\$this, nil, \$actor) + " on another person. [OOC: Victim must be an actual character.]", "social:first"));  
+    return FALSE;  
+\}  
+  
+/* Let's make sure it's a tongue */   
+if(\$tongue == "tongue") \{  
+    EmitTo(\$actor, TAG("You can only use " + Describe(\$this, nil, \$actor) + " on tongues.", "social:first"));  
+    return FALSE;  
+\}  
+  
+EmitTo(\$actor, TAG("Getting consent from " + Describe(\$victim) + "...", "social:first"));  
+EmitTo(\$victim, TAG(Describe(\$actor) + " is attempting to use " + Describe(\$this, nil, \$actor) + " to remove "  + Describe(\$dob[0], nil, \$victim) + ". This will result in the permanent loss of the body part.", "imp"));  
+interaction::question(\$actor: \$victim, \$question: "Do you consent to this action?", \$env: "TRUE", \$expires: 60, \$yes_ob: \$this, \$yes_fun: "remove-yes", \$no_ob: \$this, \$no_fun: "remove-no", \$expire_ob: \$this, \$expire_fun: "remove-no", \$par: ([ "actor": \$actor, "victim": \$victim, "tongue": \$tongue ]));  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1461288443, "jominey", "E", 1461288882, "jominey", "E", 1461289000, "jominey", "E", 1461289394, "jominey", "E", 1461289670, "jominey", "E", 1461289800, "jominey", "E", 1461290102, "jominey", "E", 1461290200, "jominey", "E", 1461290321, "jominey", "E", 1461290371, "jominey", "E", 1461290415, "jominey", "E", 1461290470, "jominey", "E", 1461290648, "jominey", "E", 1461291238, "jominey", "E", 1461291260, "jominey", "E", 1461291313, "jominey", "E", 1461291366, "jominey", "E", 1461292023, "ezralee", "E", 1461292040, "jominey", "X", 1461292150, "jominey", "E", 1461293316, "jominey", "E", 1461293448, "jominey", "X", 1461293655, "jominey", "E", 1461293668, "jominey", "E", 1461293814, "jominey", "E", 1461293823, "jominey", "E", 1461293848, "jominey", "E", 1461293857, "jominey", "E", 1461295203, "ezralee", "K" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

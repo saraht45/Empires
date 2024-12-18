@@ -1,0 +1,251 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:rot">
+         X[M] /*
+ * D=A copied and cut down version of the NIP death library, which turns an NPC into a dead body. This script can be used optionally to give the effect of an NPC going gradually from 'freshly slain' to 'decaying' to 'skeleton' to complete disintegration.
+ */
+
+/*
+ * Do we have an actual object which we are to turn into
+ * when we die? (no object means it's something like fruit that doesn't have to die before rotting)
+ */
+if (typeof(\$target."nip:trait:death:death_object") == T_OBJECT) \{
+  /* some bookkeeping in case this object is using spawn areas */
+  \$target."nip:trait:spawn:area" = \$target."nip:trait:spawn:area";
+  /* and stop the NPC so it respawns */
+  if(\$target."nip:trait:spawn:area") Act(\$target, "stop");
+  /* Then set our UrParent to the new object. */
+  \$target."base:urparent" = \$target."nip:trait:death:death_object";
+\}
+
+\$target."npc:death:state" = 1;
+
+\$rot_time = \$target."nip:trait:death:rot_time";
+if (!\$rot_time) \$rot_time = 86400;
+
+\$delay(\$rot_time, FALSE, "2047");
+
+if(!\$target \|\| \$target."npc:death:state" != 1) return TRUE;
+\$target."npc:death:state"++;
+
+/*
+ * Do we have an actual object which we are to turn into
+ * when we rot?
+ */
+if (typeof(\$target."nip:trait:death:rot_object") == T_OBJECT) \{
+  /* some bookkeeping in case this object is using spawn areas */
+  \$target."nip:trait:spawn:area" = \$target."nip:trait:spawn:area";
+  /* and stop the NPC so it respawns */
+  if(\$target."nip:trait:spawn:area") Act(\$target, "stop");
+  /* Then set our UrParent to the new object. */
+  \$target."base:urparent" = \$target."nip:trait:death:rot_object";
+\} else \{
+  /*
+   * We don't have a pre-set object to turn into. Transform
+   * ourselves instead.
+   * Check if we have a pre-set "brief". If not, we're
+   * going to have to make one up based on our description.
+   */
+  /* figure out what adjective we're adding */
+  \$adj = "rotting";
+  if(\$target."nip:trait:death:rot_adjectives")
+    \$adj = Arr(\$target."nip:trait:death:rot_adjectives")[0];
+
+  if (\$dbrief = \$target."detail:description:rotting-brief") \{
+    \$target."detail:description:brief" = \$dbrief;
+  \} else \{
+    /*
+     * Grab the
+     * description and just add "rotting" to the
+     * beginning.
+     */
+
+    /* NOTE: This solution is not recommended, and is to circumvent a bug in SAM. */
+    \$desc = \$target."detail:description:brief";
+    \$desc = mixed_to_ascii(\$desc);
+    \$desc = \$desc[..3]+" "+\$adj+\$desc[4..];
+    \$target."detail:description:brief" = ascii_to_mixed(\$desc);
+    
+
+    if(contains(Describe(\$target, nil, nil, STYLE_NONPOSS), "corpse")) \{
+        \$desc = replace_strings(Describe(\$target, nil, nil, STYLE_NONPOSS), "corpse", "rotting corpse");
+    \} else \{
+        \$desc = \$adj + " " + Describe(\$target, nil, nil, STYLE_NONPOSS);
+    \}
+    \$target."detail:description:brief" = \$desc;
+  \}
+
+  if (\$pbrief = \$target."detail:description:rotting-pbrief") \{
+    \$target."detail:description:pbrief" = \$pbrief;
+  \}
+
+  /*
+   * Check for "rotting" descriptions on look/examine as well,
+   * but we're not going to try to "generate" those, if not.
+   */
+  if (\$look = \$target."detail:description:rotting-look") \{
+    /* NOTE: This solution is not recommended, and is to circumvent a bug in SAM. */
+    \$target."detail:description:look" = ascii_to_mixed(mixed_to_ascii(\$look));
+  \}
+  if (\$exam = \$target."detail:description:rotting-examine") \{
+    /* NOTE: This solution is not recommended, and is to circumvent a bug in SAM. */
+    \$target."detail:description:examine" = ascii_to_mixed(mixed_to_ascii(\$exam));
+  \}
+\}
+
+/* set adjectives */
+if(\$target."nip:trait:death:rot_adjectives") \{
+  \{ int i, ix;
+    ix = sizeof(Arr(\$target."nip:trait:death:rot_adjectives"));
+    for(i=0;i\<ix;i++)\{
+      Set(\$target, "details:default:adjective:"+Arr(\$target."nip:trait:death:rot_adjectives")[i], TRUE);
+    \}
+  \}
+\} else \{
+  \$target."detail:adjective:rotting" = TRUE;
+\}
+
+/*
+\{
+    string *vals;
+    int i, ix;
+    vals = (\{ "brief", "pbrief", "look", "examine" \});
+    ix   = sizeof(vals);
+    for (i = 0; i \< ix; i++) \{
+        \$v = Get(\$target, "detail:description:rotting-" + vals[i]);
+        if (\$v) Set(\$target, "detail:description:" + vals[i], \$v);
+    \}
+\}
+*/
+
+
+\$skeleton_time = \$target."nip:trait:death:skeleton_time";
+if (!\$skeleton_time) \$skeleton_time = 302400;
+
+\$delay(\$skeleton_time, FALSE, "ff1f");
+
+if(!\$target \|\| \$target."npc:death:state" != 2) return TRUE;
+\$target."npc:death:state"++;
+
+if (typeof(\$target."nip:trait:death:skeleton_object") == T_OBJECT) \{
+  /* Then set our UrParent to the new object. */
+  \$target."base:urparent" = \$target."nip:trait:death:skeleton_object";
+\} else \{
+  /*
+   * We don't have a pre-set object to turn into. Transform
+   * ourselves instead.
+   * Check if we have a pre-set "brief". If not, we're
+   * going to have to make one up based on our description.
+   */
+  /* figure out what adjective we're adding */
+  \$adj2 = "rotted";
+  if(\$target."nip:trait:death:skeleton_adjectives")
+    \$adj2 = Arr(\$target."nip:trait:death:skeleton_adjectives")[0];
+
+  if (\$dbrief = \$target."detail:description:skeleton-brief") \{
+    \$target."detail:description:brief" = \$dbrief;
+  \} else \{
+    /*
+     * We can grab the
+     * description and switch "rotting" for "rotted"
+     */
+
+    /* NOTE: This solution is not recommended, and is to circumvent a bug in SAM. */
+    \$desc = \$target."detail:description:brief";
+    \$desc = mixed_to_ascii(\$desc);
+    \$desc = replace_strings(\$desc, \$adj, \$adj2);
+    \$target."detail:description:brief" = ascii_to_mixed(\$desc);
+  \}
+
+  if (\$pbrief = \$target."detail:description:skeleton-pbrief") \{
+    \$target."detail:description:pbrief" = \$pbrief;
+  \}
+
+  /*
+   * Check for "skeleton" descriptions on look/examine as well,
+   * but we're not going to try to "generate" those, if not.
+   */
+  if (\$look = \$target."detail:description:skeleton-look") \{
+    /* NOTE: This solution is not recommended, and is to circumvent a bug in SAM. */
+    \$target."detail:description:look" = ascii_to_mixed(mixed_to_ascii(\$look));
+  \}
+  if (\$exam = \$target."detail:description:skeleton-examine") \{
+    /* NOTE: This solution is not recommended, and is to circumvent a bug in SAM. */
+    \$target."detail:description:examine" = ascii_to_mixed(mixed_to_ascii(\$exam));
+  \}
+\}
+
+/* unset adjectives */
+if(\$target."nip:trait:death:rot_adjectives" \&\& \$target."nip:trait:death:skeleton_adjectives") \{
+  \$list = Arr(\$target."nip:trait:death:rot_adjectives");
+  \$list -= Arr(\$target."nip:trait:death:skeleton_adjectives");
+  \{ int i, ix;
+    ix = sizeof(\$list);
+    for(i=0;i\<ix;i++)\{
+      Set(\$target, "details:default:adjective:"+\$list[i], nil);
+    \}
+  \}
+\}
+/* set adjectives */
+if(\$target."nip:trait:death:skeleton_adjectives") \{
+  \$list = Arr(\$target."nip:trait:death:skeleton_adjectives");
+  \{ int i, ix;
+    ix = sizeof(\$list);
+    for(i=0;i\<ix;i++)\{
+      Set(\$target, "details:default:adjective:"+\$list[i], TRUE);
+    \}
+  \}
+\} else \{
+  \$target."detail:adjective:rotting" = nil;
+  \$target."detail:adjective:rotted" = TRUE;
+\}
+
+
+/*
+\{
+    string *vals;
+    int i, ix;
+    vals = (\{ "brief", "pbrief", "look", "examine" \});
+    ix   = sizeof(vals);
+    for (i = 0; i \< ix; i++) \{
+        \$v = Get(\$target, "detail:description:skeleton-" + vals[i]);
+        if (\$v) Set(\$target, "detail:description:" + vals[i], \$v);
+    \}
+\}
+
+\$target."detail:adjective:rotten" = FALSE;
+\$target."detail:sname:skeleton" = "skeletons";
+*/
+
+\$disintegrate_time = \$target."nip:trait:death:disintegrate_time";
+if (!\$disintegrate_time) \$disintegrate_time = 604800;
+
+\$delay(\$disintegrate_time, FALSE, "36e3");
+
+if(!\$target \|\| \$target."npc:death:state" != 3) return TRUE;
+\$target."npc:death:state"++;
+
+/* TODO: Replace with behavior set. */
+if(\$target."base:environment") \{
+  EmitIn(\$target."base:environment", Describe(\$target) + " crumbles to dust which spreads quickly with the winds.");
+  EmitTo(\$target."base:environment", Describe(\$target, nil, \$target."base:environment") + " crumbles to dust which spreads quickly with the winds.");
+
+\}
+
+if (name(\$target)[0] == '[') \{
+    Slay(\$target);
+\} else \{
+    chat::log(\$log: "!!! WARNING: " + name(\$target) + " was just about to be slain by the NIP system. !!!");
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="npc:death:state">1</Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1196581602, "tonyd", "E", 1196581616, "tonyd", "E", 1196586774, "tonyd", "P", 1196586941, "tonyd", "P", 1196586967, "tonyd", "P", 1196587085, "tonyd", "P", 1196587227, "tonyd", "P", 1196587265, "tonyd", "P", 1196587607, "tonyd", "P", 1196587634, "tonyd", "P", 1196588030, "tonyd", "P", 1196588158, "tonyd", "P", 1196588475, "tonyd", "P", 1196588637, "tonyd", "P", 1196588911, "tonyd", "P", 1196589395, "tonyd", "P", 1196590516, "tonyd", "P", 1196590638, "tonyd", "P", 1196590732, "tonyd", "P", 1196590820, "tonyd", "P", 1196590938, "tonyd", "P", 1196591029, "tonyd", "P", 1196591054, "tonyd", "P", 1196591104, "tonyd", "P", 1196591126, "tonyd", "P", 1196591850, "tonyd", "P", 1197450640, "tonyd", "E", 1596939359, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,630 @@
+<object clone="/obj/properties" owner="tunk_bodin">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="gimli:lib:search">
+         "E[G]\\n// Searching\\n\$searchskills = (\{ \\"trait:luck\\", \\"mental:observation\\", \\"trait:mind\\" \});\\n\\n// Check if we should do the searching script, or fall back on just the RP verb\\nif(!\$dob \&\& \$iob) \$dob = \$iob;\\nif(!\$dob) return TRUE;\\nif(!\$actor) return TRUE;\\n\\nif((sizeof(\$dob) \> 1) \|\| (NRefOb(\$dob[0]) != \$actor.\\"base:environment\\")) return TRUE;\\n\\n// So we want to search a room\\nif(\$message = ironclaw::busy_check(\$character: \$actor)) \{\\n  EmitTo(\$actor, \\"You are already busy \\"+\$message+\\".\\");\\n  return FALSE;\\n\}\\n\\n\$target = NRefOb(\$dob[0]);\\n\$detail = NRefDetail(\$dob[0]);\\n\\n// Hack. Don't use searching if there are search scripts (since for some reason this stops other scripts, including pre scripts)\\nif(FindMerry(\$target, \\"react-pre\\", \\"search-dob\\") \|\| FindMerry(\$target, \\"react\\", \\"search-dob\\") \|\| FindMerry(\$target, \\"react-post\\", \\"search-dob\\")) \{\\n  return TRUE;\\n\}\\n\\n// We started searching here\\n\$workenv = \$actor.\\"base:environment\\";\\nEmitTo(\$actor, \\"You begin searching \\"+Describe(\$dob[0])+\\".\\");\\nEmitIn(\$actor.\\"base:environment\\", Describe(\$actor)+\\" begins searching \\"+Describe(\$dob[0])+\\".\\", \$actor);\\n\\n// Make the search roll\\n\$result = ironclaw::roll(\$roller: \$actor, \$skills: \$searchskills, \$bonus: \\"trait:mind\\");\\n\\n// delay based on how good their roll was\\nif(\$result \< 32) \{\\n  \$id = ironclaw::busy_start(\$character: \$actor, \$action: \\"searching for an item\\", \$timer: 36-(\$result)+1);\\n  \$delay(36-(\$result), FALSE, \\"67ae\\");\\n\} else \{\\n  \$id = ironclaw::busy_start(\$character: \$actor, \$action: \\"searching for an item\\", \$timer: 5+1);\\n  \$delay(5, FALSE, \\"458d\\");\\n\}\\n\\nif(!\$actor) return TRUE;\\n\\n// mark them as not busy\\nif(\$actor.\\"busy:id\\" != \$id) return TRUE;\\n// ironclaw::busy_stop(\$character: \$actor, \$id: \$id); // No need to stop, because we've added a timer to busy_start.\\n\\n// Check if they left the area\\nif(\$actor.\\"base:environment\\" != \$workenv) \{\\n  EmitTo(\$actor, \\"Your search was halted due to the fact that you left the area.\\");\\n  return FALSE;\\n\}\\n\\n// We've delayed to mimic a thorough search, make another searching roll to see if we discovered anything\\n\$result = ironclaw::roll(\$roller: \$actor, \$skills: \$searchskills, \$bonus: \\"trait:mind\\");\\n\\n// make it easier to find the item, since we're searching in the right detail\\n\$result = \$result + 4;\\n\\n// Check if we've previously hidden something here\\nif(Get(\$target, \\"searching:\\"+\$detail+\\":actormapping\\")) \{\\n  \$tmp = Get(\$target, \\"searching:\\"+\$detail+\\":actormapping\\");\\n  while(\$tmp[name(\$actor)]) \{\\n    // The actor hid something here\\n    // Pick one of the hidden items\\n    \$discovery = \$tmp[name(\$actor)][random(sizeof(\$tmp[name(\$actor)]))];\\n\\n    // Remove the item from the list\\n    Call(this, \\"remove_item\\");\\n\\n    // Check that the item is still available\\n    if(\$discovery \&\& (\$discovery.\\"base:environment\\" == \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\} \|\| !\$discovery.\\"base:environment\\")) \{\\n      EmitTo(\$actor, \\"You uncover \\"+Describe(\$discovery)+\\" and retrieve it from its hiding place.\\");\\n      EmitIn(\$actor.\\"base:environment\\", Describe(\$actor)+\\" uncovers \\"+Describe(\$discovery)+\\" and retrieves it from its hiding place.\\", \$actor);\\n      \$discovery.\\"base:environment\\" = \$actor;\\n\\n      // Need to make sure we were successful in moving the object into the chatter's inventory (for cases where the object is too heavy). If it is too heavy, simply place it in the chatter's environment.\\n      if(\$discovery.\\"base:environment\\" != \$actor) \{\\n          \$discovery.\\"base:environment\\" = \$actor.\\"base:environment\\";\\n      \}\\n\\n      return FALSE;\\n    \}\\n  \}\\n\}\\n\\n// Get a mapping of possible discoveries\\nif(Get(\$target, \\"searching:\\"+\$detail+\\":searchmapping\\")) \$tmp = Get(\$target, \\"searching:\\"+\$detail+\\":searchmapping\\");\\n\\nif(\$tmp) \{\\n  \$array = (\{ \});\\n  // gather an array of all possible items\\n  for(\$i=1;\$i\<=\$result;\$i++) \{\\n    if(\$tmp[Str(\$i)]) \$array += \$tmp[Str(\$i)];\\n  \}\\n\\n  while(!\$discovery \&\& (sizeof(\$array) \> 0))\{\\n    /* pick a possible item */\\n    \$discovery = \$array[random(sizeof(\$array))];\\n\\n    /* Remove the discovery from the list */\\n    Call(this, \\"remove_item\\");\\n\\n    /* Check that the item is still available */\\n    if((\$discovery.\\"base:environment\\" == \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\}) \|\| !\$discovery.\\"base:environment\\") \{\\n      EmitTo(\$actor, \\"You uncover \\"+Describe(\$discovery)+\\" and retrieve it from its hiding place.\\");\\n      EmitIn(\$actor.\\"base:environment\\", Describe(\$actor)+\\" uncovers \\"+Describe(\$discovery)+\\" and retrieves it from its hiding place.\\", \$actor);\\n      \$discovery.\\"base:environment\\" = \$actor;\\n\\n      /* Need to make sure we were successful in moving the object into the chatter's inventory (for cases where the object is too heavy). If it is too heavy, simply place it in the chatter's environment. */\\n      if(\$discovery.\\"base:environment\\" != \$actor) \{\\n          \$discovery.\\"base:environment\\" = \$actor.\\"base:environment\\";\\n      \}\\n\\n      return FALSE;\\n    \} else \{\\n      \$discovery = nil;\\n    \}\\n  \}\\n\}\\n\\n// Harder to find something if we're not searching in the right detail\\n\$result = \$result - 4;\\n\\n// Didn't find anything. Do we find something in the rest of the room?\\nif(\$detail == \\"default\\") \{\\n\\n  /* Get a mapping of all possible discoveries */\\n\\n  \$details = Get(\$target, \\"*\\");\\n  \$details = prefixed_map(\$details, \\"searching:\\");\\n  \$details = map_indices(\$details);\\n\\n  for(\$j=0;\$j\<sizeof(\$details);\$j++) \{\\n    if(sscanf(\$details[\$j], \\"%s:searchmapping\\", \$detail) \&\& sscanf(\$detail, \\"searching:%s\\", \$detail)) \{\\n\\n/* Get a mapping of possible discoveries */\\nif(Get(\$target, \\"searching:\\"+\$detail+\\":searchmapping\\")) \$tmp = Get(\$target, \\"searching:\\"+\$detail+\\":searchmapping\\");\\n\\nif(\$tmp) \{\\n  \$array = (\{ \});\\n  /* gather an array of all possible items */\\n  for(\$i=1;\$i\<=\$result;\$i++) \{\\n    if(\$tmp[Str(\$i)]) \$array += \$tmp[Str(\$i)];\\n  \}\\n\\n  while(!\$discovery \&\& (sizeof(\$array) \> 0))\{\\n    /* pick a possible item */\\n    \$discovery = \$array[random(sizeof(\$array))];\\n\\n    /* Remove the discovery from the list */\\n    Call(this, \\"remove_item\\");\\n\\n    /* Check that the item is still available */\\n    if(\$discovery \&\& (\$discovery.\\"base:environment\\" == \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\}) \|\| !\$discovery.\\"base:environment\\") \{\\n      EmitTo(\$actor, \\"You uncover \\"+Describe(\$discovery)+\\" and retrieve it from its hiding place.\\");\\n      EmitIn(\$actor.\\"base:environment\\", Describe(\$actor)+\\" uncovers \\"+Describe(\$discovery)+\\" and retrieves it from its hiding place.\\", \$actor);\\n      \$discovery.\\"base:environment\\" = \$actor;\\n\\n      /* Need to make sure we were successful in moving the object into the chatter's inventory (for cases where the object is too heavy). If it is too heavy, simply place it in the chatter's environment. */\\n      if(\$discovery.\\"base:environment\\" != \$actor) \{\\n          \$discovery.\\"base:environment\\" = \$actor.\\"base:environment\\";\\n      \}\\n\\n      return FALSE;\\n    \} else \{\\n      \$discovery = nil;\\n    \}\\n  \}\\n\}\\n\\n\\n    \}\\n  \}\\n\\n\\n\}\\n\\n// Didn't find anything. Do we find something random?\\n// are we allowed to find any more random objects?\\n\$findrandom = 1;\\nif(typeof(\$target.\\"searching:randomobjects\\") == T_ARRAY) \{\\n  \$target.\\"searching:randomobjects\\" = \$target.\\"searching:randomobjects\\"[random(sizeof(\$target.\\"searching:randomobjects\\"))];\\n\} else if(typeof(\$target.\\"searching:randomobjects\\") == T_INT \&\& \$target.\\"searching:randomobjects\\" \< 1) \{\\n  \$findrandom = nil;\\n\} else if(typeof(\$target.\\"searching:randomobjects\\") != T_INT) \{\\n  \$target.\\"searching:randomobjects\\" = 1;\\n\}\\n\\n/* is there a random delay we have to respect? */\\nif(\$target.\\"searching:randomdelayuntil\\" \&\& \$target.\\"searching:randomdelayuntil\\" \> time()) \{\\n  \$findrandom = nil;\\n\}\\n\\n\$randnum = random(3);\\n\\n// if(\$findrandom \&\& (\$randnum)\&\&(\$tmp = Get(\$target, \\"searching:random:\\"+NRefDetail(\$dob[0])))) \{\\nif(\$randnum \&\& (\$tmp = Get(\$target, \\"searching:random:\\"+NRefDetail(\$dob[0])))) \{\\n  /* is there a random delay to set? */\\n  if(\$target.\\"searching:randomdelay\\")\\n    \$target.\\"searching:randomdelayuntil\\" = time()+Arr(\$target.\\"searching:randomdelay\\")[random(sizeof(Arr(\$target.\\"searching:randomdelay\\")))];\\n\\n  /* how many random items left? */\\n  if(\$target.\\"searching:randomobjects\\")\\n    \$target.\\"searching:randomobjects\\"--;\\n\\n  /* Luck roll! */\\n  \$luck = random(24);\\n  \$luck = random(\$luck);\\n\\n  if(\$luck \> \$result) \$result = \$luck;\\n\\n  /* pick an item */\\n\\n  \$result = Int(Flt(\$result)/24.0 * Flt(sizeof(\$tmp)));\\n\\n  \$tmp = Arr(\$tmp[random(\$result)]);\\n\\n  /* \$tmp = Arr(\$tmp[random(sizeof(\$tmp))]); */\\n  \$discovery = Spawn(\$tmp[0]);\\n\\n  /* set the properties for this item */\\n  for(\$i=1;\$i\<sizeof(\$tmp);\$i++) \{\\n    Set(\$discovery, \$tmp[\$i][0], \$tmp[\$i][random(sizeof(\$tmp[\$i])-1)+1]);\\n  \}\\n\\n  EmitTo(\$actor, \\"You uncover \\"+Describe(\$discovery)+\\" and retrieve it from its hiding place.\\");\\n  EmitIn(\$actor.\\"base:environment\\", Describe(\$actor)+\\" uncovers \\"+Describe(\$discovery)+\\" and retrieves it from its hiding place.\\", \$actor);\\n  \$discovery.\\"base:environment\\" = \$actor;\\n\\n      /* Need to make sure we were successful in moving the object into the chatter's inventory (for cases where the object is too heavy). If it is too heavy, simply place it in the chatter's environment. */\\n      if(\$discovery.\\"base:environment\\" != \$actor) \{\\n          \$discovery.\\"base:environment\\" = \$actor.\\"base:environment\\";\\n      \}\\n      if(!\$discovery.\\"base:environment\\") Slay(\$discovery);\\n\\n  return FALSE;\\n\}\\n\\nEmitTo(\$actor, \\"You find nothing.\\");\\nEmitIn(\$actor.\\"base:environment\\", Describe(\$actor)+\\" finds nothing.\\", \$actor);\\n\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="merry:lib:hide">
+         X[M] int i, result;
+mapping map, actormap;
+/* We are hiding */
+
+/* Check if we are hiding an object in the room, or just social RP */
+
+if(!\$dob) return TRUE;
+if(!\$iob) return TRUE;
+
+/* We are hiding something, check if we are holding all the things that we are hiding */
+/* Return true if any of the objects is not being held by the actor */
+for(i=0;i\<sizeof(\$dob);i++) \{
+  if(NRefOb(\$dob[i])."base:environment" != \$actor) return TRUE;
+\}
+
+/* Check that they are trying to hide it in the room */
+if(NRefOb(\$iob[0]) != \$actor."base:environment") return TRUE;
+
+/* Check it isnt worn or wielded and return as RP*/
+if(NRefOb(\$dob[0])."base:clothing:worn" == 1) return TRUE;
+
+/* Alright, we've done the checks, we definitely want to hide the objects in this room */
+
+/* are they already busy? */
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+  EmitTo(\$actor, "You are already busy "+\$message+".");
+  return FALSE;
+\}
+
+\$target = NRefOb(\$iob[0]);
+\$detail = NRefDetail(\$iob[0]);
+
+/* We started hiding  here */
+EmitTo(\$actor, "You begin hiding "+Describe(\$dob, nil, \$actor)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" is acting slightly suspicious.", \$actor);
+
+/* Make the hide roll */
+result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "trait:luck", "thief:hide" \}), \$bonus: "trait:mind");
+
+/*EmitTo(\$actor, "You rolled a "+Str(result));*/
+
+/* delay based on how good their roll was */
+\$workenv = \$actor."base:environment";
+
+/* mark them as busy */
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "hiding an item");
+
+\$delay(73-(result*3), FALSE, "8687");
+
+/* check if they are hiding the object */
+if(\$actor."busy:id" != \$id) return TRUE;
+
+/* mark them as not busy */
+ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+
+/* We've delayed to mimic the act of finding a decent hiding spot, make another hiding roll to determine success and placement */
+if(\$workenv != \$actor."base:environment")\{
+  EmitTo(\$actor, "Due to movement, your hide action was halted.");
+  return FALSE;
+\} else if(NRefOb(\$dob[0])."base:environment" != \$actor) \{
+  EmitTo(\$actor, "The object has left your possession prior to being hidden and therefore the action is halted.");
+  return FALSE;
+\}
+
+result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "trait:luck", "thief:hide" \}), \$bonus: "trait:mind");
+
+/*EmitTo(\$actor, "You rolled a "+Str(result));*/
+
+/* Give message about hiding (this has to be before the objects are moved, so it says "your" object */
+EmitTo(\$actor, "You successfully hide "+Describe(\$dob, nil, \$actor)+" and smile subtly.");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" hides "+Describe(\$dob, \$actor)+", and smiles subtly.", \$actor);
+
+map = Get(\$target, "searching:"+\$detail+":searchmapping");
+if(!map) map = ([ ]);
+
+actormap = Get(\$target, "searching:"+\$detail+":actormapping");
+if(!actormap) actormap = ([ ]);
+
+
+/* Hide the objects */
+for(i=0;i\<sizeof(\$dob);i++)\{
+  /* Add the objects to the hide array */
+  if(map[Str(result)]) \{
+    map[Str(result)] += (\{ NRefOb(\$dob[i]) \});
+  \} else \{
+    map[Str(result)] = (\{ NRefOb(\$dob[i]) \});
+  \}
+  /* Add the objects to the actor hide array */
+  if(actormap[name(\$actor)]) \{
+    actormap[name(\$actor)] += (\{ NRefOb(\$dob[i]) \});
+  \} else \{
+    actormap[name(\$actor)] = (\{ NRefOb(\$dob[i]) \});
+  \}
+  /* record where this object was hidden */
+  NRefOb(\$dob[i])."hiding:lasthidden" = \$actor."base:environment";
+  NRefOb(\$dob[i])."hiding:whenhidden" = time();
+  /* move the item to the OOC storage area */
+  NRefOb(\$dob[i])."base:environment" = \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\};
+\}
+
+map = Set(\$target, "searching:"+\$detail+":searchmapping", map);
+map = Set(\$target, "searching:"+\$detail+":actormapping", actormap);
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:hide_what">
+         X[M] /* Desired update: 
+  Should accept multiple objects to hide, and silently return true if the player doesn't have an iob or isn't holding all the objects  (for using the RP verb hide) */ 
+ 
+if(\$dob \&\& (sizeof(\$dob) == 1) \&\& (NRefOb(\$dob[0])."base:environment" == \$actor)) \{ 
+  EmitTo(\$actor, "You are calling the hide item code."); 
+  return Call(\$this, "hide_where"); 
+\} else \{ 
+  EmitTo(\$actor, "You are calling the default, thereby not hiding."); 
+  EmitTo(\$actor, "You may hide a single item at a time. What shall it be?"); 
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:hide_where">
+         X[M] /* So we want to hide an item */       
+       
+if(\$actor.isbusy)\{       
+  EmitTo(\$actor, "You are in the middle of something. Please wait for your current action to complete before attempting something new.");       
+  return FALSE;       
+\}       
+       
+/* Where are we hiding it?*/       
+if(\$iob)       
+\{       
+  /* are we trying to hide it in more than one place? */       
+  if(sizeof(\$iob) \> 1) \{       
+    EmitTo(\$actor, "You can only hide a single item in a single place for each action. Try again.");       
+    return TRUE;       
+  \}       
+  \$target = NRefOb(\$iob[0]);       
+  \$detail = NRefDetail(\$iob[0]);       
+\} else \{       
+  /* no IOB, so return true */       
+  EmitTo(\$actor, "Where do you intend to hide it?");       
+  return FALSE;       
+\}       
+       
+/* We grab the woename of the object which is being hidden */       
+       
+\$obwoe = (NRefOb(\$dob[0]));       
+       
+/* We started hiding  here */       
+\$actor.isbusy = 1;       
+EmitTo(\$actor, "You begin hiding "+Describe(\$dob[0])+".");       
+EmitIn(\$actor."base:environment", Describe(\$actor)+" is acting slightly suspicious.", \$actor);       
+       
+/* Make the hide roll */       
+\$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:mind", \$actor."thief:stealth", \$actor."trait:chance", \$actor."trait:luck" \}));       
+       
+EmitTo(\$actor, "You rolled a "+Str(\$result));       
+       
+/* delay based on how good their roll was */       
+\$delay(36-(\$result*3), FALSE, "1660");       
+       
+/* We've delayed to mimic the act of finding a decent hiding spot, make another hiding roll to determine success and placement */       
+\$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:mind", \$actor."thief:stealth", \$actor."trait:chance", \$actor."trait:luck" \}));       
+       
+EmitTo(\$actor, "You rolled a "+Str(\$result));       
+       
+/* We need to roll at least a 7 to hide something */       
+if(\$result \< 7)       
+\{       
+  EmitTo(\$actor, "You fail to hide the item.");       
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" stops glancing around suspiciously.", \$actor);       
+  return FALSE;       
+\}       
+       
+/* We set the object into an array of searchable items */       
+   
+/* Pick an array level and move the objects woename into it */    
+if(\$result \<12 \&\& \$result \>8) \{   
+\$array = Get(\$target, "searching:"+\$detail+":searcharray");       
+\$array += (\{ \$obwoe \});       
+Set(\$target, "searching:"+\$detail+":searcharray", \$array);       
+       
+    /* Does the actor deserve a better or worse hiding spot? */       
+  \} else if(\$result \< 9) \{       
+      /* We send it to a lesser array */       
+\$array = Get(\$target, "searching:"+\$detail+":lowsearcharray");       
+\$array += (\{ \$obwoe \});       
+Set(\$target, "searching:"+\$detail+":lowsearcharray", \$array);       
+    \} else if(\$result \> 11) \{       
+      /* We send it to a higher array */       
+\$array = Get(\$target, "searching:"+\$detail+":highsearcharray");       
+\$array += (\{ \$obwoe \});       
+Set(\$target, "searching:"+\$detail+":highsearcharray", \$array);       
+    \}       
+       
+EmitTo(\$actor, "You successfully hide "+Describe(\$dob[0])+" and smile subtly.");       
+EmitIn(\$actor."base:environment", Describe(\$actor)+" appears satisfied with " +\$actor."base:objective"+ "self.", \$actor);       
+       
+/* move the item to the OOC storage area */       
+NRefOb(\$dob[0])."base:environment" = \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\};       
+       
+\$actor.isbusy = nil;       
+       
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_item">
+         X[M] /* Remove an item from the searching arrays */
+
+/* first remove it from this search array */
+\$mapping = Get(\$target, "searching:"+\$detail+":searchmapping");
+if(\$mapping) \{
+  for(\$i=1;\$i\<=12;\$i++) \{
+    if(\$mapping[Str(\$i)]) \{
+      for(\$j=0;\$j\<sizeof(\$mapping[Str(\$i)]);\$j++) \{
+        if(\$mapping[Str(\$i)][\$j] == \$discovery) \{
+          \$mapping[Str(\$i)] -= (\{ \$mapping[Str(\$i)][\$j] \});
+          if(sizeof(\$mapping[Str(\$i)]) == 0) \$mapping[Str(\$i)] = nil;
+          if(sizeof(map_indices(\$mapping)) == 0) Set(\$target, "searching:"+\$detail+":searchmapping", nil);
+          break;
+        \}
+      \}
+    \}
+  \}
+\}
+
+/* now remove from the actors array */
+\$mapping = Get(\$target, "searching:"+\$detail+":actormapping");
+if(\$mapping) \{
+  for(\$i=0;\$mapping\&\&(\$i\<sizeof(map_indices(\$mapping)));\$i++) \{
+    if(\$mapping[map_indices(\$mapping)[\$i]]) \{
+      for(\$j=0;\$j\<sizeof(\$mapping[map_indices(\$mapping)[\$i]]);\$j++) \{
+        if(\$mapping[map_indices(\$mapping)[\$i]][\$j] == \$discovery) \{
+          \$mapping[map_indices(\$mapping)[\$i]] -= (\{ \$mapping[map_indices(\$mapping)[\$i]][\$j] \});
+          if(sizeof(\$mapping[map_indices(\$mapping)[\$i]]) == 0) \$mapping[map_indices(\$mapping)[\$i]] = nil;
+          if(sizeof(map_indices(\$mapping)) == 0) Set(\$target, "searching:"+\$detail+":actormapping", nil);
+          break;
+        \}
+      \}
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:search">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:search instead! */
+/* Searching */
+\$searchskills = (\{ "trait:luck", "mental:observation", "trait:mind" \});
+
+/* Check if we should do the searching script, or fall back on just the RP verb */
+if(!\$dob \&\& \$iob) \$dob = \$iob;
+if(!\$dob) return TRUE;
+if(!\$actor) return TRUE;
+
+if((sizeof(\$dob) \> 1) \|\| (NRefOb(\$dob[0]) != \$actor."base:environment")) return TRUE;
+
+/* So we want to search a room */
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+  EmitTo(\$actor, "You are already busy "+\$message+".");
+  return FALSE;
+\}
+
+\$target = NRefOb(\$dob[0]);
+\$detail = NRefDetail(\$dob[0]);
+
+/* Hack. Don't use searching if there are search scripts (since for some reason this stops other scripts, including pre scripts) */
+if(FindMerry(\$target, "react-pre", "search-dob") \|\| FindMerry(\$target, "react", "search-dob") \|\| FindMerry(\$target, "react-post", "search-dob")) \{
+  return TRUE;
+\}
+
+/* We started searching here */
+\$workenv = \$actor."base:environment";
+EmitTo(\$actor, "You begin searching "+Describe(\$dob[0])+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" begins searching "+Describe(\$dob[0])+".", \$actor);
+
+/* Make the search roll */
+\$result = ironclaw::roll(\$roller: \$actor, \$skills: \$searchskills, \$bonus: "trait:mind");
+
+/* delay based on how good their roll was */
+if(\$result \< 32) \{
+  \$id = ironclaw::busy_start(\$character: \$actor, \$action: "searching for an item", \$timer: 36-(\$result)+1);
+  \$delay(36-(\$result), FALSE, "67ae");
+\} else \{
+  \$id = ironclaw::busy_start(\$character: \$actor, \$action: "searching for an item", \$timer: 5+1);
+  \$delay(5, FALSE, "458d");
+\}
+
+if(!\$actor) return TRUE;
+
+/* mark them as not busy */
+if(\$actor."busy:id" != \$id) return TRUE;
+/* ironclaw::busy_stop(\$character: \$actor, \$id: \$id); // No need to stop, because we've added a timer to busy_start. */
+
+/* Check if they left the area */
+if(\$actor."base:environment" != \$workenv) \{
+  EmitTo(\$actor, "Your search was halted due to the fact that you left the area.");
+  return FALSE;
+\}
+
+/* We've delayed to mimic a thorough search, make another searching roll to see if we discovered anything */
+\$result = ironclaw::roll(\$roller: \$actor, \$skills: \$searchskills, \$bonus: "trait:mind");
+
+/* make it easier to find the item, since we're searching in the right detail */
+\$result = \$result + 4;
+
+/* Check if we've previously hidden something here */
+if(Get(\$target, "searching:"+\$detail+":actormapping")) \{
+  \$tmp = Get(\$target, "searching:"+\$detail+":actormapping");
+  while(\$tmp[name(\$actor)]) \{
+    /* The actor hid something here */
+    /* Pick one of the hidden items */
+    \$discovery = \$tmp[name(\$actor)][random(sizeof(\$tmp[name(\$actor)]))];
+
+    /* Remove the item from the list */
+    Call(this, "remove_item");
+
+    /* Check that the item is still available */
+    if(\$discovery \&\& (\$discovery."base:environment" == \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\} \|\| !\$discovery."base:environment")) \{
+      EmitTo(\$actor, "You uncover "+Describe(\$discovery)+" and retrieve it from its hiding place.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" uncovers "+Describe(\$discovery)+" and retrieves it from its hiding place.", \$actor);
+      \$discovery."base:environment" = \$actor;
+
+      /* Need to make sure we were successful in moving the object into the chatter's inventory (for cases where the object is too heavy). If it is too heavy, simply place it in the chatter's environment. */
+      if(\$discovery."base:environment" != \$actor) \{
+          \$discovery."base:environment" = \$actor."base:environment";
+      \}
+
+      return FALSE;
+    \}
+  \}
+\}
+
+/* Get a mapping of possible discoveries */
+if(Get(\$target, "searching:"+\$detail+":searchmapping")) \$tmp = Get(\$target, "searching:"+\$detail+":searchmapping");
+
+if(\$tmp) \{
+  \$array = (\{ \});
+  /* gather an array of all possible items */
+  for(\$i=1;\$i\<=\$result;\$i++) \{
+    if(\$tmp[Str(\$i)]) \$array += \$tmp[Str(\$i)];
+  \}
+
+  while(!\$discovery \&\& (sizeof(\$array) \> 0))\{
+    /* pick a possible item */
+    \$discovery = \$array[random(sizeof(\$array))];
+
+    /* Remove the discovery from the list */
+    Call(this, "remove_item");
+
+    /* Check that the item is still available */
+    if((\$discovery."base:environment" == \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\}) \|\| !\$discovery."base:environment") \{
+      EmitTo(\$actor, "You uncover "+Describe(\$discovery)+" and retrieve it from its hiding place.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" uncovers "+Describe(\$discovery)+" and retrieves it from its hiding place.", \$actor);
+      \$discovery."base:environment" = \$actor;
+
+      /* Need to make sure we were successful in moving the object into the chatter's inventory (for cases where the object is too heavy). If it is too heavy, simply place it in the chatter's environment. */
+      if(\$discovery."base:environment" != \$actor) \{
+          \$discovery."base:environment" = \$actor."base:environment";
+      \}
+
+      return FALSE;
+    \} else \{
+      \$discovery = nil;
+    \}
+  \}
+\}
+
+/* Harder to find something if we're not searching in the right detail */
+\$result = \$result - 4;
+
+/* Didn't find anything. Do we find something in the rest of the room? */
+if(\$detail == "default") \{
+
+  /* Get a mapping of all possible discoveries */
+
+  \$details = Get(\$target, "*");
+  \$details = prefixed_map(\$details, "searching:");
+  \$details = map_indices(\$details);
+
+  for(\$j=0;\$j\<sizeof(\$details);\$j++) \{
+    if(sscanf(\$details[\$j], "%s:searchmapping", \$detail) \&\& sscanf(\$detail, "searching:%s", \$detail)) \{
+
+/* Get a mapping of possible discoveries */
+if(Get(\$target, "searching:"+\$detail+":searchmapping")) \$tmp = Get(\$target, "searching:"+\$detail+":searchmapping");
+
+if(\$tmp) \{
+  \$array = (\{ \});
+  /* gather an array of all possible items */
+  for(\$i=1;\$i\<=\$result;\$i++) \{
+    if(\$tmp[Str(\$i)]) \$array += \$tmp[Str(\$i)];
+  \}
+
+  while(!\$discovery \&\& (sizeof(\$array) \> 0))\{
+    /* pick a possible item */
+    \$discovery = \$array[random(sizeof(\$array))];
+
+    /* Remove the discovery from the list */
+    Call(this, "remove_item");
+
+    /* Check that the item is still available */
+    if(\$discovery \&\& (\$discovery."base:environment" == \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\}) \|\| !\$discovery."base:environment") \{
+      EmitTo(\$actor, "You uncover "+Describe(\$discovery)+" and retrieve it from its hiding place.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" uncovers "+Describe(\$discovery)+" and retrieves it from its hiding place.", \$actor);
+      \$discovery."base:environment" = \$actor;
+
+      /* Need to make sure we were successful in moving the object into the chatter's inventory (for cases where the object is too heavy). If it is too heavy, simply place it in the chatter's environment. */
+      if(\$discovery."base:environment" != \$actor) \{
+          \$discovery."base:environment" = \$actor."base:environment";
+      \}
+
+      return FALSE;
+    \} else \{
+      \$discovery = nil;
+    \}
+  \}
+\}
+
+
+    \}
+  \}
+
+
+\}
+
+/* Didn't find anything. Do we find something random? */
+/* are we allowed to find any more random objects? */
+\$findrandom = 1;
+if(typeof(\$target."searching:randomobjects") == T_ARRAY) \{
+  \$target."searching:randomobjects" = \$target."searching:randomobjects"[random(sizeof(\$target."searching:randomobjects"))];
+\} else if(typeof(\$target."searching:randomobjects") == T_INT \&\& \$target."searching:randomobjects" \< 1) \{
+  \$findrandom = nil;
+\} else if(typeof(\$target."searching:randomobjects") != T_INT) \{
+  \$target."searching:randomobjects" = 1;
+\}
+
+/* is there a random delay we have to respect? */
+if(\$target."searching:randomdelayuntil" \&\& \$target."searching:randomdelayuntil" \> time()) \{
+  \$findrandom = nil;
+\}
+
+\$randnum = random(3);
+
+/* if(\$findrandom \&\& (\$randnum)\&\&(\$tmp = Get(\$target, "searching:random:"+NRefDetail(\$dob[0])))) \{ */
+if(\$randnum \&\& (\$tmp = Get(\$target, "searching:random:"+NRefDetail(\$dob[0])))) \{
+  /* is there a random delay to set? */
+  if(\$target."searching:randomdelay")
+    \$target."searching:randomdelayuntil" = time()+Arr(\$target."searching:randomdelay")[random(sizeof(Arr(\$target."searching:randomdelay")))];
+
+  /* how many random items left? */
+  if(\$target."searching:randomobjects")
+    \$target."searching:randomobjects"--;
+
+  /* Luck roll! */
+  \$luck = random(24);
+  \$luck = random(\$luck);
+
+  if(\$luck \> \$result) \$result = \$luck;
+
+  /* pick an item */
+
+  \$result = Int(Flt(\$result)/24.0 * Flt(sizeof(\$tmp)));
+
+  \$tmp = Arr(\$tmp[random(\$result)]);
+
+  /* \$tmp = Arr(\$tmp[random(sizeof(\$tmp))]); */
+  \$discovery = Spawn(\$tmp[0]);
+
+  /* set the properties for this item */
+  for(\$i=1;\$i\<sizeof(\$tmp);\$i++) \{
+    Set(\$discovery, \$tmp[\$i][0], \$tmp[\$i][random(sizeof(\$tmp[\$i])-1)+1]);
+  \}
+
+  EmitTo(\$actor, "You uncover "+Describe(\$discovery)+" and retrieve it from its hiding place.");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" uncovers "+Describe(\$discovery)+" and retrieves it from its hiding place.", \$actor);
+  \$discovery."base:environment" = \$actor;
+
+      /* Need to make sure we were successful in moving the object into the chatter's inventory (for cases where the object is too heavy). If it is too heavy, simply place it in the chatter's environment. */
+      if(\$discovery."base:environment" != \$actor) \{
+          \$discovery."base:environment" = \$actor."base:environment";
+      \}
+      if(!\$discovery."base:environment") Slay(\$discovery);
+
+  return FALSE;
+\}
+
+EmitTo(\$actor, "You find nothing.");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" finds nothing.", \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:searching_env">
+         X[M] /* So we want to search a room */                 
+                 
+if(\$actor.isbusy) \{                 
+  EmitTo(\$actor, "You are in the middle of something. Please wait for your current action to complete before attempting something new.");      
+  return FALSE;                 
+\}                 
+                      
+/* Where are we searching?*/                 
+if(\$dob)                 
+\{                 
+  /* are we trying to search too many places? */                 
+  if(sizeof(\$dob) \> 1) \{                 
+    EmitTo(\$actor, "You can only search one location at a time.");                 
+    return TRUE;                 
+  \}                 
+  \$target = NRefOb(\$dob[0]);                 
+  \$detail = NRefDetail(\$dob[0]);                 
+\} else \{                 
+  /* no DOB, so return true */                 
+  return TRUE;                 
+\}      
+                               
+  /* We started searching here */                 
+  \$actor.isbusy = 1;      
+\$actor.workenv = \$actor."base:environment";      
+  EmitTo(\$actor, "You begin searching "+Describe(\$dob[0])+".");      
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" begins searching "+Describe(\$dob[0])+".", \$actor);      
+      
+  /* Make the search roll */                 
+  /* \$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:mind", \$actor."trait:luck", \$actor."skill:mental:search", \$actor."career:mental:search" \})); */    
+  \$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "mental:observation", random(24) \}), \$bonus: "trait:mind");  
+  /* delay based on how good their roll was */      
+  \$delay(36-(\$result*3), FALSE, "1660");      
+      
+  /* We've delayed to mimic a thorough search, make another searching roll to see if we discovered anything */      
+  /* \$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:mind", \$actor."trait:luck", \$actor."skill:mental:search", \$actor."career:mental:search" \})); */   
+  \$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "mental:observation", random(24) \}), \$bonus: "trait:mind");  
+                     
+  /* We need to roll at least a 3 to uncover something */                 
+  if(\$result \< 3)                 
+  \{                 
+    EmitTo(\$actor, "You stop searching and have had no luck.");      
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" stops searching.", \$actor);      
+  \} else \{             
+    /* Check if they left the area */      
+if(\$actor."base:environment" != \$actor.workenv) \{         
+     EmitTo(\$actor, "Your search was halted due to the fact that you left the area.");      
+\$actor.isbusy = nil;                 
+\$actor.workenv = nil;     
+return FALSE;      
+\}  else \{  
+    /* We found an array of hidden items */                 
+    /* Pick a hidden item from the array, and let the actor uncover it */                 
+    \$searcharray = Get(\$target, "searching:"+\$detail+":searcharray");      
+    if(sizeof(\$searcharray) == 0) \{      
+      \$discovery = (\$\{Allegory:Props:Finance:Cash:Lira\});      
+      \$obwoe = (NRefOb(\$discovery));      
+      \$discovery = Spawn(\$obwoe);      
+      \$discovery."base:environment" = \$actor;      
+    \} else \{      
+      \$discovery = \$searcharray[random(sizeof(\$searcharray))];      
+      \$obwoe = (NRefOb(\$discovery));       
+      \$searcharray -= (\{ \$obwoe \});       
+      /* move the discovery to the actor */                 
+      \$discovery."base:environment" = \$actor;      
+      Set(\$target, "searching:"+\$detail+":searcharray", \$searcharray);         
+    \}             
+    /* Does the actor deserve a better or worse find? */                 
+    if(\$result \< 10) \{      
+      /* We get a worse find, if they exist */                 
+      if(Get(\$target, "searching:"+\$detail+":lowsearcharray")) \{      
+        if(sizeof(\$searcharray) == 0) \{          
+          \$discovery = (\$\{Allegory:Props:Finance:Cash:Lira\});      
+          \$obwoe = (NRefOb(\$discovery));      
+          \$discovery = Spawn(\$obwoe);      
+          \$discovery."base:environment" = \$actor;      
+        \} else \{      
+          \$searcharray = Get(\$target, "searching:"+\$detail+":lowsearcharray");          
+          \$discovery = \$searcharray[random(sizeof(\$searcharray))];               
+          \$obwoe = (NRefOb(\$discovery));       
+          \$searcharray -= (\{ \$obwoe \});      
+          /* move the discovery to the actor */                 
+          \$discovery."base:environment" = \$actor;       
+          Set(\$target, "searching:"+\$detail+":lowsearcharray", \$searcharray);           
+        \}      
+      \}      
+    \} else if(\$result \> 16) \{                 
+      /* We get a better find, if they exist */                 
+      if(Get(\$target, "searching:"+\$detail+":highsearcharray")) \{      
+        if(sizeof(\$searcharray) == 0) \{       
+          \$discovery = (\$\{Allegory:Props:Finance:Cash:Lira\});      
+          \$obwoe = (NRefOb(\$discovery));      
+          \$discovery = Spawn(\$obwoe);      
+          \$discovery."base:environment" = \$actor;      
+        \} else \{      
+          \$searcharray = Get(\$target, "searching:"+\$detail+":highsearcharray");      
+          \$discovery = \$searcharray[random(sizeof(\$searcharray))];               
+          \$obwoe = (NRefOb(\$discovery));       
+          \$searcharray -= (\{ \$obwoe \});      
+          /* move the discovery to the actor */                 
+          \$discovery."base:environment" = \$actor;       
+          Set(\$target, "searching:"+\$detail+":highsearcharray", \$searcharray);       
+        \}      
+      \}      
+    \}              
+    EmitTo(\$actor, "You uncover "+Describe(\$discovery)+" and retrieve it from its hiding place.");      
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" uncovers "+Describe(\$discovery)+" and retrieves it from its hiding place.", \$actor);      
+  \}          \}           
+                 
+\$actor.isbusy = nil;                 
+\$actor.workenv = nil;      
+                 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:searching_what">
+         X[M] if(\$dob \&\& (sizeof(\$dob) == 1) \&\& (NRefOb(\$dob[0]) == \$actor."base:environment")) \{                
+  return Call (\$this, "searching_env");          
+\} else \{          
+return TRUE;        
+\}          
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1134349640, "tunk_bodin", "X", 1134438806, "tonyd", "P", 1134438875, "tonyd", "P", 1134438886, "tonyd", "P", 1134438896, "tonyd", "P", 1134438907, "tonyd", "P", 1134438968, "tonyd", "P", 1134438983, "tonyd", "P", 1134438996, "tonyd", "P", 1134450038, "tonyd", "P", 1134450057, "tonyd", "P", 1134450133, "tonyd", "P", 1134450289, "tonyd", "P", 1134450411, "tonyd", "P", 1134450516, "tonyd", "P", 1134450578, "tonyd", "P", 1134450975, "tonyd", "P", 1136270700, "tunk_bodin", "X", 1136845230, "tunk_bodin", "X", 1137090180, "tunk_bodin", "X", 1137529292, "tunk_bodin", "X", 1137530130, "tunk_bodin", "X", 1137530462, "tunk_bodin", "X", 1137531004, "tunk_bodin", "X", 1137548779, "tunk_bodin", "X", 1137560006, "tonyd", "P", 1137561191, "tunk_bodin", "X", 1137561228, "tunk_bodin", "X", 1137561425, "tunk_bodin", "X", 1137561512, "tunk_bodin", "X", 1137561723, "tunk_bodin", "X", 1137577593, "tonyd", "P", 1137577604, "tonyd", "P", 1137578944, "tonyd", "P", 1137580781, "tonyd", "P", 1137580857, "tonyd", "P", 1137581066, "tonyd", "P", 1137581140, "tonyd", "P", 1137582352, "tonyd", "P", 1137582779, "tonyd", "P", 1137582933, "tonyd", "P", 1137583069, "tonyd", "P", 1137583197, "tonyd", "P", 1137583275, "tonyd", "P", 1137583299, "tonyd", "P", 1137583433, "tonyd", "P", 1137583625, "tonyd", "P", 1137583975, "tonyd", "P", 1137584076, "tonyd", "P", 1137584176, "tonyd", "P", 1137584434, "tonyd", "P", 1137584608, "tonyd", "P", 1137584726, "tonyd", "P", 1137584837, "tonyd", "P", 1137584940, "tonyd", "P", 1137585046, "tonyd", "P", 1137585544, "tonyd", "P", 1137586017, "tonyd", "P", 1137586276, "tonyd", "P", 1137586353, "tonyd", "P", 1137586408, "tonyd", "P", 1137586654, "tonyd", "P", 1137586791, "tonyd", "P", 1137588037, "tonyd", "P", 1137588073, "tonyd", "P", 1137588229, "tonyd", "P", 1137588978, "tonyd", "P", 1137590397, "tonyd", "P", 1137590498, "tonyd", "P", 1137590655, "tonyd", "P", 1137591306, "tonyd", "P", 1137591390, "tonyd", "P", 1137591686, "tonyd", "P", 1137592214, "tonyd", "P", 1137592236, "tonyd", "P", 1137592392, "tonyd", "P", 1137592414, "tonyd", "P", 1137592461, "tonyd", "P", 1137592508, "tonyd", "P", 1137592543, "tonyd", "P", 1137592635, "tonyd", "P", 1137593051, "tonyd", "P", 1137593500, "tonyd", "P", 1137593638, "tonyd", "P", 1137593683, "tonyd", "P", 1137593725, "tonyd", "P", 1137593851, "tonyd", "P", 1137593890, "tonyd", "P", 1137593990, "tonyd", "P", 1137594120, "tonyd", "P", 1137594247, "tonyd", "P", 1137692688, "tunk_bodin", "X", 1137692750, "tunk_bodin", "X", 1140353961, "tonyd", "P", 1140354237, "tonyd", "P", 1140355467, "tonyd", "P", 1140357017, "tonyd", "P", 1140357056, "tonyd", "P", 1140357094, "tonyd", "P", 1140357136, "tonyd", "P", 1140357256, "tonyd", "P", 1140526222, "tonyd", "P", 1140526260, "tonyd", "P", 1140603538, "tonyd", "P", 1140603631, "tonyd", "P", 1140604870, "tonyd", "P", 1140604918, "tonyd", "P", 1140604962, "tonyd", "P", 1140605291, "tonyd", "P", 1140605373, "tonyd", "P", 1140605534, "tonyd", "P", 1140605737, "tonyd", "P", 1140605879, "tonyd", "P", 1140605961, "tonyd", "P", 1140606128, "tonyd", "P", 1140606651, "tonyd", "P", 1140607128, "tonyd", "P", 1140607245, "tonyd", "P", 1140607516, "tonyd", "P", 1140607708, "tonyd", "P", 1140607910, "tonyd", "P", 1140608036, "tonyd", "P", 1140608219, "tonyd", "P", 1140608302, "tonyd", "P", 1140608550, "tonyd", "P", 1140608702, "tonyd", "P", 1140609546, "tonyd", "P", 1140609566, "tonyd", "P", 1140609806, "tonyd", "P", 1140609954, "tonyd", "P", 1140610179, "tonyd", "P", 1140610549, "tonyd", "P", 1140610718, "tonyd", "P", 1140610983, "tonyd", "P", 1140611486, "tonyd", "P", 1140611799, "tonyd", "P", 1140612520, "tonyd", "P", 1140612799, "tonyd", "P", 1146354198, "tunk_bodin", "X", 1146354309, "tunk_bodin", "X", 1146354392, "tunk_bodin", "X", 1146354450, "tunk_bodin", "X", 1146356614, "tunk_bodin", "X", 1177009834, "tonyd", "E", 1182245212, "tonyd", "P", 1182245247, "tonyd", "P", 1182655667, "tonyd", "P", 1182655726, "tonyd", "P", 1182655753, "tonyd", "P", 1182655865, "tonyd", "P", 1182655966, "tonyd", "P", 1182656001, "tonyd", "P", 1182656037, "tonyd", "P", 1182656144, "tonyd", "P", 1182656187, "tonyd", "P", 1182656215, "tonyd", "P", 1182656359, "tonyd", "P", 1182656769, "tonyd", "P", 1182656820, "tonyd", "P", 1182656852, "tonyd", "P", 1182656884, "tonyd", "P", 1182657064, "tonyd", "P", 1182657084, "tonyd", "P", 1182657150, "tonyd", "P", 1182657227, "tonyd", "P", 1182657423, "tonyd", "P", 1182657482, "tonyd", "P", 1182657604, "tonyd", "P", 1194746512, "tonyd", "E", 1194746539, "tonyd", "E", 1194746561, "tonyd", "E", 1194746680, "tonyd", "P", 1194746713, "tonyd", "P", 1194746729, "tonyd", "P", 1194746774, "tonyd", "P", 1194746814, "tonyd", "P", 1194746835, "tonyd", "P", 1194746905, "tonyd", "P", 1194747001, "tonyd", "P", 1194923116, "tonyd", "P", 1205221380, "tonyd", "P", 1205221775, "tonyd", "P", 1205221784, "tonyd", "P", 1205221856, "tonyd", "P", 1205221886, "tonyd", "P", 1205221991, "tonyd", "P", 1205222044, "tonyd", "P", 1205222075, "tonyd", "P", 1205222173, "tonyd", "P", 1205222349, "tonyd", "P", 1205222380, "tonyd", "P", 1205222467, "tonyd", "P", 1205222518, "tonyd", "P", 1205222784, "tonyd", "P", 1205222848, "tonyd", "P", 1205224850, "tonyd", "P", 1205225024, "tonyd", "P", 1205225118, "tonyd", "P", 1205225234, "tonyd", "P", 1205225429, "tonyd", "P", 1205225526, "tonyd", "P", 1205225669, "tonyd", "P", 1205225758, "tonyd", "P", 1205225836, "tonyd", "P", 1230663541, "jominey", "E", 1240895238, "jominey", "E", 1278831467, "tonyd", "P", 1288119174, "rastalabor", "X", 1304058982, "jominey", "E", 1304059160, "jominey", "E", 1304059277, "jominey", "E", 1345174779, "jominey", "E", 1345176250, "jominey", "E", 1345176501, "jominey", "E", 1345177014, "jominey", "E", 1345177266, "jominey", "E", 1345177364, "jominey", "E", 1345177452, "jominey", "E", 1345177592, "jominey", "E", 1345177979, "jominey", "E", 1345178056, "jominey", "E", 1345178304, "jominey", "E", 1345178658, "jominey", "E", 1345181322, "jominey", "E", 1347079885, "jominey", "E", 1389583526, "tonyd", "P", 1451265396, "tonyd", "P", 1451265435, "tonyd", "P", 1451265442, "tonyd", "P", 1451265459, "tonyd", "P", 1451265487, "tonyd", "P", 1451265499, "tonyd", "P", 1451265518, "tonyd", "P", 1451265622, "tonyd", "P", 1451265643, "tonyd", "P", 1451265730, "tonyd", "P", 1451265783, "tonyd", "P", 1451265968, "tonyd", "P", 1451266021, "tonyd", "P", 1451266036, "tonyd", "P", 1451267157, "tonyd", "P", 1451267174, "tonyd", "P", 1451267225, "tonyd", "P", 1451267289, "tonyd", "P", 1451267311, "tonyd", "P", 1451267329, "tonyd", "P", 1451267399, "tonyd", "P", 1463641181, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

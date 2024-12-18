@@ -1,0 +1,1105 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Allegory:Lib:Combat:Cards:Libraries:Scripts)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:charge_action">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:charge_action instead! */
+/* Charge an action */
+if(!\$char \|\| !\$char.combat) return FALSE;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* Sanity check */
+if(!\$char.combat["actions"]) \$char.combat["actions"] = 0;
+
+/* Charge 1 action for this */
+\$char.combat["actions"]--;
+
+if(\$char.combat["actions"] \> 0) \{
+  /* Still have actions remaining. List them */
+  \$delay(0.01, TRUE, "a469");
+  combat::list_actions(\$char: \$char);
+\} else \{
+  /* No more actions remaining. End the turn */
+  combat::end_turn(\$char: \$char);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:datafile">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:datafile instead! */
+/* returns the combat datafile mapping */
+object datafile;
+datafile = \$\{Allegory:Lib:Combat:Cards:CombatData\};
+
+if(\$id) \$combat_data = Get(datafile, Str(\$id));
+if(\$combat_data) return \$combat_data;
+
+if(\$char \&\& \$char.combat \&\& \$char.combat["id"]) \$combat_data = Get(datafile, Str(\$char.combat["id"]));
+if(\$combat_data) return \$combat_data;
+
+/* Didn't find the data - probably because the fight is over */
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_hit">
+         X[M] /* Describe hitting an opponent in combat */
+/* ::describe_hit(\$char:\$char, \$target:\$target, \$weapon:\$weapon, \$defense:\$defense, \$damage:\$damage); */
+/* ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail:\$target_detail, \$weapon: \$weapon, \$defense: \$defense, \$damage: \$damage, \$damagetype: \$damagetype, \$par: ([ ])); */
+/* ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail:\$target_detail, \$weapon: \$weapon, \$defense: \$defense, \$damage: \$damage, \$damagetype: \$attack_options["damagetype"], \$attack_options: copy(\$attack_options), \$attack_roll: \$attack_roll_result[0], \$attack_adj: \$attack_adj, \$par: ([ ]) ); */
+
+
+\$az = \$\{Chatters:AE:ka:kata\};
+EmitTo(\$az, dump_value(\$damage)+" levels of damage for describing hit");
+
+/* If this is triggered after a question, set the expected variables */
+if(\$par \&\& \$par["question_response"] \&\& \$par["args"]) \{
+  \$char = \$par["args"]["char"];
+  \$target = \$par["args"]["target"];
+  \$target_detail = \$par["args"]["target_detail"];
+  \$damage = \$par["args"]["damage"];
+  \$defense = \$par["args"]["defense"];
+  \$weapon = \$par["args"]["weapon"];
+  \$damagetype = \$par["args"]["damagetype"];
+
+  \$actor = \$par["args"]["actor"];
+  \$attack_skills = \$par["args"]["attack_skills"];
+  \$bonus = \$par["args"]["bonus"];
+  \$defender_skills = \$par["args"]["defender_skills"];
+  \$defender_weapon = \$par["args"]["defender_weapon"];
+  \$defender_weapon_skill = \$par["args"]["defender_weapon_skill"];
+  \$result = \$par["args"]["result"];
+  \$soak = \$par["args"]["soak"];
+  \$tmpbonus = \$par["args"]["tmpbonus"];
+
+  \$attack_adj = \$par["args"]["attack_adj"];
+\}
+
+if(!\$attack_options) \{
+  if(\$par["args"]["attack_options"])
+    \$attack_options = \$par["args"]["attack_options"];
+  else
+    error("No attack_options array passed to describe_hit");
+\}
+if(!\$attack_roll) \{
+  if(\$par["args"]["attack_roll"])
+    \$attack_roll= \$par["args"]["attack_roll"];
+  else
+    error("No attack_roll array passed to describe_hit");
+\}
+
+EmitTo(\$az, "Damage1: "+dump_value(\$damage));
+EmitTo(\$az, "Attack options: "+dump_value(\$attack_options));
+EmitTo(\$az, "Target detail: "+dump_value(\$attack_options["target_detail"]));
+
+/* Is there an NPC script for this level of damage? */
+if(FindMerry(\$attack_options["attacker"], "lib", "give_combat_damage")) \{
+  if(!Call(\$attack_options["attacker"], "give_combat_damage", \$char: \$char, \$attacker: \$attack_options["attacker"], \$target: \$attack_options["target"], \$target_detail: \$attack_options["target_detail"])) return TRUE;
+\}
+
+/* Are they given the choice to knock their opponent out of the fight? */
+
+/* TEMPORARY - Only offer to possessed characters */
+if(\$char."udat:object" \&\& NRefOb(\$target)."udat:object") \{
+
+if(!\$par \|\| !\$par["question_response"]) \{
+  /* We haven't asked a question yet - so perhaps we should? */
+  /* Ask if they want to do normal damage, or some other effect */
+  if(NRefOb(\$target)."base:environment"."area:dangerarea" \&\& (Int(NRefOb(\$target)."effect:health:severity") + \$damage) \>= (Int(\$target."status:health-max") - 10)) \{
+    /* Would normally be enough to make the opponent dying or worse */
+    /* Offer the choice of doing the damage, knocking them unconscious, or knocking them out of the fight */
+    /* \$damage = 6; */ /* So we don't accidentally kill someone if they just do an injury */
+    \$delay(0.01, TRUE, "2605");
+    interaction::question(\$actor: \$char, \$question: "What action do you want to do to "+Describe(NRefOb(\$target))+"?", \$expires: 60, \$env: "TRUE", \$a: "Injure "+\$target."base:objective", \$a_ob: this, \$a_fun: "describe_hit", \$b: "Knock "+\$target."base:objective"+" out of combat", \$b_ob: this, \$b_fun: "knock_from_combat", \$c: "Knock "+\$target."base:objective"+" unconscious", \$c_ob: this, \$c_fun: "knock_from_combat_unconscious", \$d: "Grievously wound "+\$target."base:objective", \$d_ob: this, \$d_fun: "knock_from_combat_dying", \$expire_ob: this, \$expire_fun: "describe_hit", \$par: ([ "question_response":TRUE, "char":\$char, "args":args ]));
+    return FALSE;
+  \} else if((Int(NRefOb(\$target)."effect:health:severity") + \$damage) \< (Int(\$target."status:health-max") - 10) \&\& (Int(NRefOb(\$target)."effect:health:severity") + \$damage) \>= Int(Int(\$target."status:health-max")/2)) \{
+    /* Would normally be enough to make the opponent injured */
+    /* Offer the choice of doing the damage or knocking them out of the fight */
+    /* if(\$damage \>= 6) \$damage = 6; */ /* So we don't accidentally kill someone if they just do an injury */
+    \$delay(0.01, TRUE, "59f3");
+    interaction::question(\$actor: \$char, \$question: "What action do you want to do to "+Describe(NRefOb(\$target))+"?", \$expires: 60, \$env: "TRUE", \$a: "Injure "+\$target."base:objective", \$a_ob: this, \$a_fun: "describe_hit", \$b: "Knock "+\$target."base:objective"+" out of combat", \$b_ob: this, \$b_fun: "knock_from_combat", \$expire_ob: this, \$expire_fun: "describe_hit", \$par: ([ "question_response":TRUE, "char":\$char, "args":args ]));
+    return FALSE;
+  \} else if(!NRefOb(\$target)."base:environment"."area:dangerarea" \&\& (Int(NRefOb(\$target)."effect:health:severity") + \$damage) \>= (Int(\$target."status:health-max") - 10)) \{
+    Call(\$this, "knock_from_combat", \$par: ([ "question_response":TRUE, "char": \$char, "args":args ]));
+    return FALSE;
+  \}
+\}
+
+\}
+ 
+/* Figure out what sort of damage we're giving */
+
+if(\$attack_options["damagetype"]) \{
+  \$attacktype = \$attack_options["damagetype"][0];
+  \$woundtype = \$attack_options["damagetype"][1];
+\} else if(\$attack_options["weapon"]."weapon:damagetype") \{
+  \$attacktype = \$attack_options["weapon"]."weapon:damagetype"[random(sizeof(\$attack_options["weapon"]."weapon:damagetype"))];
+  \$woundtype = \$attacktype[1];
+  \$attacktype = \$attacktype[0];
+\} else \{
+  \$attacktype = "strike";
+  \$woundtype = "bruise";
+\}
+
+EmitTo(\$az, "Attack type: "+dump_value(\$attacktype));
+EmitTo(\$az, "Wound type: "+dump_value(\$woundtype));
+
+
+\$adverb = (\{ "quickly", "powerfully", "expertly", "accurately" \});
+\$verb = (\{ "strike", "hit" \});
+ 
+if(!\$attack_options["target_detail"] \|\| NRefDetail(\$attack_options["target_detail"]) == "default") \{
+  \$details = (\{ "chest", "right-arm", "left-arm", "right-shoulder", "left-shoulder", "right-armpit", "left-armpit", "right-bicep", "left-bicep", "right-hand", "left-hand", "right-wrist", "left-wrist", "right-forearm", "left-forearm", "right-leg", "left-leg", "right-thigh", "left-thigh", "right-calf", "left-calf", "right-knee", "left-knee", "right-elbow", "left-elbow", "right-side", "left-side", "hips", "ribs", "stomach", "gut" \});
+  \$attack_options["target_detail"] = NewNRef(\$attack_options["target"], "default");
+  while(sizeof(\$details)) \{
+    \$tmp = \$details[random(sizeof(\$details))];
+    if(Get(\$attack_options["target"], "details:"+\$tmp+":snames") \&\& sizeof(Get(\$attack_options["target"], "details:"+\$tmp+":snames"))) \{
+      \$attack_options["target_detail"] = NewNRef(\$attack_options["target"], \$tmp);
+      \$details = (\{ \});
+    \} else \{
+      \$details -= (\{ \$tmp \});
+    \}
+  \}
+\}
+
+\$target_detail = \$attack_options["target_detail"];
+
+EmitTo(\$az, "Damage4: "+dump_value(\$damage));
+
+/* \$wound_info = ::get_wound(\$target_detail: \$target_detail, \$wound: \$woundtype, \$level: \$damage, \$par: ([ ])); */
+/* \$wound_info = injuries::get_wound(\$target_detail: \$attack_options["target_detail"], \$attacktype: \$attacktype, \$wound: \$woundtype, \$level: \$damage, \$par: ([ ])); */
+/* \$wound_info = Call(\$\{Allegory:Lib:Combat:Cards:Injuries\}, "get_wound", \$target_detail: \$attack_options["target_detail"], \$attacktype: \$attacktype, \$wound: \$woundtype, \$level: \$damage, \$par: ([ ])); */
+
+if(\$weapon."combat:effects") \{
+    \$complications = \$weapon."combat:effects";
+    \$weapon."combat:effects" = nil;
+\} else \{
+    \$complications = nil;
+\}
+
+
+\$wound_info = Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "get_wound", \$target_detail: \$attack_options["target_detail"], \$attacktype: \$attacktype, \$wound: \$woundtype, \$complications: \$complications, \$level: \$damage, \$par: ([ ]));
+
+/* Does the weapon have its own description for hitting? */
+EmitTo(\$\{Chatters:AE:az:azrael\}, "does weapon have hit description?: "+dump_value(\$weapon));
+if(FindMerry(\$weapon, "lib", "describe_hit")) \{
+    Call(\$weapon, "describe_hit", \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defense: \$defense, \$damage: \$damage, \$verb: \$verb, \$adverb: \$adverb);
+\} else \{
+
+    /* Get a description for the attack */
+    if(FindMerry(\$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\}, "lib", "description_"+\$attacktype)) \{
+        Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\}, "description_"+\$attacktype, \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defense: \$defense, \$damage: \$damage, \$damagetype: \$damagetype, \$wound_info: \$wound_info);
+    \} else \{
+        /* This should only be called if someone didn't set up the description library properly... */
+        EmitTo(\$az, "describe_hit unknown attack description library description_"+\$attacktype);
+        Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Attacks\}, "description_strike", \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defense: \$defense, \$damage: \$damage, \$damagetype: \$damagetype, \$wound_info: \$wound_info);
+    \}
+
+    EmitTo(\$char, \$actor_msg);
+    EmitTo(\$target, \$target_msg);
+    EmitIn(\$char."base:environment", \$witness_msg, \$char, \$target);
+    if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", \$witness_msg, \$char, \$target);
+\}
+
+/* And give the wound */
+EmitTo(\$\{Chatters:AE:az:azrael\}, dump_value(\$target_detail));
+EmitTo(\$\{Chatters:AE:az:azrael\}, dump_value(\$wound_info));
+
+/* \$wound = ::give_wound(\$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char, \$par: ([ ])); */
+/* \$wound = injuries::give_wound(\$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char, \$par: ([ ])); */
+\$wound = Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "give_wound", \$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char, \$par: ([ ]));
+
+if(FindMerry(\$target, "lib", "combat_getdamaged"))
+  Call(\$target, "combat_getdamaged", \$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char);
+
+::charge_action(\$char: \$char);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_armor_soak">
+         X[M] object target, bodypartsDB;
+string detail, area;
+mixed * inventory;
+int i, rating, soak;
+
+bodypartsDB = \$\{Allegory:Data:Combat:BodyParts\};
+
+target = NRefOb(\$target_detail);
+detail = NRefDetail(\$target_detail);
+
+if(!target."combat:armor:covers") return (\{ nil, nil \});
+if(!sizeof(target."combat:armor:covers")) return (\{ nil, nil \});
+
+if(!(\$area = Call(bodypartsDB, "get_partarea", \$bodypart: detail))) return (\{ nil, nil \});
+if(!member(\$area, target."combat:armor:covers")) return (\{ nil, nil \});
+
+inventory = target."base:inventory";
+for(i = 0; i \< sizeof(inventory); i++) \{
+    if(inventory[i]."armor:covers" \&\& sizeof(inventory[i]."armor:covers")) \{
+        if(member(\$area, inventory[i]."armor:covers")) \{
+            return (\{ inventory[i], Int(inventory[i]."armor:rating") \});
+        \}
+    \}
+\}
+
+return (\{ nil, nil \});
+      </Core:Property>
+      <Core:Property property="merry:lib:get_dicepool">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_dicepool instead! */
+/* Gathers a combat dicepool */
+int result;
+
+if(!\$char) return (\{ \});
+
+\$dicepool = (\{ \});
+\$result = 0;
+if(\$pool == "attacking") \{
+    /* Get skills for attacker */
+    result = Int(\$char.combat["bonus:attack:endgame"]); /* Include extra attack dice from the endgame */
+
+    /* Weapon specific attribute. */
+    if(\$weapon \&\& \$weapon."weapon:attribute") \{
+        result += Int(Get(\$char, "skill:combat:"+\$weapon."weapon:attribute"));
+    \} else \{
+        /* Weapon doesn't have an attribute. Assume strength. */
+        result += Int(\$char."trait:strength");
+    \}
+
+    /* Also factor in speed for unarmed fighters */
+    if(\$style == "unarmed-fighter") \{
+        result += Int(\$char."trait:speed");
+    \}
+
+    result += Int(\$char."skill:combat:precision"); /* Factor in precision */
+
+    if(\$weapon \&\& \$weapon."weapon:skill") \{
+        /* Also roll the skill for this weapon */
+        result += Int(Get(\$char, "skill:combat:"+\$weapon."weapon:skill"));
+    \} else \{
+        /* Weapon doesn't have a skill. roll unarmed. */
+        result += Int(\$char."skill:combat:unarmed");
+    \}
+
+    if(\$style == "dual-wielding-fighter") \{
+        \$weapon2 = \$char."combat:weapon:offhand";
+
+        /* Weapon specific attribute. */
+        if(\$weapon2 \&\& \$weapon."weapon2:attribute") \{
+            result += Int(Get(\$char, "skill:combat:"+\$weapon2."weapon:attribute"));
+        \} else \{
+            /* Weapon doesn't have an attribute. Assume strength. */
+            result += Int(\$char."trait:strength");
+        \}
+
+        result += Int(\$char."skill:combat:precision"); /* Factor in precision */
+
+        if(\$weapon2 \&\& \$weapon2."weapon:skill") \{
+            /* Also roll the skill for this weapon */
+            result += Int(Get(\$char, "skill:combat:"+\$weapon2."weapon:skill"));
+        \} else \{
+            /* Weapon doesn't have a skill. roll unarmed. */
+            result += Int(\$char."skill:combat:unarmed");
+        \}
+    \}
+
+\} else if(\$pool == "defending") \{
+    /* Get defense for defender */
+    if(\$weapon \&\& \$weapon."weapon:skill")
+        \$defender_weapon_skill = "combat:"+\$weapon."weapon:skill";
+    else
+        \$defender_weapon_skill = "combat:unarmed";
+
+    /* What are they doing? */
+    if(\$type == "counter") \{
+        result = Int(\$char."trait:intellect") + Int(Get(\$char, "skill:"+\$defender_weapon_skill));
+    \} else if(\$type == "parry") \{
+        if(\$style != "ranged") \{
+            result = Int(\$char."trait:perception") + Int(Get(\$char, "skill:combat:parry"));
+            if(\$style == "dual-wielding-fighter") \{
+                result += Int(\$char."trait:perception") + Int(Get(\$char, "skill:combat:parry"));
+            \}
+        \} else \{
+            result += 0;
+        \} 
+    \} else if(\$type == "dodge") \{
+        result = Int(\$char."trait:speed") + Int(Get(\$char, "skill:combat:dodge"));
+    \} else if(\$type == "shield") \{
+        result = Int(\$char."trait:strength") + Int(\$char."skill:combat:shield");
+    \} 
+\}
+
+if(\$char."combat:armor:penalty") \$result -= Int(\$char."combat:armor:penalty");
+
+if(\$penalty) result = Int(Flt(result)/4.0);
+
+EmitTo(\$az, Str(\$pool) + " penalty? " + Str(\$penalty));
+EmitTo(\$az, "Roll Result Is " + dump_value(result));
+return result;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_weapon">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_weapon instead! */
+/* Return the appropriate weapon for this fighter */
+/* \$primaryweapon = combat::get_weapon(\$char:\$char, \$type:"primary"); */
+/* \$offweapon = combat::get_weapon(\$char:\$char, \$type:"off"); */
+
+if(!\$char) return nil;
+
+if(\$type == "parry") \{
+  /* Cheat! Just return the primary weapon  */
+  /* Extension: Should get both primary and secondary, and check which is better */
+  \$weapon = ::get_weapon(\$type: "primary");
+  if(!\$weapon \|\| \$weapon."combat:noparry")
+    \$weapon = ::get_weapon(\$type: "off");
+  if(!\$weapon \|\| \$weapon."combat:noparry")
+    return nil;
+  return \$weapon;
+\}
+
+if(\$type == "primary") \{
+  if(\$char."combat:weapon:mainhand") return \$char."combat:weapon:mainhand";
+  /* Didn't return anything? Then we return the natural weapon */
+  \$type = "natural";
+\}
+if(\$type == "offhand") \{
+  if(\$char."combat:weapon:offhand") return \$char."combat:weapon:offhand";
+  /* Didn't return anything? Then we return the natural weapon */
+  \$type = "natural";
+\}
+if(\$type == "shield") \{
+  if(\$char."combat:shield") return \$char."combat:shield";
+  return nil;
+\}
+
+if(\$type == "natural") \{
+  if(\$char."combat:naturalweapon") \{
+      if(typeof(\$char."combat:naturalweapon") == 5) \{
+          \$sz = sizeof(\$char."combat:naturalweapon");
+          return \$char."combat:naturalweapon"[random(\$sz)];
+      \} else \{
+          return \$char."combat:naturalweapon";
+      \}
+  \}
+
+  return \$\{Allegory:Lib:Combat:New:UrPunch\};
+\}
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_wound">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_wound instead! */
+/* Calculate wound information */
+/* ::get_wound(\$target_detail:\$target_detail, \$wound:"bruise", \$level:\$damage, \$par:([]) ); */
+string wound_name, wound_adjective, wound_desc;
+
+/* Call the injuries script space */
+/* return injuries::get_wound(); */
+return Call(\$\{Allegory:Lib:Combat:Cards:Libraries:Wounds\}, "get_wound");
+
+
+/* What is the maximum wound level the victim can take? */
+\$level = ::max_damage(\$damage: Int(\$level), \$victim: \$target_detail);
+
+/* Default wound values, in case they don't get set */
+wound_name = dump_value(\$wound);
+wound_adjective = "injured";
+wound_desc = "has been injured";
+
+/* Now we set the right wound values for this particular wound */
+if(\$wound == "bruise") \{
+  wound_name = "bruise";
+  wound_adjective = "bruised";
+  wound_desc = "has been bruised";
+  if(\$level \<= 0) \{
+    wound_name = "slight bruise";
+    wound_adjective = nil;
+    wound_desc = "has a "+oneof("slight", "light", "small")+" bruise";
+  \} else if(\$level == 1) \{
+    wound_name = "bruise";
+    wound_desc = "has a bruise";
+  \} else if(\$level \<= 2) \{
+    wound_name = "bruise";
+    wound_desc = "has a "+oneof("nasty", "deep", "purple")+" bruise";
+  \} else if(\$level \> 2) \{
+    wound_name = "severe bruise";
+    wound_desc = "has a "+oneof("serious", "injurous", "blackened")+" bruise";
+  \}
+\} else if(\$wound == "cut") \{
+  wound_name = "cut";
+  wound_adjective = "cut";
+  wound_desc = "has been cut";
+  if(\$level \<= 0) \{
+    wound_name = "shallow cut";
+    wound_adjective = nil;
+    wound_desc = "has a "+oneof("slight", "light", "small", "shallow")+" "+oneof("cut", "scrape");
+  \} else if(\$level == 1) \{
+    wound_name = "cut";
+    wound_desc = "has a cut";
+  \} else if(\$level \<= 2) \{
+    wound_name = "cut";
+    wound_desc = "has a "+oneof("nasty", "deep", "painful")+" cut";
+  \} else if(\$level \> 2) \{
+    wound_name = "deep cut";
+    wound_desc = "has a "+oneof("serious", "injurous", "deep")+" "+oneof("cut", "gash");
+  \}
+\} else \{
+  error("Unknown woundtype "+dump_value(\$wound));
+\}
+
+return ([ "level":\$level, "name":wound_name, "adj":wound_adjective, "desc":wound_desc ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:knock_from_combat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:knock_from_combat instead! */
+/* Knocking a target out of combat */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$target = \$par["args"]["target"];
+\$char = \$par["args"]["char"];
+\$damage = \$par["args"]["damage"];
+
+if(NRefOb(\$target)."base:environment"."area:dangerarea") \{
+    \$finalhp = Int(NRefOb(\$target)."effect:health:severity") + \$damage;
+    if(\$finalhp \> (Int(\$target."status:health-max") - 10)) \$damage = (Int(\$target."status:health-max") - 10) - Int(NRefOb(\$target)."effect:health:severity");
+\} else \{
+    if(Int(NRefOb(\$target)."effect:health:severity") \> Int(Int(\$target."status:health-max")/2)) \{
+        \$finalhp = Int(NRefOb(\$target)."effect:health:severity") + \$damage;
+        if(\$finalhp \> (Int(\$target."status:health-max") - 10)) \$damage = (Int(\$target."status:health-max") - 10) - Int(NRefOb(\$target)."effect:health:severity");
+    \}
+\}
+
+\$par["args"]["damage"] = \$damage;
+
+combat::remove_from_combat(\$fighter: \$target);
+::describe_hit(); /* Show the hit that knocks them from combat */
+
+EmitTo(\$char, "You knock "+Describe(\$target)+" out of the fight.");
+if(\$char."base:environment" == \$target."base:environment") \{
+    EmitTo(\$target, Describe(\$char)+" knocks you out of the fight.");
+    EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+\} else \{
+    EmitTo(\$target, "You are knocked out of the fight.");
+    EmitIn(\$target."base:environment", Describe(\$target)+" is knocked out of the fight.", \$char, \$target);
+\}
+
+/* ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:knock_from_combat_dead">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:knock_from_combat_dead instead! */
+/* Knocking a target out of combat */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$target = \$par["args"]["target"];
+\$char = \$par["args"]["char"];
+
+if(\$target."base:environment"."area:dangerarea") \{
+  /* Can only make them dead in a danger area */
+  \$par["args"]["damage"] = 9; /* 9 points of damage will kill */
+\}
+
+combat::remove_from_combat(\$fighter: \$target);
+::describe_hit(); /* Show the hit that knocks them from combat */
+
+EmitTo(\$char, "You knock "+Describe(\$target)+" out of the fight.");
+EmitTo(\$target, Describe(\$char)+" knocks you out of the fight.");
+EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+
+/* ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:knock_from_combat_dying">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:knock_from_combat_dying instead! */
+/* Knocking a target out of combat */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$target = \$par["args"]["target"];
+\$char = \$par["args"]["char"];
+
+if(\$target."base:environment"."area:dangerarea") \{
+  /* Can only make them dying in a danger area */
+  \$par["args"]["damage"] = 7; /* 7 points of damage makes them dying */
+\}
+
+combat::remove_from_combat(\$fighter: \$target);
+::describe_hit(); /* Show the hit that knocks them from combat */
+
+EmitTo(\$char, "You knock "+Describe(\$target)+" out of the fight.");
+EmitTo(\$target, Describe(\$char)+" knocks you out of the fight.");
+EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+
+/* ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:knock_from_combat_unconscious">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:knock_from_combat_unconscious instead! */
+/* Knocking a target out of combat */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$target = \$par["args"]["target"];
+\$char = \$par["args"]["char"];
+
+combat::remove_from_combat(\$fighter: \$target);
+::describe_hit(); /* Show the hit that knocks them from combat */
+/* ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action */
+ironclaw::set_prop(\$obj: \$target, \$prop: "status:unconscious", \$value: 1, \$timer: 60*2);
+
+EmitTo(\$char, "You knock "+Describe(\$target)+" out of the fight.");
+EmitTo(\$target, Describe(\$char)+" knocks you out of the fight.");
+EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+
+\$delay(5, TRUE, "0e96");
+Social(\$target, "stagger");
+
+\$delay(5, TRUE, "1c20");
+Social(\$target, "collapse", "unconsciously");
+EmitTo(\$target, "(You are now unconscious. Please roleplay accordingly, until you are either revived or some time has passed.)");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:make_attack">
+         X[M] /* Should be called by a combat action */
+
+\$az = \$\{Chatters:AE:ka:kata\};
+
+if(!\$attack_options) \$attack_options = ([ ]);
+\$attack_options["attacker"] = \$char;
+
+\$target = \$char.combat["target"];
+
+if(\$char.combat["target_detail"]) \{ 
+    \$target_detail = \$char.combat["target_detail"];
+\} else \{
+    \$target_detail = NewNRef(\$target, "default");
+\}
+
+if(\$char.combat["fighting_style"]) \$attack_options["fighting_style"] = \$char.combat["fighting_style"];
+if(\$char.combat["fighting_style_penalty"]) \$attack_options["fighting_style_penalty"] = \$char.combat["fighting_style_penalty"];
+
+if(\$attack_options["weapon"]) \$weapon = \$attack_options["weapon"];
+
+if(\$par["use_target"]) \{
+  /* Should do more sanity checking than this! */
+  if(\$target != NRefOb(\$par["use_target"])) \{
+    EmitTo(\$actor, "You must target "+Describe(NRefOb(\$par["use_target"]))+" before you can attack. Type: fight \<target\>");
+    return FALSE;
+  \}
+  \$target_detail = \$par["use_target"];
+\}
+
+\$attack_options["target"] = \$target;
+\$attack_options["target_detail"] = \$target_detail;
+
+EmitTo(\$az, "Target is "+dump_value(\$target_detail));
+
+/* What weapon are they using? */
+if(\$weapon == "offhand") \{
+    \$attack_options["weapon"] = ::get_weapon(\$char: \$char, \$type: "offhand");
+\} else if(\$weapon == "shield") \{
+    \$attack_options["weapon"] = ::get_weapon(\$char: \$char, \$type: "shield");
+\} else \{
+    \$attack_options["weapon"] = \$attack_options["weapon"] ? \$attack_options["weapon"] : ::get_weapon(\$char: \$char, \$type: "primary");
+\}
+
+if(\$target."combat:requirement:ranged") \{
+    if(!\$attack_options["weapon"]."weapon:ranged") \{
+        if(FindMerry(\$target, "lib", "run_away")) \{
+            return Call(\$target, "run_away", \$attacker: \$char);
+        \}
+    \}
+\}
+
+\$attack_options["defender_weapon"] = \$attack_options["defender_weapon"] ? \$attack_options["defender_weapon"] : ::get_weapon(\$char: \$target, \$type: "primary");
+
+\$attack_options["defender_weapon_offhand"] = \$attack_options["defender_weapon_offhand"] ? \$attack_options["defender_weapons_offhand"] : ::get_weapon(\$char: \$target, \$type: "offhand");
+
+EmitTo(\$az, "Attacking with weapon: "+dump_value(\$attack_options["weapon"])+". Defending with "+dump_value(\$attack_options["defender_weapon"]));
+
+if(!\$attack_options["damagetype"]) \{
+  if(!\$attack_options["weapon"]."weapon:damagetype") \{
+    \$attack_options["damagetype"] = (\{ "strike", "bruise" \});
+  \} else \{
+    \$attack_options["damagetype"] = \$attack_options["weapon"]."weapon:damagetype"[random(sizeof(\$attack_options["weapon"]."weapon:damagetype"))];
+  \}
+\}
+EmitTo(\$az, "Damage type: "+dump_value( \$attack_options["damagetype"] ));
+
+\$attack_roll_result = ::roll_attack(\$attack_options: copy(\$attack_options));
+
+EmitTo(\$az, "Attack result: "+dump_value( \$attack_roll_result ));
+
+/* Try to get rid of these variables, and use the ones in the attack_options array */
+\$defense = \$attack_roll_result[1];
+\$counter_defense = \$attack_roll_result[1];
+\$result = \$attack_roll_result[0];
+\$weapon = \$attack_options["weapon"];
+\$defender_weapon = \$attack_options["defender_weapon"];
+if(\$attack_options["defender_weapon_offhand"]) \$defender_weapon_offhand = \$attack_options["defender_weapon_offhand"];
+
+if(\$attack_roll_result[0] \> 0) \{
+  /* Attacker hit - calculate damage */
+  \$damage = ::roll_damage(\$attack_options: copy(\$attack_options), \$hit_roll: \$attack_roll_result[0]);
+
+    /* Later on we can set the adjective based on the style of attack (how many successes, etc.) */
+    \$attack_adj = "";
+    switch(random(6)) \{
+        case 8:
+            \$attack_adj = " barely"; break;
+        case 7:
+            \$attack_adj = " competently"; break;
+        case 6:
+            \$attack_adj = " expertly"; break;
+        case 5:
+            \$attack_adj = " recklessly"; break;
+        case 4:
+            \$attack_adj = " dangerously"; break;
+        case 3:
+            \$attack_adj = " quickly"; break;
+        case 2:
+            \$attack_adj = " hastily"; break;
+        case 1:
+            \$attack_adj = " wildly"; break;
+        default:
+            \$attack_adj = "";
+            break;
+    \}
+
+  /* Describe hit and give wound */
+  ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defense: \$defense, \$damage: \$damage, \$damagetype: \$attack_options["damagetype"], \$attack_options: copy(\$attack_options), \$attack_roll: \$attack_roll_result[0], \$attack_adj: \$attack_adj, \$par: ([ ]));
+
+  combat::set_reeling(\$char: \$attack_options["target"], \$notify: \$attack_options["attacker"]);
+
+  ::remove_card_to_deck(\$char: \$char, \$action: "attack", \$object: this);
+  /* We return TRUE instead of charging the action here, in case the hit triggers a question to the player. describe_hit has to charge the action. */
+if(FindMerry(\$target, "lib", "get_attacked")) \{
+    Call(\$target, "get_attacked", \$attacker: \$char);
+\}
+
+if(\$char."udat:possessed") status::change_status(\$char: \$char, \$type: "energy", \$amount: 2);
+
+  return TRUE;
+
+\} else if(\$result == 0) \{
+    /* Tie */
+    if(FindMerry(\$attack_options["weapon"], "lib", "describe_miss")) \{
+      Call(\$attack_options["weapon"], "describe_miss", \$char: \$char, \$target: \$attack_options["target"], \$target_detail: \$attack_options["target_detail"], \$weapon: \$attack_options["weapon"], \$defense: \$attack_options["defense"], \$counter_defense: \$attack_options["counter_defense"], \$result: \$attack_roll_result[0]);
+    \} else \{
+      if(\$counter_defense == "parry") \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+" at "+Describe(\$target)+", who"+oneof("", " barely", " hastily")+" parries it"+oneof("", " to the side", " at the last moment")+".");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", but you "+oneof("", " barely", " hastily")+" parry it"+oneof("", " to the side", " at the last moment")+".");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+" who"+oneof("", " barely", " hastily")+" parries it"+oneof("", " to the side", " at the last moment")+".", \$actor, \$target);
+
+        if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+" who"+oneof("", " barely", " hastily")+" parries it"+oneof("", " to the side", " at the last moment")+".", \$actor, \$target);
+
+      \} else if(\$counter_defense == "dodge") \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+", only inches away from hitting "+Describe(\$target)+".");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", only inches away from hitting you.");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", inches away from hitting "+Describe(\$target)+".", \$actor, \$target);
+        if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", inches away from hitting "+Describe(\$target)+".", \$actor, \$target);
+      \} else \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+", barely glancing " + Describe(\$target."combat:shield") + ".");
+        EmitTo(\$target, Describe(\$char)+" swings "+ Describe(\$weapon, \$char)+", barely glancing " + Describe(\$target."combat:shield", nil, \$target) + ".");
+        EmitIn(\$char."base:environment", Describe(\$char)+ " swings " + Describe(\$weapon, \$char) + ", barely glancing "+ Describe(\$target."combat:shield", \$target) + ".", \$actor, \$target);
+        if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+ " swings " + Describe(\$weapon, \$char) + ", barely glancing "+ Describe(\$target."combat:shield", \$target) + ".", \$actor, \$target);
+      \}
+    \}
+    combat::set_reeling(\$char: \$target, \$notify: \$char);
+    combat::set_reeling(\$char: \$char, \$notify: nil);
+\} else \{
+    /* Defender wins */
+    if(FindMerry(\$weapon, "lib", "describe_miss")) \{
+      Call(\$weapon, "describe_miss", \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defense: \$defense, \$counter_defense: \$counter_defense, \$result: \$result);
+    \} else \{
+      if(\$counter_defense == "parry") \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+" at "+Describe(\$target)+", who"+oneof("", " quickly", " expertly", " smoothly")+" parries it"+oneof("", " to the side", " away")+".");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", but you "+oneof("", " quickly", " expertly", " smoothly")+" parry it"+oneof("", " to the side", " away")+".");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+" who"+oneof("", " quickly", " expertly", " smoothly")+" parries it"+oneof("", " to the side", " away")+".", \$actor, \$target);
+        if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+" who"+oneof("", " quickly", " expertly", " smoothly")+" parries it"+oneof("", " to the side", " away")+".", \$actor, \$target);
+      \} else if(\$counter_defense == "dodge")\{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+" at "+Describe(\$target)+", who "+oneof("shifts", "moves", "dodges")+" out of the way.");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at you, but you "+oneof("shift", "move", "dodge")+" out of the way.");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+", who "+oneof("shifts", "moves", "dodges")+" out of the way.", \$actor, \$target);
+        if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+", who "+oneof("shifts", "moves", "dodges")+" out of the way.", \$actor, \$target);
+      \} else \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+", colliding with "+Describe(\$target."combat:shield")+".");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", colliding with "+ Describe(\$target."combat:shield", nil, \$target) + ".");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", colliding with "+ Describe(\$target."combat:shield", \$target) + ".", \$actor, \$target);
+        if(\$char."base:environment" != \$target."base:environment") EmitIn(\$target."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", colliding with "+ Describe(\$target."combat:shield", \$target) + ".", \$actor, \$target);
+      \}
+    \}
+
+    /* Disabling counterattacks for now, since it's throwing an error */
+    if(FALSE \&\& \$defense == "counter") \{
+      /* Give damage from the counterattack */
+      /* Attacker hit - calculate damage */
+      \$damage = \$result*-1; /* Damage is typically 1 point per success */
+      if(\$defender_weapon."weapon:status:critical") \$damage += \$damage/2; /* Is the attack critical? */
+      if(\$defender_weapon."weapon:status:slaying") \$damage += \$damage; /* Is the attack slaying? */
+      \$damage += Int(\$defender_weapon."weapon:bonus:damage"); /* Add the weapon bonus */
+      /* Add target wound penalties bonus */
+      if(\$char."status:hurt") \$damage += random(2);
+      if(\$char."status:injured") \$damage += random(2);
+      EmitTo(\$az, "Damage: "+dump_value(\$damage));
+
+      /* Target resists with soak */
+      \$armor = ::get_armor_soak(\$detail: \$attack_options["target"]);
+
+      if(\$attack_options["fighting_style"] == "unarmed-fighter") \{
+          \$soakbonus = \$char."skill:combat:unarmed";
+      \} else \{
+          \$soakbonus = 0;
+      \}
+
+      \$soak = ironclaw::roll_dicepool(\$roller: \$char, \$skills: (\{ "trait:resilience", Int(\$char."skill:combat:endurance"), \$armor[1], \$soakbonus \}), \$rolltype: "target", \$target: 4, \$debug: nil);
+
+
+      \$damage -= \$soak;
+      EmitTo(\$az, "Soaked damage: "+dump_value(\$damage));
+      \$damage = ::max_damage(\$damage: \$damage, \$victim: \$char);
+
+      EmitTo(\$az, "Limited damage: "+dump_value(\$damage));
+      /* if(\$char == \$az \|\| \$char == \$\{Chatters:IC:re:rectitude\} ) \$damage = 4; */
+      /* EmitTo(\$az, "Cheating damage: "+dump_value(\$damage)); */
+
+      /* Describe hit and give wound */
+      ::describe_hit(\$char: \$target, \$target: \$char, \$weapon: \$weapon, \$defense: "none", \$damage: \$damage, \$par: ([ ]));
+      combat::set_reeling(\$char: \$char, \$notify: \$target);
+
+    \}
+\}
+
+if(FindMerry(\$target, "lib", "get_attacked")) \{
+    Call(\$target, "get_attacked", \$attacker: \$char);
+\}
+
+::remove_card_to_deck(\$char: \$char, \$action: "attack", \$object: this);
+::charge_action(\$char: \$char, \$notify: nil);
+
+if(\$char."udat:possessed") status::change_status(\$char: \$char, \$type: "energy", \$amount: 2);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:max_damage">
+         X[M] /* Calculate the max damage that can be given to this victim */
+if(!\$damage) return 0;
+if(\$damage \< 0) return 0;
+if(!\$victim) return 0;
+\$victim = NRefOb(\$victim);
+
+return \$damage;
+
+/* Typically, we can only give damage one level higher than the damage already taken */
+/* What is the maximum wound level the victim can take? */
+if(\$damage \>= 1 \&\& !\$victim."status:hurt") \$damage = 1;
+else if(\$damage \>= 3 \&\& !\$victim."status:recently_shaken") \$damage = 3;
+else if(\$damage \>= 5 \&\& !\$victim."status:injured") \$damage = 5;
+/*else if(\$damage \>= 7 \&\& !\$victim."status:dying") \$damage = 7;*/
+else if(\$damage \>= 9) \$damage = 9;
+
+return Int(\$damage);
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_card">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:remove_card instead! */
+/* Removes a card from the player's hand, and discards it */
+/* ::remove_card(\$char:\$char, \$action:"aim", \$object:this); */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Remove card from current options */
+for(i=0;i\<sizeof(\$char.combat["options"]);i++) \{
+  if(\$char.combat["options"][i][0] == \$action
+  \&\& \$char.combat["options"][i][1] == \$object) \{
+    \$char.combat["options"][i] = nil;
+    \$char.combat["options"] -= (\{ nil \});
+    break;
+  \}
+\}
+
+/* Remove card from hand */
+for(i=0;i\<sizeof(\$char.combat["hand"]);i++) \{
+  if(\$char.combat["hand"][i][0] == \$action
+  \&\& \$char.combat["hand"][i][1] == \$object) \{
+    \$char.combat["hand"][i] = nil;
+    \$char.combat["hand"] -= (\{ nil \});
+    break;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_card_to_deck">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:remove_card_to_deck instead! */
+/* Removes a card from the player's hand, and returns it to the deck */
+/* ::remove_card_to_deck(\$char:\$char, \$action:"aim", \$object:this); */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Remove card from current options */
+for(i=0;i\<sizeof(\$char.combat["options"]);i++) \{
+  if(\$char.combat["options"][i][0] == \$action
+  \&\& \$char.combat["options"][i][1] == \$object) \{
+    \$char.combat["options"][i] = nil;
+    \$char.combat["options"] -= (\{ nil \});
+    break;
+  \}
+\}
+
+/* Remove card from hand */
+for(i=0;i\<sizeof(\$char.combat["hand"]);i++) \{
+  if(\$char.combat["hand"][i][0] == \$action
+  \&\& \$char.combat["hand"][i][1] == \$object) \{
+    \$char.combat["deck"] += (\{ \$char.combat["hand"][i] \}); /* Add card back to the deck */
+    \$char.combat["hand"][i] = nil;
+    \$char.combat["hand"] -= (\{ nil \});
+    break;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:roll_attack">
+         X[M] /* Should be called by make_attack, or by a function rolling to see if an attack hit */
+/* Format: ::roll_attack(\$attack_options: \$attack_options); */
+
+EmitTo(\$az, "Rolling attack");
+
+if(!\$attack_options) error("No attack_options array passed to roll_attack");
+
+/* get skills for attacker and defender */
+\$attack_skills = ::get_dicepool(\$char: \$attack_options["attacker"], \$pool: "attacking", \$weapon: \$attack_options["weapon"], \$style: \$attack_options["fighting_style"], \$penalty: \$attack_options["fighting_style_penalty"]);
+/*\$attack_skills += Int(\$attack_options["attack_bonus"]);*/
+
+\$defender_skills = 0;
+\$defense = "none";
+\$counter_defense = "none"; /* In case they're counterattacking, we still want to be able to describe a dodge or parry first */
+
+/* Are they parrying? */
+if(\$attack_options["fighting_style"] != "ranged") \{
+    \$tmp = ::get_dicepool(\$char: NRefOb(\$attack_options["target"]), \$pool: "defending", \$weapon: \$attack_options["defender_weapon"], \$type: "parry", \$style: \$attack_options["target"].combat["fighting_style"], \$penalty: \$attack_options["target"].combat["fighting_style_penalty"]);
+\} else \{
+    \$tmp = 0;
+\}
+EmitTo(\$az, "Parry defense: "+dump_value(\$tmp));
+
+if(\$tmp \> \$defender_skills) \{
+  \$defense = "parry";
+  \$counter_defense = "parry";
+  \$defender_skills = \$tmp;
+\}
+
+/* Are they dodging? */
+\$tmp = ::get_dicepool(\$char: NRefOb(\$attack_options["target"]), \$pool: "defending", \$weapon: \$attack_options["defender_weapon"], \$type: "dodge", \$style: \$attack_options["target"].combat["fighting_style"], \$penalty: \$attack_options["target"].combat["fighting_style_penalty"]);
+EmitTo(\$az, "Dodge defense: "+dump_value(\$tmp));
+if(\$tmp \> \$defender_skills) \{
+  \$defense = "dodge";
+  \$counter_defense = "dodge";
+  \$defender_skills = \$tmp;
+\}
+
+/* Are they using a shield? */
+if(\$attack_options["target"].combat["fighting_style"] == "one-handed-fighter" \&\& NRefOb(\$attack_options["target"])."combat:shield") \{
+  \$tmp = ::get_dicepool(\$char: NRefOb(\$attack_options["target"]), \$pool: "defending", \$weapon: \$attack_options["defender_weapon"], \$type: "shield", \$style: \$attack_options["target"].combat["fighting_style"], \$penalty: \$attack_options["target"].combat["fighting_style_penalty"]);
+  EmitTo(\$az, "Shield defense: "+dump_value(\$tmp));
+  if(\$tmp \> \$defender_skills) \{
+    \$defense = "shield";
+    \$counter_defense = "shield";
+    \$defender_skills = \$tmp;
+  \}
+\}
+
+  /* Are they countering? */
+  /* Disabled */
+  /* \$tmp = ::get_dicepool(\$char: \$target, \$pool: "defending", \$weapon: \$defender_weapon, \$type: "counter"); */
+  /* EmitTo(\$az, "Counter defense: "+dump_value(\$tmp)); */
+  /* if(\$tmp \> \$defender_skills) \{ */
+  /*   \$defense = "counter"; */
+  /*   \$defender_skills = \$tmp; */
+  /* \} */
+
+EmitTo(\$az, "Attack skills: "+dump_value(\$attack_skills));
+EmitTo(\$az, "Defend skills: "+dump_value(\$defender_skills));
+EmitTo(\$az, "Defend type: "+dump_value(\$defense));
+
+/* Is the attacker focused? */
+if(\$attack_options["attacker"].combat["status"]["focused"]) \{
+  if(\$attack_skills \> 10)
+    \$attack_skills *= 2;
+  else
+    \$attack_skills += 10;
+  \$attack_options["attacker"].combat["status"]["focused"] = nil;
+\}
+/* Is the defender guarding? */
+if(NRefOb(\$attack_options["target"]).combat \&\& NRefOb(\$attack_options["target"]).combat["status"]["guarding"]) \{
+  if(\$defense == "counter") \{
+    if(\$defender_skills \> 10)
+      \$defender_skills = Int(Flt(\$defender_skills) * 1.5);
+    else
+      \$defender_skills += 10;
+  \} else \{
+    if(\$defender_skills \> 20)
+      \$defender_skills *= 2;
+    else
+      \$defender_skills += 20;
+  \}
+\}
+
+/* Is anyone at a disadvantage? */
+if(\$attack_options["attacker"].combat["status"]["reeling"]) \{
+  \$defender_skills *= 2;
+\}
+if(NRefOb(\$attack_options["target"]).combat["status"]["reeling"]) \{ 
+  \$attack_skills *= 2;
+\}
+
+EmitTo(\$az, "Rolling "+dump_value(\$attack_skills)+" vs "+dump_value(\$defender_skills));
+\$result = ironclaw::make_opposed_roll(\$val1: \$attack_skills, \$val2: \$defender_skills, \$opposed_roll_range: 12);
+
+if(!\$attack_options["sparring"]) \{
+    if(\$attack_options["fighting_style_penalty"]) \{
+        \$result *= 2;
+    \} else \{
+        \$result *= 5;
+    \}
+\}
+
+if(\$attack_options["fighting_style"] == "dual-wielding-fighter") \{
+    \$result = Int(Flt(\$result) * Flt(0.75));
+\}
+
+if(\$attack_options["fighting_style"] == "two-handed-fighter") \{
+    \$result = Int(Flt(\$result) * Flt(1.5));
+\}
+
+EmitTo(\$az, "Result: "+dump_value(\$result));
+
+return (\{ \$result, \$defense \});
+      </Core:Property>
+      <Core:Property property="merry:lib:roll_damage">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:roll_damage instead! */
+/* Should be called by make_attack, or by a function rolling to see how much damage a hit causes */
+/* Format: ::roll_damage(\$attack_options: \$attack_options, \$hit_roll: \$hit_roll); */
+
+EmitTo(\$az, "Rolling attack");
+
+if(!\$attack_options) error("No attack_options array passed to roll_damage");
+if(!\$hit_roll) \$hit_roll = 1;
+
+\$damage = \$hit_roll; /* Damage is typically 1 point per success */
+
+/* if(\$attack_options["weapon"]."weapon:status:critical") \$damage += \$damage/2; */ /* Is the attack critical? */
+/* if(\$attack_options["weapon"]."weapon:status:slaying") \$damage += \$damage; */ /* Is the attack slaying? */
+/* \$damage += Int(\$attack_options["weapon"]."weapon:bonus:damage"); */ /* Add the weapon bonus */
+/* \$damage += Int(\$attack_options["damage_bonus"]); */
+
+EmitTo(\$az, "Damage: "+dump_value(\$damage));
+    
+/* Target resists with soak */
+/* \$armor = (\{ \$armor_ob, \$value \}); */
+\$armor = ::get_armor_soak(\$detail: \$attack_options["target"]);
+
+if(\$attack_options["fighting_style"] == "unarmed-fighter") \{
+    \$soakbonus = Int(\$attack_options["target"]."skill:combat:unarmed");
+\}
+
+\$soak = ironclaw::roll_dicepool(\$roller: \$attack_options["target"], \$skills: (\{ "trait:resilience", "combat:endurance", \$armor[1], \$soakbonus \}), \$rolltype: "target", \$target: 4, \$debug: nil);
+\$soak *= 5;
+
+EmitTo(\$az, "Soak was: "+dump_value(\$soak));
+
+\$damage -= \$soak;
+if(\$damage \<= 0) \$damage = 1;
+EmitTo(\$az, "Soaked damage: "+dump_value(\$damage));
+\$damage = ::max_damage(\$damage: \$damage, \$victim: \$attack_options["target"]);
+
+EmitTo(\$az, "Limited damage: "+dump_value(\$damage));
+    
+return \$damage;
+      </Core:Property>
+      <Core:Property property="merry:lib:sanity_check">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:sanity_check instead! */
+/* Do some basic sanity checks for a combat action */
+
+if(!\$char) return FALSE;
+if(!\$char.combat) \{
+  if(\$emotes) EmitTo(\$char, "You are not in combat anymore.");
+  return FALSE;
+\}
+
+if(\$needs_action \&\& Int(\$char.combat["actions"]) \< 1) \{
+  if(\$emotes) EmitTo(\$char, "You don't have any actions left. Please wait until your next turn.");
+  return FALSE;
+\}
+
+if(\$needs_target \&\& !\$char.combat["target"]) \{
+  if(\$emotes) \{
+    EmitTo(\$char, "Before using this action, you'll need to choose an opponent. Type: fight \<target\>");
+    combat::list_actions(\$char: \$char);
+  \}
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_combat_actions">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:take_combat_actions instead! */
+/* Generic script for an NPC fighter to take actions in combat */
+int i;
+
+/* EmitIn(\$char."base:environment", Describe(\$char)+" wonders, \\"Do I want to take an action?\\""); */
+
+/* Sanity check */
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Do we have a target? */
+if(!\$char.combat["target"]) \{
+  /* EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"I don't have a target, so I'll skip my turn.\\""); */
+  return FALSE; /* Currently enemies are pretty stupid - they don't yet know how to select a new target */
+\}
+
+/* EmitIn(\$char."base:environment", Describe(\$char)+" wonders, \\"What actions can I take?\\""); */
+\$actions = copy(\$char.combat["options"]);
+for(i=0;i\<sizeof(\$actions);i++) \{
+  /* Check if this action is currently valid  */
+  \$valid = Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE);
+
+  /* if(\$valid) */
+  /*   EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"This is valid: "+dump_value(\$actions[i])+"\\""); */
+  /* else */
+  /*   EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"NOT valid: "+dump_value(\$actions[i])+"\\""); */
+    
+  if(!\$valid) \$actions -= (\{ \$actions[i] \}); /* Remove invalid options */
+\}
+
+/* Do we have any valid actions left? */
+if(!sizeof(\$actions)) return FALSE; /* No valid actions left! */
+
+/* Select a random action */
+\$action = \$actions[random(sizeof(\$actions))];
+/* EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"Imma gunna: "+dump_value(\$action)+"\\""); */
+/* EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"Turn ID is: "+dump_value(\$turn_id)+"\\""); */
+
+/* Does a script exist in the NPC for this action? */
+if(FindMerry(\$char, "lib", "take_combat_action_"+\$action[0]))
+  return Call(\$char, "take_combat_action_"+\$action[0], \$char: \$char);
+
+/* Call the action. Return whatever the action returns (that way if the action worked, it'll have already charged the turn. If not, we'll charge the turn.) */
+return Call(\$action[1], \$action[0], \$char: \$char, \$par: ([ "char":\$char, "taking_action":TRUE, "turn_id":\$turn_id ]));
+
+/*
+interaction::question(\$actor: \$char, \$question: "What action do you want to take? You have "+\$actions_text+" remaining.", \$expires: \$expire_time, \$env: "TRUE", \$a: \$actions[0][2], \$a_ob: \$actions[0][1], \$a_fun: \$actions[0][0], \$b: \$actions[1][2], \$b_ob: \$actions[1][1], \$b_fun: \$actions[1][0], \$c: \$actions[2][2], \$c_ob: \$actions[2][1], \$c_fun: \$actions[2][0], \$d: \$actions[3][2], \$d_ob: \$actions[3][1], \$d_fun: \$actions[3][0], \$e: \$actions[4][2], \$e_ob: \$actions[4][1], \$e_fun: \$actions[4][0], \$expire_ob: \$\{Allegory:Lib:Combat:Cards:Combat\}, \$expire_fun: "question_expire", \$par: \$params);
+
+\$params = ([ "char":\$char, "taking_action":TRUE, "turn_id":\$turn_id ]);
+*/
+
+/* Returning TRUE will not charge actions (which is good if we're going to take an action, like make an attack...) */
+/* Returning FALSE will charge actions automatically (which is good if we don't want to do anything...) */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1567980922, "jominey", "E", 1568834946, "jominey", "E", 1571943273, "jominey", "P", 1571943466, "jominey", "P", 1571943578, "jominey", "P", 1583448386, "jominey", "E", 1583448522, "jominey", "E", 1589903455, "jominey", "E", 1589905443, "jominey", "E", 1589905493, "jominey", "E", 1589905712, "jominey", "E", 1589905807, "jominey", "E", 1589909489, "jominey", "E", 1589909568, "jominey", "E", 1589909636, "jominey", "E", 1589910740, "jominey", "E", 1589914769, "jominey", "E", 1589917166, "jominey", "E", 1589917555, "jominey", "E", 1589917638, "jominey", "E", 1589920236, "jominey", "E", 1591312264, "jominey", "E", 1591312277, "jominey", "E", 1591312513, "jominey", "E", 1592058787, "jominey", "E", 1592059880, "jominey", "E", 1650856444, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

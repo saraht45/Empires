@@ -1,0 +1,188 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:get_jobs">
+         X[M] /* returns a list of jobs that can be done bluebooked, based on \$jobs, which should contain a list of career skills */
+
+string *bluebooked_jobs;
+int i, sz;
+
+if(!\$jobs) return (\{ \});
+
+bluebooked_jobs = (\{ \});
+sz = sizeof(\$jobs);
+for(i=0;i\<sz;i++)\{
+  if(Get(this, \$jobs[i]))
+    bluebooked_jobs \|= Arr(Get(this, \$jobs[i]));
+\}
+
+return bluebooked_jobs;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_job">
+         X[M] int i;
+if(!\$char \|\| !\$guild) return TRUE;
+
+/* Check when the character was last active */
+/* if they were absent more than 5 days, don't give tokens */
+i = 0;
+if(\$char."cdat:lastlogin") i = \$char."cdat:lastlogin";
+
+/*\$az = \$\{Chatters:IC:ro:roo\};
+EmitTo(\$az, dump_value(\$char) + ": " + dump_value(\$char."guild:job"));*/
+
+
+if(i+60*60*24*5 \< time()) \{
+    return TRUE;
+\}
+
+if(!\$char."guild:job") \$char."guild:job" = "earning";
+
+/* no tokens if your guild has no money to pay this PC */
+if((!\$guild.kitty \|\| \$guild.kitty \<= 0) \&\& lower_case(\$char."guild:job") != "earning") return TRUE;
+
+switch(lower_case(\$char."guild:job")) \{
+    case "earning":
+    \{
+        /* they are earning money for their guild */
+        /* base this on their income */
+        i = Int(\$char."trait:income") + Int(\$char."trait:extraincome");
+
+        /* and balance income for the economy */
+        i = Int(Flt(i)*Flt(Get(\$\{Ironclaw:Lib:Economy:economy\}, "economy:balance:income_multiplier")));
+        \$guild.kitty += i;
+
+        /* add to the economy tracker */
+        \$tracker = \$\{Ironclaw:Lib:Economy:economy\};
+        \$tracker."moneypool:pc" += i;
+        \$tracker."moneypool:npc" -= i;
+
+        if(!\$tracker."guild:earning")
+            \$tracker."guild:earning" = 0;
+
+        \$tracker."guild:earning" += i;
+
+        break;
+    \}
+
+    case "working":
+    \{
+        /* they are earning working tokens for their guild */
+        if(!\$guild."tokens:working") \$guild."tokens:working" = 0;
+        \$guild."tokens:working" += 1;
+        break;
+    \}
+
+    default:
+    \{
+        /* they are earning tokens for their guild */
+        object db;
+        string *careers;
+        db = \$\{Ironclaw:Lib:Teaching:newCareersDB\};
+        
+        \$jobs = (\{ \});
+        /* figure out what tokens they can make */
+        careers = map_indices(prefixed_map(\$char."*", "skill:career"));
+        for(i=0;i\<sizeof(careers);i++) \{
+            \$tmp = Get(db, careers[i][13..strlen(careers[i])-1]);
+            if(\$tmp \&\& member(lower_case(\$char."guild:job"), Arr(\$tmp["tokens"]))) \{
+                \$jobs += (\{ careers[i] \});
+            \}
+        \}
+
+        if(!sizeof(\$jobs)) \{
+            /* weird! They are listed as generating a token type that they aren't meant to be able to make */
+            /* must be that they previously had this career, and have since lost it. Or the career tokens changed. */
+            /* either way, set them to be earning. */
+            /* (and they also miss out on today's pay/tokens) */
+
+            \$char."guild:job" = "earning";
+            break;
+        \}
+
+        /* give up to 12 points worth of tokens to the guild */
+        i = 12;
+        while(i\>0\&\&sizeof(\$jobs)) \{
+            /* pick a career, and give up to 12 points worth of that in tokens */
+            \$tmp = \$jobs[random(sizeof(\$jobs))];
+            \$jobs -= (\{ \$tmp \});
+            \$name = \$tmp[13..strlen(\$tmp)-1];
+            if(!Get(\$guild, "tokens:"+lower_case(\$char."guild:job")+":"+\$name))
+                Set(\$guild, "tokens:"+lower_case(\$char."guild:job")+":"+\$name, 0);
+
+                if(Get(\$char, \$tmp) \>= i) \{
+                    Set(\$guild, "tokens:"+lower_case(\$char."guild:job")+":"+\$name,
+                      Get(\$guild, "tokens:"+lower_case(\$char."guild:job")+":"+\$name)+i
+                      );
+                    i = 0;
+                \} else \{
+                    Set(\$guild, "tokens:"+lower_case(\$char."guild:job")+":"+\$name,
+                      Get(\$guild, "tokens:"+lower_case(\$char."guild:job")+":"+\$name)+Get(\$char, \$tmp)
+                      );
+                    i -= Get(\$char, \$tmp);
+                \}
+            \}
+        \}
+    break;
+\}
+
+/* remove any money paid to them from income */
+if(\$char."trait:incomepaid") \{
+  \$guild.kitty -= Int(\$char."trait:incomepaid");
+  \$char."trait:incomepaid" = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1168258240, "tonyd", "E", 1168259608, "tonyd", "P", 1168259620, "tonyd", "P", 1168259683, "tonyd", "P", 1168259702, "tonyd", "P", 1168260585, "tonyd", "P", 1168260626, "tonyd", "P", 1168262383, "tonyd", "P", 1168263251, "tonyd", "P", 1168264764, "tonyd", "P", 1168265063, "tonyd", "P", 1168339604, "tonyd", "E", 1168339646, "tonyd", "E", 1168341611, "tonyd", "E", 1168341766, "tonyd", "P", 1168341786, "tonyd", "P", 1168347108, "tonyd", "P", 1168347206, "tonyd", "P", 1168347246, "tonyd", "P", 1168347262, "tonyd", "P", 1168347275, "tonyd", "P", 1168347293, "tonyd", "P", 1168347322, "tonyd", "P", 1168347343, "tonyd", "P", 1168347541, "tonyd", "P", 1169904971, "tonyd", "P", 1169904995, "tonyd", "P", 1169905185, "tonyd", "P", 1169905206, "tonyd", "P", 1169905244, "tonyd", "P", 1185683711, "tonyd", "P", 1185684566, "tonyd", "P", 1185701571, "tonyd", "P", 1187437097, "tonyd", "P", 1187439956, "tonyd", "P", 1192935759, "tonyd", "P", 1195995988, "tonyd", "P", 1195996312, "tonyd", "P", 1201444100, "tonyd", "P", 1201444121, "tonyd", "P", 1201444132, "tonyd", "P", 1201738138, "tonyd", "P", 1246770802, "tonyd", "P", 1246771164, "tonyd", "P", 1246787691, "tonyd", "P", 1246787706, "tonyd", "P", 1246789514, "tonyd", "P", 1246789706, "tonyd", "P", 1246789747, "tonyd", "P", 1246789831, "tonyd", "P", 1246789868, "tonyd", "P", 1246790270, "tonyd", "P", 1246790339, "tonyd", "P", 1246790345, "tonyd", "P", 1246790374, "tonyd", "P", 1246790416, "tonyd", "P", 1246790563, "tonyd", "P", 1246790634, "tonyd", "P", 1246790961, "tonyd", "P", 1246791242, "tonyd", "P", 1246791466, "tonyd", "P", 1247034651, "tonyd", "P", 1261797687, "tonyd", "P", 1346025519, "jominey", "E", 1346027460, "jominey", "E", 1479248438, "jominey", "E", 1479248621, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:career:assassin">
+         (\{ "assassinating", "spying" \})
+      </Core:Property>
+      <Core:Property property="skill:career:bodyguard">
+         (\{ "guarding" \})
+      </Core:Property>
+      <Core:Property property="skill:career:constable">
+         (\{ "guarding" \})
+      </Core:Property>
+      <Core:Property property="skill:career:dilettante">
+         (\{ "teaching" \})
+      </Core:Property>
+      <Core:Property property="skill:career:guard">
+         (\{ "guarding" \})
+      </Core:Property>
+      <Core:Property property="skill:career:mercenary">
+         (\{ "raiding caravans" \})
+      </Core:Property>
+      <Core:Property property="skill:career:pirate">
+         (\{ "raiding ships" \})
+      </Core:Property>
+      <Core:Property property="skill:career:scholar">
+         (\{ "teaching" \})
+      </Core:Property>
+      <Core:Property property="skill:career:scout">
+         (\{ "guarding caravans", "spying" \})
+      </Core:Property>
+      <Core:Property property="skill:career:soldier">
+         (\{ "guarding caravans" \})
+      </Core:Property>
+      <Core:Property property="skill:career:spy">
+         (\{ "assassinating", "spying" \})
+      </Core:Property>
+      <Core:Property property="skill:career:teacher">
+         (\{ "teaching" \})
+      </Core:Property>
+      <Core:Property property="skill:career:thief">
+         (\{ "spying" \})
+      </Core:Property>
+      <Core:Property property="skill:career:thug">
+         (\{ "guarding", "raiding caravans" \})
+      </Core:Property>
+      <Core:Property property="skill:career:translator">
+         (\{ "teaching" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

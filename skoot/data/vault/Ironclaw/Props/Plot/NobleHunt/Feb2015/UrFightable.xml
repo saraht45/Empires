@@ -1,0 +1,252 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:NPCs:Enemies:People:UrTypicalBase)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:combat:fightable">
+         1
+      </Core:Property>
+      <Core:Property property="export:combat:unarmed">
+         18
+      </Core:Property>
+      <Core:Property property="export:nip:group">
+         "forest-only"
+      </Core:Property>
+      <Core:Property property="export:trait:agility">
+         10
+      </Core:Property>
+      <Core:Property property="export:trait:body">12</Core:Property>
+      <Core:Property property="export:trait:speed">
+         10
+      </Core:Property>
+      <Core:Property property="export:trait:type">
+         "unknown"
+      </Core:Property>
+      <Core:Property property="merry:lib:die">
+         X[M] \$this."trait:dead" = TRUE;
+Set(\$this, "details:default:sname:corpse", TRUE);
+Set(\$this, "details:default:pname:corpses", TRUE);
+Set(\$this, "details:default:adjective:dead", TRUE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fight_outcome_kill">
+         X[M] \$fighter = \$char;
+
+EmitIn(\$this."base:environment", Describe(\$this) + " twitches helplessly before succumbing to its wounds.");
+ 
+\$this."status:hurt" = nil; 
+\$this."savedprop:status:hurt" = nil; 
+\$this."status:afraid" = nil; 
+\$this."savedprop:status:afraid" = nil; 
+\$this."status:recently_afraid" = nil; 
+\$this."savedprop:status:recently_afraid" = nil; 
+\$this."status:injured" = nil; 
+\$this."savedprop:status:injured" = nil; 
+\$this."trait:state" = "dead";
+
+Set(\$fighter, "tmp:combat:" + \$this."trait:type" + ":killed", Int(Get(\$fighter, "tmp:combat:" + \$this."trait:type" + ":killed"))+1); 
+
+\$delay(60*60, FALSE, "d3ee");
+
+EmitIn(\$this."base:environment", Describe(\$this) + " really starts to rot.");
+
+Slay(\$this);
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_target">
+         X[M] /* When the NPC is looking for a target */  
+int i;  
+  
+/* In this example, we want to target PCs */  
+\$options = Match(this."base:environment", "pc");  
+\$preferred_options = (\{ \});  
+  
+/* We need to convert the NRef's from the PC list into objects */  
+for(i=0; i\<sizeof(\$options); i++)  
+  \$options[i] = NRefOb(\$options[i]);  
+  
+/* We prefer to target PCs that are already attacking us */  
+for(i=0; i\<sizeof(\$options); i++) \{  
+  if(\$options[i]."udat:object" \&\& \$options[i].combat \&\& \$options[i].combat["target"] == this) \$preferred_options += (\{ \$options[i] \});  
+\}  
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];  
+  
+/* Next prefer to target PCs that are already in combat with us */  
+for(i=0; i\<sizeof(\$options); i++) \{  
+  if(\$options[i]."udat:object" \&\& \$options[i].combat) \$preferred_options += (\{ \$options[i] \});  
+\}  
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];  
+  
+/* Next prefer to target PCs that aren't dying or dead or injured */  
+for(i=0; i\<sizeof(\$options); i++) \{  
+  if(\$options[i]."udat:object" \&\& !\$options[i]."status:injured" \&\& !\$options[i]."status:dying" \&\& !\$options[i]."status:dead") \$preferred_options += (\{ \$options[i] \});  
+\}  
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];  
+ 
+/* Remove any PCs that were beat within the last 6 hours */ 
+if(\$this."combat:defeated" \&\& map_sizeof(\$this."combat:defeated")) \{ 
+  \$defeated = map_indices(\$this."combat:defeated"); 
+  for(i = 0; i \< sizeof(\$defeated); i++) \{ 
+      \$now = time(); 
+      \$then = \$this."combat:defeated"[\$defeated[i]]; 
+      if(Int(\$now - \$then) \<= (60*60*6)) \{ 
+          \$options -= (\{ \$defeated[i] \}); 
+      \} 
+  \} 
+\} 
+ 
+if(sizeof(\$options)) return \$options[random(sizeof(\$options))]; 
+  
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_combat_damage">
+         X[M] if(\$damage \>= 4) \{  
+  ccombat::remove_from_combat(\$fighter: \$target);  
+  \$delay(0.5, TRUE, "30de");  
+  Set(\$target, "tmp:combat:" + \$this."trait:type" + ":defeated", Get(\$target, "tmp:combat:" + \$this."trait:type" + ":defeated"));  
+  Social(\$char, "shuffle", "agitatedly"); 
+
+  if(!\$this, "combat:defeated") \$this."combat:defeated" = ([ ]); 
+
+  if(\$this."combat:defeated"[\$target]) \{ 
+      \$this."combat:defeated"[\$target] = time(); 
+  \} else \{ 
+    \$this."combat:defeated" += ([ \$target:time() ]); 
+  \} 
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_combat_damage_dying">
+         X[M] /* Script run when the NPC takes enough damage to be dying */  
+Set(\$char, "tmp:combat:" + \$this."trait:type" + ":won", Int(Get(\$char, "tmp:combat:" + \$this."trait:type" + ":won")) + 1);
+  
+EmitTo(\$char, "With a final strike, you mercilessly slaughter "+Describe(this)+"!");  
+EmitIn(\$char."base:environment", "With a final strike, "+Describe(\$char)+" mercilessly slaughters "+Describe(this)+"!", \$char);  
+ 
+ccombat::remove_from_combat(\$fighter: this);  
+ 
+::die(\$nip: \$this); 
+  
+\$delay(0.5, FALSE, "b561");
+
+Call(\$this, "fight_outcome_kill", \$char: \$char);
+ 
+/*
+interaction::question(\$actor: \$char, \$question: Describe(\$this) + " shakes dramatically, barely clinging to this world.", \$expires: 60, \$env: "FALSE", \$a: "Put it out of its misery.", \$a_ob: this, \$a_fun: "fight_outcome_kill", \$b: "Let it go! Let it go! Let the storm rage oooonn.", \$b_ob: this, \$b_fun: "fight_outcome_release_neutral", \$c: "Tie him up!", \$c_ob: this, \$c_fun: "fight_outcome_capture", \$d: "Kill him!", \$d_ob: this, \$d_fun: "fight_outcome_kill", \$expire_ob: this, \$expire_fun: "fight_outcome_release_neutral", \$par: ([ "char":\$char ])); 
+*/
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:catch-what">
+         X[M] if(\$this."trait:dead" == TRUE) \{
+    return TRUE;
+\}
+
+EmitTo(\$actor, Describe(\$this) + " skitters out of reach.");
+EmitIn(\$actor."base:environment", Describe(\$this) + " skitters out of reach of " + Describe(\$actor) + ".", \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:fight-dob">
+         X[M] if(\$this."trait:state" == "dead" \|\| \$this."trait:state" == "unconscious" \|\| \$this."trait:dead" == TRUE) \{
+    EmitTo(\$actor, Describe(\$this) + " is not something you can fight.");
+    return FALSE;
+\}
+
+Social(this, "turn", nil, nil, "to", \$actor);
+
+if(\$this."combat:bribed_by") \{
+    \$this."combat:bribed_by"[\$actor] = nil;
+\}
+
+if(\$this."combat:defeated") \{
+    \$this."combat:defeated"[\$actor] = nil;
+\}
+
+\$target = ::find_target();
+\$target = \$actor;
+
+if(!\$target) return TRUE;
+
+/* Set them up for new combat */
+\$target."merry:inherit:act-pre:breakcombat" = \$\{Ironclaw:Lib:Combat:Cards:Combat\};
+\$target."merry:inherit:act-pre:fight" = \$\{Ironclaw:Lib:Combat:Cards:Combat\};
+\$target."merry:inherit:act-pre:pass" = \$\{Ironclaw:Lib:Combat:Cards:Combat\};
+ccombat::start_fight(\$attacker: this, \$target: \$target);
+
+Set(\$this, "nip:trait:movement:frequency", 0);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:retrieve-what">
+         X[M] if(\$this."trait:dead" == TRUE) \{
+    return TRUE;
+\}
+
+EmitTo(\$actor, Describe(\$this) + " skitters out of reach.");
+EmitIn(\$actor."base:environment", Describe(\$this) + " skitters out of reach of " + Describe(\$actor) + ".", \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:snatch-dob">
+         X[M] if(\$this."trait:dead" == TRUE) \{
+    return TRUE;
+\}
+
+EmitTo(\$actor, Describe(\$this) + " skitters out of reach.");
+EmitIn(\$actor."base:environment", Describe(\$this) + " skitters out of reach of " + Describe(\$actor) + ".", \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] if(\$this."trait:dead" == TRUE) \{
+    return TRUE;
+\}
+
+EmitTo(\$actor, Describe(\$this) + " skitters out of reach.");
+EmitIn(\$actor."base:environment", Describe(\$this) + " skitters out of reach of " + Describe(\$actor) + ".", \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1417879460, "jominey", "E", 1417879476, "jominey", "E", 1417879482, "jominey", "E", 1417879487, "jominey", "E", 1417879492, "jominey", "E", 1417879702, "jominey", "E", 1417880665, "jominey", "E", 1417880746, "jominey", "E", 1417881019, "jominey", "E", 1417881318, "jominey", "E", 1417881387, "jominey", "E", 1417881520, "jominey", "E", 1417882483, "jominey", "E", 1417882494, "jominey", "E", 1417883929, "jominey", "E", 1417884798, "jominey", "E", 1417884825, "jominey", "E", 1417884994, "jominey", "E", 1417885174, "jominey", "E", 1417885315, "jominey", "E", 1417885330, "jominey", "E", 1417885374, "jominey", "E", 1417885474, "jominey", "E", 1417885556, "jominey", "E", 1417885563, "jominey", "E", 1417885583, "jominey", "E", 1417885594, "jominey", "E", 1417893137, "jominey", "E", 1422644950, "slurpeeslurp", "E", 1422644976, "slurpeeslurp", "E", 1422645242, "slurpeeslurp", "E", 1422646104, "slurpeeslurp", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

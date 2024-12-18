@@ -1,0 +1,186 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="500" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="5" maxweight="260" verb2="are packed with" verb3="is packed with"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="caravan"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="caravans"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">caravan</Base:Description>
+          <Base:Description type="examine">
+             A wooden cart, pulled by a dray. Items can be placed in this cart, and they will then be sent off to far-off lands and traded for denarii. Everyone loves money. The payment will be given to the guild that sent the caravan.
+          </Base:Description>
+          <Base:Description type="look">
+             A wooden cart, pulled by a dray.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="cart" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="cart"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="carts"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">cart</Base:Description>
+          <Base:Description type="look">
+             A wooden cart is attached behind a dray. The caravan can be filled with items for trading.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="dray" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="dray"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="drays"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">dray</Base:Description>
+          <Base:Description type="look">
+             A four legged, large, stinky work-animal.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="approval:approver">
+         "tonyd"
+      </Core:Property>
+      <Core:Property property="approval:description">
+         "Caravans that players can put items into, which will then give money to their guild."
+      </Core:Property>
+      <Core:Property property="approval:time">
+         1207107992
+      </Core:Property>
+      <Core:Property property="approval:unapproved">
+         1
+      </Core:Property>
+      <Core:Property property="base:initialcontents"/>
+      <Core:Property property="merry:react:poke-dob">
+         X[M] /* calculates the value of goods,
+gives money and receipt,
+sends the caravan away */
+object *goods, *item_set;
+int i, sz, j, jx;
+float value, set_value, total_value;
+mapping item_values, materials;
+string *mapping_index;
+
+materials = ([ "bronze": 0.6 ]);
+
+goods = this."base:inventory";
+item_values = ([ ]);
+total_value = 0.0;
+
+/* step through the goods, calculating their values */
+sz = sizeof(goods);
+  EmitTo(\$actor, dump_value(goods));
+
+for(i=0;i\<sz;i++) \{
+  if(goods[i]) \{
+    /* check this and similar items */
+    item_set = (\{ goods[i] \});
+    if(goods[i]."core:ur:parent") \{
+      for(j=i+1;j\<sizeof(goods);j++) \{
+        if(goods[j] \&\& goods[j]."core:ur:parent" == goods[i]."core:ur:parent"
+         \&\& goods[j]."trait:material" == goods[i]."trait:material") \{
+           item_set += (\{ goods[j] \});
+           goods[j] = nil;
+        \}
+      \}
+    \}
+    /* find a value for each item in the set */
+    set_value = 0.0;
+    for(j=0;j\<sizeof(item_set);j++) \{
+      if(goods[i]."nip:item:cost") \{
+        value = Flt(item_set[j]."nip:item:cost");
+      \} else \{
+        value = 500.0;
+      \}
+      /* find a value based on material */
+      if(item_set[j]."trait:material" \&\& materials[item_set[j]."trait:material"])
+        value *= Flt(materials[item_set[j]."trait:material"]);
+      /* find a value based on quality */
+      if(item_set[j]."trait:quality") \{
+        value *= 12.0/Flt(item_set[j]."trait:quality");
+      \} else \{
+        value *= 0.5;
+      \}
+      set_value += value;
+    \}
+    total_value += set_value;
+    item_values[Describe(item_set)] = set_value;
+  \}
+\}
+
+mapping_index = map_indices(item_values);
+EmitTo(\$actor, "Receipt");
+sz = sizeof(mapping_index);
+for(i=0;i\<sz;i++) \{
+  EmitTo(\$actor, mapping_index[i]+": "+dump_value(item_values[mapping_index[i]]/100.0)+" denarii.");
+\}
+EmitTo(\$actor, "-----------------------");
+EmitTo(\$actor, "Total: "+dump_value(total_value/100.0)+" denarii.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1207108857, "tonyd", "E", 1207108867, "tonyd", "E", 1207109020, "tonyd", "E", 1207109194, "tonyd", "P", 1207109290, "tonyd", "P", 1207109309, "tonyd", "P", 1207109344, "tonyd", "P", 1207109400, "tonyd", "P", 1207109471, "tonyd", "P", 1207109563, "tonyd", "P", 1207109583, "tonyd", "P", 1207109687, "tonyd", "P", 1207109874, "tonyd", "P", 1207109881, "tonyd", "P", 1207109938, "tonyd", "P", 1207109995, "tonyd", "P", 1207110784, "tonyd", "P", 1207110830, "tonyd", "P", 1207110851, "tonyd", "P", 1207110866, "tonyd", "P", 1207111225, "tonyd", "P", 1207111249, "tonyd", "P", 1207111259, "tonyd", "P", 1207111344, "tonyd", "P", 1207111462, "tonyd", "P", 1207111525, "tonyd", "P", 1207111568, "tonyd", "P", 1207111660, "tonyd", "P", 1207111687, "tonyd", "P", 1207111837, "tonyd", "P", 1207111885, "tonyd", "P", 1207111942, "tonyd", "P", 1207111991, "tonyd", "P", 1207112011, "tonyd", "P", 1207112025, "tonyd", "P", 1207112045, "tonyd", "P", 1207112053, "tonyd", "P", 1207112067, "tonyd", "P", 1208829280, "tonyd", "P", 1208829334, "tonyd", "P", 1208829367, "tonyd", "P", 1208829398, "tonyd", "P", 1216657045, "rorschakovacs", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

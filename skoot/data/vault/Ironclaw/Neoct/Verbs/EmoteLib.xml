@@ -1,0 +1,144 @@
+<object clone="/obj/properties" owner="tunk_bodin">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:prepare_emit">
+         X[M] /*  
+  
+  D=+emit/ote\|all Merry replacement.  
+  
+*/  
+  
+constant proper_end = ([ '.':1, '!':1, '"':1, '?':1 ]);  
+  
+mapping tmap, dmap;  
+int delimiter, i, prepos, scount, sz, e, es;  
+object *targets, t, ob;  
+string d_actor, d_actor_his, *eres, emote, pre, post, last_post;  
+  
+d_actor     = Describe(\$actor);  
+d_actor_his = \$actor."base:possessive";  
+  
+if (!\$line) \{  
+  EmitTo(\$actor, "Syntax: " + \$imperative + " \<string\>\\nExample 1: " + \$imperative + " emotes something.\\nOutput for everyone: " + d_actor + " emotes something.\\nExample 2: " + \$imperative + " looks at +Harry, fury burning in " + d_actor_his + " eyes, \\"Harry, you have failed me!\\"\\nOutput for Harry: " + d_actor + " looks at you, fury burning in " + d_actor_his + " eyes, \\"Harry, you have failed me!\\"\\nOutput for everyone else: " + d_actor + " looks at Harry, fury burning in " + d_actor_his + " eyes, \\"Harry, you have failed me!\\"\\nExample 3: " + \$imperative + " emotes without ending the sentence properly\\nOutput: " + d_actor + " emotes without ending the sentence properly.");  
+  return FALSE;  
+\}  
+  
+/*  
+ * We also support starting the emote with a delimiter, but  
+ * it remains undocumented. It's a pointless feature, really.  
+ */  
+  
+/* Going to allow the single quote to start the emote for testing purposes. */  
+/* Shoudn't be an issue considering these delimiters are unused. */  
+  
+/*  
+ * Old code  
+ * delimiter = (\$line[0] == '\\'' \|\| \$line[0] == '"')  
+ */  
+delimiter = (\$line[0] == '"')  
+                ?  
+              \$line[0]  
+                :  
+              '\\0';  
+  
+emote = \$line;  
+if (emote[0] == delimiter)  
+  emote = emote[1..];  
+if (emote[strlen(emote)-1] == delimiter)  
+  emote = emote[..strlen(emote)-2];  
+  
+if (!proper_end[emote[strlen(emote)-1]])  
+  emote += ".";  
+  
+emote     = emote;  
+targets   = (\{ \$actor \});  
+eres      = (\{ \});  
+prepos    = 0;  
+scount    = 0;  
+tmap      = ([ ]);  
+dmap      = ([ ]);  
+  
+while (sscanf(emote, "%s+%s", pre, post) == 2) \{  
+  scount    = 0;  
+  last_post = post;  
+  sz        = strlen(post);  
+  for (i = 0; i \< sz; i++)  
+    if ((post[i] \< 'a' \|\|  
+         post[i] \> 'z') \&\&  
+        (post[i] \< 'A' \|\|  
+         post[i] \> 'Z') \&\&  
+        (post[i] \< '0' \|\|  
+         post[i] \> '9')) \{  
+/* attempting a +here function */ 
+if(post[..i-1] == "here") \{ 
+ob = Obj(\$actor."base:environment"); 
+\} else \{ 
+       ob = common::lookup(\$name: post[..i-1]);  
+\} 
+       if (ob) \{  
+         tmap[post[..i-1]] = ob;  
+         dmap[ob]          = Describe(ob);  
+         if (!member(ob, targets))  
+           targets += (\{ ob \});  
+         /*  
+          * We got a target, but it might be "Kalle's", which  
+          * is verily different from "Kalle"  
+          */  
+         scount = 2 + i;  
+         if (sz \> i+2 \&\&  
+             post[i..i+1] == "'s") \{  
+           scount += 2;  
+           emote = pre + "\\124" + post[..i-1] + "\\321" + post[i+2..];  
+           eres += (\{ pre[prepos..], "\\124" + post[..i-1] + "\\321" \});  
+         \} else \{  
+           emote = pre + "\\123" + post[..i-1] + "\\321" + post[i..];  
+           eres += (\{ pre[prepos..], "\\123" + post[..i-1] + "\\321" \});  
+         \}  
+       \} else \{  
+         emote = pre + "\\121" + post;  
+         eres += (\{ pre[prepos..] + "+" \});  
+       \}  
+       i = sz;  
+     \}  
+  prepos = strlen(pre) + scount;  
+\}  
+  
+eres += (\{ last_post ? last_post[(scount ? scount-2 : 0)..] : emote[prepos..] \});  
+  
+emote  = replace_strings(emote, "\\121", "+");  
+sz     = sizeof(targets);  
+es     = sizeof(eres);  
+\$emits = ([ ]);  
+  
+for (i = 0; i \< sz+1; i++) \{  
+  t     = (i \< sz ? targets[i] : nil);  
+  emote = "";  
+  for (e = 0; e \< es; e++)  
+    if (eres[e][strlen(eres[e])-1] == '\\321') \{  
+      ob = tmap[eres[e][1..strlen(eres[e])-2]];  
+      switch (eres[e][0]) \{  
+      case '\\123' : /* regular, non-possessive */  
+        emote += (t == ob ? "you" : dmap[ob]);  
+        break;  
+      case '\\124' : /* possessive */  
+        emote += (t == ob ? "your" : dmap[ob] + "'s");  
+        break;  
+      \}  
+    \} else \{  
+      emote += eres[e];  
+    \}  
+  if (t)  
+    \$emits[t] = emote;  
+  else  
+    \$emits["*"] = emote;  
+\}  
+\$targets = targets;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1102708103, "zwoc", "P", 1102708112, "zwoc", "E", 1172151924, "librarysage", "R", 1293519766, "tunk_bodin", "X", 1297680123, "tunk_bodin", "X" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

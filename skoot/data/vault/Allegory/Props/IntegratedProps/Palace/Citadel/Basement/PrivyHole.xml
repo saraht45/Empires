@@ -1,0 +1,170 @@
+<object clone="/base/obj/thing" owner="sendnoodlez">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="5" density="0.7"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="true" capacity="2" maxweight="100" verb2="contain" verb3="contains"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="standing" combinable="false" discrete="false" by_weight="false" tight="true" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="hole"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="holes"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="commode"/>
+          <Base:Adjective adjective="drafty"/>
+          <Base:Adjective adjective="stone"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             drafty hole in the stone commode
+          </Base:Description>
+          <Base:Description type="examine">
+             A perpetual cold draft passes through the hole in the commode, carrying with it malodorous aromas from the sewer system beneath.
+          </Base:Description>
+          <Base:Description type="glance">
+             A perpetual cold draft passes through the hole in the commode, carrying with it malodorous aromas from the sewer system beneath.
+          </Base:Description>
+          <Base:Description type="look">
+             A perpetual cold draft passes through the hole in the commode, carrying with it malodorous aromas from the sewer system beneath.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:smell:level">0</Core:Property>
+      <Core:Property property="export:trait:smells">
+         ([ "excrement and urine":(\{ 19335, 1623859531 \}) ])
+      </Core:Property>
+      <Core:Property property="merry:lib:clean">
+         X[M] /* don't let people wash the privy hole */  
+  
+/* unless they are a less than a free born (under rank 5) */  
+if(\$actor."rank:rank" \<= 4) \{  
+  \$this."smell:level" = 0;  
+  \$this."trait:smells" = ([ ]);  
+  return TRUE;  
+\}  
+  
+EmitTo(\$actor, "Cleaning "+Describe(\$this)+" seems like a job for slaves.");  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:is_slave">
+         X[M] /* check if \$char is a slave */ 
+if(!\$actor."trait:slave")\{ 
+    return FALSE; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:smell_level">
+         X[M] /* return a description of the smell */ 
+ 
+if(!\$this."smell:level") return nil; 
+ 
+if(\$this."smell:level" \> 10 \&\& \$this."smell:level" \<= 15) \{ 
+  return capitalize(Describe(\$this))+" is starting to get a bit dirty."; 
+\} else if(\$this."smell:level" \> 15 \&\& \$this."smell:level" \<= 20) \{ 
+  return capitalize(Describe(\$this))+" is beginning to smell."; 
+\} else if(\$this."smell:level" \> 20 \&\& \$this."smell:level" \<= 25) \{ 
+  return capitalize(Describe(\$this))+" could really do with being cleaned."; 
+\} else if(\$this."smell:level" \> 25) \{ 
+  return capitalize(Describe(\$this))+" is really making "+Describe(\$this."base:environment")+" smell."; 
+\} 
+ 
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:react:clean-dob">
+         X[M] /* don't let people wash the privy hole */ 
+return ::clean();
+      </Core:Property>
+      <Core:Property property="merry:react:wash-dob">
+         X[M] /* don't let people wash the privy hole */ 
+return ::clean();
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:smell:level">
+         X[M] /* emit if the room is stinky */ 
+ 
+/* don't start this script for cans that aren't in the game */ 
+if(!\$this."base:environment") return TRUE; 
+ 
+if(!\$this."smell:level") \{ 
+  /* stop emitting about the smell */ 
+  if(\$this."smell:handle") 
+    Stop(\$this."smell:handle"); 
+\} else if(\$this."smell:level" \>= 26) \{ 
+  /* stinky privy hole */ 
+  if(!\$this."smell:handle") 
+    \$this."smell:handle" = Every("stink_emit", 60*20); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:stink_emit">
+         X[M] /* emit about stinking */ 
+ 
+if(!\$this."base:environment") \{ 
+  /* not in a room. stop emitting */ 
+  if(\$this."smell:handle") 
+    Stop(\$this."smell:handle"); 
+  return TRUE; 
+\} 
+ 
+/* output to the room */ 
+switch(random(4)) \{ 
+case 3: 
+  EmitIn(\$this."base:environment", Describe(\$this)+" is really in need of a clean."); 
+  break; 
+case 2: 
+  EmitIn(\$this."base:environment", Describe(\$this)+" smells like excrement and urine."); 
+  break; 
+case 1: 
+  EmitIn(\$this."base:environment", Describe(\$this)+" is stinking terribly."); 
+  break; 
+default: 
+  EmitIn(\$this."base:environment", Describe(\$this)+" smells really bad."); 
+  break; 
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1623854544, "sendnoodlez", "E", 1623854562, "sendnoodlez", "E", 1623854563, "sendnoodlez", "E", 1623854579, "sendnoodlez", "X" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

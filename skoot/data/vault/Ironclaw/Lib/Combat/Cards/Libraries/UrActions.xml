@@ -1,0 +1,951 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="gimli:lib:charge_action">
+         "E[G]\\n// Charge an action\\nif(!\$char \|\| !\$char.combat) return FALSE;\\n\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\\n// Sanity check\\nif(!\$char.combat[\\"actions\\"]) \$char.combat[\\"actions\\"] = 0;\\n\\n// Charge 1 action for this\\n\$char.combat[\\"actions\\"]--;\\n\\nif(\$char.combat[\\"actions\\"] \> 0) \{\\n  // Still have actions remaining. List them\\n  \$delay(0.01, TRUE, \\"a469\\");\\n  ccombat::list_actions(\$char: \$char);\\n\} else \{\\n  // No more actions remaining. End the turn\\n  ccombat::end_turn(\$char: \$char);\\n\}\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:datafile">
+         "E[G]\\n// returns the combat datafile mapping\\nobject datafile;\\ndatafile = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};\\n\\nif(\$id) \$combat_data = Get(datafile, Str(\$id));\\nif(\$combat_data) return \$combat_data;\\n\\nif(\$char \&\& \$char.combat \&\& \$char.combat[\\"id\\"]) \$combat_data = Get(datafile, Str(\$char.combat[\\"id\\"]));\\nif(\$combat_data) return \$combat_data;\\n\\n// Didn't find the data - probably because the fight is over\\nreturn nil;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:describe_hit">
+         "E[G]\\n// Describe hitting an opponent in combat\\n// ::describe_hit(\$char:\$char, \$target:\$target, \$weapon:\$weapon, \$defence:\$defence, \$damage:\$damage);\\n// ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail:\$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$damagetype, \$par: ([ ]));\\n// ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail:\$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$attack_options[\\"damagetype\\"], \$attack_options: copy(\$attack_options), \$attack_roll: \$attack_roll_result[0], \$attack_adj: \$attack_adj, \$par: ([ ]) );\\n\\n// Some possible emits:\\n// HURT\\n// Alice slams her club into Bob's stomach\\n// SCARED\\n\\n// INJURED\\n// Alice cleaves into bob with her axe\\n\\n// DYING\\n\\n// Eos's email about combat emits contains more\\n\\n\$az = \$\{Chatters:IC:az:azrael\};\\nEmitTo(\$az, dump_value(\$damage)+\\" levels of damage for describing hit\\");\\n\\n// If this is triggered after a question, set the expected variables\\nif(\$par \&\& \$par[\\"question_response\\"] \&\& \$par[\\"args\\"]) \{\\n  \$char = \$par[\\"args\\"][\\"char\\"];\\n  \$target = \$par[\\"args\\"][\\"target\\"];\\n  \$target_detail = \$par[\\"args\\"][\\"target_detail\\"];\\n  \$damage = \$par[\\"args\\"][\\"damage\\"];\\n  \$defence = \$par[\\"args\\"][\\"defence\\"];\\n  \$weapon = \$par[\\"args\\"][\\"weapon\\"];\\n  \$damagetype = \$par[\\"args\\"][\\"damagetype\\"];\\n\\n  \$actor = \$par[\\"args\\"][\\"actor\\"];\\n  \$attack_skills = \$par[\\"args\\"][\\"attack_skills\\"];\\n  \$bonus = \$par[\\"args\\"][\\"bonus\\"];\\n  \$defender_skills = \$par[\\"args\\"][\\"defender_skills\\"];\\n  \$defender_weapon = \$par[\\"args\\"][\\"defender_weapon\\"];\\n  \$defender_weapon_skill = \$par[\\"args\\"][\\"defender_weapon_skill\\"];\\n  \$result = \$par[\\"args\\"][\\"result\\"];\\n  \$soak = \$par[\\"args\\"][\\"soak\\"];\\n  \$tmpbonus = \$par[\\"args\\"][\\"tmpbonus\\"];\\n  \\n  \$attack_adj = \$par[\\"args\\"][\\"attack_adj\\"];\\n\}\\n\\nif(!\$attack_options) \{\\n  if(\$par[\\"args\\"][\\"attack_options\\"])\\n    \$attack_options = \$par[\\"args\\"][\\"attack_options\\"];\\n  else\\n    error(\\"No attack_options array passed to describe_hit\\");\\n\}\\nif(!\$attack_roll) \{\\n  if(\$par[\\"args\\"][\\"attack_roll\\"])\\n    \$attack_roll= \$par[\\"args\\"][\\"attack_roll\\"];\\n  else\\n    error(\\"No attack_roll array passed to describe_hit\\");\\n\}\\n\\nEmitTo(\$az, \\"Damage1: \\"+dump_value(\$damage));\\nEmitTo(\$az, \\"Attack options: \\"+dump_value(\$attack_options));\\nEmitTo(\$az, \\"Target detail: \\"+dump_value(\$attack_options[\\"target_detail\\"]));\\n\\n/* Is there an NPC script for this level of damage? */\\nif(FindMerry(\$attack_options[\\"attacker\\"], \\"lib\\", \\"give_combat_damage\\")) \{\\n  if(!Call(\$attack_options[\\"attacker\\"], \\"give_combat_damage\\", \$char: \$char, \$attacker: \$attack_options[\\"attacker\\"], \$target: \$attack_options[\\"target\\"], \$target_detail:\$attack_options[\\"target_detail\\"])) return TRUE;\\n\}\\n\\n// Are they given the choice to knock their opponent out of the fight?\\n\\n// TEMPORARY - Only offer to possessed characters\\nif(\$char.\\"udat:object\\" \&\& NRefOb(\$target).\\"udat:object\\") \{\\n\\nif(!\$par \|\| !\$par[\\"question_response\\"]) \{\\n  // We haven't asked a question yet - so perhaps we should?\\n  // Ask if they want to do normal damage, or some other effect\\n  if(NRefOb(\$target).\\"base:environment\\".\\"area:dangerarea\\" \&\& \$damage \>= 9) \{\\n    // Would normally be enough to make the opponent dead\\n    // Offer the choice of doing the damage, killing them, knocking them unconscious, or knocking them out of the fight\\n    \$damage = 6; // So we don't accidentally kill someone if they just do an injury\\n    \$delay(0.01, TRUE, \\"6caa\\");\\n    interaction::question(\$actor: \$char, \$question: \\"What action do you want to do to \\"+Describe(NRefOb(\$target))+\\"?\\", \$expires: 60, \$env: \\"TRUE\\", \$a: \\"Injure \\"+\$target.\\"base:objective\\", \$a_ob: this, \$a_fun: \\"describe_hit\\", \$b: \\"Knock \\"+\$target.\\"base:objective\\"+\\" out of combat\\", \$b_ob: this, \$b_fun: \\"knock_from_combat\\", \$c: \\"Knock \\"+\$target.\\"base:objective\\"+\\" unconscious\\", \$c_ob: this, \$c_fun: \\"knock_from_combat_unconscious\\", \$d: \\"Grievously wound \\"+\$target.\\"base:objective\\", \$d_ob: this, \$d_fun: \\"knock_from_combat_dying\\", \$e: \\"Kill \\"+\$target.\\"base:objective\\"+\\"!\\", \$e_ob: this, \$e_fun: \\"knock_from_combat_dead\\", \$expire_ob: this, \$expire_fun: \\"describe_hit\\", \$par: ([ \\"question_response\\":TRUE, \\"char\\":\$char, \\"args\\":args ]));\\n    return FALSE;\\n  \} else if(NRefOb(\$target).\\"base:environment\\".\\"area:dangerarea\\" \&\& \$damage \>= 7) \{\\n    // Would normally be enough to make the opponent dying or worse\\n    // Offer the choice of doing the damage, knocking them unconscious, or knocking them out of the fight\\n    \$damage = 6; // So we don't accidentally kill someone if they just do an injury\\n    \$delay(0.01, TRUE, \\"2605\\");\\n    interaction::question(\$actor: \$char, \$question: \\"What action do you want to do to \\"+Describe(NRefOb(\$target))+\\"?\\", \$expires: 60, \$env: \\"TRUE\\", \$a: \\"Injure \\"+\$target.\\"base:objective\\", \$a_ob: this, \$a_fun: \\"describe_hit\\", \$b: \\"Knock \\"+\$target.\\"base:objective\\"+\\" out of combat\\", \$b_ob: this, \$b_fun: \\"knock_from_combat\\", \$c: \\"Knock \\"+\$target.\\"base:objective\\"+\\" unconscious\\", \$c_ob: this, \$c_fun: \\"knock_from_combat_unconscious\\", \$d: \\"Grievously wound \\"+\$target.\\"base:objective\\", \$d_ob: this, \$d_fun: \\"knock_from_combat_dying\\", \$expire_ob: this, \$expire_fun: \\"describe_hit\\", \$par: ([ \\"question_response\\":TRUE, \\"char\\":\$char, \\"args\\":args ]));\\n    return FALSE;\\n  \} else if(\$damage \>= 5) \{\\n    // Would normally be enough to make the opponent injured\\n    // Offer the choice of doing the damage or knocking them out of the fight\\n    if(\$damage \>= 6) \$damage = 6; // So we don't accidentally kill someone if they just do an injury\\n    \$delay(0.01, TRUE, \\"59f3\\");\\n    interaction::question(\$actor: \$char, \$question: \\"What action do you want to do to \\"+Describe(NRefOb(\$target))+\\"?\\", \$expires: 60, \$env: \\"TRUE\\", \$a: \\"Injure \\"+\$target.\\"base:objective\\", \$a_ob: this, \$a_fun: \\"describe_hit\\", \$b: \\"Knock \\"+\$target.\\"base:objective\\"+\\" out of combat\\", \$b_ob: this, \$b_fun: \\"knock_from_combat\\", \$expire_ob: this, \$expire_fun: \\"describe_hit\\", \$par: ([ \\"question_response\\":TRUE, \\"char\\":\$char, \\"args\\":args ]));\\n    return FALSE;\\n  \}\\n\}\\n\\n\}\\n\\n// Figure out what sort of damage we're giving\\n\\nif(\$attack_options[\\"damagetype\\"]) \{\\n  \$attacktype = \$attack_options[\\"damagetype\\"][0];\\n  \$woundtype = \$attack_options[\\"damagetype\\"][1];\\n\} else if(\$attack_options[\\"weapon\\"].\\"combat:damagetype\\") \{\\n  \$attacktype = \$attack_options[\\"weapon\\"].\\"combat:damagetype\\"[random(sizeof(\$attack_options[\\"weapon\\"].\\"combat:damagetype\\"))];\\n  \$woundtype = \$attacktype[1];\\n  \$attacktype = \$attacktype[0];\\n\} else \{\\n  \$attacktype = \\"strike\\";\\n  \$woundtype = \\"bruise\\";\\n\}\\n\\nEmitTo(\$\{Chatters:IC:az:azrael\}, \\"Attack type: \\"+dump_value(\$attacktype));\\nEmitTo(\$\{Chatters:IC:az:azrael\}, \\"Wound type: \\"+dump_value(\$woundtype));\\n\\n\\n\$adverb = (\{ \\"quickly\\", \\"powerfully\\", \\"expertly\\", \\"accurately\\" \});\\n\$verb = (\{ \\"strike\\", \\"hit\\" \});\\n\\nif(!\$attack_options[\\"target_detail\\"] \|\| NRefDetail(\$attack_options[\\"target_detail\\"]) == \\"default\\") \{\\n  \$details = (\{ \\"chest\\", \\"right-arm\\", \\"left-arm\\", \\"right-shoulder\\", \\"left-shoulder\\", \\"right-armpit\\", \\"left-armpit\\", \\"right-bicep\\", \\"left-bicep\\", \\"right-hand\\", \\"left-hand\\", \\"right-wrist\\", \\"left-wrist\\", \\"right-forearm\\", \\"left-forearm\\", \\"right-leg\\", \\"left-leg\\", \\"right-thigh\\", \\"left-thigh\\", \\"right-calf\\", \\"left-calf\\", \\"right-knee\\", \\"left-knee\\", \\"right-elbow\\", \\"left-elbow\\", \\"right-side\\", \\"left-side\\", \\"hips\\", \\"ribs\\", \\"stomach\\", \\"gut\\" \});\\n  \$attack_options[\\"target_detail\\"] = NewNRef(\$attack_options[\\"target\\"], \\"default\\");\\n  while(sizeof(\$details)) \{\\n    \$tmp = \$details[random(sizeof(\$details))];\\n    if(Get(\$attack_options[\\"target\\"], \\"details:\\"+\$tmp+\\":snames\\") \&\& sizeof(Get(\$attack_options[\\"target\\"], \\"details:\\"+\$tmp+\\":snames\\"))) \{\\n      \$attack_options[\\"target_detail\\"] = NewNRef(\$attack_options[\\"target\\"], \$tmp);\\n      \$details = (\{ \});\\n    \} else \{\\n      \$details -= (\{ \$tmp \});\\n    \}\\n  \}\\n\}\\n\\n\$target_detail = \$attack_options[\\"target_detail\\"];\\n\\nEmitTo(\$az, \\"Damage4: \\"+dump_value(\$damage));\\n\\n// \$wound_info = ::get_wound(\$target_detail: \$target_detail, \$wound: \$woundtype, \$level: \$damage, \$par: ([ ]));\\n\$wound_info = injuries::get_wound(\$target_detail: \$attack_options[\\"target_detail\\"], \$attacktype: \$attacktype, \$wound: \$woundtype, \$level: \$damage, \$par: ([ ]));\\n\\n// Does the weapon have its own description for hitting?\\nEmitTo(\$\{Chatters:IC:az:azrael\}, \\"does weapon have hit description?: \\"+dump_value(\$weapon));\\nif(FindMerry(\$weapon, \\"lib\\", \\"describe_hit\\"))\\n  return Call(\$weapon, \\"describe_hit\\", \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$verb: \$verb, \$adverb: \$adverb);\\n\\n// Get a description for the attack\\nif(FindMerry(\$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\}, \\"lib\\", \\"description_\\"+\$attacktype)) \{\\n  Call(\$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\}, \\"description_\\"+\$attacktype, \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$damagetype, \$wound_info: \$wound_info);\\n\} else \{\\n  // This should only be called if someone didn't set up the description library properly...\\n  EmitTo(\$az, \\"describe_hit unknown attack description library description_\\"+\$attacktype);\\n  Call(\$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\}, \\"description_strike\\", \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$damagetype, \$wound_info: \$wound_info);\\n\}\\n\\nEmitTo(\$char, \$actor_msg);\\nEmitTo(\$target, \$target_msg);\\nEmitIn(\$char.\\"base:environment\\", \$witness_msg, \$char, \$target);\\n\\n// And give the wound\\nEmitTo(\$\{Chatters:IC:az:azrael\}, dump_value(\$target_detail));\\nEmitTo(\$\{Chatters:IC:az:azrael\}, dump_value(\$wound_info));\\n\\n// \$wound = ::give_wound(\$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char, \$par: ([ ]));\\n\$wound = injuries::give_wound(\$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char, \$par: ([ ]));\\n\\nif(FindMerry(\$target, \\"lib\\", \\"combat_getdamaged\\"))\\n  Call(\$target, \\"combat_getdamaged\\", \$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char);\\n\\n::charge_action(\$char: \$char);\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_dicepool">
+         "E[G]\\n// Gathers a combat dicepool\\nint result;\\n\\nif(!\$char) return (\{ \});\\n\\n\$dicepool = (\{ \});\\nif(\$pool == \\"attacking\\") \{\\n  // Get skills for attacker\\n  result = Int(\$char.combat[\\"bonus:attack:endgame\\"]); // Include extra attack dice from the endgame\\n  result += Int(\$char.\\"trait:body\\"); // Attack rolls use body\\n  if(\$weapon \&\& \$weapon.\\"weapon:skill\\") \{\\n    // Also roll the skill for this weapon\\n    result += Int(Get(\$char, \\"skill:combat:\\"+\$weapon.\\"weapon:skill\\"));\\n    result += Int(Get(\$char, \\"career:combat:\\"+\$weapon.\\"weapon:skill\\"));\\n  \} else \{\\n    // Weapon doesn't have a skill. roll unarmed.\\n    result += Int(\$char.\\"skill:combat:unarmed\\");\\n    result += Int(\$char.\\"career:combat:unarmed\\");\\n  \}\\n\\n\} else if(\$pool == \\"defending\\") \{\\n  // Get defence for defender\\n  if(\$weapon \&\& \$weapon.\\"weapon:skill\\")\\n    \$defender_weapon_skill = \\"combat:\\"+\$weapon.\\"weapon:skill\\";\\n  else\\n    \$defender_weapon_skill = \\"combat:unarmed\\";\\n\\n  // What are they doing?\\n  if(\$type == \\"counter\\") \{\\n    result = Int(\$char.\\"trait:mind\\")+Int(Get(\$char, \\"skill:\\"+\$defender_weapon_skill))+Int(Get(\$char, \\"career:\\"+\$defender_weapon_skill));\\n  \} else if(\$type == \\"parry\\") \{\\n    result = Int(\$char.\\"trait:body\\")+Int(Get(\$char, \\"skill:\\"+\$defender_weapon_skill))+Int(Get(\$char, \\"career:\\"+\$defender_weapon_skill));\\n  \} else if(\$type == \\"dodge\\") \{\\n    result = Int(\$char.\\"trait:speed\\")+Int(Get(\$char, \\"skill:combat:dodge\\"))+Int(Get(\$char, \\"career:combat:dodge\\"));\\n  \}\\n\}\\n\\nreturn result;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_weapon">
+         "E[G]\\n// Return the appropriate weapon for this fighter\\n// \$primaryweapon = combat::get_weapon(\$char:\$char, \$type:\\"primary\\");\\n// \$offweapon = combat::get_weapon(\$char:\$char, \$type:\\"off\\");\\n\\nif(!\$char) return nil;\\n\\nif(\$type == \\"parry\\") \{\\n  // Cheat! Just return the primary weapon \\n  // Extension: Should get both primary and secondary, and check which is better\\n  \$weapon = ::get_weapon(\$type: \\"primary\\");\\n  if(!\$weapon \|\| \$weapon.\\"combat:noparry\\")\\n    \$weapon = ::get_weapon(\$type: \\"off\\");\\n  if(!\$weapon \|\| \$weapon.\\"combat:noparry\\")\\n    return nil;\\n  return \$weapon;\\n\}\\n\\nif(\$type == \\"primary\\") \{\\n  if(\$char.\\"base:combat:weapon\\") return \$char.\\"base:combat:weapon\\";\\n  // Didn't return anything? Then we return the natural weapon\\n  \$type = \\"natural\\";\\n\}\\nif(\$type == \\"off\\") \{\\n  if(\$char.\\"weapon:offhand\\") return \$char.\\"weapon:offhand\\";\\n  // Didn't return anything? Then we return the natural weapon\\n  \$type = \\"natural\\";\\n\}\\n\\nif(\$type == \\"natural\\") \{\\n  if(\$char.\\"combat:naturalweapon\\") return \$char.\\"combat:naturalweapon\\";\\n  return \$\{Ironclaw:Lib:Combat:New:UrPunch\};\\n\}\\n\\nreturn nil;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_wound">
+         "E[G]\\n// Calculate wound information\\n// ::get_wound(\$target_detail:\$target_detail, \$wound:\\"bruise\\", \$level:\$damage, \$par:([]) );\\nstring wound_name, wound_adjective, wound_desc;\\n\\n// Call the injuries script space\\nreturn injuries::get_wound();\\n\\n\\n// What is the maximum wound level the victim can take?\\n\$level = ::max_damage(\$damage: Int(\$level), \$victim: \$target_detail);\\n\\n// Default wound values, in case they don't get set\\nwound_name = dump_value(\$wound);\\nwound_adjective = \\"injured\\";\\nwound_desc = \\"has been injured\\";\\n\\n/* Now we set the right wound values for this particular wound */\\nif(\$wound == \\"bruise\\") \{\\n  wound_name = \\"bruise\\";\\n  wound_adjective = \\"bruised\\";\\n  wound_desc = \\"has been bruised\\";\\n  if(\$level \<= 0) \{\\n    wound_name = \\"slight bruise\\";\\n    wound_adjective = nil;\\n    wound_desc = \\"has a \\"+oneof(\\"slight\\", \\"light\\", \\"small\\")+\\" bruise\\";\\n  \} else if(\$level == 1) \{\\n    wound_name = \\"bruise\\";\\n    wound_desc = \\"has a bruise\\";\\n  \} else if(\$level \<= 2) \{\\n    wound_name = \\"bruise\\";\\n    wound_desc = \\"has a \\"+oneof(\\"nasty\\", \\"deep\\", \\"purple\\")+\\" bruise\\";\\n  \} else if(\$level \> 2) \{\\n    wound_name = \\"severe bruise\\";\\n    wound_desc = \\"has a \\"+oneof(\\"serious\\", \\"injurous\\", \\"blackened\\")+\\" bruise\\";\\n  \}\\n\} else if(\$wound == \\"cut\\") \{\\n  wound_name = \\"cut\\";\\n  wound_adjective = \\"cut\\";\\n  wound_desc = \\"has been cut\\";\\n  if(\$level \<= 0) \{\\n    wound_name = \\"shallow cut\\";\\n    wound_adjective = nil;\\n    wound_desc = \\"has a \\"+oneof(\\"slight\\", \\"light\\", \\"small\\", \\"shallow\\")+\\" \\"+oneof(\\"cut\\", \\"scrape\\");\\n  \} else if(\$level == 1) \{\\n    wound_name = \\"cut\\";\\n    wound_desc = \\"has a cut\\";\\n  \} else if(\$level \<= 2) \{\\n    wound_name = \\"cut\\";\\n    wound_desc = \\"has a \\"+oneof(\\"nasty\\", \\"deep\\", \\"painful\\")+\\" cut\\";\\n  \} else if(\$level \> 2) \{\\n    wound_name = \\"deep cut\\";\\n    wound_desc = \\"has a \\"+oneof(\\"serious\\", \\"injurous\\", \\"deep\\")+\\" \\"+oneof(\\"cut\\", \\"gash\\");\\n  \}\\n\} else \{\\n  error(\\"Unknown woundtype \\"+dump_value(\$wound));\\n\}\\n\\nreturn ([ \\"level\\":\$level, \\"name\\":wound_name, \\"adj\\":wound_adjective, \\"desc\\":wound_desc ]);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:knock_from_combat">
+         "E[G]\\n// Knocking a target out of combat\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\$target = \$par[\\"args\\"][\\"target\\"];\\n\$char = \$par[\\"args\\"][\\"char\\"];\\n\\nccombat::remove_from_combat(\$fighter: \$target);\\n::describe_hit(); // Show the hit that knocks them from combat\\n\\nEmitTo(\$char, \\"You knock \\"+Describe(\$target)+\\" out of the fight.\\");\\nEmitIn(\$target, Describe(\$char)+\\" knocks you out of the fight.\\");\\nEmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" knocks \\"+Describe(\$target)+\\" out of the fight.\\", \$char, \$target);\\n\\n// ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:knock_from_combat_dead">
+         "E[G]\\n// Knocking a target out of combat\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\$target = \$par[\\"args\\"][\\"target\\"];\\n\$char = \$par[\\"args\\"][\\"char\\"];\\n\\nif(\$target.\\"base:environment\\".\\"area:dangerarea\\") \{\\n  // Can only make them dead in a danger area\\n  \$par[\\"args\\"][\\"damage\\"] = 9; // 9 points of damage will kill\\n\}\\n\\nccombat::remove_from_combat(\$fighter: \$target);\\n::describe_hit(); // Show the hit that knocks them from combat\\n\\nEmitTo(\$char, \\"You knock \\"+Describe(\$target)+\\" out of the fight.\\");\\nEmitIn(\$target, Describe(\$char)+\\" knocks you out of the fight.\\");\\nEmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" knocks \\"+Describe(\$target)+\\" out of the fight.\\", \$char, \$target);\\n\\n// ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:knock_from_combat_dying">
+         "E[G]\\n// Knocking a target out of combat\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\$target = \$par[\\"args\\"][\\"target\\"];\\n\$char = \$par[\\"args\\"][\\"char\\"];\\n\\nif(\$target.\\"base:environment\\".\\"area:dangerarea\\") \{\\n  // Can only make them dying in a danger area\\n  \$par[\\"args\\"][\\"damage\\"] = 7; // 7 points of damage makes them dying\\n\}\\n\\nccombat::remove_from_combat(\$fighter: \$target);\\n::describe_hit(); // Show the hit that knocks them from combat\\n\\nEmitTo(\$char, \\"You knock \\"+Describe(\$target)+\\" out of the fight.\\");\\nEmitIn(\$target, Describe(\$char)+\\" knocks you out of the fight.\\");\\nEmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" knocks \\"+Describe(\$target)+\\" out of the fight.\\", \$char, \$target);\\n\\n// ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:knock_from_combat_unconscious">
+         "E[G]\\n// Knocking a target out of combat\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\$target = \$par[\\"args\\"][\\"target\\"];\\n\$char = \$par[\\"args\\"][\\"char\\"];\\n\\nccombat::remove_from_combat(\$fighter: \$target);\\n::describe_hit(); // Show the hit that knocks them from combat\\n// ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action\\nironclaw::set_prop(\$obj: \$target, \$prop: \\"status:unconscious\\", \$value: 1, \$timer: 60*2);\\n\\nEmitTo(\$char, \\"You knock \\"+Describe(\$target)+\\" out of the fight.\\");\\nEmitIn(\$target, Describe(\$char)+\\" knocks you out of the fight.\\");\\nEmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" knocks \\"+Describe(\$target)+\\" out of the fight.\\", \$char, \$target);\\n\\n\$delay(5, TRUE);\\nSocial(\$target, \\"stagger\\");\\n\\n\$delay(5, TRUE);\\nSocial(\$target, \\"collapse\\", \\"unconsciously\\");\\nEmitTo(\$target, \\"(You are now unconscious. Please roleplay accordingly, until you are either revived or some time has passed.)\\");\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:make_attack">
+         "E[G]\\n// Should be called by a combat action\\n\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\\nif(!\$attack_options) \$attack_options = ([ ]);\\n\$attack_options[\\"attacker\\"] = \$char;\\n\\n\$target = \$char.combat[\\"target\\"];\\n\$target_detail = NewNRef(\$target, \\"default\\");\\n\\nif(\$par[\\"use_target\\"]) \{\\n  /* Should do more sanity checking than this! */\\n  if(\$target != NRefOb(\$par[\\"use_target\\"])) \{\\n    EmitTo(\$actor, \\"You must target \\"+Describe(NRefOb(\$par[\\"use_target\\"]))+\\" before you can attack. Type: fight \<target\>\\");\\n    return FALSE;\\n  \}\\n  \$target_detail = \$par[\\"use_target\\"];\\n\}\\n\\n\$attack_options[\\"target\\"] = \$target;\\n\$attack_options[\\"target_detail\\"] = \$target_detail;\\n\\nEmitTo(\$az, \\"Target is \\"+dump_value(\$target_detail));\\n\\n// What weapon are they using?\\n\$attack_options[\\"weapon\\"] = \$attack_options[\\"weapon\\"] ? \$attack_options[\\"weapon\\"] : ::get_weapon(\$char: \$char, \$type: \\"primary\\");\\n\$attack_options[\\"defender_weapon\\"] = \$attack_options[\\"defender_weapon\\"] ? \$attack_options[\\"defender_weapon\\"] : ::get_weapon(\$char: \$target, \$type: \\"primary\\");\\n\\nEmitTo(\$az, \\"Attacking with weapon: \\"+dump_value(\$attack_options[\\"weapon\\"])+\\". Defending with \\"+dump_value(\$attack_options[\\"defender_weapon\\"]));\\n\\nif(!\$attack_options[\\"damagetype\\"]) \{\\n  if(!\$attack_options[\\"weapon\\"].\\"combat:damagetype\\") \{\\n    \$attack_options[\\"damagetype\\"] = (\{ \\"strike\\", \\"bruise\\" \});\\n  \} else \{\\n    \$attack_options[\\"damagetype\\"] = \$attack_options[\\"weapon\\"].\\"combat:damagetype\\"[random(sizeof(\$attack_options[\\"weapon\\"].\\"combat:damagetype\\"))];\\n  \}\\n\}\\nEmitTo(\$az, \\"Damage type: \\"+dump_value( \$attack_options[\\"damagetype\\"] ));\\n\\n\$attack_roll_result = ::roll_attack(\$attack_options: copy(\$attack_options));\\n\\nEmitTo(\$az, \\"Attack result: \\"+dump_value( \$attack_roll_result ));\\n\\n/* Try to get rid of these variables, and use the ones in the attack_options array */\\n\$defence = \$attack_roll_result[1];\\n\$counter_defence = \$attack_roll_result[1];\\n\$result = \$attack_roll_result[0];\\n\$weapon = \$attack_options[\\"weapon\\"];\\n\$defender_weapon = \$attack_options[\\"defender_weapon\\"];\\n/*\\n\$damagetype = \$attack_options[\\"damagetype\\"];\\n*/\\n\\n// if(\$attack_roll_result[0] \<= 0)\\n//     \$attack_roll_result[0] = 1;\\n\\nif(\$attack_roll_result[0] \> 0) \{\\n  // Attacker hit - calculate damage\\n  \$damage = ::roll_damage(\$attack_options: copy(\$attack_options), \$hit_roll: \$attack_roll_result[0]);\\n  \\n    // Later on we can set the adjective based on the style of attack (how many successes, etc.)\\n    \$attack_adj = \\"\\";\\n    switch(random(6)) \{\\n        case 8:\\n            \$attack_adj = \\" barely\\"; break;\\n        case 7:\\n            \$attack_adj = \\" competently\\"; break;\\n        case 6:\\n            \$attack_adj = \\" expertly\\"; break;\\n        case 5:\\n            \$attack_adj = \\" recklessly\\"; break;\\n        case 4:\\n            \$attack_adj = \\" dangerously\\"; break;\\n        case 3:\\n            \$attack_adj = \\" quickly\\"; break;\\n        case 2:\\n            \$attack_adj = \\" hastily\\"; break;\\n        case 1:\\n            \$attack_adj = \\" wildly\\"; break;\\n        default:\\n            \$attack_adj = \\"\\";\\n            break;\\n    \}\\n\\n  // Describe hit and give wound\\n  ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail:\$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$attack_options[\\"damagetype\\"],\\n    \$attack_options: copy(\$attack_options),\\n    \$attack_roll: \$attack_roll_result[0],\\n    \$attack_adj: \$attack_adj,\\n    \$par: ([ ])\\n  );\\n\\n  ccombat::set_reeling(\$char: \$attack_options[\\"target\\"], \$notify: \$attack_options[\\"attacker\\"]);\\n\\n  ::remove_card_to_deck(\$char: \$char, \$action: \\"attack\\", \$object: this);\\n  /* We return TRUE instead of charging the action here, in case the hit triggers a question to the player. describe_hit has to charge the action. */\\n  return TRUE;\\n\\n\} else if(\$result == 0) \{\\n    // Tie\\n    if(FindMerry(\$attack_options[\\"weapon\\"], \\"lib\\", \\"describe_miss\\")) \{\\n      Call(\$attack_options[\\"weapon\\"], \\"describe_miss\\", \$char: \$char, \$target: \$attack_options[\\"target\\"], \$target_detail:\$attack_options[\\"target_detail\\"], \$weapon: \$attack_options[\\"weapon\\"], \$defence: \$attack_options[\\"defence\\"], \$counter_defence:\$attack_options[\\"counter_defence\\"], \$result: \$attack_roll_result[0]);\\n    \} else \{\\n      if(\$counter_defence == \\"parry\\") \{\\n        EmitTo(\$char, \\"You swing \\"+Describe(\$weapon, nil, \$char)+\\" at \\"+Describe(\$target)+\\", who\\"+oneof(\\"\\", \\" barely\\", \\" hastily\\")+\\" parries it\\"+oneof(\\"\\", \\" to the side\\", \\" at the last moment\\")+\\".\\");\\n        EmitTo(\$target, Describe(\$char)+\\" swings \\"+Describe(\$weapon, \$char)+\\", but you \\"+oneof(\\"\\", \\" barely\\", \\" hastily\\")+\\" parry it\\"+oneof(\\"\\", \\" to the side\\", \\" at the last moment\\")+\\".\\");\\n        EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" swings \\"+Describe(\$weapon, \$char)+\\" at \\"+Describe(\$target)+\\" who\\"+oneof(\\"\\", \\" barely\\", \\" hastily\\")+\\" parries it\\"+oneof(\\"\\", \\" to the side\\", \\" at the last moment\\")+\\".\\", \$actor, \$target);\\n      \} else \{\\n        EmitTo(\$char, \\"You swing \\"+Describe(\$weapon, nil, \$char)+\\", only inches away from hitting \\"+Describe(\$target)+\\".\\");\\n        EmitTo(\$target, Describe(\$char)+\\" swings \\"+Describe(\$weapon, \$char)+\\", only inches away from hitting you.\\");\\n        EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" swings \\"+Describe(\$weapon, \$char)+\\", inches away from hitting \\"+Describe(\$target)+\\".\\", \$actor, \$target);\\n      \}\\n    \}\\n    ccombat::set_reeling(\$char: \$target, \$notify: \$char);\\n    ccombat::set_reeling(\$char: \$char, \$notify: nil);\\n\} else \{\\n    // Defender wins\\n    if(FindMerry(\$weapon, \\"lib\\", \\"describe_miss\\")) \{\\n      Call(\$weapon, \\"describe_miss\\", \$char: \$char, \$target: \$target, \$target_detail:\$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$counter_defence:\$counter_defence, \$result: \$result);\\n    \} else \{\\n      if(\$counter_defence == \\"parry\\") \{\\n        EmitTo(\$char, \\"You swing \\"+Describe(\$weapon, nil, \$char)+\\" at \\"+Describe(\$target)+\\", who\\"+oneof(\\"\\", \\" quickly\\", \\" expertly\\", \\" smoothly\\")+\\" parries it\\"+oneof(\\"\\", \\" to the side\\", \\" away\\")+\\".\\");\\n        EmitTo(\$target, Describe(\$char)+\\" swings \\"+Describe(\$weapon, \$char)+\\", but you \\"+oneof(\\"\\", \\" quickly\\", \\" expertly\\", \\" smoothly\\")+\\" parry it\\"+oneof(\\"\\", \\" to the side\\", \\" away\\")+\\".\\");\\n        EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" swings \\"+Describe(\$weapon, \$char)+\\" at \\"+Describe(\$target)+\\" who\\"+oneof(\\"\\", \\" quickly\\", \\" expertly\\", \\" smoothly\\")+\\" parries it\\"+oneof(\\"\\", \\" to the side\\", \\" away\\")+\\".\\", \$actor, \$target);\\n      \} else \{\\n        EmitTo(\$char, \\"You swing \\"+Describe(\$weapon, nil, \$char)+\\" at \\"+Describe(\$target)+\\", who \\"+oneof(\\"shifts\\", \\"moves\\", \\"dodges\\")+\\" out of the way.\\");\\n        EmitTo(\$target, Describe(\$char)+\\" swings \\"+Describe(\$weapon, \$char)+\\" at you, but you \\"+oneof(\\"shift\\", \\"move\\", \\"dodge\\")+\\" out of the way.\\");\\n        EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" swings \\"+Describe(\$weapon, \$char)+\\" at \\"+Describe(\$target)+\\", who \\"+oneof(\\"shifts\\", \\"moves\\", \\"dodges\\")+\\" out of the way.\\", \$actor, \$target);\\n      \}\\n    \}\\n    \\n    // Disabling counterattacks for now, since it's throwing an error\\n    if(FALSE \&\& \$defence == \\"counter\\") \{\\n      // Give damage from the counterattack\\n      // Attacker hit - calculate damage\\n      \$damage = \$result*-1; // Damage is typically 1 point per success\\n      if(\$defender_weapon.\\"weapon:status:critical\\") \$damage += \$damage/2; // Is the attack critical?\\n      if(\$defender_weapon.\\"weapon:status:slaying\\") \$damage += \$damage; // Is the attack slaying?\\n      \$damage += Int(\$defender_weapon.\\"weapon:bonus:damage\\"); // Add the weapon bonus\\n      // Add target wound penalties bonus\\n      if(\$char.\\"status:hurt\\") \$damage += random(2);\\n      if(\$char.\\"status:injured\\") \$damage += random(2);\\n      EmitTo(\$az, \\"Damage: \\"+dump_value(\$damage));\\n\\n      // Target resists with soak\\n      \$soak = ironclaw::roll_dicepool(\$roller: \$char, \$skills: (\{ \\"trait:body\\", \\"trait:will\\", Int(\$char.\\"combat:armor:rating\\")*2 \}), \$rolltype: \\"target\\", \$target: 4, \$debug: nil);\\n\\n      \$damage -= \$soak;\\n      EmitTo(\$az, \\"Soaked damage: \\"+dump_value(\$damage));\\n      \$damage = ::max_damage(\$damage: \$damage, \$victim: \$char);\\n\\n\\n      EmitTo(\$az, \\"Limited damage: \\"+dump_value(\$damage));\\n      // if(\$char == \$az \|\| \$char == \$\{Chatters:IC:re:rectitude\} ) \$damage = 4;\\n      // EmitTo(\$az, \\"Cheating damage: \\"+dump_value(\$damage));\\n\\n      // Describe hit and give wound\\n      ::describe_hit(\$char: \$target, \$target: \$char, \$weapon: \$weapon, \$defence: \\"none\\", \$damage: \$damage, \$par: ([ ]));\\n      ccombat::set_reeling(\$char: \$char, \$notify: \$target);      \\n    \}\\n\}\\n\\n::remove_card_to_deck(\$char: \$char, \$action: \\"attack\\", \$object: this);\\n::charge_action(\$char: \$char, \$notify: nil);\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:remove_card">
+         "E[G]\\n// Removes a card from the player's hand, and discards it\\n// ::remove_card(\$char:\$char, \$action:\\"aim\\", \$object:this);\\nint i;\\nif(!\$char) return FALSE;\\nif(!\$char.combat) return FALSE;\\n\\n// Remove card from current options\\nfor(i=0;i\<sizeof(\$char.combat[\\"options\\"]);i++) \{\\n  if(\$char.combat[\\"options\\"][i][0] == \$action\\n  \&\& \$char.combat[\\"options\\"][i][1] == \$object) \{\\n    \$char.combat[\\"options\\"][i] = nil;\\n    \$char.combat[\\"options\\"] -= (\{ nil \});\\n    break;\\n  \}\\n\}\\n\\n// Remove card from hand\\nfor(i=0;i\<sizeof(\$char.combat[\\"hand\\"]);i++) \{\\n  if(\$char.combat[\\"hand\\"][i][0] == \$action\\n  \&\& \$char.combat[\\"hand\\"][i][1] == \$object) \{\\n    \$char.combat[\\"hand\\"][i] = nil;\\n    \$char.combat[\\"hand\\"] -= (\{ nil \});\\n    break;\\n  \}\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:remove_card_to_deck">
+         "E[G]\\n// Removes a card from the player's hand, and returns it to the deck\\n// ::remove_card_to_deck(\$char:\$char, \$action:\\"aim\\", \$object:this);\\nint i;\\nif(!\$char) return FALSE;\\nif(!\$char.combat) return FALSE;\\n\\n// Remove card from current options\\nfor(i=0;i\<sizeof(\$char.combat[\\"options\\"]);i++) \{\\n  if(\$char.combat[\\"options\\"][i][0] == \$action\\n  \&\& \$char.combat[\\"options\\"][i][1] == \$object) \{\\n    \$char.combat[\\"options\\"][i] = nil;\\n    \$char.combat[\\"options\\"] -= (\{ nil \});\\n    break;\\n  \}\\n\}\\n\\n// Remove card from hand\\nfor(i=0;i\<sizeof(\$char.combat[\\"hand\\"]);i++) \{\\n  if(\$char.combat[\\"hand\\"][i][0] == \$action\\n  \&\& \$char.combat[\\"hand\\"][i][1] == \$object) \{\\n    \$char.combat[\\"deck\\"] += (\{ \$char.combat[\\"hand\\"][i] \}); /* Add card back to the deck */\\n    \$char.combat[\\"hand\\"][i] = nil;\\n    \$char.combat[\\"hand\\"] -= (\{ nil \});\\n    break;\\n  \}\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:roll_attack">
+         "E[G]\\n// Should be called by make_attack, or by a function rolling to see if an attack hit\\n// Format: ::roll_attack(\$attack_options: \$attack_options);\\n\\nEmitTo(\$az, \\"Rolling attack\\");\\n\\nif(!\$attack_options) error(\\"No attack_options array passed to roll_attack\\");\\n\\n// get skills for attacker and defender\\n\$attack_skills = ::get_dicepool(\$char: \$attack_options[\\"attacker\\"], \$pool: \\"attacking\\", \$weapon: \$attack_options[\\"weapon\\"]);\\n\$attack_skills += Int(\$attack_options[\\"attack_bonus\\"]);\\n  \\n\$defender_skills = 0;\\n\$defence = \\"none\\";\\n\$counter_defence = \\"none\\"; // In case they're counterattacking, we still want to be able to describe a dodge or parry first\\n// Are they parrying?\\n\$tmp = ::get_dicepool(\$char: \$attack_options[\\"target\\"], \$pool: \\"defending\\", \$weapon: \$attack_options[\\"defender_weapon\\"], \$type: \\"parry\\");\\nEmitTo(\$az, \\"Parry defence: \\"+dump_value(\$tmp));\\nif(\$tmp \> \$defender_skills) \{\\n  \$defence = \\"parry\\";\\n  \$counter_defence = \\"parry\\";\\n  \$defender_skills = \$tmp;\\n\}\\n// Are they dodging?\\n\$tmp = ::get_dicepool(\$char: \$attack_options[\\"target\\"], \$pool: \\"defending\\", \$weapon: \$attack_options[\\"defender_weapon\\"], \$type: \\"dodge\\");\\nEmitTo(\$az, \\"Dodge defence: \\"+dump_value(\$tmp));\\nif(\$tmp \> \$defender_skills) \{\\n  \$defence = \\"dodge\\";\\n  \$counter_defence = \\"dodge\\";\\n  \$defender_skills = \$tmp;\\n\}\\n  // Are they countering?\\n  // Disabled\\n  // \$tmp = ::get_dicepool(\$char: \$target, \$pool: \\"defending\\", \$weapon: \$defender_weapon, \$type: \\"counter\\");\\n  // EmitTo(\$az, \\"Counter defence: \\"+dump_value(\$tmp));\\n  // if(\$tmp \> \$defender_skills) \{\\n  //   \$defence = \\"counter\\";\\n  //   \$defender_skills = \$tmp;\\n  // \}\\n\\nEmitTo(\$az, \\"Attack skills: \\"+dump_value(\$attack_skills));\\nEmitTo(\$az, \\"Defend skills: \\"+dump_value(\$defender_skills));\\nEmitTo(\$az, \\"Defend type: \\"+dump_value(\$defence));\\n\\n// Is the attacker aiming?\\nif(\$attack_options[\\"attacker\\"].combat[\\"status\\"][\\"aiming\\"]) \{\\n  if(\$attack_skills \> 10)\\n    \$attack_skills *= 2;\\n  else\\n    \$attack_skills += 10;\\n  \$attack_options[\\"attacker\\"].combat[\\"status\\"][\\"aiming\\"] = nil;\\n\}\\n// Is the defender guarding?\\nif(\$attack_options[\\"target\\"].combat \&\& \$attack_options[\\"target\\"].combat[\\"status\\"][\\"guarding\\"]) \{\\n  if(\$defence == \\"counter\\") \{\\n    if(\$defender_skills \> 10)\\n      \$defender_skills = Int(Flt(\$defender_skills) * 1.5);\\n    else\\n      \$defender_skills += 10;\\n  \} else \{\\n    if(\$defender_skills \> 20)\\n      \$defender_skills *= 2;\\n    else\\n      \$defender_skills += 20;\\n  \}\\n\}\\n\\n// Is anyone at a disadvantage?\\nif(\$attack_options[\\"attacker\\"].combat[\\"status\\"][\\"reeling\\"]) \{\\n  \$defender_skills *= 2;\\n\}\\nif(\$attack_options[\\"target\\"].combat[\\"status\\"][\\"reeling\\"]) \{\\n  \$attack_skills *= 2;\\n\}\\n\\nEmitTo(\$az, \\"Rolling \\"+dump_value(\$attack_skills)+\\" vs \\"+dump_value(\$defender_skills));\\n\$result = ironclaw::make_opposed_roll(\$val1: \$attack_skills, \$val2: \$defender_skills, \$opposed_roll_range: 12);\\n\\nEmitTo(\$az, \\"Result: \\"+dump_value(\$result));\\n  \\nreturn (\{ \$result, \$defence \});"
+      </Core:Property>
+      <Core:Property property="gimli:lib:roll_damage">
+         "E[G]\\n// Should be called by make_attack, or by a function rolling to see how much damage a hit causes\\n// Format: ::roll_damage(\$attack_options: \$attack_options, \$hit_roll: \$hit_roll);\\n\\nEmitTo(\$az, \\"Rolling attack\\");\\n\\nif(!\$attack_options) error(\\"No attack_options array passed to roll_damage\\");\\nif(!\$hit_roll) \$hit_roll = 1;\\n\\n\$damage = \$hit_roll; // Damage is typically 1 point per success\\nif(\$attack_options[\\"weapon\\"].\\"weapon:status:critical\\") \$damage += \$damage/2; // Is the attack critical?\\nif(\$attack_options[\\"weapon\\"].\\"weapon:status:slaying\\") \$damage += \$damage; // Is the attack slaying?\\n\$damage += Int(\$attack_options[\\"weapon\\"].\\"weapon:bonus:damage\\"); // Add the weapon bonus\\n\$damage += Int(\$attack_options[\\"damage_bonus\\"]);\\n\\nEmitTo(\$az, \\"Damage: \\"+dump_value(\$damage));\\n    \\n// Add target wound penalties bonus\\nif(\$attack_options[\\"target\\"].\\"status:hurt\\") \$damage += random(Int(\$attack_options[\\"target\\"].\\"status:hurt\\"));\\nif(\$attack_options[\\"target\\"].\\"status:shaken\\") \$damage += random(Int(\$attack_options[\\"target\\"].\\"status:shaken\\")*2);\\nif(\$attack_options[\\"target\\"].\\"status:injured\\") \$damage += random(Int(\$attack_options[\\"target\\"].\\"status:injured\\"));\\n\\nEmitTo(\$az, \\"Damage with penalties: \\"+dump_value(\$damage));\\n\\n// Target resists with soak\\n\$soak = ironclaw::roll_dicepool(\$roller: \$attack_options[\\"target\\"], \$skills: (\{ \\"trait:body\\", \\"trait:will\\", Int(\$target.\\"combat:armor:rating\\")*2 \}), \$rolltype: \\"target\\", \$target: 4, \$debug: nil);\\n\\nEmitTo(\$az, \\"Soak was: \\"+dump_value(\$soak));\\n\\n\$damage -= \$soak;\\nEmitTo(\$az, \\"Soaked damage: \\"+dump_value(\$damage));\\n\$damage = ::max_damage(\$damage: \$damage, \$victim: \$attack_options[\\"target\\"]);\\n\\nEmitTo(\$az, \\"Limited damage: \\"+dump_value(\$damage));\\n    \\nreturn \$damage;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:sanity_check">
+         "E[G]\\n// Do some basic sanity checks for a combat action\\n\\nif(!\$char) return FALSE;\\nif(!\$char.combat) \{\\n  if(\$emotes) EmitTo(\$char, \\"You are not in combat anymore.\\");\\n  return FALSE;\\n\}\\n\\nif(\$needs_action \&\& Int(\$char.combat[\\"actions\\"]) \< 1) \{\\n  if(\$emotes) EmitTo(\$char, \\"You don't have any actions left. Please wait until your next turn.\\");\\n  return FALSE;\\n\}\\n\\nif(\$needs_target \&\& !\$char.combat[\\"target\\"]) \{\\n  if(\$emotes) \{\\n    EmitTo(\$char, \\"Before using this action, you'll need to choose an opponent. Type: fight \<target\>\\");\\n    ccombat::list_actions(\$char: \$char);\\n  \}\\n  return FALSE;\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:take_combat_actions">
+         "E[G]\\n// Generic script for an NPC fighter to take actions in combat\\nint i;\\n\\n// EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" wonders, \\\\\\"Do I want to take an action?\\\\\\"\\");\\n\\n// Sanity check\\nif(!\$char) return FALSE;\\nif(!\$char.combat) return FALSE;\\n\\n// Do we have a target?\\nif(!\$char.combat[\\"target\\"]) \{\\n  // EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" says, \\\\\\"I don't have a target, so I'll skip my turn.\\\\\\"\\");\\n  return FALSE; // Currently enemies are pretty stupid - they don't yet know how to select a new target\\n\}\\n\\n// EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" wonders, \\\\\\"What actions can I take?\\\\\\"\\");\\n\$actions = copy(\$char.combat[\\"options\\"]);\\nfor(i=0;i\<sizeof(\$actions);i++) \{\\n  // Check if this action is currently valid \\n  \$valid = Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE);\\n\\n  // if(\$valid)\\n  //   EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" says, \\\\\\"This is valid: \\"+dump_value(\$actions[i])+\\"\\\\\\"\\");\\n  // else\\n  //   EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" says, \\\\\\"NOT valid: \\"+dump_value(\$actions[i])+\\"\\\\\\"\\");\\n    \\n  if(!\$valid) \$actions -= (\{ \$actions[i] \}); // Remove invalid options\\n\}\\n\\n// Do we have any valid actions left?\\nif(!sizeof(\$actions)) return FALSE; // No valid actions left!\\n\\n// Select a random action\\n\$action = \$actions[random(sizeof(\$actions))];\\n// EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" says, \\\\\\"Imma gunna: \\"+dump_value(\$action)+\\"\\\\\\"\\");\\n// EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" says, \\\\\\"Turn ID is: \\"+dump_value(\$turn_id)+\\"\\\\\\"\\");\\n\\n// Does a script exist in the NPC for this action?\\nif(FindMerry(\$char, \\"lib\\", \\"take_combat_action_\\"+\$action[0]))\\n  return Call(\$char, \\"take_combat_action_\\"+\$action[0], \$char: \$char);\\n\\n// Call the action. Return whatever the action returns (that way if the action worked, it'll have already charged the turn. If not, we'll charge the turn.)\\nreturn Call(\$action[1], \$action[0], \$char:\$char, \$par:([ \\"char\\":\$char, \\"taking_action\\":TRUE, \\"turn_id\\":\$turn_id ]));\\n\\n/*\\ninteraction::question(\$actor: \$char, \$question: \\"What action do you want to take? You have \\"+\$actions_text+\\" remaining.\\", \$expires: \$expire_time, \$env: \\"TRUE\\", \$a: \$actions[0][2], \$a_ob: \$actions[0][1], \$a_fun: \$actions[0][0], \$b: \$actions[1][2], \$b_ob: \$actions[1][1], \$b_fun: \$actions[1][0], \$c: \$actions[2][2], \$c_ob: \$actions[2][1], \$c_fun: \$actions[2][0], \$d: \$actions[3][2], \$d_ob: \$actions[3][1], \$d_fun: \$actions[3][0], \$e: \$actions[4][2], \$e_ob: \$actions[4][1], \$e_fun: \$actions[4][0], \$expire_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$expire_fun: \\"question_expire\\", \$par: \$params);\\n\\n\$params = ([ \\"char\\":\$char, \\"taking_action\\":TRUE, \\"turn_id\\":\$turn_id ]);\\n*/\\n\\n// Returning TRUE will not charge actions (which is good if we're going to take an action, like make an attack...)\\n// Returning FALSE will charge actions automatically (which is good if we don't want to do anything...)\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="log:creator">
+         "Combat Actions"
+      </Core:Property>
+      <Core:Property property="merry:lib:charge_action">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:charge_action instead! */
+/* Charge an action */
+if(!\$char \|\| !\$char.combat) return FALSE;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* Sanity check */
+if(!\$char.combat["actions"]) \$char.combat["actions"] = 0;
+
+/* Charge 1 action for this */
+\$char.combat["actions"]--;
+
+if(\$char.combat["actions"] \> 0) \{
+  /* Still have actions remaining. List them */
+  \$delay(0.01, TRUE, "a469");
+  ccombat::list_actions(\$char: \$char);
+\} else \{
+  /* No more actions remaining. End the turn */
+  ccombat::end_turn(\$char: \$char);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:datafile">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:datafile instead! */
+/* returns the combat datafile mapping */
+object datafile;
+datafile = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};
+
+if(\$id) \$combat_data = Get(datafile, Str(\$id));
+if(\$combat_data) return \$combat_data;
+
+if(\$char \&\& \$char.combat \&\& \$char.combat["id"]) \$combat_data = Get(datafile, Str(\$char.combat["id"]));
+if(\$combat_data) return \$combat_data;
+
+/* Didn't find the data - probably because the fight is over */
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_hit">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:describe_hit instead! */
+/* Describe hitting an opponent in combat */
+/* ::describe_hit(\$char:\$char, \$target:\$target, \$weapon:\$weapon, \$defence:\$defence, \$damage:\$damage); */
+/* ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail:\$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$damagetype, \$par: ([ ])); */
+/* ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail:\$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$attack_options["damagetype"], \$attack_options: copy(\$attack_options), \$attack_roll: \$attack_roll_result[0], \$attack_adj: \$attack_adj, \$par: ([ ]) ); */
+
+/* Some possible emits: */
+/* HURT */
+/* Alice slams her club into Bob's stomach */
+/* SCARED */
+
+/* INJURED */
+/* Alice cleaves into bob with her axe */
+
+/* DYING */
+
+/* Eos's email about combat emits contains more */
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, dump_value(\$damage)+" levels of damage for describing hit");
+
+/* If this is triggered after a question, set the expected variables */
+if(\$par \&\& \$par["question_response"] \&\& \$par["args"]) \{
+  \$char = \$par["args"]["char"];
+  \$target = \$par["args"]["target"];
+  \$target_detail = \$par["args"]["target_detail"];
+  \$damage = \$par["args"]["damage"];
+  \$defence = \$par["args"]["defence"];
+  \$weapon = \$par["args"]["weapon"];
+  \$damagetype = \$par["args"]["damagetype"];
+
+  \$actor = \$par["args"]["actor"];
+  \$attack_skills = \$par["args"]["attack_skills"];
+  \$bonus = \$par["args"]["bonus"];
+  \$defender_skills = \$par["args"]["defender_skills"];
+  \$defender_weapon = \$par["args"]["defender_weapon"];
+  \$defender_weapon_skill = \$par["args"]["defender_weapon_skill"];
+  \$result = \$par["args"]["result"];
+  \$soak = \$par["args"]["soak"];
+  \$tmpbonus = \$par["args"]["tmpbonus"];
+  
+  \$attack_adj = \$par["args"]["attack_adj"];
+\}
+
+if(!\$attack_options) \{
+  if(\$par["args"]["attack_options"])
+    \$attack_options = \$par["args"]["attack_options"];
+  else
+    error("No attack_options array passed to describe_hit");
+\}
+if(!\$attack_roll) \{
+  if(\$par["args"]["attack_roll"])
+    \$attack_roll= \$par["args"]["attack_roll"];
+  else
+    error("No attack_roll array passed to describe_hit");
+\}
+
+EmitTo(\$az, "Damage1: "+dump_value(\$damage));
+EmitTo(\$az, "Attack options: "+dump_value(\$attack_options));
+EmitTo(\$az, "Target detail: "+dump_value(\$attack_options["target_detail"]));
+
+/* Is there an NPC script for this level of damage? */
+if(FindMerry(\$attack_options["attacker"], "lib", "give_combat_damage")) \{
+  if(!Call(\$attack_options["attacker"], "give_combat_damage", \$char: \$char, \$attacker: \$attack_options["attacker"], \$target: \$attack_options["target"], \$target_detail: \$attack_options["target_detail"])) return TRUE;
+\}
+
+/* Are they given the choice to knock their opponent out of the fight? */
+
+/* TEMPORARY - Only offer to possessed characters */
+if(\$char."udat:object" \&\& NRefOb(\$target)."udat:object") \{
+
+if(!\$par \|\| !\$par["question_response"]) \{
+  /* We haven't asked a question yet - so perhaps we should? */
+  /* Ask if they want to do normal damage, or some other effect */
+  if(NRefOb(\$target)."base:environment"."area:dangerarea" \&\& \$damage \>= 9) \{
+    /* Would normally be enough to make the opponent dead */
+    /* Offer the choice of doing the damage, killing them, knocking them unconscious, or knocking them out of the fight */
+    \$damage = 6; /* So we don't accidentally kill someone if they just do an injury */
+    \$delay(0.01, TRUE, "6caa");
+    interaction::question(\$actor: \$char, \$question: "What action do you want to do to "+Describe(NRefOb(\$target))+"?", \$expires: 60, \$env: "TRUE", \$a: "Injure "+\$target."base:objective", \$a_ob: this, \$a_fun: "describe_hit", \$b: "Knock "+\$target."base:objective"+" out of combat", \$b_ob: this, \$b_fun: "knock_from_combat", \$c: "Knock "+\$target."base:objective"+" unconscious", \$c_ob: this, \$c_fun: "knock_from_combat_unconscious", \$d: "Grievously wound "+\$target."base:objective", \$d_ob: this, \$d_fun: "knock_from_combat_dying", \$e: "Kill "+\$target."base:objective"+"!", \$e_ob: this, \$e_fun: "knock_from_combat_dead", \$expire_ob: this, \$expire_fun: "describe_hit", \$par: ([ "question_response":TRUE, "char":\$char, "args":args ]));
+    return FALSE;
+  \} else if(NRefOb(\$target)."base:environment"."area:dangerarea" \&\& \$damage \>= 7) \{
+    /* Would normally be enough to make the opponent dying or worse */
+    /* Offer the choice of doing the damage, knocking them unconscious, or knocking them out of the fight */
+    \$damage = 6; /* So we don't accidentally kill someone if they just do an injury */
+    \$delay(0.01, TRUE, "2605");
+    interaction::question(\$actor: \$char, \$question: "What action do you want to do to "+Describe(NRefOb(\$target))+"?", \$expires: 60, \$env: "TRUE", \$a: "Injure "+\$target."base:objective", \$a_ob: this, \$a_fun: "describe_hit", \$b: "Knock "+\$target."base:objective"+" out of combat", \$b_ob: this, \$b_fun: "knock_from_combat", \$c: "Knock "+\$target."base:objective"+" unconscious", \$c_ob: this, \$c_fun: "knock_from_combat_unconscious", \$d: "Grievously wound "+\$target."base:objective", \$d_ob: this, \$d_fun: "knock_from_combat_dying", \$expire_ob: this, \$expire_fun: "describe_hit", \$par: ([ "question_response":TRUE, "char":\$char, "args":args ]));
+    return FALSE;
+  \} else if(\$damage \>= 5) \{
+    /* Would normally be enough to make the opponent injured */
+    /* Offer the choice of doing the damage or knocking them out of the fight */
+    if(\$damage \>= 6) \$damage = 6; /* So we don't accidentally kill someone if they just do an injury */
+    \$delay(0.01, TRUE, "59f3");
+    interaction::question(\$actor: \$char, \$question: "What action do you want to do to "+Describe(NRefOb(\$target))+"?", \$expires: 60, \$env: "TRUE", \$a: "Injure "+\$target."base:objective", \$a_ob: this, \$a_fun: "describe_hit", \$b: "Knock "+\$target."base:objective"+" out of combat", \$b_ob: this, \$b_fun: "knock_from_combat", \$expire_ob: this, \$expire_fun: "describe_hit", \$par: ([ "question_response":TRUE, "char":\$char, "args":args ]));
+    return FALSE;
+  \}
+\}
+
+\}
+
+/* Figure out what sort of damage we're giving */
+
+if(\$attack_options["damagetype"]) \{
+  \$attacktype = \$attack_options["damagetype"][0];
+  \$woundtype = \$attack_options["damagetype"][1];
+\} else if(\$attack_options["weapon"]."combat:damagetype") \{
+  \$attacktype = \$attack_options["weapon"]."combat:damagetype"[random(sizeof(\$attack_options["weapon"]."combat:damagetype"))];
+  \$woundtype = \$attacktype[1];
+  \$attacktype = \$attacktype[0];
+\} else \{
+  \$attacktype = "strike";
+  \$woundtype = "bruise";
+\}
+
+EmitTo(\$\{Chatters:AE:az:azrael\}, "Attack type: "+dump_value(\$attacktype));
+EmitTo(\$\{Chatters:AE:az:azrael\}, "Wound type: "+dump_value(\$woundtype));
+
+
+\$adverb = (\{ "quickly", "powerfully", "expertly", "accurately" \});
+\$verb = (\{ "strike", "hit" \});
+
+if(!\$attack_options["target_detail"] \|\| NRefDetail(\$attack_options["target_detail"]) == "default") \{
+  \$details = (\{ "chest", "right-arm", "left-arm", "right-shoulder", "left-shoulder", "right-armpit", "left-armpit", "right-bicep", "left-bicep", "right-hand", "left-hand", "right-wrist", "left-wrist", "right-forearm", "left-forearm", "right-leg", "left-leg", "right-thigh", "left-thigh", "right-calf", "left-calf", "right-knee", "left-knee", "right-elbow", "left-elbow", "right-side", "left-side", "hips", "ribs", "stomach", "gut" \});
+  \$attack_options["target_detail"] = NewNRef(\$attack_options["target"], "default");
+  while(sizeof(\$details)) \{
+    \$tmp = \$details[random(sizeof(\$details))];
+    if(Get(\$attack_options["target"], "details:"+\$tmp+":snames") \&\& sizeof(Get(\$attack_options["target"], "details:"+\$tmp+":snames"))) \{
+      \$attack_options["target_detail"] = NewNRef(\$attack_options["target"], \$tmp);
+      \$details = (\{ \});
+    \} else \{
+      \$details -= (\{ \$tmp \});
+    \}
+  \}
+\}
+
+\$target_detail = \$attack_options["target_detail"];
+
+EmitTo(\$az, "Damage4: "+dump_value(\$damage));
+
+/* \$wound_info = ::get_wound(\$target_detail: \$target_detail, \$wound: \$woundtype, \$level: \$damage, \$par: ([ ])); */
+\$wound_info = injuries::get_wound(\$target_detail: \$attack_options["target_detail"], \$attacktype: \$attacktype, \$wound: \$woundtype, \$level: \$damage, \$par: ([ ]));
+
+/* Does the weapon have its own description for hitting? */
+EmitTo(\$\{Chatters:AE:az:azrael\}, "does weapon have hit description?: "+dump_value(\$weapon));
+if(FindMerry(\$weapon, "lib", "describe_hit"))
+  return Call(\$weapon, "describe_hit", \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$verb: \$verb, \$adverb: \$adverb);
+
+/* Get a description for the attack */
+if(FindMerry(\$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\}, "lib", "description_"+\$attacktype)) \{
+  Call(\$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\}, "description_"+\$attacktype, \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$damagetype, \$wound_info: \$wound_info);
+\} else \{
+  /* This should only be called if someone didn't set up the description library properly... */
+  EmitTo(\$az, "describe_hit unknown attack description library description_"+\$attacktype);
+  Call(\$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\}, "description_strike", \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$damagetype, \$wound_info: \$wound_info);
+\}
+
+EmitTo(\$char, \$actor_msg);
+EmitTo(\$target, \$target_msg);
+EmitIn(\$char."base:environment", \$witness_msg, \$char, \$target);
+
+/* And give the wound */
+EmitTo(\$\{Chatters:AE:az:azrael\}, dump_value(\$target_detail));
+EmitTo(\$\{Chatters:AE:az:azrael\}, dump_value(\$wound_info));
+
+/* \$wound = ::give_wound(\$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char, \$par: ([ ])); */
+\$wound = injuries::give_wound(\$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char, \$par: ([ ]));
+
+if(FindMerry(\$target, "lib", "combat_getdamaged"))
+  Call(\$target, "combat_getdamaged", \$target_detail: \$target_detail, \$wound_info: \$wound_info, \$char: \$char);
+
+::charge_action(\$char: \$char);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_dicepool">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_dicepool instead! */
+/* Gathers a combat dicepool */
+int result;
+
+if(!\$char) return (\{ \});
+
+\$dicepool = (\{ \});
+if(\$pool == "attacking") \{
+  /* Get skills for attacker */
+  result = Int(\$char.combat["bonus:attack:endgame"]); /* Include extra attack dice from the endgame */
+  result += Int(\$char."trait:body"); /* Attack rolls use body */
+  result += Int(\$char."career:combat:precision") + Int(\$char."skill:combat:precision"); /* Factor in precision */
+  if(\$weapon \&\& \$weapon."weapon:skill") \{
+    /* Also roll the skill for this weapon */
+    result += Int(Get(\$char, "skill:combat:"+\$weapon."weapon:skill"));
+    result += Int(Get(\$char, "career:combat:"+\$weapon."weapon:skill"));
+  \} else \{
+    /* Weapon doesn't have a skill. roll unarmed. */
+    result += Int(\$char."skill:combat:unarmed");
+    result += Int(\$char."career:combat:unarmed");
+  \}
+
+\} else if(\$pool == "defending") \{
+  /* Get defence for defender */
+  if(\$weapon \&\& \$weapon."weapon:skill")
+    \$defender_weapon_skill = "combat:"+\$weapon."weapon:skill";
+  else
+    \$defender_weapon_skill = "combat:unarmed";
+
+  /* What are they doing? */
+  if(\$type == "counter") \{
+    result = Int(\$char."trait:mind")+Int(Get(\$char, "skill:"+\$defender_weapon_skill))+Int(Get(\$char, "career:"+\$defender_weapon_skill));
+  \} else if(\$type == "parry") \{
+    result = Int(\$char."trait:body")+Int(Get(\$char, "skill:"+\$defender_weapon_skill))+Int(Get(\$char, "career:"+\$defender_weapon_skill));
+  \} else if(\$type == "dodge") \{
+    result = Int(\$char."trait:speed")+Int(Get(\$char, "skill:combat:dodge"))+Int(Get(\$char, "career:combat:dodge"));
+  \}
+\}
+
+return result;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_weapon">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_weapon instead! */
+/* Return the appropriate weapon for this fighter */
+/* \$primaryweapon = combat::get_weapon(\$char:\$char, \$type:"primary"); */
+/* \$offweapon = combat::get_weapon(\$char:\$char, \$type:"off"); */
+
+if(!\$char) return nil;
+
+if(\$type == "parry") \{
+  /* Cheat! Just return the primary weapon  */
+  /* Extension: Should get both primary and secondary, and check which is better */
+  \$weapon = ::get_weapon(\$type: "primary");
+  if(!\$weapon \|\| \$weapon."combat:noparry")
+    \$weapon = ::get_weapon(\$type: "off");
+  if(!\$weapon \|\| \$weapon."combat:noparry")
+    return nil;
+  return \$weapon;
+\}
+
+if(\$type == "primary") \{
+  if(\$char."base:combat:weapon") return \$char."combat:weapon:mainhand"; /* return \$char."base:combat:weapon"; */
+  /* Didn't return anything? Then we return the natural weapon */
+  \$type = "natural";
+\}
+if(\$type == "off") \{
+  if(\$char."weapon:offhand") return \$char."combat:weapon:offhand";
+  /* Didn't return anything? Then we return the natural weapon */
+  \$type = "natural";
+\}
+
+if(\$type == "natural") \{
+  if(\$char."combat:naturalweapon") return \$char."combat:naturalweapon";
+  return \$\{Ironclaw:Lib:Combat:New:UrPunch\};
+\}
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_wound">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_wound instead! */
+/* Calculate wound information */
+/* ::get_wound(\$target_detail:\$target_detail, \$wound:"bruise", \$level:\$damage, \$par:([]) ); */
+string wound_name, wound_adjective, wound_desc;
+
+/* Call the injuries script space */
+return injuries::get_wound();
+
+
+/* What is the maximum wound level the victim can take? */
+\$level = ::max_damage(\$damage: Int(\$level), \$victim: \$target_detail);
+
+/* Default wound values, in case they don't get set */
+wound_name = dump_value(\$wound);
+wound_adjective = "injured";
+wound_desc = "has been injured";
+
+/* Now we set the right wound values for this particular wound */
+if(\$wound == "bruise") \{
+  wound_name = "bruise";
+  wound_adjective = "bruised";
+  wound_desc = "has been bruised";
+  if(\$level \<= 0) \{
+    wound_name = "slight bruise";
+    wound_adjective = nil;
+    wound_desc = "has a "+oneof("slight", "light", "small")+" bruise";
+  \} else if(\$level == 1) \{
+    wound_name = "bruise";
+    wound_desc = "has a bruise";
+  \} else if(\$level \<= 2) \{
+    wound_name = "bruise";
+    wound_desc = "has a "+oneof("nasty", "deep", "purple")+" bruise";
+  \} else if(\$level \> 2) \{
+    wound_name = "severe bruise";
+    wound_desc = "has a "+oneof("serious", "injurous", "blackened")+" bruise";
+  \}
+\} else if(\$wound == "cut") \{
+  wound_name = "cut";
+  wound_adjective = "cut";
+  wound_desc = "has been cut";
+  if(\$level \<= 0) \{
+    wound_name = "shallow cut";
+    wound_adjective = nil;
+    wound_desc = "has a "+oneof("slight", "light", "small", "shallow")+" "+oneof("cut", "scrape");
+  \} else if(\$level == 1) \{
+    wound_name = "cut";
+    wound_desc = "has a cut";
+  \} else if(\$level \<= 2) \{
+    wound_name = "cut";
+    wound_desc = "has a "+oneof("nasty", "deep", "painful")+" cut";
+  \} else if(\$level \> 2) \{
+    wound_name = "deep cut";
+    wound_desc = "has a "+oneof("serious", "injurous", "deep")+" "+oneof("cut", "gash");
+  \}
+\} else \{
+  error("Unknown woundtype "+dump_value(\$wound));
+\}
+
+return ([ "level":\$level, "name":wound_name, "adj":wound_adjective, "desc":wound_desc ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:knock_from_combat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:knock_from_combat instead! */
+/* Knocking a target out of combat */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$target = \$par["args"]["target"];
+\$char = \$par["args"]["char"];
+
+ccombat::remove_from_combat(\$fighter: \$target);
+::describe_hit(); /* Show the hit that knocks them from combat */
+
+EmitTo(\$char, "You knock "+Describe(\$target)+" out of the fight.");
+EmitIn(\$target, Describe(\$char)+" knocks you out of the fight.");
+EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+
+/* ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:knock_from_combat_dead">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:knock_from_combat_dead instead! */
+/* Knocking a target out of combat */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$target = \$par["args"]["target"];
+\$char = \$par["args"]["char"];
+
+if(\$target."base:environment"."area:dangerarea") \{
+  /* Can only make them dead in a danger area */
+  \$par["args"]["damage"] = 9; /* 9 points of damage will kill */
+\}
+
+ccombat::remove_from_combat(\$fighter: \$target);
+::describe_hit(); /* Show the hit that knocks them from combat */
+
+EmitTo(\$char, "You knock "+Describe(\$target)+" out of the fight.");
+EmitIn(\$target, Describe(\$char)+" knocks you out of the fight.");
+EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+
+/* ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:knock_from_combat_dying">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:knock_from_combat_dying instead! */
+/* Knocking a target out of combat */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$target = \$par["args"]["target"];
+\$char = \$par["args"]["char"];
+
+if(\$target."base:environment"."area:dangerarea") \{
+  /* Can only make them dying in a danger area */
+  \$par["args"]["damage"] = 7; /* 7 points of damage makes them dying */
+\}
+
+ccombat::remove_from_combat(\$fighter: \$target);
+::describe_hit(); /* Show the hit that knocks them from combat */
+
+EmitTo(\$char, "You knock "+Describe(\$target)+" out of the fight.");
+EmitIn(\$target, Describe(\$char)+" knocks you out of the fight.");
+EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+
+/* ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:knock_from_combat_unconscious">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:knock_from_combat_unconscious instead! */
+/* Knocking a target out of combat */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$target = \$par["args"]["target"];
+\$char = \$par["args"]["char"];
+
+ccombat::remove_from_combat(\$fighter: \$target);
+::describe_hit(); /* Show the hit that knocks them from combat */
+/* ::charge_action(\$char: \$char); // Not needed, as describe_hit charges an action */
+ironclaw::set_prop(\$obj: \$target, \$prop: "status:unconscious", \$value: 1, \$timer: 60*2);
+
+EmitTo(\$char, "You knock "+Describe(\$target)+" out of the fight.");
+EmitIn(\$target, Describe(\$char)+" knocks you out of the fight.");
+EmitIn(\$char."base:environment", Describe(\$char)+" knocks "+Describe(\$target)+" out of the fight.", \$char, \$target);
+
+\$delay(5, TRUE, "0e96");
+Social(\$target, "stagger");
+
+\$delay(5, TRUE, "1c20");
+Social(\$target, "collapse", "unconsciously");
+EmitTo(\$target, "(You are now unconscious. Please roleplay accordingly, until you are either revived or some time has passed.)");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:make_attack">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:make_attack instead! */
+/* Should be called by a combat action */
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+if(!\$attack_options) \$attack_options = ([ ]);
+\$attack_options["attacker"] = \$char;
+
+\$target = \$char.combat["target"];
+\$target_detail = NewNRef(\$target, "default");
+
+if(\$par["use_target"]) \{
+  /* Should do more sanity checking than this! */
+  if(\$target != NRefOb(\$par["use_target"])) \{
+    EmitTo(\$actor, "You must target "+Describe(NRefOb(\$par["use_target"]))+" before you can attack. Type: fight \<target\>");
+    return FALSE;
+  \}
+  \$target_detail = \$par["use_target"];
+\}
+
+\$attack_options["target"] = \$target;
+\$attack_options["target_detail"] = \$target_detail;
+
+EmitTo(\$az, "Target is "+dump_value(\$target_detail));
+
+/* What weapon are they using? */
+\$attack_options["weapon"] = \$attack_options["weapon"] ? \$attack_options["weapon"] : ::get_weapon(\$char: \$char, \$type: "primary");
+\$attack_options["defender_weapon"] = \$attack_options["defender_weapon"] ? \$attack_options["defender_weapon"] : ::get_weapon(\$char: \$target, \$type: "primary");
+
+EmitTo(\$az, "Attacking with weapon: "+dump_value(\$attack_options["weapon"])+". Defending with "+dump_value(\$attack_options["defender_weapon"]));
+
+if(!\$attack_options["damagetype"]) \{
+  if(!\$attack_options["weapon"]."combat:damagetype") \{
+    \$attack_options["damagetype"] = (\{ "strike", "bruise" \});
+  \} else \{
+    \$attack_options["damagetype"] = \$attack_options["weapon"]."combat:damagetype"[random(sizeof(\$attack_options["weapon"]."combat:damagetype"))];
+  \}
+\}
+EmitTo(\$az, "Damage type: "+dump_value( \$attack_options["damagetype"] ));
+
+\$attack_roll_result = ::roll_attack(\$attack_options: copy(\$attack_options));
+
+EmitTo(\$az, "Attack result: "+dump_value( \$attack_roll_result ));
+
+/* Try to get rid of these variables, and use the ones in the attack_options array */
+\$defence = \$attack_roll_result[1];
+\$counter_defence = \$attack_roll_result[1];
+\$result = \$attack_roll_result[0];
+\$weapon = \$attack_options["weapon"];
+\$defender_weapon = \$attack_options["defender_weapon"];
+/*
+\$damagetype = \$attack_options["damagetype"];
+*/
+
+/* if(\$attack_roll_result[0] \<= 0) */
+/*     \$attack_roll_result[0] = 1; */
+
+if(\$attack_roll_result[0] \> 0) \{
+  /* Attacker hit - calculate damage */
+  \$damage = ::roll_damage(\$attack_options: copy(\$attack_options), \$hit_roll: \$attack_roll_result[0]);
+  
+    /* Later on we can set the adjective based on the style of attack (how many successes, etc.) */
+    \$attack_adj = "";
+    switch(random(6)) \{
+        case 8:
+            \$attack_adj = " barely"; break;
+        case 7:
+            \$attack_adj = " competently"; break;
+        case 6:
+            \$attack_adj = " expertly"; break;
+        case 5:
+            \$attack_adj = " recklessly"; break;
+        case 4:
+            \$attack_adj = " dangerously"; break;
+        case 3:
+            \$attack_adj = " quickly"; break;
+        case 2:
+            \$attack_adj = " hastily"; break;
+        case 1:
+            \$attack_adj = " wildly"; break;
+        default:
+            \$attack_adj = "";
+            break;
+    \}
+
+  /* Describe hit and give wound */
+  ::describe_hit(\$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$damage: \$damage, \$damagetype: \$attack_options["damagetype"], \$attack_options: copy(\$attack_options), \$attack_roll: \$attack_roll_result[0], \$attack_adj: \$attack_adj, \$par: ([ ]));
+
+  ccombat::set_reeling(\$char: \$attack_options["target"], \$notify: \$attack_options["attacker"]);
+
+  ::remove_card_to_deck(\$char: \$char, \$action: "attack", \$object: this);
+  /* We return TRUE instead of charging the action here, in case the hit triggers a question to the player. describe_hit has to charge the action. */
+  return TRUE;
+
+\} else if(\$result == 0) \{
+    /* Tie */
+    if(FindMerry(\$attack_options["weapon"], "lib", "describe_miss")) \{
+      Call(\$attack_options["weapon"], "describe_miss", \$char: \$char, \$target: \$attack_options["target"], \$target_detail: \$attack_options["target_detail"], \$weapon: \$attack_options["weapon"], \$defence: \$attack_options["defence"], \$counter_defence: \$attack_options["counter_defence"], \$result: \$attack_roll_result[0]);
+    \} else \{
+      if(\$counter_defence == "parry") \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+" at "+Describe(\$target)+", who"+oneof("", " barely", " hastily")+" parries it"+oneof("", " to the side", " at the last moment")+".");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", but you "+oneof("", " barely", " hastily")+" parry it"+oneof("", " to the side", " at the last moment")+".");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+" who"+oneof("", " barely", " hastily")+" parries it"+oneof("", " to the side", " at the last moment")+".", \$actor, \$target);
+      \} else \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+", only inches away from hitting "+Describe(\$target)+".");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", only inches away from hitting you.");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", inches away from hitting "+Describe(\$target)+".", \$actor, \$target);
+      \}
+    \}
+    ccombat::set_reeling(\$char: \$target, \$notify: \$char);
+    ccombat::set_reeling(\$char: \$char, \$notify: nil);
+\} else \{
+    /* Defender wins */
+    if(FindMerry(\$weapon, "lib", "describe_miss")) \{
+      Call(\$weapon, "describe_miss", \$char: \$char, \$target: \$target, \$target_detail: \$target_detail, \$weapon: \$weapon, \$defence: \$defence, \$counter_defence: \$counter_defence, \$result: \$result);
+    \} else \{
+      if(\$counter_defence == "parry") \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+" at "+Describe(\$target)+", who"+oneof("", " quickly", " expertly", " smoothly")+" parries it"+oneof("", " to the side", " away")+".");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+", but you "+oneof("", " quickly", " expertly", " smoothly")+" parry it"+oneof("", " to the side", " away")+".");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+" who"+oneof("", " quickly", " expertly", " smoothly")+" parries it"+oneof("", " to the side", " away")+".", \$actor, \$target);
+      \} else \{
+        EmitTo(\$char, "You swing "+Describe(\$weapon, nil, \$char)+" at "+Describe(\$target)+", who "+oneof("shifts", "moves", "dodges")+" out of the way.");
+        EmitTo(\$target, Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at you, but you "+oneof("shift", "move", "dodge")+" out of the way.");
+        EmitIn(\$char."base:environment", Describe(\$char)+" swings "+Describe(\$weapon, \$char)+" at "+Describe(\$target)+", who "+oneof("shifts", "moves", "dodges")+" out of the way.", \$actor, \$target);
+      \}
+    \}
+    
+    /* Disabling counterattacks for now, since it's throwing an error */
+    if(FALSE \&\& \$defence == "counter") \{
+      /* Give damage from the counterattack */
+      /* Attacker hit - calculate damage */
+      \$damage = \$result*-1; /* Damage is typically 1 point per success */
+      if(\$defender_weapon."weapon:status:critical") \$damage += \$damage/2; /* Is the attack critical? */
+      if(\$defender_weapon."weapon:status:slaying") \$damage += \$damage; /* Is the attack slaying? */
+      \$damage += Int(\$defender_weapon."weapon:bonus:damage"); /* Add the weapon bonus */
+      /* Add target wound penalties bonus */
+      if(\$char."status:hurt") \$damage += random(2);
+      if(\$char."status:injured") \$damage += random(2);
+      EmitTo(\$az, "Damage: "+dump_value(\$damage));
+
+      /* Target resists with soak */
+      \$soak = ironclaw::roll_dicepool(\$roller: \$char, \$skills: (\{ "trait:body", "trait:will", Int(\$char."combat:armor:rating")*2, Int(\$char."career:combat:endurance"), Int(\$char."skill:combat:endurance") \}), \$rolltype: "target", \$target: 4, \$debug: nil);
+
+      \$damage -= \$soak;
+      EmitTo(\$az, "Soaked damage: "+dump_value(\$damage));
+      \$damage = ::max_damage(\$damage: \$damage, \$victim: \$char);
+
+
+      EmitTo(\$az, "Limited damage: "+dump_value(\$damage));
+      /* if(\$char == \$az \|\| \$char == \$\{Chatters:IC:re:rectitude\} ) \$damage = 4; */
+      /* EmitTo(\$az, "Cheating damage: "+dump_value(\$damage)); */
+
+      /* Describe hit and give wound */
+      ::describe_hit(\$char: \$target, \$target: \$char, \$weapon: \$weapon, \$defence: "none", \$damage: \$damage, \$par: ([ ]));
+      ccombat::set_reeling(\$char: \$char, \$notify: \$target);      
+    \}
+\}
+
+::remove_card_to_deck(\$char: \$char, \$action: "attack", \$object: this);
+::charge_action(\$char: \$char, \$notify: nil);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:max_damage">
+         X[M] /* Calculate the max damage that can be given to this victim */
+if(!\$damage) return 0;
+if(\$damage \< 0) return 0;
+if(!\$victim) return 0;
+\$victim = NRefOb(\$victim);
+
+/* Typically, we can only give damage one level higher than the damage already taken */
+/* What is the maximum wound level the victim can take? */
+if(\$damage \>= 1 \&\& !\$victim."status:hurt") \$damage = 1;
+else if(\$damage \>= 3 \&\& !\$victim."status:recently_shaken") \$damage = 3;
+else if(\$damage \>= 5 \&\& !\$victim."status:injured") \$damage = 5;
+/*else if(\$damage \>= 7 \&\& !\$victim."status:dying") \$damage = 7;*/
+else if(\$damage \>= 9) \$damage = 9;
+
+return Int(\$damage);
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_card">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:remove_card instead! */
+/* Removes a card from the player's hand, and discards it */
+/* ::remove_card(\$char:\$char, \$action:"aim", \$object:this); */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Remove card from current options */
+for(i=0;i\<sizeof(\$char.combat["options"]);i++) \{
+  if(\$char.combat["options"][i][0] == \$action
+  \&\& \$char.combat["options"][i][1] == \$object) \{
+    \$char.combat["options"][i] = nil;
+    \$char.combat["options"] -= (\{ nil \});
+    break;
+  \}
+\}
+
+/* Remove card from hand */
+for(i=0;i\<sizeof(\$char.combat["hand"]);i++) \{
+  if(\$char.combat["hand"][i][0] == \$action
+  \&\& \$char.combat["hand"][i][1] == \$object) \{
+    \$char.combat["hand"][i] = nil;
+    \$char.combat["hand"] -= (\{ nil \});
+    break;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_card_to_deck">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:remove_card_to_deck instead! */
+/* Removes a card from the player's hand, and returns it to the deck */
+/* ::remove_card_to_deck(\$char:\$char, \$action:"aim", \$object:this); */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Remove card from current options */
+for(i=0;i\<sizeof(\$char.combat["options"]);i++) \{
+  if(\$char.combat["options"][i][0] == \$action
+  \&\& \$char.combat["options"][i][1] == \$object) \{
+    \$char.combat["options"][i] = nil;
+    \$char.combat["options"] -= (\{ nil \});
+    break;
+  \}
+\}
+
+/* Remove card from hand */
+for(i=0;i\<sizeof(\$char.combat["hand"]);i++) \{
+  if(\$char.combat["hand"][i][0] == \$action
+  \&\& \$char.combat["hand"][i][1] == \$object) \{
+    \$char.combat["deck"] += (\{ \$char.combat["hand"][i] \}); /* Add card back to the deck */
+    \$char.combat["hand"][i] = nil;
+    \$char.combat["hand"] -= (\{ nil \});
+    break;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:roll_attack">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:roll_attack instead! */
+/* Should be called by make_attack, or by a function rolling to see if an attack hit */
+/* Format: ::roll_attack(\$attack_options: \$attack_options); */
+
+EmitTo(\$az, "Rolling attack");
+
+if(!\$attack_options) error("No attack_options array passed to roll_attack");
+
+/* get skills for attacker and defender */
+\$attack_skills = ::get_dicepool(\$char: \$attack_options["attacker"], \$pool: "attacking", \$weapon: \$attack_options["weapon"]);
+\$attack_skills += Int(\$attack_options["attack_bonus"]);
+  
+\$defender_skills = 0;
+\$defence = "none";
+\$counter_defence = "none"; /* In case they're counterattacking, we still want to be able to describe a dodge or parry first */
+/* Are they parrying? */
+\$tmp = ::get_dicepool(\$char: \$attack_options["target"], \$pool: "defending", \$weapon: \$attack_options["defender_weapon"], \$type: "parry");
+EmitTo(\$az, "Parry defence: "+dump_value(\$tmp));
+if(\$tmp \> \$defender_skills) \{
+  \$defence = "parry";
+  \$counter_defence = "parry";
+  \$defender_skills = \$tmp;
+\}
+/* Are they dodging? */
+\$tmp = ::get_dicepool(\$char: \$attack_options["target"], \$pool: "defending", \$weapon: \$attack_options["defender_weapon"], \$type: "dodge");
+EmitTo(\$az, "Dodge defence: "+dump_value(\$tmp));
+if(\$tmp \> \$defender_skills) \{
+  \$defence = "dodge";
+  \$counter_defence = "dodge";
+  \$defender_skills = \$tmp;
+\}
+  /* Are they countering? */
+  /* Disabled */
+  /* \$tmp = ::get_dicepool(\$char: \$target, \$pool: "defending", \$weapon: \$defender_weapon, \$type: "counter"); */
+  /* EmitTo(\$az, "Counter defence: "+dump_value(\$tmp)); */
+  /* if(\$tmp \> \$defender_skills) \{ */
+  /*   \$defence = "counter"; */
+  /*   \$defender_skills = \$tmp; */
+  /* \} */
+
+EmitTo(\$az, "Attack skills: "+dump_value(\$attack_skills));
+EmitTo(\$az, "Defend skills: "+dump_value(\$defender_skills));
+EmitTo(\$az, "Defend type: "+dump_value(\$defence));
+
+/* Is the attacker aiming? */
+if(\$attack_options["attacker"].combat["status"]["aiming"]) \{
+  if(\$attack_skills \> 10)
+    \$attack_skills *= 2;
+  else
+    \$attack_skills += 10;
+  \$attack_options["attacker"].combat["status"]["aiming"] = nil;
+\}
+/* Is the defender guarding? */
+if(\$attack_options["target"].combat \&\& \$attack_options["target"].combat["status"]["guarding"]) \{
+  if(\$defence == "counter") \{
+    if(\$defender_skills \> 10)
+      \$defender_skills = Int(Flt(\$defender_skills) * 1.5);
+    else
+      \$defender_skills += 10;
+  \} else \{
+    if(\$defender_skills \> 20)
+      \$defender_skills *= 2;
+    else
+      \$defender_skills += 20;
+  \}
+\}
+
+/* Is anyone at a disadvantage? */
+if(\$attack_options["attacker"].combat["status"]["reeling"]) \{
+  \$defender_skills *= 2;
+\}
+if(\$attack_options["target"].combat["status"]["reeling"]) \{
+  \$attack_skills *= 2;
+\}
+
+EmitTo(\$az, "Rolling "+dump_value(\$attack_skills)+" vs "+dump_value(\$defender_skills));
+\$result = ironclaw::make_opposed_roll(\$val1: \$attack_skills, \$val2: \$defender_skills, \$opposed_roll_range: 12);
+
+EmitTo(\$az, "Result: "+dump_value(\$result));
+  
+return (\{ \$result, \$defence \});
+      </Core:Property>
+      <Core:Property property="merry:lib:roll_damage">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:roll_damage instead! */
+/* Should be called by make_attack, or by a function rolling to see how much damage a hit causes */
+/* Format: ::roll_damage(\$attack_options: \$attack_options, \$hit_roll: \$hit_roll); */
+
+EmitTo(\$az, "Rolling attack");
+
+if(!\$attack_options) error("No attack_options array passed to roll_damage");
+if(!\$hit_roll) \$hit_roll = 1;
+
+\$damage = \$hit_roll; /* Damage is typically 1 point per success */
+if(\$attack_options["weapon"]."weapon:status:critical") \$damage += \$damage/2; /* Is the attack critical? */
+if(\$attack_options["weapon"]."weapon:status:slaying") \$damage += \$damage; /* Is the attack slaying? */
+\$damage += Int(\$attack_options["weapon"]."weapon:bonus:damage"); /* Add the weapon bonus */
+\$damage += Int(\$attack_options["damage_bonus"]);
+
+EmitTo(\$az, "Damage: "+dump_value(\$damage));
+    
+/* Add target wound penalties bonus */
+if(\$attack_options["target"]."status:hurt") \$damage += random(Int(\$attack_options["target"]."status:hurt"));
+if(\$attack_options["target"]."status:shaken") \$damage += random(Int(\$attack_options["target"]."status:shaken")*2);
+if(\$attack_options["target"]."status:injured") \$damage += random(Int(\$attack_options["target"]."status:injured"));
+
+EmitTo(\$az, "Damage with penalties: "+dump_value(\$damage));
+
+/* Target resists with soak */
+\$soak = ironclaw::roll_dicepool(\$roller: \$attack_options["target"], \$skills: (\{ "trait:body", "trait:will", Int(\$target."combat:armor:rating")*2 \}), \$rolltype: "target", \$target: 4, \$debug: nil);
+
+EmitTo(\$az, "Soak was: "+dump_value(\$soak));
+
+\$damage -= \$soak;
+EmitTo(\$az, "Soaked damage: "+dump_value(\$damage));
+\$damage = ::max_damage(\$damage: \$damage, \$victim: \$attack_options["target"]);
+
+EmitTo(\$az, "Limited damage: "+dump_value(\$damage));
+    
+return \$damage;
+      </Core:Property>
+      <Core:Property property="merry:lib:sanity_check">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:sanity_check instead! */
+/* Do some basic sanity checks for a combat action */
+
+if(!\$char) return FALSE;
+if(!\$char.combat) \{
+  if(\$emotes) EmitTo(\$char, "You are not in combat anymore.");
+  return FALSE;
+\}
+
+if(\$needs_action \&\& Int(\$char.combat["actions"]) \< 1) \{
+  if(\$emotes) EmitTo(\$char, "You don't have any actions left. Please wait until your next turn.");
+  return FALSE;
+\}
+
+if(\$needs_target \&\& !\$char.combat["target"]) \{
+  if(\$emotes) \{
+    EmitTo(\$char, "Before using this action, you'll need to choose an opponent. Type: fight \<target\>");
+    ccombat::list_actions(\$char: \$char);
+  \}
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_combat_actions">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:take_combat_actions instead! */
+/* Generic script for an NPC fighter to take actions in combat */
+int i;
+
+/* EmitIn(\$char."base:environment", Describe(\$char)+" wonders, \\"Do I want to take an action?\\""); */
+
+/* Sanity check */
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Do we have a target? */
+if(!\$char.combat["target"]) \{
+  /* EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"I don't have a target, so I'll skip my turn.\\""); */
+  return FALSE; /* Currently enemies are pretty stupid - they don't yet know how to select a new target */
+\}
+
+/* EmitIn(\$char."base:environment", Describe(\$char)+" wonders, \\"What actions can I take?\\""); */
+\$actions = copy(\$char.combat["options"]);
+for(i=0;i\<sizeof(\$actions);i++) \{
+  /* Check if this action is currently valid  */
+  \$valid = Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE);
+
+  /* if(\$valid) */
+  /*   EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"This is valid: "+dump_value(\$actions[i])+"\\""); */
+  /* else */
+  /*   EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"NOT valid: "+dump_value(\$actions[i])+"\\""); */
+    
+  if(!\$valid) \$actions -= (\{ \$actions[i] \}); /* Remove invalid options */
+\}
+
+/* Do we have any valid actions left? */
+if(!sizeof(\$actions)) return FALSE; /* No valid actions left! */
+
+/* Select a random action */
+\$action = \$actions[random(sizeof(\$actions))];
+/* EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"Imma gunna: "+dump_value(\$action)+"\\""); */
+/* EmitIn(\$char."base:environment", Describe(\$char)+" says, \\"Turn ID is: "+dump_value(\$turn_id)+"\\""); */
+
+/* Does a script exist in the NPC for this action? */
+if(FindMerry(\$char, "lib", "take_combat_action_"+\$action[0]))
+  return Call(\$char, "take_combat_action_"+\$action[0], \$char: \$char);
+
+/* Call the action. Return whatever the action returns (that way if the action worked, it'll have already charged the turn. If not, we'll charge the turn.) */
+return Call(\$action[1], \$action[0], \$char: \$char, \$par: ([ "char":\$char, "taking_action":TRUE, "turn_id":\$turn_id ]));
+
+/*
+interaction::question(\$actor: \$char, \$question: "What action do you want to take? You have "+\$actions_text+" remaining.", \$expires: \$expire_time, \$env: "TRUE", \$a: \$actions[0][2], \$a_ob: \$actions[0][1], \$a_fun: \$actions[0][0], \$b: \$actions[1][2], \$b_ob: \$actions[1][1], \$b_fun: \$actions[1][0], \$c: \$actions[2][2], \$c_ob: \$actions[2][1], \$c_fun: \$actions[2][0], \$d: \$actions[3][2], \$d_ob: \$actions[3][1], \$d_fun: \$actions[3][0], \$e: \$actions[4][2], \$e_ob: \$actions[4][1], \$e_fun: \$actions[4][0], \$expire_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$expire_fun: "question_expire", \$par: \$params);
+
+\$params = ([ "char":\$char, "taking_action":TRUE, "turn_id":\$turn_id ]);
+*/
+
+/* Returning TRUE will not charge actions (which is good if we're going to take an action, like make an attack...) */
+/* Returning FALSE will charge actions automatically (which is good if we don't want to do anything...) */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1385013214, "tonyd", "E", 1385013289, "tonyd", "P", 1385279883, "tonyd", "P", 1385280005, "tonyd", "P", 1385280179, "tonyd", "P", 1385280861, "tonyd", "P", 1386733013, "tonyd", "P", 1386733094, "tonyd", "P", 1386733123, "tonyd", "P", 1386733193, "tonyd", "P", 1386733273, "tonyd", "P", 1386734885, "tonyd", "P", 1386734890, "tonyd", "P", 1386738903, "tonyd", "P", 1386738909, "tonyd", "P", 1386739020, "tonyd", "P", 1386739096, "tonyd", "P", 1386739120, "tonyd", "P", 1386739216, "tonyd", "P", 1386739289, "tonyd", "P", 1386739468, "tonyd", "P", 1386739573, "tonyd", "P", 1386739768, "tonyd", "P", 1386739810, "tonyd", "P", 1386740572, "tonyd", "P", 1386740610, "tonyd", "P", 1386740696, "tonyd", "P", 1386912443, "tonyd", "P", 1386912465, "tonyd", "P", 1386912474, "tonyd", "P", 1386912631, "tonyd", "P", 1386912902, "tonyd", "P", 1386913365, "tonyd", "P", 1386913634, "tonyd", "P", 1387167058, "tonyd", "P", 1387167401, "tonyd", "P", 1387167554, "tonyd", "P", 1387167561, "tonyd", "P", 1387167653, "tonyd", "P", 1387167658, "tonyd", "P", 1387167797, "tonyd", "P", 1387167915, "tonyd", "P", 1387167921, "tonyd", "P", 1387167957, "tonyd", "P", 1387168021, "tonyd", "P", 1388822667, "tonyd", "P", 1388826435, "tonyd", "P", 1388826751, "tonyd", "P", 1388826804, "tonyd", "P", 1388826849, "tonyd", "P", 1388826953, "tonyd", "P", 1388827179, "tonyd", "P", 1388827226, "tonyd", "P", 1388827350, "tonyd", "P", 1388827378, "tonyd", "P", 1388828067, "tonyd", "P", 1388828091, "tonyd", "P", 1388828158, "tonyd", "P", 1388828342, "tonyd", "P", 1388828389, "tonyd", "P", 1388828445, "tonyd", "P", 1389583830, "tonyd", "P", 1389583956, "tonyd", "P", 1389583995, "tonyd", "P", 1389667208, "tonyd", "P", 1389667293, "tonyd", "P", 1389667349, "tonyd", "P", 1389667371, "tonyd", "P", 1389678918, "tonyd", "P", 1389679165, "tonyd", "P", 1390103227, "tonyd", "P", 1390103466, "tonyd", "P", 1390103549, "tonyd", "P", 1390103823, "tonyd", "P", 1390105321, "tonyd", "P", 1390105384, "tonyd", "P", 1390110490, "tonyd", "P", 1390111231, "tonyd", "P", 1390111425, "tonyd", "P", 1390111426, "tonyd", "P", 1390111427, "tonyd", "P", 1390208491, "tonyd", "P", 1390208529, "tonyd", "P", 1390208629, "tonyd", "P", 1390208678, "tonyd", "P", 1390278239, "tonyd", "P", 1390279070, "tonyd", "P", 1390279416, "tonyd", "P", 1390279449, "tonyd", "P", 1390280149, "tonyd", "P", 1390280195, "tonyd", "P", 1390280203, "tonyd", "P", 1390282439, "tonyd", "P", 1390282485, "tonyd", "P", 1390282627, "tonyd", "P", 1390282712, "tonyd", "P", 1390282820, "tonyd", "P", 1390282834, "tonyd", "P", 1390527180, "tonyd", "P", 1390527253, "tonyd", "P", 1390527302, "tonyd", "P", 1390527370, "tonyd", "P", 1390527387, "tonyd", "P", 1390527411, "tonyd", "P", 1390528313, "tonyd", "P", 1390528693, "tonyd", "P", 1390528772, "tonyd", "P", 1390528831, "tonyd", "P", 1390528914, "tonyd", "P", 1390528985, "tonyd", "P", 1390532548, "tonyd", "P", 1390532692, "tonyd", "P", 1390535252, "tonyd", "P", 1390535300, "tonyd", "P", 1390535339, "tonyd", "P", 1390535478, "tonyd", "P", 1390535554, "tonyd", "P", 1390537661, "tonyd", "P", 1390537682, "tonyd", "P", 1390537738, "tonyd", "P", 1390537989, "tonyd", "P", 1390538022, "tonyd", "P", 1390538050, "tonyd", "P", 1390538090, "tonyd", "P", 1390538187, "tonyd", "P", 1390538267, "tonyd", "P", 1390538330, "tonyd", "P", 1390538357, "tonyd", "P", 1390538430, "tonyd", "P", 1390538466, "tonyd", "P", 1390538473, "tonyd", "P", 1390538494, "tonyd", "P", 1390538512, "tonyd", "P", 1390538581, "tonyd", "P", 1390538639, "tonyd", "P", 1390538663, "tonyd", "P", 1390538889, "tonyd", "P", 1390538942, "tonyd", "P", 1390538954, "tonyd", "P", 1390538982, "tonyd", "P", 1390539210, "tonyd", "P", 1390539300, "tonyd", "P", 1390539368, "tonyd", "P", 1390539429, "tonyd", "P", 1390539688, "tonyd", "P", 1390539826, "tonyd", "P", 1390539874, "tonyd", "P", 1390539927, "tonyd", "P", 1390540017, "tonyd", "P", 1390541097, "tonyd", "P", 1390541118, "tonyd", "P", 1390541456, "tonyd", "P", 1390541482, "tonyd", "P", 1390541817, "tonyd", "P", 1390541915, "tonyd", "P", 1390542307, "tonyd", "P", 1390542358, "tonyd", "P", 1390544697, "tonyd", "P", 1390544924, "tonyd", "P", 1390545022, "tonyd", "P", 1390555820, "tonyd", "P", 1390555946, "tonyd", "P", 1390556065, "tonyd", "P", 1390556363, "tonyd", "P", 1390556454, "tonyd", "P", 1390556518, "tonyd", "P", 1390556544, "tonyd", "P", 1390556586, "tonyd", "P", 1390556766, "tonyd", "P", 1390556782, "tonyd", "P", 1390556818, "tonyd", "P", 1390556837, "tonyd", "P", 1390556844, "tonyd", "P", 1390556857, "tonyd", "P", 1390556871, "tonyd", "P", 1390557163, "tonyd", "P", 1390557201, "tonyd", "P", 1390557211, "tonyd", "P", 1390557460, "tonyd", "P", 1390557510, "tonyd", "P", 1390557532, "tonyd", "P", 1390557555, "tonyd", "P", 1390557620, "tonyd", "P", 1390557625, "tonyd", "P", 1390557654, "tonyd", "P", 1390557742, "tonyd", "P", 1390557847, "tonyd", "P", 1390557866, "tonyd", "P", 1390557909, "tonyd", "P", 1390558099, "tonyd", "P", 1390558159, "tonyd", "P", 1390558189, "tonyd", "P", 1390558260, "tonyd", "P", 1390558285, "tonyd", "P", 1390558401, "tonyd", "P", 1390558412, "tonyd", "P", 1390558433, "tonyd", "P", 1390558455, "tonyd", "P", 1390558472, "tonyd", "P", 1390558701, "tonyd", "P", 1390558718, "tonyd", "P", 1390558858, "tonyd", "P", 1390558938, "tonyd", "P", 1390558986, "tonyd", "P", 1390559017, "tonyd", "P", 1390559152, "tonyd", "P", 1390559197, "tonyd", "P", 1390559256, "tonyd", "P", 1390559337, "tonyd", "P", 1390559371, "tonyd", "P", 1390559426, "tonyd", "P", 1390559583, "tonyd", "P", 1390561538, "tonyd", "P", 1390561599, "tonyd", "P", 1390561742, "tonyd", "P", 1390561775, "tonyd", "P", 1390561810, "tonyd", "P", 1390561909, "tonyd", "P", 1390561985, "tonyd", "P", 1390562011, "tonyd", "P", 1390562080, "tonyd", "P", 1390562087, "tonyd", "P", 1390631881, "tonyd", "P", 1390632301, "tonyd", "P", 1390633642, "tonyd", "P", 1390634133, "tonyd", "P", 1390634323, "tonyd", "P", 1390634543, "tonyd", "P", 1390634591, "tonyd", "P", 1390635068, "tonyd", "P", 1390635195, "tonyd", "P", 1390635301, "tonyd", "P", 1390635367, "tonyd", "P", 1390635493, "tonyd", "P", 1390635512, "tonyd", "P", 1390635628, "tonyd", "P", 1390635711, "tonyd", "P", 1390636440, "tonyd", "P", 1390639524, "tonyd", "P", 1390639574, "tonyd", "P", 1390639606, "tonyd", "P", 1390639633, "tonyd", "P", 1390697872, "tonyd", "P", 1390697912, "tonyd", "P", 1390698642, "tonyd", "P", 1390715544, "tonyd", "P", 1390716028, "tonyd", "P", 1390716073, "tonyd", "P", 1390716211, "tonyd", "P", 1390716882, "tonyd", "P", 1390716919, "tonyd", "P", 1390716942, "tonyd", "P", 1390722774, "tonyd", "P", 1390723204, "tonyd", "P", 1390723235, "tonyd", "P", 1390723241, "tonyd", "P", 1390723493, "tonyd", "P", 1390723519, "tonyd", "P", 1390724181, "tonyd", "P", 1390724261, "tonyd", "P", 1390724341, "tonyd", "P", 1390724427, "tonyd", "P", 1390724681, "tonyd", "P", 1390724910, "tonyd", "P", 1390725084, "tonyd", "P", 1390783307, "tonyd", "P", 1390859260, "tonyd", "P", 1390859298, "tonyd", "P", 1390859303, "tonyd", "P", 1391143497, "tonyd", "P", 1391143614, "tonyd", "P", 1391143707, "tonyd", "P", 1391143782, "tonyd", "P", 1391143903, "tonyd", "P", 1391143949, "tonyd", "P", 1391143978, "tonyd", "P", 1391237536, "tonyd", "P", 1391237735, "tonyd", "P", 1391245631, "tonyd", "P", 1391245644, "tonyd", "P", 1391486877, "tonyd", "P", 1391486891, "tonyd", "P", 1391488075, "tonyd", "P", 1391934394, "tonyd", "P", 1391934841, "tonyd", "P", 1391934907, "tonyd", "P", 1391935001, "tonyd", "P", 1391935181, "tonyd", "P", 1391935206, "tonyd", "P", 1391935220, "tonyd", "P", 1392444550, "tonyd", "P", 1392445298, "tonyd", "P", 1392445496, "tonyd", "P", 1392445882, "tonyd", "P", 1392445945, "tonyd", "P", 1392445949, "tonyd", "P", 1392445967, "tonyd", "P", 1392448611, "tonyd", "P", 1392448687, "tonyd", "P", 1392448930, "tonyd", "P", 1392452704, "tonyd", "P", 1392452789, "tonyd", "P", 1392452809, "tonyd", "P", 1392454314, "tonyd", "P", 1392454596, "tonyd", "P", 1392454616, "tonyd", "P", 1392454622, "tonyd", "P", 1392454998, "tonyd", "P", 1392455058, "tonyd", "P", 1392455215, "tonyd", "P", 1392455221, "tonyd", "P", 1392500360, "tonyd", "P", 1392500927, "tonyd", "P", 1392500953, "tonyd", "P", 1392502400, "tonyd", "P", 1393568568, "tonyd", "P", 1393568593, "tonyd", "P", 1393650750, "tonyd", "P", 1393654170, "tonyd", "P", 1393663091, "tonyd", "P", 1393663131, "tonyd", "P", 1393665001, "tonyd", "P", 1393665080, "tonyd", "P", 1401013599, "tonyd", "P", 1401013620, "tonyd", "P", 1401013630, "tonyd", "P", 1401013699, "tonyd", "P", 1401013719, "tonyd", "P", 1401013822, "tonyd", "P", 1401014152, "tonyd", "P", 1401014204, "tonyd", "P", 1401014243, "tonyd", "P", 1401014246, "tonyd", "P", 1401014328, "tonyd", "P", 1401262627, "tonyd", "P", 1401262639, "tonyd", "P", 1401262682, "tonyd", "P", 1401262701, "tonyd", "P", 1401262730, "tonyd", "P", 1401262753, "tonyd", "P", 1401262806, "tonyd", "P", 1401262819, "tonyd", "P", 1401262838, "tonyd", "P", 1401262928, "tonyd", "P", 1401263522, "tonyd", "P", 1401264807, "tonyd", "P", 1405233378, "tonyd", "P", 1405233489, "tonyd", "P", 1405233528, "tonyd", "P", 1405233556, "tonyd", "P", 1405233575, "tonyd", "P", 1405233611, "tonyd", "P", 1405233797, "tonyd", "P", 1405233906, "tonyd", "P", 1405233922, "tonyd", "P", 1405233939, "tonyd", "P", 1405233997, "tonyd", "P", 1405234026, "tonyd", "P", 1405234049, "tonyd", "P", 1405234157, "tonyd", "P", 1405234200, "tonyd", "P", 1405234241, "tonyd", "P", 1405234277, "tonyd", "P", 1405234282, "tonyd", "P", 1405236752, "tonyd", "P", 1405236875, "tonyd", "P", 1405237469, "tonyd", "P", 1405237489, "tonyd", "P", 1405237555, "tonyd", "P", 1405237688, "tonyd", "P", 1405238098, "tonyd", "P", 1406171373, "tonyd", "P", 1406171465, "tonyd", "P", 1406171839, "tonyd", "P", 1406171857, "tonyd", "P", 1406171868, "tonyd", "P", 1406171887, "tonyd", "P", 1406171897, "tonyd", "P", 1449910538, "tonyd", "P", 1449910650, "tonyd", "P", 1449910775, "tonyd", "P", 1449910821, "tonyd", "P", 1449910866, "tonyd", "P", 1450245979, "tonyd", "P", 1450246098, "tonyd", "P", 1450246844, "tonyd", "P", 1450246998, "tonyd", "P", 1450247091, "tonyd", "P", 1450247102, "tonyd", "P", 1450247142, "tonyd", "P", 1450247326, "tonyd", "P", 1450247378, "tonyd", "P", 1450247407, "tonyd", "P", 1450247550, "tonyd", "P", 1450247562, "tonyd", "P", 1450247599, "tonyd", "P", 1450248168, "tonyd", "P", 1450248282, "tonyd", "P", 1450248321, "tonyd", "P", 1450248429, "tonyd", "P", 1450248453, "tonyd", "P", 1451635314, "tonyd", "P", 1451636069, "tonyd", "P", 1451636177, "tonyd", "P", 1451636181, "tonyd", "P", 1451636189, "tonyd", "P", 1451636287, "tonyd", "P", 1451636304, "tonyd", "P", 1451636368, "tonyd", "P", 1453779045, "jominey", "E", 1453779244, "jominey", "E", 1453779348, "jominey", "E", 1453779818, "jominey", "E", 1453779852, "jominey", "E", 1453779894, "jominey", "E", 1453779955, "jominey", "E", 1453780011, "jominey", "E", 1453780029, "jominey", "E", 1453780430, "jominey", "E", 1453954426, "tonyd", "P", 1453954514, "tonyd", "P", 1453954529, "tonyd", "P", 1453954722, "tonyd", "P", 1453954776, "tonyd", "P", 1453954860, "tonyd", "P", 1454569432, "tonyd", "P", 1454569471, "tonyd", "P", 1456894050, "tonyd", "P", 1456894079, "tonyd", "P", 1456894136, "tonyd", "P", 1456894157, "tonyd", "P", 1456894187, "tonyd", "P", 1456894236, "tonyd", "P", 1456896538, "tonyd", "P", 1456896598, "tonyd", "P", 1456896642, "tonyd", "P", 1456896673, "tonyd", "P", 1456896744, "tonyd", "P", 1456896874, "tonyd", "P", 1456896881, "tonyd", "P", 1456896888, "tonyd", "P", 1456896895, "tonyd", "P", 1456896912, "tonyd", "P", 1456896962, "tonyd", "P", 1456896969, "tonyd", "P", 1456896994, "tonyd", "P", 1456897058, "tonyd", "P", 1456897153, "tonyd", "P", 1456897175, "tonyd", "P", 1456897521, "tonyd", "P", 1456897599, "tonyd", "P", 1456898611, "tonyd", "P", 1456900218, "tonyd", "P", 1458367998, "tonyd", "P", 1458368027, "tonyd", "P", 1458368066, "tonyd", "P", 1458370802, "tonyd", "P", 1461736643, "tonyd", "P", 1461736684, "tonyd", "P", 1461736708, "tonyd", "P", 1461736756, "tonyd", "P", 1461737151, "tonyd", "P", 1461737174, "tonyd", "P", 1461737192, "tonyd", "P", 1461737288, "tonyd", "P", 1461738732, "tonyd", "P", 1461738773, "tonyd", "P", 1461738903, "tonyd", "P", 1461739126, "tonyd", "P", 1461739434, "tonyd", "P", 1461739528, "tonyd", "P", 1461742270, "tonyd", "P", 1461742337, "tonyd", "P", 1463733882, "tonyd", "P", 1463734886, "tonyd", "P", 1463735791, "tonyd", "P", 1463735847, "tonyd", "P", 1463736131, "tonyd", "P", 1463736168, "tonyd", "P", 1463897820, "tonyd", "P", 1463897958, "tonyd", "P", 1463898017, "tonyd", "P", 1463899009, "tonyd", "P", 1463899915, "tonyd", "P", 1463899992, "tonyd", "P", 1463900043, "tonyd", "P", 1463900063, "tonyd", "P", 1463900664, "tonyd", "P", 1463900687, "tonyd", "P", 1463901104, "tonyd", "P", 1463901183, "tonyd", "P", 1463901239, "tonyd", "P", 1463901256, "tonyd", "P", 1463901480, "tonyd", "P", 1463901516, "tonyd", "P", 1463901557, "tonyd", "P", 1463901631, "tonyd", "P", 1463901651, "tonyd", "P", 1463901663, "tonyd", "P", 1463901673, "tonyd", "P", 1463901724, "tonyd", "P", 1463901747, "tonyd", "P", 1463901886, "tonyd", "P", 1463902013, "tonyd", "P", 1463902029, "tonyd", "P", 1463902054, "tonyd", "P", 1463902097, "tonyd", "P", 1463902417, "tonyd", "P", 1463902447, "tonyd", "P", 1463902516, "tonyd", "P", 1464062893, "tonyd", "P", 1469075832, "tonyd", "P", 1469076134, "tonyd", "P", 1469082211, "tonyd", "P", 1469082275, "tonyd", "P", 1469082363, "tonyd", "P", 1469082421, "tonyd", "P", 1469083223, "tonyd", "P", 1469083909, "tonyd", "P", 1469083931, "tonyd", "P", 1469083943, "tonyd", "P", 1469084010, "tonyd", "P", 1469084052, "tonyd", "P", 1469087465, "tonyd", "P", 1469087513, "tonyd", "P", 1469087545, "tonyd", "P", 1469087552, "tonyd", "P", 1478058580, "tonyd", "P", 1478058661, "tonyd", "P", 1478058698, "tonyd", "P", 1478058897, "tonyd", "P", 1478059014, "tonyd", "P", 1478059034, "tonyd", "P", 1478059074, "tonyd", "P", 1478059337, "tonyd", "P", 1478059487, "tonyd", "P", 1478059547, "tonyd", "P", 1478059629, "tonyd", "P", 1478059672, "tonyd", "P", 1478059745, "tonyd", "P", 1478060851, "tonyd", "P", 1478061149, "tonyd", "P", 1478061246, "tonyd", "P", 1478061263, "tonyd", "P", 1478061281, "tonyd", "P", 1478061327, "tonyd", "P", 1478061394, "tonyd", "P", 1478061442, "tonyd", "P", 1478061477, "tonyd", "P", 1478061509, "tonyd", "P", 1478061592, "tonyd", "P", 1478061625, "tonyd", "P", 1478061696, "tonyd", "P", 1478061950, "tonyd", "P", 1478062036, "tonyd", "P", 1478062190, "tonyd", "P", 1478062223, "tonyd", "P", 1478062282, "tonyd", "P", 1478062289, "tonyd", "P", 1478062307, "tonyd", "P", 1478062319, "tonyd", "P", 1478062391, "tonyd", "P", 1478062480, "tonyd", "P", 1478062527, "tonyd", "P", 1478062550, "tonyd", "P", 1478062581, "tonyd", "P", 1478062596, "tonyd", "P", 1478062609, "tonyd", "P", 1478062622, "tonyd", "P", 1478062666, "tonyd", "P", 1478062841, "tonyd", "P", 1478062853, "tonyd", "P", 1478062874, "tonyd", "P", 1478062910, "tonyd", "P", 1478062941, "tonyd", "P", 1478062958, "tonyd", "P", 1478062979, "tonyd", "P", 1478063037, "tonyd", "P", 1478063111, "tonyd", "P", 1478063112, "tonyd", "P", 1478063248, "tonyd", "P", 1478063277, "tonyd", "P", 1478063364, "tonyd", "P", 1478063560, "tonyd", "P", 1478064702, "tonyd", "P", 1478064721, "tonyd", "P", 1478064769, "tonyd", "P", 1478064825, "tonyd", "P", 1478065169, "tonyd", "P", 1478065355, "tonyd", "P", 1478065365, "tonyd", "P", 1478066130, "tonyd", "P", 1478066169, "tonyd", "P", 1478066192, "tonyd", "P", 1478066268, "tonyd", "P", 1478066308, "tonyd", "P", 1478066327, "tonyd", "P", 1478066448, "tonyd", "P", 1478066474, "tonyd", "P", 1478066623, "tonyd", "P", 1478066639, "tonyd", "P", 1478066680, "tonyd", "P", 1478066903, "tonyd", "P", 1478066930, "tonyd", "P", 1478066978, "tonyd", "P", 1478067003, "tonyd", "P", 1478067058, "tonyd", "P", 1478067123, "tonyd", "P", 1478067186, "tonyd", "P", 1478067194, "tonyd", "P", 1478067219, "tonyd", "P", 1478067322, "tonyd", "P", 1478067412, "tonyd", "P", 1478067441, "tonyd", "P", 1478067491, "tonyd", "P", 1496732272, "tonyd", "P", 1496732321, "tonyd", "P", 1496732394, "tonyd", "P", 1496732404, "tonyd", "P", 1496732429, "tonyd", "P", 1496732461, "tonyd", "P", 1496732495, "tonyd", "P", 1496733178, "tonyd", "P", 1496733651, "tonyd", "P", 1496733809, "tonyd", "P", 1496733908, "tonyd", "P", 1502768961, "tonyd", "P", 1502769105, "tonyd", "P", 1502769181, "tonyd", "P", 1502769888, "tonyd", "P", 1502769934, "tonyd", "P", 1502769953, "tonyd", "P", 1502770402, "tonyd", "P", 1502770526, "tonyd", "P", 1502770646, "tonyd", "P", 1502770754, "tonyd", "P", 1502770768, "tonyd", "P", 1502771449, "tonyd", "P", 1502771733, "tonyd", "P", 1502772099, "tonyd", "P", 1502772127, "tonyd", "P", 1502772144, "tonyd", "P", 1502772264, "tonyd", "P", 1502772441, "tonyd", "P", 1502777496, "tonyd", "P", 1502777511, "tonyd", "P", 1502777814, "tonyd", "P", 1502777923, "tonyd", "P", 1502777970, "tonyd", "P", 1502777975, "tonyd", "P", 1502778045, "tonyd", "P", 1502779422, "tonyd", "P", 1502854097, "tonyd", "P", 1525483979, "jominey", "E", 1525484123, "jominey", "E", 1567046620, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

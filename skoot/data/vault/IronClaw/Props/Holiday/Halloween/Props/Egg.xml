@@ -1,0 +1,209 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="egg"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="eggs"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="raw"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.trait:color) | $(this.trait:color) | raw } egg
+          </Base:Description>
+          <Base:Description type="examine">
+             Ohmigosh! It's an egg. {? | $(this.trait:color) | It has been dyed $(this.trait:color), and people have been known to use decorated eggs for playing games, such as rolling them on the ground, or throwing them between catchers. | Perfect for throwing at no-one in particular. }
+          </Base:Description>
+          <Base:Description type="look">
+             A raw egg. {? | $(this.trait:color) | It has been dyed $(this.trait:color). | Don't you wanna throw it at someone? }
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:dyeable">
+         1
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "hard eggshell"
+      </Core:Property>
+      <Core:Property property="export:trait:taste">
+         "like plain eggshell"
+      </Core:Property>
+      <Core:Property property="merry:react-pre:throw-what">
+         X[M] if(\$(where:preposition)) return TRUE;
+if(\$where \&\& (sizeof(\$where) == 1)) \{
+ EmitIn( \$actor."base:environment", Describe(\$actor)+" throws "+Describe(\$this, \$actor)+" at " +Describe(\$where)+ ". SPLAT!!", \$actor );
+ EmitTo( \$actor, "You throw "+Describe(\$this, nil, \$actor)+" at " +Describe(\$where)+ ". SPLAT!!" );
+ Slay(\$this);
+ \$target = NRefOb(\$where[0]);
+ \$spawn = Spawn(\$\{IronClaw:Props:Holiday:Halloween:Props:Egg-applied\});
+ \$spawn."base:environment" = \$target;
+ /* sanity check that it went to the victim (they weren't holding too much etc.) */
+ if(\$spawn."base:environment" != \$target) \{
+  Slay(\$spawn);
+  return FALSE;
+ \}
+ /* make them wear this */
+ \$spawn."base:worn-by" = \$target;
+ /* just in case we need to know who is wearing the makeup */
+ \$spawn."makeup:worn-by" = \$target;
+\} else if(\$iob \&\& (sizeof(\$iob) == 1)) \{
+ EmitIn( \$actor."base:environment", Describe(\$actor)+" throws "+Describe(\$this, \$actor)+" at " +Describe(\$iob)+ ". SPLAT!!", \$actor );
+ EmitTo( \$actor, "You throw "+Describe(\$this, nil, \$actor)+" at " +Describe(\$iob)+ ". SPLAT!!" );
+ Slay(\$this);
+ \$target = NRefOb(\$iob[0]);
+ \$spawn = Spawn(\$\{IronClaw:Props:Holiday:Halloween:Props:Egg-applied\});
+ \$spawn."base:environment" = \$target;
+ /* sanity check that it went to the victim (they weren't holding too much etc.) */
+ if(\$spawn."base:environment" != \$target) \{
+  Slay(\$spawn);
+  return FALSE;
+ \}
+ /* make them wear this */
+ \$spawn."base:worn-by" = \$target;
+ /* just in case we need to know who is wearing the makeup */
+ \$spawn."makeup:worn-by" = \$target;
+\} else \{
+ EmitTo( \$actor, "What do you intend to throw " +Describe(\$this, nil, \$actor)+" at?" );
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:catch-what">
+         X[M] int result;
+
+/*
+agility
+body
+mind
+speed
+*/
+
+/* do they catch the egg without breaking it? */
+result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ \}), \$bonus: "trait:agility");
+
+/* if they caught it, return true to emote normally */
+if(FALSE \&\& result \>= random(12)) return TRUE;
+
+/* emotes */
+\$disp_evoke = ".";
+if(\$evoke) \$disp_evoke = ", "+\$evoke;
+
+
+/* they broke the egg */
+/* did they just drop it, or did they crush it when they caught it? */
+result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ \}), \$bonus: "trait:body");
+if(result \>= random(12)) \{
+ /* they crushed it on themselves */
+ EmitIn( \$actor."base:environment", Describe(\$actor)+" catches "+Describe(\$this, \$actor)+", grabbing it so forcefully that it explodes all over "+\$actor."base:objective"+"self"+\$disp_evoke, \$actor);
+ EmitTo( \$actor, "You catch "+Describe(\$this, nil, \$actor)+" so forcefully that it explodes all over you"+\$disp_evoke );
+
+ /* put the splattered egg on */
+ \$spawn = Spawn(\$\{IronClaw:Props:Holiday:Halloween:Props:Egg-applied\});
+ \$spawn."base:environment" = \$actor;
+ /* sanity check that it went to the victim (they weren't holding too much etc.) */
+ if(\$spawn."base:environment" != \$actor) \{
+  Slay(\$spawn);
+  return FALSE;
+ \}
+ /* make them wear this */
+ \$spawn."base:worn-by" = \$actor;
+ /* just in case we need to know who is wearing the makeup */
+ \$spawn."makeup:worn-by" = \$actor;
+\} else \{
+ /* they just dropped the egg */
+ EmitIn( \$actor."base:environment", Describe(\$actor)+" fails to catch "+Describe(\$this, \$actor)+", which falls onto the ground, breaking"+\$disp_evoke, \$actor);
+ EmitTo( \$actor, "You fail to catch "+Describe(\$this, nil, \$actor)+", which falls onto the ground, breaking"+\$disp_evoke );
+\}
+
+Slay(\$this);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:roll-dob">
+         X[M] int result, counter;
+
+/*
+agility
+body
+mind
+speed
+*/
+
+/* do they catch the egg without breaking it? */
+\$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ \}), \$bonus: "trait:mind");
+
+/* emotes and adverbs */
+\$disp_adverb = "";
+if(\$adverb) \$disp_adverb = \$adverb+" ";
+\$disp_evoke = ".";
+if(\$evoke) \$disp_evoke = ", "+\$evoke;
+
+EmitIn( \$actor."base:environment", Describe(\$actor)+" begins to "+\$disp_adverb+"roll "+Describe(\$this, \$actor)+" along the ground"+\$disp_evoke, \$actor);
+EmitTo( \$actor, "You begin to "+\$disp_adverb+"roll "+Describe(\$this, nil, \$actor)+" along the ground"+\$disp_evoke );
+
+for(\$counter=1;\$counter\<=\$result;\$counter++) \{
+ \$delay(10.0, FALSE, "49e8");
+ if(\$counter==\$result) \{
+  EmitIn( \$actor."base:environment", Describe(\$actor)+" continues to roll "+Describe(\$this, \$actor)+" along the ground. It reaches the "+desc_ordinal(\$counter)+" foot mark when *CRACK* the egg shatters.", \$actor);
+  EmitTo( \$actor, "You continue to roll "+Describe(\$this, nil, \$actor)+" along the ground. It reaches the "+desc_ordinal(\$counter)+" foot mark when *CRACK* the egg shatters" );
+ \} else \{
+  EmitIn( \$actor."base:environment", Describe(\$actor)+" continues to roll "+Describe(\$this, \$actor)+" along the ground. It's now reached the "+desc_ordinal(\$counter)+" foot mark.", \$actor);
+  EmitTo( \$actor, "You continue to roll "+Describe(\$this, nil, \$actor)+" along the ground. It's now reached the "+desc_ordinal(\$counter)+" foot mark." );
+ \}
+\}
+Slay(\$this);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replacesname", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1223140542, "morwenlorelie", "E", 1223140572, "morwenlorelie", "E", 1223140577, "morwenlorelie", "E", 1223140616, "morwenlorelie", "E", 1223140643, "morwenlorelie", "E", 1223140711, "morwenlorelie", "K", 1223140721, "morwenlorelie", "E", 1223140733, "morwenlorelie", "X", 1223503342, "morwenlorelie", "R", 1223503393, "morwenlorelie", "K", 1223503461, "morwenlorelie", "K", 1223503480, "morwenlorelie", "K", 1224855309, "tonyd", "P", 1224856823, "tonyd", "P", 1224857788, "tonyd", "P", 1224858086, "tonyd", "P", 1224858382, "tonyd", "P", 1239585673, "tonyd", "P", 1239585753, "tonyd", "P", 1239585794, "tonyd", "P", 1239585811, "tonyd", "P", 1239585848, "tonyd", "P", 1239585987, "tonyd", "P", 1239586394, "tonyd", "P", 1239586462, "tonyd", "P", 1239586645, "tonyd", "P", 1239586784, "tonyd", "P", 1239586814, "tonyd", "P", 1239586873, "tonyd", "P", 1239586933, "tonyd", "P", 1239587075, "tonyd", "P", 1239587167, "tonyd", "P", 1239587471, "tonyd", "P", 1239587832, "tonyd", "P", 1239587880, "tonyd", "P", 1239587929, "tonyd", "P", 1239588039, "tonyd", "P", 1239588077, "tonyd", "P", 1239588120, "tonyd", "P", 1239588125, "tonyd", "P", 1239588185, "tonyd", "P", 1239588327, "tonyd", "P", 1239588367, "tonyd", "P", 1239588436, "tonyd", "P", 1239588569, "tonyd", "P", 1239588677, "tonyd", "P", 1239588699, "tonyd", "P", 1239588857, "tonyd", "P", 1239588885, "tonyd", "P", 1239589137, "tonyd", "E", 1239589197, "tonyd", "E", 1239589310, "tonyd", "E", 1239589373, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

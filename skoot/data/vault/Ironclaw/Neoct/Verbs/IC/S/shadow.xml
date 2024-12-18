@@ -1,0 +1,159 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="shadow" second="shadow" third="shadows" evoke="forbidden" audible="false" private="true" secret="true" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:act-post:enter%shadowing">
+         X[M] /* being shadowed. Move the shadower along */
+int i;
+
+for(i=0;i\<sizeof(\$moving);i++) \{
+  Act(\$moving[i], "enter", \$what: \$actor."shadowing:followloc");
+  EmitTo(\$moving[i], "You spot "+Describe(\$actor)+" leave through "+Describe(\$actor."shadowing:dest")+".");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:enter%shadowing">
+         X[M] /* being shadowed. Move the shadower along */
+int i;
+object room;
+
+/* sanity check, in case someone deleted their character while shadowing */
+if(\$actor."shadowing:followers")
+  \$actor."shadowing:followers" -= (\{ nil \});
+
+/* if we have no followers, don't need this code anymore! */
+if(!\$actor."shadowing:followers" \|\| !sizeof(\$actor."shadowing:followers")) \{
+  \$actor."merry:inherit:act:enter%shadowing" = nil;
+  \$actor."merry:inherit:act-post:enter%shadowing" = nil;
+  return TRUE;
+\}
+
+\$moving = (\{ \});
+if(\$actor."shadowing:dest") \{
+  /* and just to avoid the weird problem where shadowing:dest is set to a string instead of nref... */
+  /* (I have no idea why that happens...) */
+  if(typeof(\$actor."shadowing:dest") == T_STRING) \{
+   sscanf(\$actor."shadowing:dest", "(%*d)O(/base/data/nref#-1, \<%s\>, %*s)", \$tmp);
+   \$actor."shadowing:dest" = Obj(\$tmp);
+  \}
+
+  /* see if we need to move any of the shadowers */
+  room = NRefOb(\$actor."shadowing:dest");
+  for(i=0;i\<sizeof(\$actor."shadowing:followers");i++) \{
+    if(!\$actor."shadowing:followers"[i]."base:environment") \{
+      /* logged out. Stop shadowing */
+      EmitTo(\$actor."shadowing:followers"[i], "You seem to have lost track of "+Describe(\$actor)+".");
+      Call(\$\{Ironclaw:Neoct:Verbs:IC:S:shadow\}, "stop_shadowing", \$actor: \$actor."shadowing:followers"[i], \$victim: \$actor);
+      i--;
+    \} else \{
+      if(\$actor."shadowing:followers"[i]."base:environment" == room) \{
+        if(\$actor."shadowing:followers"[i]."base:environment" == NRefOb(\$dest)) \{
+          /* backtracking? Don't move them */
+        \} else \{
+          /* make them follow out */
+          \$moving \|= (\{ \$actor."shadowing:followers"[i] \});
+         /* Act(\$actor."shadowing:followers"[i], "enter", \$what: \$actor."shadowing:dest"); */
+        \}
+      \} else if(\$actor."shadowing:followers"[i]."base:environment" != NRefOb(\$target)) \{
+        EmitTo(\$actor."shadowing:followers"[i], "You seem to have lost track of "+Describe(\$actor)+".");
+        Call(\$\{Ironclaw:Neoct:Verbs:IC:S:shadow\}, "stop_shadowing", \$actor: \$actor."shadowing:followers"[i], \$victim: \$actor);
+        i--;
+      \}
+    \}
+  \}
+\}
+
+/* set our new destination */
+\$actor."shadowing:followloc" = \$actor."shadowing:dest";
+\$actor."shadowing:dest" = \$target;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] if(!\$dob) \{
+  /* stop shadowing */
+  if(\$actor."shadowing:target") \{
+    EmitTo(\$actor, "You stop shadowing "+Describe(NewNRef(\$actor."shadowing:target", "default"))+".");
+    ::stop_shadowing(\$victim: \$actor."shadowing:target");
+  \} else \{
+    EmitTo(\$actor, "You are not shadowing anyone.");
+  \}
+  return FALSE;
+\}
+
+/* shadow someone */
+if(sizeof(\$dob) != 1) \{
+  EmitTo(\$actor, "You can only shadow one person at a time.");
+\}
+/* is this someone we can shadow? */
+\$victim = NRefOb(\$dob[0]);
+if(!member("person", Arr(\$victim."details:default:snames"))) \{
+  EmitTo(\$actor, "You cannot shadow "+Describe(\$dob)+".");
+  return FALSE;
+\}
+
+if(\$victim == \$actor) \{
+  EmitTo(\$actor, "You cannot shadow yourself.");
+  return FALSE;
+\}
+
+if(\$actor."shadowing:target") \{
+  EmitTo(\$actor, "You stop shadowing "+Describe(NewNRef(\$actor."shadowing:target", "default"))+".");
+  ::stop_shadowing(\$victim: \$actor."shadowing:target");
+\}
+
+::start_shadowing(\$victim: \$victim);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_shadowing">
+         X[M] /* set someone to be shadowed */
+if(!\$victim) \{
+  if(\$target) \{
+    \$victim = NRefOb(\$target);
+  \} else \{
+    return FALSE;
+  \}
+\}
+\$actor."shadowing:target" = \$victim;
+if(\$victim."shadowing:followers") \{
+  \$victim."shadowing:followers" \|= (\{ \$actor \});
+\} else \{
+  \$victim."shadowing:followers" = (\{ \$actor \});
+\}
+/* set the scripts in the shadow-ee */
+\$victim."merry:inherit:act:enter%shadowing" = this;
+\$victim."merry:inherit:act-post:enter%shadowing" = this;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:stop_shadowing">
+         X[M] /* set someone to no longer be shadowed */
+if(!\$victim) \{
+  if(\$target) \{
+    \$victim = NRefOb(\$target);
+  \} else \{
+    return FALSE;
+  \}
+\}
+\$actor."shadowing:target" = nil;
+if(\$victim."shadowing:followers") \{
+  \$victim."shadowing:followers" -= (\{ \$actor \});
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1213860724, "tonyd", "E", 1213860857, "tonyd", "E", 1213860880, "tonyd", "E", 1213861446, "tonyd", "E", 1213861472, "tonyd", "E", 1213862132, "tonyd", "P", 1213862388, "tonyd", "P", 1213862440, "tonyd", "P", 1213862450, "tonyd", "P", 1213862527, "tonyd", "P", 1213862937, "tonyd", "P", 1213863032, "tonyd", "P", 1213863558, "tonyd", "P", 1213863738, "tonyd", "P", 1213864655, "tonyd", "P", 1213864710, "tonyd", "P", 1213865339, "tonyd", "P", 1213865401, "tonyd", "P", 1213865538, "tonyd", "P", 1213865579, "tonyd", "P", 1213865839, "tonyd", "P", 1213866015, "tonyd", "P", 1213866305, "tonyd", "P", 1213866369, "tonyd", "P", 1213866481, "tonyd", "P", 1213866600, "tonyd", "P", 1213866790, "tonyd", "P", 1213866819, "tonyd", "P", 1213866977, "tonyd", "P", 1213866996, "tonyd", "P", 1213867009, "tonyd", "P", 1213867092, "tonyd", "P", 1213867216, "tonyd", "P", 1213867364, "tonyd", "P", 1213867511, "tonyd", "P", 1213867600, "tonyd", "P", 1213867666, "tonyd", "P", 1213867786, "tonyd", "P", 1213869085, "tonyd", "P", 1213869227, "tonyd", "P", 1213869276, "tonyd", "P", 1213869296, "tonyd", "P", 1213869310, "tonyd", "P", 1213869338, "tonyd", "P", 1213869384, "tonyd", "P", 1213869406, "tonyd", "P", 1213869512, "tonyd", "P", 1213869629, "tonyd", "P", 1213869707, "tonyd", "P", 1213869771, "tonyd", "P", 1213869774, "tonyd", "P", 1213869873, "tonyd", "P", 1213869939, "tonyd", "P", 1213870050, "tonyd", "P", 1213870203, "tonyd", "P", 1213870294, "tonyd", "P", 1213870401, "tonyd", "P", 1213870428, "tonyd", "P", 1213870463, "tonyd", "P", 1213870708, "tonyd", "P", 1213870742, "tonyd", "P", 1213870807, "tonyd", "P", 1213871278, "tonyd", "P", 1213871305, "tonyd", "P", 1214015081, "tonyd", "P", 1214015095, "tonyd", "P", 1214089497, "tonyd", "P", 1214089609, "tonyd", "P", 1214089640, "tonyd", "P", 1214089706, "tonyd", "P", 1214089774, "tonyd", "P", 1214089865, "tonyd", "P", 1214089876, "tonyd", "P", 1225948387, "tonyd", "P", 1225948441, "tonyd", "P", 1225948917, "tonyd", "P", 1225948940, "tonyd", "P", 1225949003, "tonyd", "P", 1225949035, "tonyd", "P", 1225949087, "tonyd", "P", 1225949139, "tonyd", "P", 1225949157, "tonyd", "P", 1225949290, "tonyd", "P", 1225949310, "tonyd", "P", 1225949376, "tonyd", "P", 1225949456, "tonyd", "P", 1225949508, "tonyd", "P", 1225949619, "tonyd", "P", 1229483866, "tonyd", "P", 1229483892, "tonyd", "P", 1229483917, "tonyd", "P", 1229483936, "tonyd", "P", 1229484005, "tonyd", "P", 1229484078, "tonyd", "P", 1229484274, "tonyd", "P", 1229484385, "tonyd", "P", 1229484407, "tonyd", "P", 1229484522, "tonyd", "P", 1229485677, "tonyd", "P", 1229485691, "tonyd", "P", 1249562260, "jominey", "E", 1249562435, "jominey", "E", 1294380974, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

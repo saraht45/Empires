@@ -1,0 +1,76 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+groupbring" evoke="optional" audible="false" private="true" secret="false" obscured="false" target-abstracts="false" disabled="true" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /*
+  D=Bring a character, and all characters in their environment (offline or not) into your environment.
+*/
+
+constant HELP = "+bring\\n\\nBring a character to you(r environment), logged on or not.\\n\\nSyntax: +groupbring [charname]";
+
+if( !\$(dob:words) \|\| !(\$tchar = common::lookup(\$name: implode( \$(dob:words), " " ))) ) \{
+  EmitTo( \$actor, PRE(HELP));
+  return FALSE;
+\}
+
+\$env = \$tchar."base:environment";
+\$inv = \$env."base:inventory";
+
+for(\$z = 0; \$z \< sizeof(\$inv); \$z++) \{
+  \$char = \$inv[\$z];
+
+  if(\$char."skotos:charname") \{
+
+    Act(\$char, "teleport", \$dest: \$actor."base:environment");
+
+    if (!\$char."udat:possessed") \{
+        if (\$char."audit:brought" != nil \|\| \$char."trait:audit:bmd5" != nil) \{
+            if (to_hex(hash_md5(dump_value(\$char."audit:brought"))) != \$char."trait:audit:bmd5") \{
+                chat::log(\$log: "The AUDIT summary for " + dump_value(\$char) + " has been tampered with: (" + (\$char."audit:brought" == nil ? "nil" : "non-nil") + "; " + (\$char."trait:audit:bmd5" == nil ? "nil" : "non-nil") + "; " + to_hex(hash_md5(dump_value(\$char."audit:brought"))) + " vs " + Str(\$char."trait:audit:bmd5"));
+            \}
+        \}
+        if (\$char."audit:brought" \&\& sizeof(\$char."audit:brought") \> 0 \&\& \$char."audit:brought"[0] != 3) \{
+            mixed newsub;
+            int i, ix;
+            newsub = \$char."audit:brought";
+            if (sizeof(newsub) \> 0 \&\& newsub[0] == 2) \{
+                newsub = newsub[1..];
+            \}
+            newsub = (\{ 3 \}) + newsub;
+            ix = sizeof(newsub);
+            for (i = 3; i \< ix; i += 3) \{
+                if (typeof(newsub[i]) != T_OBJECT) \{
+                    if (typeof(newsub[i]) != T_STRING) \{
+                        i = ix * 2;
+                    \}
+                \} else \{
+                    newsub[i] = name(newsub[i]);
+                \}
+            \}
+            if (i \< ix * 2) \{        
+                /* All seemed O.K. */
+                \$char."audit:brought" = newsub;
+            \}
+        \}
+        if (!\$char."audit:brought") \$char."audit:brought" = (\{ 3 \});
+        \$char."audit:brought" = Arr(\$char."audit:brought") + (\{ time(), "B-" + name(\$actor), name(\$actor."base:environment") \});
+        \$char."trait:audit:bmd5" = to_hex(hash_md5(dump_value(\$char."audit:brought")));
+    \}
+  \}
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1528332488, "jominey", "E", 1528332909, "jominey", "E", 1528332962, "jominey", "E", 1528332977, "jominey", "E", 1528332982, "jominey", "E", 1528333007, "jominey", "E", 1528333040, "jominey", "E", 1528333096, "jominey", "E", 1528333196, "jominey", "E", 1528333219, "jominey", "E", 1528333292, "jominey", "E", 1528333312, "jominey", "E", 1528333329, "jominey", "E", 1587745201, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

@@ -1,0 +1,125 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="zell">
+  <SkotOS:MerAcHa action_id="inv" verb="OBJ(Zell:Verbs:look)">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-desc:action">
+         X[M] \$rob."desc:inv:args" = (\{ \});
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:global-pre:action">
+         X[M] object off, main;
+string * covered;
+string * covered2;
+string description, inventory, wielding, weapon1, weapon2;
+object * inventoryArray;
+object * wieldedArray;
+object * wornArray;
+object * holdingArray;
+int i, j, k;
+
+if(!\$actor."combat:weapon:mainhand" \&\& !\$actor."combat:weapon:offhand") return TRUE;
+
+inventoryArray = \$actor."base:inventory";
+wornArray = (\{ \});
+wieldedArray = (\{ \});
+holdingArray = (\{ \});
+for(i = 0; i \< sizeof(inventoryArray); i++) \{
+    if(inventoryArray[i]."base:worn-by" \&\& !inventoryArray[i]."base:weapon") wornArray += (\{ inventoryArray[i] \});
+    if(!inventoryArray[i]."base:worn-by" \&\& !inventoryArray[i]."base:wielded-by") holdingArray += (\{ inventoryArray[i] \});
+\}
+
+if(!sizeof(holdingArray)) \{
+    description = "You are carrying nothing. ";
+\} else \{
+    description = "You are carrying " + Describe(holdingArray, nil, \$actor) + ". ";
+\}
+
+if(\$actor."combat:weapon:mainhand" \&\& \$actor."combat:weapon:offhand") \{
+    main = \$actor."combat:weapon:mainhand";
+    off = \$actor."combat:weapon:offhand";
+
+    if(main == off) \{
+        wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + " both hands";
+    \} else \{
+        wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in your main hand and " + Describe(off, nil, nil, STYLE_NONPOSS) + " in your off hand";
+    \}
+\} else if(\$actor."combat:weapon:mainhand" \&\& !\$actor."combat:weapon:offhand") \{
+    main = \$actor."combat:weapon:mainhand";
+    wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in your main hand";
+\} else if(\$actor."combat:weapon:offhand" \&\& !\$actor."combat:weapon:mainhand") \{
+    off = \$actor."combat:weapon:offhand";
+    wielding = Describe(off, nil, nil, STYLE_NONPOSS) + " in your off hand";
+\} else if(!main \&\& !off \&\& \$actor."base:combat:weapon") \{
+    main = \$actor."base:combat:weapon";
+    wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in your main hand";
+\}
+
+if(wielding) description += "You are wielding " + wielding + ". ";
+
+if(!sizeof(wornArray)) \{
+    description += "You are nude.";
+\} else \{
+    object * totallyCovered;
+    object * partiallyCovered;
+    object * notCovered;
+    object * coverage;
+    string isare;
+    int size;
+
+    totallyCovered = (\{ \});
+    partiallyCovered = (\{ \});
+    notCovered = (\{ \});
+    coverage = (\{ \});
+    isare = "";
+
+    for(i = 0; i \< sizeof(wornArray); i++) \{
+        covered = wornArray[i]."base:parts-covered";
+        covered2 = copy(covered);
+
+        for(j = 0; j \< sizeof(covered); j++) \{ 
+            coverage = \$actor."base:clothes-worn"[covered[j]];
+
+            if(coverage) \{ 
+                size = sizeof(coverage);
+                if(coverage[size-1] != wornArray[i]) \{
+                    covered2 -= (\{ covered[j] \});
+                \}
+            \} else \{
+                covered2 = (\{ \});
+            \}
+        \}
+
+        if(!sizeof(covered2)) \{
+            totallyCovered += (\{ wornArray[i] \});
+        \} else \{ 
+            if(sizeof(covered2) != sizeof(covered)) \{
+                partiallyCovered += (\{ wornArray[i] \});
+            \} else \{
+                notCovered += (\{ wornArray[i] \});
+            \}
+        \}
+    \}
+
+    if(sizeof(notCovered)) description += "You are wearing " + Describe(notCovered, nil, nil, STYLE_NONPOSS) + ".\\n\\n";
+
+    if(sizeof(totallyCovered)) \{
+        if(sizeof(totallyCovered) == 1) isare = "is"; else isare = "are";
+        description += capitalize(Describe(totallyCovered, nil, nil, STYLE_NONPOSS) + " " + isare + " totally covered by other clothes. ");
+    \}
+
+    if(sizeof(partiallyCovered)) \{
+        if(sizeof(partiallyCovered) == 1) isare = "is"; else isare = "are";
+        description += capitalize(Describe(partiallyCovered, nil, nil, STYLE_NONPOSS) + " " + isare + " partially covered by other clothes. ");
+    \}
+\}
+
+EmitTo(\$actor, description);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1566931165, "jominey", "E", 1578762489, "jominey", "P", 1578762555, "jominey", "P", 1578762623, "jominey", "P", 1578762673, "jominey", "P", 1578762784, "jominey", "P", 1578762819, "jominey", "P", 1578762922, "jominey", "P", 1579062043, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

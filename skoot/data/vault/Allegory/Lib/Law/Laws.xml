@@ -1,0 +1,237 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="categorydb">
+         ([ "church":\<Allegory:Lib:Law:church\>, "crimes":\<Allegory:Lib:Law:crimes\>, "misdemeanors":\<Ironclaw:Lib:Law:misdemeanors\>, "property":\<Ironclaw:Lib:Law:property\>, "requests":\<Ironclaw:Lib:Law:requests\>, "slaves":\<Ironclaw:Lib:Law:slaves\> ])
+      </Core:Property>
+      <Core:Property property="html:change_category">
+         X[S] \$[/* find which file keeps a list of the jobs */ 
+if(!\$dbrequest) return ""; 
+ 
+if(!this.categorydb) 
+  this.categorydb = ([ ]); 
+if(!(\$db = this.categorydb[\$dbrequest])) \{ 
+  \$name = ""; 
+  \$tmp = ""; 
+  for(\$i=0;\$i\<strlen(name(this));\$i++) \{ 
+    if(name(this)[\$i] != ':') \{ 
+      \$tmp += char_to_string(name(this)[\$i]); 
+    \} else \{ 
+      \$name += \$tmp + ":"; 
+      \$tmp = ""; 
+    \} 
+  \} 
+  \$name += \$dbrequest; 
+  catch(Call(\$\{Lib:objects\}, "create_of_type", \$type: "propcontainer")); 
+  \$db = Obj(\$name); 
+  this.categorydb[\$dbrequest] = \$db; 
+\} 
+return name(\$db);]
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<html\>
+\<head\>
+  \<title\>Triskellian Laws\</title\>
+  \$(this.html:javascript)
+\</head\>
+\<body\>
+\<zsession zid="\$(zid)" udat="\$(UDat.dat)" uname="\$(UDat.name)"\>
+\<h2\>Laws of Triskellian -
+\<select NAME="category" id="category" onchange="change_category(this.value);"\>
+  \<option VALUE="crimes" SELECTED="1"\>Crimes\</option\>
+  \<option VALUE="church"\>Church Law\</option\>
+  \<option VALUE="misdemeanors"\>Misdemeanors\</option\>
+  \<option VALUE="requests"\>Requests\</option\>
+  \<option VALUE="property"\>Property Law\</option\>
+  \<option VALUE="slaves"\>Slave Law\</option\>
+\</select\>
+\<script\>
+  //Reload the category information if the page is refreshed (or started)
+  change_category(document.getElementById("category").value);
+\</script\>
+\</h2\>
+\<p\>
+  \<table border="0"\>
+  \<tr\>
+  \<td valign="top"\>
+    \<select multiple="1" NAME="itemlist" id="itemlist" onchange="item_info(this.value);"\>\</select\>
+  \</td\>
+  \<td valign="top" width="100%"\>
+    \<div id="blurb"\>\</div\>
+    \<div id="description"\>\</div\>
+    \<div id="value"\>\</div\>
+  \</td\>
+  \</tr\>
+  \</table\>
+\</p\>
+\</zsession\>
+\</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:item_info">
+         X[S] \$[/* add a new item holder to the database */
+string output;
+output = "";
+if(!\$db \|\| !(\$db = Obj(\$db)))
+  return "Please select a category from the list at the top.";
+if(!\$itemname \|\| \$itemname == "")
+  return "Error: No item name specified.";
+if(!\$category \|\| \$category == "")
+  return "Error: No item name specified.";
+
+/* get item information */
+\$item = Get(\$db, \$category+":"+\$itemname);
+if(!\$item)
+  \$item = Get(\$db, "crimes:"+\$itemname);
+if(!\$item)
+  return "Error: No item found.";
+
+\$description = \$item["description"];
+if(!\$description) \$description = "No description available.";
+if(\$value = \$item["value"]) \{
+  if(Flt(\$value)==1.0) \{
+    \$value = Str(\$value)+" point.";
+  \} else \{
+    \$value = Str(\$value)+" points.";
+  \}
+\} else \{
+  \$value = "";
+\}
+
+return \$description+"\|"+\$value;
+
+return "Info goes here";
+/* check that a job with this name doesn't already exist */
+/* first check the open job lists */
+if(Get(\$db, "open:"+\$itemname))
+  return "There is already a job named "+\$itemname+" listed in open jobs.";
+/* then check the closed job lists */
+if(Get(\$db, "closed:"+\$itemname))
+  return "There is already a job named "+\$itemname+" listed in closed jobs.";
+/* add the item to the job lists */
+Set(\$db, "open:"+\$itemname, ([ "priority":time() ]));
+return output;]
+      </Core:Property>
+      <Core:Property property="html:javascript">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+var xmlHttp;
+function GetXmlHttpObject() \\\{
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+var categorydb;
+var str_category;
+function change_category(category) \\\{
+  if(!category) return;
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  //save the name and woe name of the category database we're currently using
+  if(category != str_category) \\\{
+    var url="change_category?dbrequest="+category;
+    xmlHttp.onreadystatechange=function() \\\{
+      if(xmlHttp.readyState==4) \\\{
+        categorydb = xmlHttp.responseText;
+        str_category = category;
+        change_category(category);
+      \\\}
+    \\\}
+  \\\} else \\\{
+    //repopulate the itemlist with the list of laws
+    var url="list_category?dbname="+categorydb+"\\\&category="+category;
+    xmlHttp.onreadystatechange=function() \\\{
+      if(xmlHttp.readyState==4) \\\{
+        if(xmlHttp.responseText == "Unknown database") \\\{
+          alert("Unknown database");
+        \\\} else \\\{
+          var list=xmlHttp.responseText.split("\\\|");
+          var select=document.getElementById("itemlist");
+          //clear the list
+          while(select.length)
+            select.remove(0);
+          //display the blurb
+          document.getElementById("blurb").innerHTML=list[0];
+          for(x=1;x\\\<list.length;x++) \\\{
+            var my_option = document.createElement('option');
+            my_option.text = list[x];
+            my_option.value = list[x];
+            select.add(my_option, null);
+          \\\}
+        \\\}
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function item_info(item) \\\{
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="item_info?itemname="+item+"\\\&db="+categorydb+"\\\&category="+str_category;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      var list=xmlHttp.responseText.split("\\\|");
+      document.getElementById("blurb").innerHTML="";
+      document.getElementById("description").innerHTML=list[0];
+      document.getElementById("value").innerHTML=list[1];
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:list_category">
+         X[S] \$[/* show a list of crimes in this database */ 
+string output; 
+int i, sz;
+output = ""; 
+
+if(!\$db \&\& !(\$db = Obj(\$dbname))) 
+  return "Please select a category from the list at the top."; 
+
+output = Str(\$db.blurb);
+\$crimes = map_indices(prefixed_map(Get(\$db, "*"), "crimes:"));
+sz = sizeof(\$crimes);
+for(i=0;i\<sz;i++) \{
+  output += "\|"+\$crimes[i][7..strlen(\$crimes[i])-1];
+\}
+
+return output;]
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1202462372, "tonyd", "E", 1202462389, "tonyd", "E", 1202462445, "tonyd", "E", 1202463014, "tonyd", "E", 1202464178, "tonyd", "P", 1202464217, "tonyd", "E", 1202464588, "tonyd", "P", 1202464670, "tonyd", "P", 1202465721, "tonyd", "P", 1202465757, "tonyd", "P", 1202465783, "tonyd", "P", 1202465817, "tonyd", "P", 1202465896, "tonyd", "P", 1202465920, "tonyd", "P", 1202465936, "tonyd", "P", 1202465964, "tonyd", "P", 1202465974, "tonyd", "P", 1202466161, "tonyd", "P", 1202466220, "tonyd", "P", 1576683614, "jominey", "R" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

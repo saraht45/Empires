@@ -1,0 +1,694 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="export:html:add_incident">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Guide Incident Tracker\</title\>
+  \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+  \$(this.html:javascript)
+\</head\>
+\<body\>
+\$[/* do we have an account or a character? */ 
+\$invalid = nil; 
+if(\$account == "") \$account = nil; 
+if(\$account) \{ 
+  \$udat = udat::query_udat(\$name: \$account); 
+\} 
+return nil;]
+\{? \| \$(udat) \|
+  \$[/* set the values for \$incident */
+  if(!\$incident) return nil;
+  \$time = Str(\$incident);
+  if(!Get(this, \$account)) error("Account not found in database.");
+  if(!\$category \|\| !Get(this, \$account)[Str(\$category)]) error("Category not found.");
+  if(!(\$incident = Get(this, \$account)[Str(\$category)][Str(\$incident)])) error("Incident not found.");
+  return nil;]
+  \{? \| \$(incident) \|
+    \<h2\>Update an incident for \$(account)\</h2\>
+  \|
+    \<h2\>File an incident for \$(account)\</h2\>
+  \}
+  \<zform account="\$(account)" staffname="\$(name)" incident="\$(incident)" time="\$(time)" category="\$(category)"\>
+    \{? \| \$(incident) \|
+      Short Description : \<strong\>\$(incident.0)\</strong\>\<br/\>
+    \|
+      Short Description : \<input type="text" name="short_desc" size="80"/\>\<br/\>
+    \}
+    \{? \| \$(incident) \|
+      Additional information:\<br/\>
+    \|
+      Description:\<br/\>
+    \}
+    \<textarea cols="80" name="long_desc" rows="5"\>\</textarea\>\<br/\>
+    \{? \| \$(incident) \|\|
+      Category :
+      \<select name="category"\>
+        \<option VALUE="misc" SELECTED="1"\>Miscellaneous\</option\>
+        \<option VALUE="cheating"\>Cheating (and exploits)\</option\>
+        \<option VALUE="alts"\>Alt abuse\</option\>
+      \</select\>\<br/\>
+    \}
+    Tas number (if any) : \<input type="text" name="tas"/\> (can put in multiple numbers, seperated by spaces)\<br/\>
+    Was the player given any official sanction?
+    \<select name="sanction"\>
+      \<option VALUE="none" SELECTED="1"\>No\</option\>
+      \<option VALUE="warning"\>Player warned about this behavior\</option\>
+      \<option VALUE="suspension"\>Player suspended over this behavior\</option\>
+      \<option VALUE="banning"\>Player banned over this behavior\</option\>
+    \</select\>\<br/\>
+    Should the player be moved to the detention area?
+    \<select name="detention"\>
+    \{? \| \$[\$incident \&\& \$incident[3]["detained"]] \|
+      \<option VALUE="no"\>No\</option\>
+      \<option VALUE="yes" SELECTED="1"\>Yes\</option\>
+    \|
+      \<option VALUE="no" SELECTED="1"\>No\</option\>
+      \<option VALUE="yes"\>Yes\</option\>
+    \}
+    \</select\>\<br/\>
+    Does a guide need to speak with this player?
+    \<select name="guide_needed"\>
+    \{? \| \$[\$incident \&\& \$incident[3]["guide_needed"]] \|
+      \<option VALUE="no"\>No\</option\>
+      \<option VALUE="yes" SELECTED="1"\>Yes\</option\>
+    \|
+      \<option VALUE="no" SELECTED="1"\>No\</option\>
+      \<option VALUE="yes"\>Yes\</option\>
+    \}
+    \</select\>\<br/\>
+    \{? \| \$(incident) \|
+      \<input type="submit" value="Update this incident"/\>
+    \|
+      \<input type="submit" value="File this incident"/\>
+    \}
+  \<action\>
+    \$[/* create account info */
+    \$info = Get(this, \$account);
+    if(!\$info) \{
+      Set(this, \$account, ([ ]) );
+      \$info = Get(this, \$account);
+    \}
+    if(\$incident) \{
+      if(!\$time) error("Something went wrong passing the \$time variable.");
+      if(\$long_desc \&\& \$long_desc != "")
+        \$incident[2] \|= (\{ (\{ \$staffname, time(), \$long_desc \}) \});
+      \$item = \$incident;
+    \} else \{
+      \$time = Str(time());
+      \$item = (\{ \$short_desc, (\{ \}), (\{ (\{ \$staffname, time(), \$long_desc \}) \}), ([ ]) \});
+    \}
+    while(\$tas \&\& strlen(\$tas)) \{
+      if(sscanf(\$tas, "%d%s", \$found, \$tas) == 2) \{
+        \$item[1] \|= (\{ \$found \});
+      \} else if(sscanf(\$tas, "%*s%d%s", \$found, \$tas) == 3) \{
+        \$item[1] \|= (\{ \$found \});
+      \} else \{
+        \$tas = nil;
+      \}
+    \}
+    /* mark any sanctions */
+    if(\$sanction != "none") \{
+      if(\$sanction == "warning") \{
+        if(\$info["warnings"]) \{
+          \$info["warnings"]++;
+        \} else \{
+          \$info["warnings"] = 1;
+        \}
+        if(\$item[3]["warnings"]) \{
+          \$item[3]["warnings"]++;
+        \} else \{
+          \$item[3]["warnings"] = 1;
+        \}
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has issued a warning to "+Str(\$account)+" for this behavior." \}) \});
+      \} else if(\$sanction == "suspension") \{
+        if(\$info["suspensions"]) \{
+          \$info["suspensions"]++;
+        \} else \{
+          \$info["suspensions"] = 1;
+        \}
+        if(\$item[3]["suspensions"]) \{
+          \$item[3]["suspensions"]++;
+        \} else \{
+          \$item[3]["suspensions"] = 1;
+        \}
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has issued a suspension to "+Str(\$account)+" for this behavior." \}) \});
+      \} else if(\$sanction == "banning") \{
+        if(\$info["bannings"]) \{
+          \$info["bannings"]++;
+        \} else \{
+          \$info["bannings"] = 1;
+        \}
+        if(\$item[3]["bannings"]) \{
+          \$item[3]["bannings"]++;
+        \} else \{
+          \$item[3]["bannings"] = 1;
+        \}
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has banned "+Str(\$account)+" for this behavior." \}) \});
+      \}
+    \}
+    /* mark detention area */
+    if(\$detention == "yes") \{
+      if(!\$item[3]["detained"]) \{
+        if(!this.detained)
+          this.detained = ([ ]);
+        if(!this.detained[\$account])
+          this.detained[\$account] = (\{ \});
+        \$found = FALSE;
+        for(\$i=0;\$i\<sizeof(this.detained[\$account]);\$i++) \{
+          if(this.detained[\$account][\$i][0] == \$category
+          \&\& this.detained[\$account][\$i][1] == \$time)
+            \$found = TRUE;
+        \}
+        if(!\$found)
+          this.detained[\$account] += (\{ (\{ \$category, \$time \}) \});
+        \$item[3]["detained"] = TRUE;
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has limited "+Str(\$account)+" to the detention room." \}) \});
+      \}
+    \} else \{
+      /* they don't need to be detained */
+      /* were they previously detained, and do we need to release them? */
+      if(\$item[3]["detained"]) \{
+        for(\$i=0;\$i\<sizeof(this.detained[\$account]);\$i++) \{
+          if(this.detained[\$account][\$i][0] == \$category
+          \&\& this.detained[\$account][\$i][1] == \$time)
+            this.detained[\$account][\$i] = nil;
+        \}
+        this.detained[\$account] -= (\{ nil \});
+        if(!sizeof(this.detained[\$account])) this.detained[\$account] = nil;
+        \$item[3]["detained"] = nil;
+        \$item[2] += (\{ (\{ \$staffname, time(), Str(\$staffname)+" has released "+Str(\$account)+" from the detention room." \}) \});
+      \}
+    \}
+    /* mark that guides need to talk to them */
+    if(\$guide_needed == "yes") \{
+      if(!this.guide_needed)
+        this.guide_needed = ([ ]);
+      if(!this.guide_needed[\$account])
+        this.guide_needed[\$account] = (\{ \});
+      \$found = FALSE;
+      for(\$i=0;\$i\<sizeof(this.guide_needed[\$account]);\$i++) \{
+        if(this.guide_needed[\$account][\$i][0] == \$category
+        \&\& this.guide_needed[\$account][\$i][1] == \$time)
+          \$found = TRUE;
+      \}
+      if(!\$found)
+        this.guide_needed[\$account] += (\{ (\{ \$category, \$time \}) \});
+      \$item[3]["guide_needed"] = TRUE;
+    \} else \{
+      /* they don't need to talk to a guide */
+      /* did they previously need to, and do we need to remove that mark? */
+      if(\$item[3]["guide_needed"]) \{
+        for(\$i=0;\$i\<sizeof(this.guide_needed[\$account]);\$i++) \{
+          if(this.guide_needed[\$account][\$i][0] == \$category
+          \&\& this.guide_needed[\$account][\$i][1] == \$time)
+            this.guide_needed[\$account][\$i] = nil;
+        \}
+        this.guide_needed[\$account] -= (\{ nil \});
+        /*this.guide_needed[\$account] -= (\{ (\{ \$category, \$time \}) \});*/
+        if(!sizeof(this.guide_needed[\$account])) this.guide_needed[\$account] = nil;
+        \$item[3]["guide_needed"] = nil;
+      \}
+    \}
+    /* set the category */
+    if(!\$info[\$category])
+      \$info[\$category] = ([ ]);
+    \$info[\$category][\$time] = \$item;
+    Set(this, \$account, \$info);
+    return nil;]
+    \<redirect propob="\$(this)" prop="index" account="\$(account)"/\>
+  \</action\>
+  \</zform\>
+  \<p\>[\<a href="index?account=\$(account)"\>Back\</a\>]\</p\>
+\|
+  \{? \| \$[\$char \|\| \$account] \|
+    \<h2\>That is not a valid character name or account.\</h2\>
+  \}
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="export:html:battlescript">
+         X[S] \<script type="text/javascript"\>
+function switch_visibility(block) \\\{
+  if(document.getElementById(block).style.display == "block") \\\{
+    document.getElementById(block).style.display = 'none';
+  \\\} else \\\{
+    document.getElementById(block).style.display = 'block';
+  \\\}
+\\\}
+function display_block(block, script, file, variables) \\\{
+  if(!block) return;
+  if(!script) \\\{
+    document.getElementById("block").innerHTML="";
+  \\\}
+  if(!file) \\\{
+    alert("Unknow file");
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&file=\$(file)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById(block).innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function call_script(script, file, variables) \\\{
+  if(!file) \\\{
+    alert("Unknow file");
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&file=\$(file)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="export:html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" host="\$(UDat.Host)"\>
+\$[/* security */  
+if(!\$host \&\& !member(\$name, Arr(this.users))) error("You are not authorized to use these webpages!");  
+return nil;]
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Logfile Reader\</title\>
+  \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+  \$(this.html:javascript)
+  \$(this.html:battlescript)
+\</head\>
+\<body\>
+\$[/* do we have a battle file? */  
+if(\$battle == "") \$battle = nil; 
+if(\$battle) \{ 
+  \$battle = Obj(\$battle); 
+\} else \{ 
+  \$battle = nil; 
+\} 
+return nil;]
+\<div id="top_strip"\>
+  \<zform zlog="\$(battle)"\>
+    Character Name: \<input type="text" size="50" name="log" value="\$[if(\$zlog) return name(\$zlog); return nil;]"/\>
+    \<input type="submit" value="Load"/\>
+  \<action\>
+    \<redirect propob="\$(this)" prop="index" log="\$(log)"/\>
+  \</action\>
+  \</zform\>
+\</div\>
+\{? \| \$(log) \|
+ \<h2\>Log file found\</h2\>
+  \$[\$mylog = Obj("Ironclaw:Lib:Characters:Logs:"+lower_case(\$log));
+  \$timestamps = map_indices(\$mylog."*");
+  \$timestamps -= (\{ "revisions" \});
+  return "";
+  return dump_value(map_indices(\$mylog."*"));]
+ \<zform zlog="\$(log)" timestamps="\$(timestamps)"\>
+ \<select name="timestamp"\>
+  \<option VALUE=""\>\</option\>
+  \$[\$output = "";
+  for(\$i=0;\$i\<sizeof(\$timestamps);\$i++)
+   \$output += "\<option VALUE=\\""+Str(\$timestamps[\$i])+"\\"\>"+short_time(Int(\$timestamps[\$i]))+"\</option\>\\n";
+  return \$output;]
+ \</select\>
+ \<input type="submit" value="View"/\>
+ \<br/\>
+  \<action\>
+    \<redirect propob="\$(this)" prop="index" log="\$(zlog)" timestamp="\$(timestamp)"/\>
+  \</action\>
+ \</zform\>
+\}
+\{? \| \$(timestamp) \|
+ \<h2\>Logfile - \$[ctime(Int(\$timestamp))]\</h2\>
+  \$[\$mylog = Obj("Ironclaw:Lib:Characters:Logs:"+lower_case(\$log));
+  \$info = Get(\$mylog, \$timestamp);
+  \$output = "";
+  \$output += "\<h3\>Logging reason: "+Str(\$info[0])+"\</h3\>\\n";
+  for(\$i=1;\$i\<sizeof(\$info);\$i++) \{
+   \$action = \$info[\$i][0];
+   \$output += dump_value(\$action["imperative"])+" "+dump_value(\$action["adverb"]);
+   if(\$action["dob"]) \$output += " "+dump_value(\$action["dob"]);
+   if(\$action["iob"]) \{
+    if(\$action["iob:preposition"]) \$output += " "+dump_value(\$action["iob:preposition"]);
+    \$output += " "+dump_value(\$action["iob"]);
+   \}
+   if(\$action["evoke"]) \$output += ", "+dump_value(\$action["evoke"]);
+   \$output += "\<br/\>\\n";
+
+   /*\$output += dump_value(\$info[\$i][0]);*/
+  \}
+  return \$output;]
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="export:html:javascript">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+function GetXmlHttpObject() \\\{
+  var xmlHttp;
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+function switch_visibility(block) \\\{
+  if(document.getElementById(block).style.display == "block") \\\{
+    document.getElementById(block).style.display = 'none';
+  \\\} else \\\{
+    document.getElementById(block).style.display = 'block';
+  \\\}
+\\\}
+function display_block(block, script, file, variables) \\\{
+  if(!block) return;
+  if(!script) \\\{
+    document.getElementById("block").innerHTML="";
+  \\\}
+  if(!file) \\\{
+    alert("No file specified");
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&file=\$(file)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById(block).innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="export:html:link">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Guild Incident Tracker\</title\>
+  \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+  \$(this.html:javascript)
+\</head\>
+\<body\>
+\$[/* do we have an account or a character? */ 
+\$invalid = nil; 
+if(\$account == "") \$account = nil; 
+if(\$account) \{ 
+  \$udat = udat::query_udat(\$name: \$account); 
+\} 
+return nil;]
+\{? \| \$(udat) \|
+  \<zform account="\$(account)"\>
+    Link \$(account) to : \<input type="text" name="link_account"/\>
+    \<input type="submit" value="Link these accounts together"/\>
+  \<action\>
+    \$[/* verify account */ 
+    \$db = \$\{Ironclaw:Lib:Staff:Guides:Incidents\}; 
+    if(!\$link_account \|\| \$link_account == "" \|\| !udat::query_udat(\$name: \$link_account)) 
+      return nil; 
+    if(!Get(\$db, \$account)) Set(\$db, \$account, ([ ])); 
+    if(!Get(\$db, \$account)["linked"]) Get(\$db, \$account)["linked"] = (\{ \$account \}); 
+    Get(\$db, \$account)["linked"] = Arr(Get(\$db, \$account)["linked"]) \| (\{ \$link_account \}); 
+     
+/*    if(Get(\$db, \$link_account) \&\& Get(\$db, \$account)["linked"]) 
+      Get(\$db, \$account)["linked"] \|= Get(\$db, \$link_account)["linked"];    */ 
+    /* make sure any other accounts that this links to are also linked */ 
+    for(\$i=0;\$i\<sizeof(Get(\$db, \$account)["linked"]);\$i++) \{ 
+      if(!Get(\$db, Get(\$db, \$account)["linked"][\$i])) \{ 
+        Set(\$db, Get(\$db, \$account)["linked"][\$i], ([  
+"linked": Get(\$db, \$account)["linked"] ])); 
+      \} else \{ 
+        if(Get(\$db, Get(\$db, \$account)["linked"][\$i])["linked"]) \{ 
+          Get(\$db, Get(\$db, \$account)["linked"][\$i])["linked"] \|= Get(\$db, \$account)["linked"];         
+        \} else \{ 
+          Get(\$db, Get(\$db, \$account)["linked"][\$i])["linked"] = Get(\$db, \$account)["linked"]; 
+        \} 
+      \} 
+    \} 
+    return nil;]
+    \<redirect propob="\$(this)" prop="index" account="\$(account)"/\>
+  \</action\>
+  \</zform\>
+  \<p\>[\<a href="index?account=\$(account)"\>Back\</a\>]\</p\>
+\|
+  \{? \| \$[\$char \|\| \$account] \|
+    \<h2\>That is not a valid character name or account.\</h2\>
+  \}
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:general_script">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>\$[Call(this, "general_script")]\</z\>
+      </Core:Property>
+      <Core:Property property="merry:lib:display_incidents">
+         X[M] /* display incidents */
+string output;
+string *index;
+int i, ix, j, jx;
+
+output = "";
+
+index = map_indices(\$incidents);
+ix = sizeof(index);
+for(i=0;i\<ix;i++) \{
+  \$incident = \$incidents[index[i]];
+  output += "\<h4 onclick=\\"switch_visibility('"+index[i]+"');\\"\>\<u\>"+Str(\$incident[0])+"\</u\>\</h4\>\\n";
+  output += "\<div id=\\""+index[i]+"\\" style=\\"display:none;\\"\>\\n";
+  output += "\<p\>[\<a href=\\"add_incident?account="+Str(\$account)+"\&category="+Str(\$category)+"\&incident="+Str(index[i])+"\\"\>Add more to this incident\</a\>]\<br/\>\\n";
+
+  if(sizeof(Arr(\$incident[1]))) \{
+    \$body = Udat::query_bodies_in_roster(\$user: \$name);
+    if(\$body \&\& sizeof(\$body)) \{
+      \$body = name(\$body[0]);
+    \} else \{
+      \$body = "";
+    \}
+    output += "Assists:";
+    for(j=0;j\<sizeof(\$incident[1]);j++) \{
+      output += " \<a href='/SAM/Prop/Lib:Assist:lib:assistpopup/doinfo?actor=Chatters:IC:az:azrael\&cmd=%2Btas\&command=%2Btas\&data=Data%3ADB%3Aassist%3AAssistGeneralDB\&num="+\$incident[1][j]+"' target='_blank'\>"+\$incident[1][j]+"\</a\>";
+/*      output += " \<a href='/SAM/Prop/Lib:Assist:lib:assistpopup/doinfo?actor="+\$body+"\&cmd=%2Btas\&command=%2Btas\&data=Data%3ADB%3Aassist%3AAssistGeneralDB\&num="+\$incident[1][j]+"' target='_blank'\>"+\$incident[1][j]+"\</a\>";*/
+    \}
+    output += "\<br/\>\\n";
+  \}
+
+  \$incident = \$incident[2];
+  jx = sizeof(\$incident);
+  for(j=0;j\<jx;j++) \{
+    output += "\<p\>\<strong\>"+Str(\$incident[j][0])+" "+ctime(Int(\$incident[j][1]))+"\</strong\>\<br/\>\\n";
+    output += replace_strings(Str(\$incident[j][2]), "\\r\\n", "\<br/\>\\n")+"\</p\>\\n";
+  \}
+  output += "\<p\>[\<a href=\\"add_incident?account="+Str(\$account)+"\&category="+Str(\$category)+"\&incident="+Str(index[i])+"\\"\>Add more to this incident\</a\>]\<br/\>\\n";
+  output += "\<hr/\>\\n";
+  output += "\</div\>\\n";
+\}
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:general_script">
+         X[M] /* run some initial code */
+string output;
+int i, sz, j, jx;
+::popup_initialize();
+
+\$az = Obj("Chatters:IC:az:azrael");
+\$battle = \$\{Ironclaw:Lib:Bluebook:Battles:ShipPirateOld\};
+/* set variables (if any) */
+if(typeof(\$vars) != T_ARRAY)
+  \$vars = explode(Str(\$vars), "\|");
+
+output = "";
+if(\$script == "add_character") \{
+  /* adding a character to the list */
+  /* find the character */
+  if(!\$vars) return "Error: No variables passed to script.";
+  if(sizeof(\$vars) \< 3) return "Error: Unknown character name.";
+  if(strlen(\$vars[0]) \< 2) return "Error: Unknown character name.";
+  \$new = Obj("Chatters:IC:"+lower_case(\$vars[0][0..1])+":"+lower_case(\$vars[0]));
+  if(!\$new) return "Error: Unknown character name.";
+  /* check there is an appropriate property */
+  if(!\$battle.pcs) \$battle.pcs = (\{ \});
+  /* now look through for this character */
+  \$found = nil;
+  for(i=0;i\<sizeof(\$battle.pcs)\&\&!\$found;i++) \{
+    if(\$battle.pcs[i][0] == \$new) \{
+      \$found = TRUE;
+      \$battle.pcs[i][1] = \$vars[1];
+      \$battle.pcs[i][2] = \$vars[2];
+    \}
+  \}
+  if(!\$found) \{
+    /* didn't find it. Add to the list */
+    \$battle.pcs \|= (\{ (\{ \$new, \$vars[1], \$vars[2] \}) \});
+  \}
+  return Call(this, "general_script", \$script: "list_characters");
+\} else if(\$script == "remove_character") \{
+  /* removing a character to the list */
+  /* find the character */
+  if(!\$vars) return "Error: No variables passed to script.";
+  if(sizeof(\$vars) \< 3) return "Error: Unknown character name.";
+  if(strlen(\$vars[0]) \< 2) return "Error: Unknown character name.";
+  \$new = Obj("Chatters:IC:"+lower_case(\$vars[0][0..1])+":"+lower_case(\$vars[0]));
+  if(!\$new) return "Error: Unknown character name.";
+  /* check there is an appropriate property */
+  if(!\$battle.pcs) \$battle.pcs = (\{ \});
+  /* now look through for this character */
+  for(i=0;i\<sizeof(\$battle.pcs);i++) \{
+    if(\$battle.pcs[i][0] == \$new) \{
+      \$tmp = \$battle.pcs[i];
+      \$battle.pcs -= (\{ \$tmp \});
+    \}
+  \}
+  return Call(this, "general_script", \$script: "list_characters");
+\} else if(\$script == "list_characters") \{
+  output = "";
+  \$list = \$battle.pcs;
+  if(!\$list) \{
+    \$list = (\{ \});
+    \$battle.pcs = \$list;
+  \}
+  if(sizeof(\$list)) \{
+    sz = sizeof(\$list);
+    for(i=0;i\<sz;i++)\{
+      output += Describe(\$list[i][0])+" - "+\$list[i][1]+" - "+\$list[i][2]+" "+Str(Int(Get(\$list[i][0], "skill:"+\$list[i][2])))+"("+Str(Int(Get(\$list[i][0], "career:"+\$list[i][2])))+")\<br/\>\\n";
+    \}
+  \} else \{
+    output += "No characters are yet listed for this expedition\<br/\>\\n";
+  \}
+  return output;
+\} else if(\$script == "update_tokens") \{
+ /* set the new token amounts */
+ if(sizeof(\$vars) \< 2) return "Error: Something went wrong.";
+ Get(\$battle, "event:start")["variables"][\$vars[0]] = Int(\$vars[1]);
+ return "Token amount updated for "+dump_value(\$vars[0])+".";
+\} else if(\$script == "run_event") \{
+  /* display what happens during the event */
+
+  \$incidents = Arr(\$battle."event:start"["incidents"]);
+  /* set variables for tokens */
+  for(i=0;i\<sizeof(map_indices(Get(\$battle, "event:start")["variables"]));i++)
+    args[map_indices(Get(\$battle, "event:start")["variables"])[i]] = Get(\$battle, "event:start")["variables"][ map_indices(Get(\$battle, "event:start")["variables"])[i] ];
+
+  /* loop */
+  \$pcbackup = \$battle.pcs;
+  while(sizeof(\$battle.pcs) \&\& \$enemy_pirate_tokens \> 0) \{
+    /* pick a character */
+    \$char = \$battle.pcs[random(sizeof(\$battle.pcs))];
+    \$role = \$char[1];
+    \$favorite_weapon = \$char[2];
+    \$char = \$char[0];
+    /*output += Describe(\$char)+" - "+\$role+"\<br/\>\\n";*/
+    /* pick an incident */
+    \$incident = nil;
+    \$incidents_list = copy(\$incidents);
+    while(!\$incident \&\& sizeof(\$incidents_list)) \{
+      \$incident = \$incidents_list[random(sizeof(\$incidents_list))];
+      \$incidents_list -= (\{ \$incident \});
+      if(!Call(\$battle, \$incident, \$stage: "conditions")) \{
+        \$incident = nil;
+      \} else \{
+        /*output += "Incident found: "+\$incident+"\<br/\>\\n";*/
+        \$pirate = Call(\$battle, "describe_pirate");
+        \$ally = "marine";
+        if(Call(\$battle, \$incident, \$stage: "test")) \{
+          output += Call(\$battle, \$incident, \$stage: "pass");
+        \} else \{
+          output += Call(\$battle, \$incident, \$stage: "fail");
+        \}
+      \}
+    \}
+
+    /*output += dump_value(\$enemy_pirate_tokens)+"\<br/\>\\n";*/
+    /*\$enemy_pirate_tokens--;*/
+  \}
+
+  /* describe the conclusion */
+  if(\$enemy_pirate_tokens \<= 0) \{
+    output += "After some more fighting, the outcome of the battle becomes obvious to all, and the pirate surrender, begging and pleading for clemency.\<br/\>\\n";
+  \} else \{
+    output += "Exultant at their victory, the pirates round up any survivors, tie them securely, and stow them in the hold. After some negotiations, the survivors are ransomed back to their guilds or Houses.\<br/\>\\n";
+  \}
+
+  \$battle.pcs = \$pcbackup;
+  return output;
+\}
+
+if(output != "") return output;
+return "Error: Unknown script";
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] /* checks the player isn't trying anything funny, and that we have all the information we need */
+/* returns the page we should look up */
+object *bodies;
+int i, sz;
+
+/* first basic sanity checks -- these should never happen */
+if (\$dat == nil) \{
+  error("page reached without a udat");
+\}
+if (\$name == nil) \{
+  error("page reached without a name");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1207125942, "tonyd", "E", 1207126161, "tonyd", "P", 1207126422, "tonyd", "P", 1207126460, "tonyd", "P", 1207126490, "tonyd", "P", 1207126773, "tonyd", "P", 1207126853, "tonyd", "P", 1207127677, "tonyd", "P", 1207127723, "tonyd", "P", 1207127741, "tonyd", "P", 1207127939, "tonyd", "P", 1207127958, "tonyd", "P", 1207127964, "tonyd", "P", 1207128020, "tonyd", "P", 1207128061, "tonyd", "P", 1207128222, "tonyd", "P", 1207128308, "tonyd", "P", 1207128352, "tonyd", "P", 1207128380, "tonyd", "P", 1207128389, "tonyd", "P", 1207128571, "tonyd", "P", 1207128604, "tonyd", "P", 1207128820, "tonyd", "P", 1207128855, "tonyd", "P", 1207128899, "tonyd", "P", 1207128981, "tonyd", "P", 1207129037, "tonyd", "P", 1207129066, "tonyd", "P", 1207129089, "tonyd", "P", 1207129166, "tonyd", "P", 1207129189, "tonyd", "P", 1207129531, "tonyd", "P", 1207129599, "tonyd", "P", 1207129613, "tonyd", "P", 1207129643, "tonyd", "P", 1207129706, "tonyd", "P", 1207129880, "tonyd", "P", 1207129928, "tonyd", "P", 1207135548, "tonyd", "P", 1207135600, "tonyd", "P", 1207135765, "tonyd", "P", 1207135869, "tonyd", "P", 1207135926, "tonyd", "P", 1207136129, "tonyd", "P", 1207136154, "tonyd", "P", 1207136159, "tonyd", "P", 1207136200, "tonyd", "P", 1207136218, "tonyd", "P", 1207136251, "tonyd", "P", 1207136268, "tonyd", "P", 1207136288, "tonyd", "P", 1207136305, "tonyd", "P", 1207136332, "tonyd", "P", 1207136360, "tonyd", "P", 1207136394, "tonyd", "P", 1207136462, "tonyd", "P", 1207136519, "tonyd", "P", 1207136542, "tonyd", "P", 1207136567, "tonyd", "P", 1207136634, "tonyd", "P", 1207136696, "tonyd", "P", 1207136709, "tonyd", "P", 1207136772, "tonyd", "P", 1207136789, "tonyd", "P", 1207136851, "tonyd", "P", 1207136898, "tonyd", "P", 1207136910, "tonyd", "P", 1207136955, "tonyd", "P", 1207137025, "tonyd", "P", 1207137267, "tonyd", "P", 1207137284, "tonyd", "P", 1207137306, "tonyd", "P", 1207137329, "tonyd", "P", 1207137350, "tonyd", "P", 1207137377, "tonyd", "P", 1207137392, "tonyd", "P", 1207137465, "tonyd", "P", 1207137471, "tonyd", "P", 1207137488, "tonyd", "P", 1207137522, "tonyd", "P", 1208226260, "tonyd", "R", 1208226328, "tonyd", "P", 1208226344, "tonyd", "P", 1208226605, "tonyd", "E", 1208227357, "tonyd", "P", 1208228345, "tonyd", "P", 1208228394, "tonyd", "P", 1208231433, "tonyd", "P", 1208237417, "tonyd", "P", 1208237431, "tonyd", "P", 1208237440, "tonyd", "P", 1208237771, "tonyd", "P", 1208237831, "tonyd", "P", 1208237841, "tonyd", "P", 1208238897, "tonyd", "P", 1208239090, "tonyd", "P", 1208239114, "tonyd", "P", 1208239215, "tonyd", "P", 1208239273, "tonyd", "P", 1208239667, "tonyd", "P", 1208239711, "tonyd", "P", 1208239756, "tonyd", "P", 1208240079, "tonyd", "P", 1208240843, "tonyd", "P", 1208240919, "tonyd", "P", 1208241026, "tonyd", "P", 1208241202, "tonyd", "P", 1208241219, "tonyd", "P", 1208241280, "tonyd", "P", 1208241466, "tonyd", "P", 1208241804, "tonyd", "P", 1208241815, "tonyd", "P", 1208241856, "tonyd", "P", 1208241955, "tonyd", "P", 1208242275, "tonyd", "P", 1208247886, "tonyd", "P", 1208247919, "tonyd", "P", 1208247943, "tonyd", "P", 1208249294, "tonyd", "P", 1208260035, "tonyd", "P", 1208260169, "tonyd", "P", 1208260189, "tonyd", "P", 1208260223, "tonyd", "P", 1208260240, "tonyd", "P", 1208260263, "tonyd", "P", 1208260302, "tonyd", "P", 1208260314, "tonyd", "P", 1208260343, "tonyd", "P", 1208260530, "tonyd", "P", 1208260599, "tonyd", "P", 1208260656, "tonyd", "P", 1208261221, "tonyd", "P", 1208261297, "tonyd", "P", 1208261311, "tonyd", "P", 1208261351, "tonyd", "P", 1208261359, "tonyd", "P", 1208261383, "tonyd", "P", 1208261417, "tonyd", "P", 1208261438, "tonyd", "P", 1208261488, "tonyd", "P", 1208261525, "tonyd", "P", 1208261596, "tonyd", "P", 1208261657, "tonyd", "P", 1209011258, "tonyd", "P", 1209011299, "tonyd", "P", 1209011305, "tonyd", "P", 1209011330, "tonyd", "P", 1209011361, "tonyd", "P", 1209011469, "tonyd", "P", 1209011522, "tonyd", "P", 1209011679, "tonyd", "P", 1209011710, "tonyd", "P", 1209011813, "tonyd", "P", 1209011890, "tonyd", "P", 1209011926, "tonyd", "P", 1209011937, "tonyd", "P", 1209011983, "tonyd", "P", 1209012167, "tonyd", "P", 1209012253, "tonyd", "P", 1209012326, "tonyd", "P", 1209012443, "tonyd", "P", 1209012465, "tonyd", "P", 1209012484, "tonyd", "P", 1209012534, "tonyd", "P", 1209012581, "tonyd", "P", 1209012695, "tonyd", "P", 1209012717, "tonyd", "P", 1209012805, "tonyd", "P", 1209012815, "tonyd", "P", 1209013430, "tonyd", "P", 1209013469, "tonyd", "P", 1209013512, "tonyd", "P", 1209013556, "tonyd", "P", 1209013570, "tonyd", "P", 1209013628, "tonyd", "P", 1209013642, "tonyd", "P", 1209013652, "tonyd", "P", 1209013678, "tonyd", "P", 1209013714, "tonyd", "P", 1209013730, "tonyd", "P", 1209013766, "tonyd", "P", 1209013800, "tonyd", "P", 1209013808, "tonyd", "P", 1209013845, "tonyd", "P", 1209013862, "tonyd", "P", 1209013871, "tonyd", "P", 1209013920, "tonyd", "P", 1209013936, "tonyd", "P", 1209013953, "tonyd", "P", 1209013990, "tonyd", "P", 1209014168, "tonyd", "P", 1209262263, "tonyd", "P", 1209262270, "tonyd", "P", 1209262297, "tonyd", "P", 1209262347, "tonyd", "P", 1209262461, "tonyd", "P", 1209263399, "tonyd", "P", 1209265724, "tonyd", "P", 1209265827, "tonyd", "P", 1210673513, "tonyd", "P", 1210673538, "tonyd", "P", 1210673556, "tonyd", "P", 1210673840, "tonyd", "P", 1210673870, "tonyd", "P", 1210674007, "tonyd", "P", 1210674046, "tonyd", "P", 1210674118, "tonyd", "P", 1210674231, "tonyd", "P", 1210674630, "tonyd", "P", 1210674743, "tonyd", "P", 1210674771, "tonyd", "P", 1210675245, "tonyd", "P", 1210675528, "tonyd", "P", 1210675566, "tonyd", "P", 1210675667, "tonyd", "P", 1210675713, "tonyd", "P", 1210676077, "tonyd", "P", 1210676130, "tonyd", "P", 1210676261, "tonyd", "P", 1210676332, "tonyd", "P", 1210676444, "tonyd", "P", 1210676528, "tonyd", "P", 1210676557, "tonyd", "P", 1210676862, "tonyd", "P", 1210677264, "tonyd", "P", 1210677501, "tonyd", "P", 1210677519, "tonyd", "P", 1210677650, "tonyd", "P", 1210677665, "tonyd", "P", 1210677695, "tonyd", "P", 1210677722, "tonyd", "P", 1210677737, "tonyd", "P", 1210677757, "tonyd", "P", 1210677789, "tonyd", "P", 1210677820, "tonyd", "P", 1210677831, "tonyd", "P", 1210677931, "tonyd", "P", 1210679067, "tonyd", "P", 1210679136, "tonyd", "P", 1210679156, "tonyd", "P", 1210679772, "tonyd", "P", 1210679786, "tonyd", "P", 1210679828, "tonyd", "P", 1210679873, "tonyd", "P", 1210679879, "tonyd", "P", 1210679974, "tonyd", "P", 1210680243, "tonyd", "P", 1210682053, "tonyd", "P", 1210682154, "tonyd", "P", 1210684737, "tonyd", "P", 1210684780, "tonyd", "P", 1210684988, "tonyd", "P", 1210685183, "tonyd", "P", 1210685364, "tonyd", "P", 1210685447, "tonyd", "P", 1210685811, "tonyd", "P", 1211089638, "tonyd", "P", 1214898033, "tonyd", "P", 1214898096, "tonyd", "P", 1214898131, "tonyd", "P", 1214898164, "tonyd", "P", 1214898191, "tonyd", "P", 1214898212, "tonyd", "P", 1214898252, "tonyd", "P", 1214898381, "tonyd", "P", 1214898949, "tonyd", "P", 1214899076, "tonyd", "P", 1214899144, "tonyd", "P", 1214899160, "tonyd", "P", 1214899168, "tonyd", "P", 1214899180, "tonyd", "P", 1214899190, "tonyd", "P", 1214899203, "tonyd", "P", 1214899382, "tonyd", "P", 1214899427, "tonyd", "P", 1215600217, "tonyd", "P", 1215600384, "tonyd", "P", 1215600670, "tonyd", "P", 1215600811, "tonyd", "P", 1215600963, "tonyd", "P", 1215601164, "tonyd", "P", 1215601188, "tonyd", "P", 1215601378, "tonyd", "P", 1215604225, "tonyd", "P", 1215604268, "tonyd", "P", 1215604352, "tonyd", "P", 1215604435, "tonyd", "P", 1215604868, "tonyd", "P", 1215604881, "tonyd", "P", 1215605166, "tonyd", "P", 1215605225, "tonyd", "P", 1215605246, "tonyd", "P", 1215605313, "tonyd", "P", 1215605359, "tonyd", "P", 1215605373, "tonyd", "P", 1215827932, "tonyd", "P", 1215828025, "tonyd", "P", 1215828165, "tonyd", "P", 1218250048, "tonyd", "P", 1218250426, "tonyd", "P", 1218250525, "tonyd", "P", 1218250597, "tonyd", "P", 1218250659, "tonyd", "P", 1218251052, "tonyd", "P", 1218251164, "tonyd", "P", 1218251221, "tonyd", "P", 1218251245, "tonyd", "P", 1218251375, "tonyd", "P", 1218251422, "tonyd", "P", 1218251642, "tonyd", "P", 1218252134, "tonyd", "P", 1218252244, "tonyd", "P", 1218252388, "tonyd", "P", 1218252808, "tonyd", "P", 1218253325, "tonyd", "P", 1218253367, "tonyd", "P", 1218253447, "tonyd", "P", 1218253569, "tonyd", "P", 1218253640, "tonyd", "P", 1218253782, "tonyd", "P", 1218253817, "tonyd", "P", 1218254545, "tonyd", "P", 1218254573, "tonyd", "P", 1218254583, "tonyd", "P", 1218254601, "tonyd", "P", 1218254774, "tonyd", "P", 1218254831, "tonyd", "P", 1218254851, "tonyd", "P", 1218699981, "tonyd", "P", 1218700883, "tonyd", "P", 1218700940, "tonyd", "P", 1218701048, "tonyd", "P", 1218701072, "tonyd", "P", 1218701227, "tonyd", "P", 1218701244, "tonyd", "P", 1218701351, "tonyd", "P", 1218702991, "tonyd", "P", 1218703032, "tonyd", "P", 1218703060, "tonyd", "P", 1218703076, "tonyd", "P", 1218703125, "tonyd", "P", 1218704064, "tonyd", "P", 1218704092, "tonyd", "P", 1218704301, "tonyd", "P", 1218704411, "tonyd", "P", 1218704418, "tonyd", "P", 1218704562, "tonyd", "P", 1218870122, "tonyd", "P", 1218870155, "tonyd", "P", 1218870166, "tonyd", "P", 1218870317, "tonyd", "P", 1218871124, "tonyd", "P", 1218871152, "tonyd", "P", 1218871170, "tonyd", "P", 1218871179, "tonyd", "P", 1218873999, "tonyd", "P", 1218877222, "tonyd", "P", 1218976882, "tonyd", "P", 1218981836, "tonyd", "P", 1219124768, "tonyd", "P", 1219124823, "tonyd", "P", 1219124887, "tonyd", "P", 1219125005, "tonyd", "P", 1219125028, "tonyd", "P", 1219125093, "tonyd", "P", 1219125127, "tonyd", "P", 1219125205, "tonyd", "P", 1219125361, "tonyd", "P", 1219125411, "tonyd", "P", 1219125500, "tonyd", "P", 1219125520, "tonyd", "P", 1219125574, "tonyd", "P", 1219125628, "tonyd", "P", 1219125752, "tonyd", "P", 1219125793, "tonyd", "P", 1219125881, "tonyd", "P", 1219125916, "tonyd", "P", 1219125950, "tonyd", "P", 1219126029, "tonyd", "P", 1219126154, "tonyd", "P", 1219126201, "tonyd", "P", 1219126239, "tonyd", "P", 1219126358, "tonyd", "P", 1219126386, "tonyd", "P", 1219126403, "tonyd", "P", 1219126439, "tonyd", "P", 1219127375, "tonyd", "P", 1219127458, "tonyd", "P", 1219127633, "tonyd", "P", 1219130347, "tonyd", "P", 1219130405, "tonyd", "P", 1219130456, "tonyd", "P", 1219130498, "tonyd", "P", 1219130534, "tonyd", "P", 1219130739, "tonyd", "P", 1219130814, "tonyd", "P", 1219130966, "tonyd", "P", 1219131030, "tonyd", "P", 1219448471, "tonyd", "P", 1219453342, "tonyd", "P", 1219454341, "tonyd", "P", 1232526691, "tonyd", "P", 1232526704, "tonyd", "P", 1232527018, "tonyd", "P", 1232527053, "tonyd", "P", 1232527085, "tonyd", "P", 1232527148, "tonyd", "P", 1232527226, "tonyd", "P", 1232527270, "tonyd", "P", 1232527291, "tonyd", "P", 1232527791, "tonyd", "P", 1232527810, "tonyd", "P", 1232527871, "tonyd", "P", 1232527888, "tonyd", "P", 1232527932, "tonyd", "P", 1232528001, "tonyd", "P", 1232528031, "tonyd", "P", 1232528044, "tonyd", "P", 1232528058, "tonyd", "P", 1232528075, "tonyd", "P", 1232528121, "tonyd", "P", 1232528223, "tonyd", "P", 1232531902, "tonyd", "P", 1232531914, "tonyd", "P", 1236453985, "rastalabor", "X", 1237265171, "tonyd", "P", 1237265217, "tonyd", "P", 1237265440, "tonyd", "P", 1237265600, "tonyd", "P", 1237265675, "tonyd", "P", 1237265717, "tonyd", "P", 1237265744, "tonyd", "P", 1237265783, "tonyd", "P", 1237265848, "tonyd", "P", 1237265862, "tonyd", "P", 1237266103, "tonyd", "P", 1237266119, "tonyd", "P", 1237266141, "tonyd", "P", 1237266189, "tonyd", "P", 1237266209, "tonyd", "P", 1237266245, "tonyd", "P", 1237266298, "tonyd", "P", 1237266316, "tonyd", "P", 1237266477, "tonyd", "P", 1237266495, "tonyd", "P", 1237266518, "tonyd", "P", 1237266598, "tonyd", "P", 1237266612, "tonyd", "P", 1237266676, "tonyd", "P", 1237266709, "tonyd", "P", 1237266749, "tonyd", "P", 1237266763, "tonyd", "P", 1237266773, "tonyd", "P", 1237266810, "tonyd", "P", 1237266864, "tonyd", "P", 1237266923, "tonyd", "P", 1237266962, "tonyd", "P", 1237267038, "tonyd", "P", 1237267133, "tonyd", "P", 1237274749, "tonyd", "P", 1237274760, "tonyd", "P", 1275478244, "tonyd", "P", 1275478324, "tonyd", "P", 1275478349, "tonyd", "P", 1275478368, "tonyd", "P", 1275478409, "tonyd", "P", 1275478451, "tonyd", "P", 1275478475, "tonyd", "P", 1275478510, "tonyd", "P", 1275478616, "tonyd", "P", 1275478655, "tonyd", "P", 1275478674, "tonyd", "P", 1275478703, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

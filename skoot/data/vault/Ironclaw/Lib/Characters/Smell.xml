@@ -1,0 +1,266 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-post:command%smell">
+         X[M] /* let character's collect smells of things they touch */
+
+if(!\$vob) return TRUE;
+/* do you have to be close to use this verb? */
+if(\$dob \&\& (\$vob."verb:roles:dob:armslength" \|\| \$vob."verb:roles:dob:close" \|\| \$vob."verb:roles:dob:owned")) \{
+  Call(\$\{Ironclaw:Lib:Characters:Smell\}, "setsmell", \$objects: Arr(\$dob));
+\}
+if(\$iob \&\& (\$vob."verb:roles:iob:armslength" \|\| \$vob."verb:roles:iob:close" \|\| \$vob."verb:roles:iob:owned")) \{
+  Call(\$\{Ironclaw:Lib:Characters:Smell\}, "setsmell", \$objects: Arr(\$iob));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:getsmell">
+         X[M] int i;
+string smell;
+mixed *smells, *strongsmells, *weaksmells;
+int time, max;
+
+smells = ::getsmellarray(\$object: \$object);
+
+if(sizeof(smells) \<= 1) return "";
+
+for(\$i = 1; \$i \< sizeof(smells); \$i++) \{
+    if(smells[\$i][0] == "nothing out of the ordinary") \$counter = \$i;
+\}
+
+if(\$counter) \{
+    smells[\$counter] = nil;
+    smells -= (\{ nil \});
+\}
+
+max = smells[0];
+smells = smells[1..sizeof(smells)-1];
+
+/* classify smells */
+strongsmells = (\{ \}); 
+weaksmells = (\{ \}); 
+
+for(i=0;i\<sizeof(smells);i++) \{
+  if(!\$actor."trait:keensmell" \&\& sizeof(smells[i]) \> 1 \&\& smells[i][1] \< max-5) \{
+    smells[i] = nil;
+  \} else if(!\$actor."trait:keensmell" \&\& sizeof(smells[i]) \> 1 \&\&  smells[i][1] \< max-3) \{
+    weaksmells += (\{ smells[i][0] \});
+    smells[i] = nil;
+  \} else if(\$actor."trait:keensmell" \&\& sizeof(smells[i]) \> 1 \&\&  smells[i][1] \< max-10) \{
+    smells[i] = nil;
+  \} else if(\$actor."trait:keensmell" \&\& sizeof(smells[i]) \> 1 \&\&  smells[i][1] \< max-6) \{
+    weaksmells += (\{ smells[i][0] \});
+    smells[i] = nil;
+  \} else if(\$actor."trait:keensmell" \&\& sizeof(smells[i]) \> 1 \&\&  smells[i][1] \>= max-3) \{
+    strongsmells += (\{ smells[i][0] \});
+    smells[i] = nil;
+  \} else \{
+    smells[i] = smells[i][0];
+  \}
+\}
+
+smells -= (\{ nil \});
+weaksmells -= (\{ nil \});
+strongsmells -= (\{ nil \});
+
+/* describe the smells */
+smell = "";
+/* first the strong smells */
+if(sizeof(strongsmells) \&\& sizeof(strongsmells) \> 1)\{
+  smell = "strongly of ";
+  for(i=0;i\<sizeof(strongsmells);i++) \{
+    if(i == sizeof(strongsmells)-1) \{
+      smell += " and ";
+    \} else if(i\>0) \{
+      smell += ", ";
+    \}
+    smell += strongsmells[i];
+  \}
+\} else if(sizeof(strongsmells)) \{
+  smell = "strongly of "+strongsmells[0];
+\}
+
+if(sizeof(strongsmells) \&\& sizeof(smells) \&\& sizeof(weaksmells)) \{
+  smell += ", moderately of ";
+\} else if(sizeof(strongsmells) \&\& sizeof(smells)) \{
+  smell += ", and moderately of ";
+\} else if(sizeof(smells)) \{
+  smell += "of ";
+\}
+
+/* now the moderate smells */
+if(sizeof(smells) \&\& sizeof(smells) \> 1) \{
+  for(i=0;i\<sizeof(smells);i++) \{
+    if(i == sizeof(smells)-1) \{
+      smell += " and ";
+    \} else if(i\>0) \{
+      smell += ", ";
+    \}
+    smell += smells[i];
+  \}
+\} else if(sizeof(smells)) \{
+  smell += smells[0];
+\}
+
+if(sizeof(weaksmells) \&\& smell \&\& smell != "") \{
+  smell += ", and faintly of ";
+\} else if(sizeof(weaksmells)) \{
+  smell += "faintly of ";
+\}
+
+/* and the weak smells */
+if(sizeof(weaksmells) \&\& sizeof(weaksmells) \> 1) \{
+  for(i=0;i\<sizeof(weaksmells);i++) \{
+    if(i == sizeof(weaksmells)-1) \{
+      smell += " and ";
+    \} else if(i\>0) \{
+      smell += ", ";
+    \}
+    smell += weaksmells[i];
+  \}
+\} else if(sizeof(weaksmells)) \{
+  smell += weaksmells[0];
+\}
+
+/* send the output */
+if(smell \&\& smell != "")
+  return smell;
+
+return "nothing out of the ordinary";
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:getsmellarray">
+         X[M] int i, stripsmells, time;
+string verb;
+mixed *smell;
+string *smells_index, base_smell;
+mapping smells;
+
+/* error checking */
+if(!\$object \|\| !NRefOb(\$object)) return (\{ \});
+
+\$thing = NRefOb(\$object);
+
+smell = (\{ 0 \});
+/* does the object have a smell? */
+/*
+if(Get(NRefOb(\$object), "details:"+NRefDetail(\$object)+":description:smell")) \{
+  smell += (\{ (\{ UnSAM(Get(NRefOb(\$object), "details:"+NRefDetail(\$object)+":description:smell")), 15 \}) \});
+\} else if(NRefOb(\$object)."details:default:description:smell") \{
+  smell += (\{ (\{ UnSAM(NRefOb(\$object)."details:default:description:smell"), 15 \}) \});
+\} else if(NRefOb(\$object)."trait:smell") \{
+  smell += (\{ (\{ UnSAM(NRefOb(\$object)."trait:smell"), 15 \}) \});
+\} else if(NRefOb(\$object)."trait:animaltype") \{
+  smell += (\{ (\{ NRefOb(\$object)."trait:animaltype", 15 \}) \});
+\}
+*/
+
+/* Handling smells of specific detail */
+if(NRefDetail(\$object) == "default" \&\& Get(NRefOb(\$object), "details:default:descriptions:smell")) \{
+    smell += (\{ (\{ UnSAM(NRefOb(\$object)."details:default:descriptions:smell") \}) \});
+\} else if(NRefDetail(\$object) != "default" \&\& Get(NRefOb(\$object), "trait:" + NRefDetail(\$object) + ":smell")) \{
+    smell += (\{ (\{ Get(NRefOb(\$object), "trait:" + NRefDetail(\$object) + ":smell"), 15 \}) \});
+\} else if(NRefOb(\$object)."trait:smell") \{
+  smell += (\{ (\{ UnSAM(NRefOb(\$object)."trait:smell"), 15 \}) \});
+\} else \{
+  smell += (\{ (\{ "nothing out of the ordinary", 15 \}) \});
+\}
+
+/*\} else if(NRefOb(\$object)."trait:animaltype") \{
+  smell += (\{ (\{ NRefOb(\$object)."trait:animaltype", 15 \}) \});
+\}*/
+
+base_smell = "";
+if(sizeof(smell) \> 1) \{
+  base_smell = smell[1][0];
+  smell[0] = 15;
+\}
+
+/* do we strip off old smells? */
+if(!NRefOb(\$object)."trait:smells:lastchecked") NRefOb(\$object)."trait:smells:lastchecked" = 0;
+if(NRefOb(\$object)."trait:smells:lastchecked" + 60*60 \< time()) \{
+  stripsmells = TRUE;
+  NRefOb(\$object)."trait:smells:lastchecked" = time();
+\} else \{
+  stripsmells = FALSE;
+\}
+
+/* do we have any other smells? */
+if(NRefOb(\$object)."trait:smells") \{
+  smells = NRefOb(\$object)."trait:smells";
+  smells_index = map_indices(smells);
+  for(i=0;i\<sizeof(smells_index);i++) \{
+    if(stripsmells)\{
+      /* check how old this smell is */
+      time = time() - smells[smells_index[i]][1];
+      /* how many "chunks" of five hours has this been? */
+      time = time / (60*60*12);
+      if(time) \{
+        /* reduce the smell appropriately */
+        if(NRefOb(\$object)."trait:smells"[smells_index[i]][0] \<= time) \{
+          /* remove the smell */
+          NRefOb(\$object)."trait:smells"[smells_index[i]] = nil;
+          smells[smells_index[i]] = nil;
+        \} else \{
+          /* reduce the smell */
+          NRefOb(\$object)."trait:smells"[smells_index[i]][0] -= time;
+          NRefOb(\$object)."trait:smells"[smells_index[i]][1] = time();
+          /*smells[i][0] = NRefOb(\$object)."trait:smells"[smells[i][0]][0];*/
+          smells[smells_index[i]][0] -= time;
+        \}
+      \}
+    \}
+    /* add to the array */
+    if(smells[smells_index[i]] \&\& smells_index[i] != base_smell) \{
+      if(smells[smells_index[i]][0] \> smell[0])
+        smell[0] = smells[smells_index[i]][0];
+      smell += (\{ (\{ smells_index[i], smells[smells_index[i]][0] \}) \});
+    \}
+  \}
+\}
+
+/* return the array */
+if(sizeof(smell) \> 1)
+  return smell;
+return (\{ \});
+      </Core:Property>
+      <Core:Property property="merry:lib:setsmell">
+         X[M] int i, j;
+mixed *smells;
+
+if(!\$objects) return FALSE;
+
+/* loop through \$dob adding each smell */
+for(i=0;i\<sizeof(\$objects);i++) \{
+  if(typeof(\$objects[i]) == T_OBJECT \&\& NRefOb(\$objects[i]) != \$actor) \{
+    smells = ::getsmellarray(\$object: \$objects[i]);
+    if(sizeof(smells) \>= 2) \{
+      smells = smells[1..sizeof(smells)-1];
+      \$actor."trait:smells" = copy(\$actor."trait:smells");
+      for(j=0;j\<sizeof(smells);j++) \{
+        if(sizeof(smells[j]) \> 1 \&\& smells[j][1] \>= 5) \{
+          if(\$actor."trait:smells"[smells[j][0]]) \{
+            if(\$actor."trait:smells"[smells[j][0]][0]+2 \< smells[j][1]) \{
+              \$actor."trait:smells"[smells[j][0]][0]++;
+              \$actor."trait:smells"[smells[j][0]][1] = time();
+            \}
+          \} else \{
+            \$actor."trait:smells"[smells[j][0]] = (\{ 1, time() \});
+          \}
+        \}
+      \}
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1167716314, "tonyd", "P", 1167716364, "tonyd", "P", 1167716633, "tonyd", "P", 1167716676, "tonyd", "P", 1167716735, "tonyd", "P", 1167716768, "tonyd", "P", 1167716969, "tonyd", "P", 1167717093, "tonyd", "P", 1167717413, "tonyd", "P", 1167717816, "tonyd", "P", 1167718351, "tonyd", "P", 1167718387, "tonyd", "P", 1167718450, "tonyd", "P", 1167718484, "tonyd", "P", 1167718497, "tonyd", "P", 1167718589, "tonyd", "P", 1167718721, "tonyd", "P", 1167718872, "tonyd", "P", 1167718902, "tonyd", "P", 1167718961, "tonyd", "P", 1167719012, "tonyd", "P", 1167719069, "tonyd", "P", 1167719104, "tonyd", "P", 1167719238, "tonyd", "P", 1167719314, "tonyd", "P", 1167719368, "tonyd", "P", 1167719376, "tonyd", "P", 1167719416, "tonyd", "P", 1167719449, "tonyd", "P", 1167719631, "tonyd", "P", 1167719657, "tonyd", "P", 1167719675, "tonyd", "P", 1167719763, "tonyd", "P", 1167720020, "tonyd", "P", 1167720127, "tonyd", "P", 1167720767, "tonyd", "P", 1167720868, "tonyd", "P", 1167720922, "tonyd", "P", 1167720946, "tonyd", "P", 1167720970, "tonyd", "P", 1167720994, "tonyd", "P", 1167720998, "tonyd", "P", 1167721004, "tonyd", "P", 1167721043, "tonyd", "P", 1167721054, "tonyd", "P", 1167721157, "tonyd", "P", 1167721285, "tonyd", "P", 1167721511, "tonyd", "P", 1167721543, "tonyd", "P", 1167721560, "tonyd", "P", 1167721617, "tonyd", "P", 1167721745, "tonyd", "P", 1167723693, "tonyd", "P", 1167723720, "tonyd", "P", 1167723823, "tonyd", "P", 1167724134, "tonyd", "P", 1167724159, "tonyd", "P", 1167724278, "tonyd", "P", 1167724317, "tonyd", "P", 1167724345, "tonyd", "P", 1167724608, "tonyd", "P", 1167724641, "tonyd", "P", 1167724905, "tonyd", "P", 1167724933, "tonyd", "P", 1167783226, "tonyd", "P", 1167876583, "tonyd", "P", 1167876713, "tonyd", "P", 1167877035, "tonyd", "P", 1167877195, "tonyd", "P", 1167877303, "tonyd", "P", 1167877369, "tonyd", "P", 1167877438, "tonyd", "P", 1167877510, "tonyd", "P", 1167878229, "tonyd", "P", 1167878316, "tonyd", "P", 1167879150, "tonyd", "P", 1167879256, "tonyd", "P", 1167879408, "tonyd", "P", 1167879423, "tonyd", "P", 1167879488, "tonyd", "P", 1168048896, "tonyd", "P", 1168049099, "tonyd", "P", 1168049315, "tonyd", "P", 1168049712, "tonyd", "P", 1168050928, "tonyd", "P", 1168050982, "tonyd", "P", 1168051003, "tonyd", "P", 1168051064, "tonyd", "P", 1168051133, "tonyd", "P", 1168051163, "tonyd", "P", 1168051179, "tonyd", "P", 1168051189, "tonyd", "P", 1168051305, "tonyd", "P", 1168051354, "tonyd", "P", 1168184841, "tonyd", "P", 1168184925, "tonyd", "P", 1168184966, "tonyd", "P", 1168185062, "tonyd", "P", 1168185092, "tonyd", "P", 1168185159, "tonyd", "P", 1168185218, "tonyd", "P", 1168318611, "tonyd", "P", 1168318759, "tonyd", "P", 1168318853, "tonyd", "P", 1168318896, "tonyd", "P", 1168318924, "tonyd", "P", 1168318940, "tonyd", "P", 1168318961, "tonyd", "P", 1168319003, "tonyd", "P", 1168319052, "tonyd", "P", 1168319065, "tonyd", "P", 1168319125, "tonyd", "P", 1168319185, "tonyd", "P", 1168319259, "tonyd", "P", 1168319283, "tonyd", "P", 1168319305, "tonyd", "P", 1168319346, "tonyd", "P", 1168319397, "tonyd", "P", 1168319434, "tonyd", "P", 1168319506, "tonyd", "P", 1168319576, "tonyd", "P", 1168319610, "tonyd", "P", 1168319647, "tonyd", "P", 1168319813, "tonyd", "P", 1168319869, "tonyd", "P", 1168319918, "tonyd", "P", 1168320020, "tonyd", "P", 1168320090, "tonyd", "P", 1168320158, "tonyd", "P", 1168320177, "tonyd", "P", 1168320187, "tonyd", "P", 1168320204, "tonyd", "P", 1168320237, "tonyd", "P", 1168320258, "tonyd", "P", 1168320386, "tonyd", "P", 1168320448, "tonyd", "P", 1168320523, "tonyd", "P", 1168320541, "tonyd", "P", 1168320612, "tonyd", "P", 1168320680, "tonyd", "P", 1168320771, "tonyd", "P", 1168320884, "tonyd", "P", 1168320901, "tonyd", "P", 1168320950, "tonyd", "P", 1168321149, "tonyd", "P", 1168321191, "tonyd", "P", 1168333152, "tonyd", "P", 1168333310, "tonyd", "P", 1168333363, "tonyd", "P", 1168333425, "tonyd", "P", 1179623569, "tonyd", "P", 1179623583, "tonyd", "P", 1181967258, "tonyd", "P", 1181967286, "tonyd", "P", 1181967308, "tonyd", "P", 1181967345, "tonyd", "P", 1181967919, "tonyd", "P", 1181968091, "tonyd", "P", 1184468658, "tonyd", "P", 1184468697, "tonyd", "P", 1184468740, "tonyd", "P", 1184468892, "tonyd", "P", 1184468932, "tonyd", "P", 1184468989, "tonyd", "P", 1184469021, "tonyd", "P", 1184469065, "tonyd", "P", 1184469088, "tonyd", "P", 1184469113, "tonyd", "P", 1184469142, "tonyd", "P", 1184469186, "tonyd", "P", 1184469238, "tonyd", "P", 1184469270, "tonyd", "P", 1184469287, "tonyd", "P", 1518210851, "jominey", "E", 1572059671, "jominey", "E", 1572059703, "jominey", "E", 1578242246, "sendnoodlez", "E", 1578766690, "jominey", "E", 1578766715, "jominey", "E", 1578766764, "jominey", "E", 1578766861, "jominey", "E", 1578766930, "jominey", "E", 1579574631, "jominey", "P", 1593450384, "jominey", "E", 1593450770, "jominey", "P", 1593451361, "jominey", "E", 1593532043, "jominey", "E", 1594313576, "jominey", "P", 1594313612, "jominey", "P", 1594313662, "jominey", "P", 1594313700, "jominey", "P", 1594313747, "jominey", "P", 1594313904, "jominey", "P", 1594313942, "jominey", "P", 1594314007, "jominey", "P", 1594314017, "jominey", "P", 1594314046, "jominey", "P", 1594314077, "jominey", "P", 1594314095, "jominey", "P", 1594314126, "jominey", "P", 1594314139, "jominey", "P", 1594314314, "jominey", "P", 1594314348, "jominey", "P", 1594314417, "jominey", "P", 1594314420, "jominey", "P", 1594314452, "jominey", "P", 1594314479, "jominey", "P", 1594314492, "jominey", "P", 1594314546, "jominey", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

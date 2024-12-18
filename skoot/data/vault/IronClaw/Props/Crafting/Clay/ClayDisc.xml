@@ -1,0 +1,162 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(IronClaw:Props:Furniture:UrObject)"/>
+    <Base:Bulk immobile="false" mass="0.3" density="1.1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="hanging" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="disc"/>
+            <Base:SName sname="disk"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="discs"/>
+            <Base:PName pname="disks"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="clay"/>
+        </Base:Adjectives>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "disc"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "This flat circular object is about three inches thick and meant to be thrown into the air for firearm practice."
+      </Core:Property>
+      <Core:Property property="merry:react-post:zthrow-what">
+         X[M] /* Hang time is 4, 8, or 12 seconds */
+\$hangtime = Int(oneof("4", "8", "12"));
+
+\$this.hangtime = \$hangtime;
+
+
+switch(\$hangtime) \{
+    case 4:
+        EmitIn(\$actor."base:environment", Describe(\$this) + " soars out a short distance.");
+        break;
+    case 8:
+        EmitIn(\$actor."base:environment", Describe(\$this) + " soars out a moderate distance.");
+        break;
+    case 12:
+        EmitIn(\$actor."base:environment", Describe(\$this) + " soars out a long distance.");
+        break;
+    default:
+        EmitIn(\$actor."base:environment", Describe(\$this) + " soars out a short distance.");
+        break;
+\}
+
+\$delay(\$hangtime, FALSE, "f7db");
+
+EmitIn(\$this."base:environment", Describe(\$this) + " hits the ground with a harsh THUD, shattering into little pieces.");
+Slay(\$this);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:aim-iob">
+         X[M] /* Get the weapon */
+if(\$actor."base:combat:weapon") \{
+  /* wielding a weapon */
+  \$primaryweapon = \$actor."base:combat:weapon";
+\} else \{
+  /* fighting without a weapon */
+  \$primaryweapon = \$actor."combat:naturalweapon";
+\}
+
+if(\$primaryweapon."weapon:skill" != "gun" \&\& \$primaryweapon."weapon:skill" != "ranged") \{
+    EmitTo(\$actor, "You need to be wielding a ranged weapon in order to do that.");
+    return FALSE;
+\}
+
+if(\$this.aimers) \{
+    \$this.aimers \|= (\{ \$actor \});
+\} else \{
+    \$this.aimers = (\{ \$actor \});
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:shoot-dob">
+         X[M] if(!\$this.aimers) \{
+    EmitTo(\$actor, "You need to take aim first.");
+    return FALSE;
+\}
+
+\$aimers = \$this.aimers;
+
+if(!member(\$actor, \$aimers)) \{
+    EmitTo(\$actor, "You need to take aim first.");
+    return FALSE;
+\}
+
+/* Get the weapon */
+if(\$actor."base:combat:weapon") \{
+  /* wielding a weapon */
+  \$primaryweapon = \$actor."base:combat:weapon";
+\} else \{
+  /* fighting without a weapon */
+  \$primaryweapon = \$actor."combat:naturalweapon";
+\}
+
+if(\$primaryweapon."weapon:skill" != "gun" \&\& \$primaryweapon."weapon:skill" != "ranged") \{
+    EmitTo(\$actor, "You need to be wielding a ranged weapon in order to do that.");
+    return FALSE;
+\}
+
+if(\$primaryweapon."weapon:skill" == "gun") \{
+    \$roll = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "combat:gun", "combat:precision" \}), \$bonus: \$actor."trait:speed");
+\} else \{
+    \$roll = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "combat:ranged", "combat:precision" \}), \$bonus: \$actor."trait:speed");
+\}
+
+if(\$roll \>= Int(\$this.hangtime + 6)) \{
+    EmitIn(\$actor."base:environment", Describe(\$actor) + " aim rings true as " + Str(\$actor."base:pronoun") + " fires a shot at " + Describe(\$this) + ", shattering it into hundreds of pieces.");
+    Slay(\$this); 
+\} else \{
+    EmitIn(\$actor."base:environment", Describe(\$actor) + " fires a shot at " + Describe(\$this) + ", missing it entirely.");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1123246689, "tonyd", "E", 1129857632, "tunk_bodin", "X", 1129857770, "tunk_bodin", "X", 1129918277, "tunk_bodin", "X", 1129936262, "tunk_bodin", "X", 1129936384, "tunk_bodin", "X", 1129936552, "tunk_bodin", "X", 1129936805, "tunk_bodin", "X", 1129936912, "tunk_bodin", "X", 1129937135, "tunk_bodin", "X", 1129937361, "tunk_bodin", "X", 1129939870, "tunk_bodin", "X", 1129942249, "tunk_bodin", "X", 1129945195, "tunk_bodin", "X", 1129947399, "tunk_bodin", "X", 1130002325, "tunk_bodin", "X", 1130348329, "tunk_bodin", "X", 1137361739, "tunk_bodin", "X", 1145814535, "tunk_bodin", "X", 1245779004, "morwenlorelie", "R", 1245779056, "morwenlorelie", "E", 1245779223, "morwenlorelie", "X", 1245779292, "morwenlorelie", "X", 1245779312, "morwenlorelie", "E", 1245779664, "morwenlorelie", "E", 1404672212, "slurpeeslurp", "K", 1404672214, "slurpeeslurp", "E", 1404672363, "slurpeeslurp", "E", 1404672516, "jominey", "E", 1404672666, "jominey", "E", 1404676868, "jominey", "E", 1404676911, "jominey", "E", 1404676960, "jominey", "E", 1404677156, "jominey", "K", 1404677206, "jominey", "E", 1404677217, "jominey", "E", 1404677240, "jominey", "E", 1404677247, "jominey", "E", 1404677417, "jominey", "E", 1404678042, "jominey", "E", 1404678210, "jominey", "E", 1404678241, "jominey", "E", 1404678252, "jominey", "E", 1404678415, "jominey", "E", 1404678506, "jominey", "E", 1404678541, "jominey", "E", 1404678638, "jominey", "E", 1404679033, "jominey", "E", 1410838850, "jominey", "E", 1410838961, "jominey", "E", 1512432835, "vandringar", "K" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

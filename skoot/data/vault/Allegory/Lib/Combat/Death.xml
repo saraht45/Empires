@@ -1,0 +1,201 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-pre:command">
+         X[M] if(\$verb == "@skills") return TRUE;
+
+EmitTo(\$actor, "You can't do that while unconscious.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:enter">
+         X[M] EmitTo(\$actor, "You can't do that while unconscious.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:evoke">
+         X[M] EmitTo(\$actor, "You can't do that while unconscious.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:take">
+         X[M] EmitTo(\$actor, "You can't do that while unconscious.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:go_to_sleep">
+         X[M] \$this."combat:state" = "unconscious";
+\$this."base:stance" = 3;
+
+\$this."id:untreated" = In("untreated", (12 + random(12)) * 3600);
+
+\$this."merry:inherit:act-pre:command" = \$\{Allegory:Lib:Combat:Death\};
+\$this."merry:inherit:act-pre:take" = \$\{Allegory:Lib:Combat:Death\};
+\$this."merry:inherit:act-pre:enter" = \$\{Allegory:Lib:Combat:Death\};
+\$this."merry:inherit:act-pre:evoke" = \$\{Allegory:Lib:Combat:Death\};
+\$this."merry:inherit:react-pre:take" = \$\{Allegory:Lib:Combat:Death\};
+\$this."merry:inherit:react-pre:demand-consent" = \$\{Allegory:Lib:Combat:Death\};
+\$this."merry:inherit:react-pre:take-from" = \$\{Allegory:Lib:Combat:Death\};
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:treated">
+         X[M] if(\$this."id:untreated") \{
+    Stop(\$this."id:untreated");
+    \$this."id:untreated" = nil;
+\}
+
+\$recoveryperiod = (12 + random(12)) * 3600;
+\$this."coma:recovery" = time() + \$recoveryperiod;
+
+\$this."id:treated" = In("treated", \$recoveryperiod);
+
+\$this."merry:inherit:react-pre:take" = nil;
+\$this."merry:inherit:react-pre:demand-consent" = nil;
+\$this."merry:inherit:react-pre:take-from" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:wake_up">
+         X[M] if(!\$who) \$who = \$this;
+
+\$who."combat:state" = nil;
+
+if(\$who."id:untreated") \{
+    Stop(\$who."id:untreated");
+    \$who."id:untreated" = nil;
+\}
+
+if(\$who."id:treated") \{
+    Stop(\$who."id:treated");
+    \$who."id:treated" = nil;
+\}
+
+\$who."coma:recovery" = nil;
+\$who."merry:inherit:act-pre:command" = nil;
+\$who."merry:inherit:act-pre:take" = nil;
+\$who."merry:inherit:act-pre:enter" = nil;
+\$who."merry:inherit:act-pre:evoke" = nil;
+\$who."merry:inherit:react-pre:take" = nil;
+\$who."merry:inherit:react-pre:demand-consent" = nil;
+\$who."merry:inherit:react-pre:take-from" = nil;
+
+Social( \$who, "flutter", "groaningly", nil, nil, NewNRef( \$this, "eyelids" ) );
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:demand-consent">
+         X[M] /* make the corpse give consent */ 
+Act(\$this, "allow", \$who: \$actor); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] /* allow players to take the corpse */ 
+EmitTo(\$actor, "You haul "+Describe(\$this)+" up onto your shoulders."); 
+EmitIn(\$actor."base:environment", Describe(\$actor)+" hauls "+Describe(\$this)+" up onto "+\$actor."base:possessive"+" shoulders.", \$actor); 
+ 
+/* change carrier's capacity */ 
+\$actor."base:intrinsiccapacity:local" = 3.0; 
+\$actor."base:maxweight:local" = 3.0; 
+ 
+\$this."base:environment" = \$actor; 
+ 
+if(\$this."base:environment" != \$actor) 
+  EmitIn(\$actor."base:environment", "But, like, it didn't work."); 
+ 
+/* change carrier's capacity back */ 
+\$actor."base:intrinsiccapacity:local" = 1.0; 
+\$actor."base:maxweight:local" = 1.0; 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take-from">
+         X[M] /* allow items to be taken from a corpse */ 
+int i, sz; 
+ 
+if(\$this."base:immobile") \{ 
+    EmitTo(\$actor, "You can't do that."); 
+    return FALSE; 
+\} 
+ 
+
+if(\$this."base:environment"."base:urparent" == \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Hospital:Ur\}) \{
+    return TRUE;
+\}
+
+/* first unwear or unwield the object */ 
+/* remove the nrefs */ 
+\$what = Arr(\$what); 
+\$worn = (\{ \}); 
+for(i=0;i\<sizeof(\$what);i++)\{ 
+  \$what[i] = NRefOb(\$what[i]); 
+  if(\$what[i]."base:wielded-by") \{ 
+    Act(\$this, "unwield", \$article: \$what[i]); 
+  \} 
+  if(\$what[i]."base:worn-by") \{ 
+    \$worn \|= (\{ \$what[i] \}); 
+  \} 
+\} 
+Act(\$this, "unwear", \$articles: Arr(\$worn)); 
+\$worn2 = (\{ \}); 
+for(i=0;i\<sizeof(\$worn);i++)\{ 
+  if(\$worn[i]."base:clothing:worn") \{ 
+    \$worn2 \|= (\{ \$worn[i] \}); 
+  \} 
+\} 
+if(\$worn2 \&\& sizeof(\$worn2))\{ 
+  EmitTo(\$actor, Describe(\$worn2)+" seem to be covered by other clothes. Take those other items of clothing first."); 
+\} 
+ 
+Social(\$this, "hand", nil, nil, nil, \$what, "to", \$actor); 
+return FALSE;
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:timer:treated">
+         X[M] if(\$this."id:treated") \{
+    Stop(\$this."id:treated");
+    \$this."id:treated" = nil;
+\}
+
+Call(\$\{Allegory:Lib:Combat:Death\}, "wake_up", \$who: \$this);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:untreated">
+         X[M] if(\$this."id:untreated") \{
+    Stop(\$this."id:untreated");
+    \$this."id:untreated" = nil;
+\}
+
+if(\$this."id:treated") return TRUE;
+
+/* Move to the hospital */
+EmitIn(\$this."base:environment", TAG("A group of robed men arrive to help carry " + Describe(\$this) + " to the hospital.", "social:third"));
+\$this."base:environment" = \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Hospital:Clinic\};
+EmitIn(\$this."base:environment", TAG("A group of robed men arrive with " + Describe(\$this) + " in tow. They carefully place " + Str(\$this."base:objective") + " onto one of the beds.", "social:third"));
+
+\$this."merry:inherit:react-pre:take" = nil;
+\$this."merry:inherit:react-pre:demand-consent" = nil;
+\$this."merry:inherit:react-pre:take-from" = nil;
+
+\$recoveryperiod = (12 + random(12)) * 3600;
+\$this."coma:recovery" = time() + \$recoveryperiod;
+
+\$this."id:treated" = In("treated", \$recoveryperiod);
+
+if(!\$this."udat:possessed") Act(\$this, "disconnect"); 
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1593284256, "jominey", "E", 1593284262, "jominey", "E", 1593284279, "jominey", "E", 1593284287, "jominey", "E", 1593284309, "jominey", "E", 1593284400, "jominey", "E", 1593284412, "jominey", "E", 1593284428, "jominey", "E", 1593563305, "jominey", "P", 1593901513, "jominey", "E", 1593901742, "jominey", "E", 1593901949, "jominey", "E", 1593901991, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="trait:smells:lastchecked">
+         1702721624
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

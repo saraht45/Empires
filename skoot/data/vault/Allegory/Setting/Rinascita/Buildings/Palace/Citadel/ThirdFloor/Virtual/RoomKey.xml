@@ -1,0 +1,208 @@
+<object clone="/base/obj/thing" owner="sendnoodlez">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Keys:BoardHouse:UrRentingKey)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="key"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="keys"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="branch"/>
+          <Base:Adjective adjective="branches"/>
+          <Base:Adjective adjective="citadel"/>
+          <Base:Adjective adjective="dignitary"/>
+          <Base:Adjective adjective="engraved"/>
+          <Base:Adjective adjective="gold"/>
+          <Base:Adjective adjective="italian"/>
+          <Base:Adjective adjective="italy"/>
+          <Base:Adjective adjective="oak"/>
+          <Base:Adjective adjective="olive"/>
+          <Base:Adjective adjective="palace"/>
+          <Base:Adjective adjective="polished"/>
+          <Base:Adjective adjective="suite"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             engraved polished gold key
+          </Base:Description>
+          <Base:Description type="examine">
+             This polished gold key has been engraved with two curved branches, one olive and one oak, arranged in a circular shape. The head of the key upon which the branches are engraved is formed in the shape of a shield.
+          </Base:Description>
+          <Base:Description type="look">
+             A polished gold key engraved with a pair of branches.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:base:keycode">
+         "Allegory:Setting:Rinascita:Buildings:Palace:Citadel:ThirdFloor:Virtual:DignitarySitting02"
+      </Core:Property>
+      <Core:Property property="export:roomcost">3000</Core:Property>
+      <Core:Property property="merry:react-pre:unlock-using">
+         X[M] /* Code for virtual room keys */   
+   
+/* Check if this key unlocks this virtual room */   
+if(\$this."base:keycode") \{   
+  if(   
+    Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")   
+  \&\&   
+    name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")))   
+  \&\&   
+    (name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest"))) == \$this."base:keycode")   
+  ) \{   
+    /* The key matches this door */   
+    /* Check if this key is already owned by someone */   
+    if(!\$this."trait:owner") \{   
+        /* Nobody owns the key. Does the actor already have a room of this type? */   
+        if(!(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual \&\& Get(\$actor, "virtualhome:"+NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual))) \{   
+ 
+  
+                if(Int(\$actor.householdtier1) != 1 \&\& Int(\$actor.householdtier2) != 1 \&\& Int(\$actor.householdtier3) != 1) \{   
+                    EmitTo(\$actor, "Only members of the royal household may rent this room.");   
+                    return FALSE;   
+                \} 
+   
+          if(\$this.roomcost) \{   
+            /* Create a new room for this actor, and label the key */   
+            /* Check if the player can afford this room */   
+            if(Int(\$this.roomcost) \&\& (Int(\$this.roomcost) \> (Int(\$actor."trait:income") + Int(\$actor."trait:extraincome") - Int(\$actor."trait:incomecosts")))) \{   
+                EmitTo(\$actor, "You unlock "+Describe(\$what[0])+", and look inside. This room appears to be too expensive for your current income. You lock "+Describe(\$what[0])+" again.");   
+                EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+" and looks inside, before locking"+Describe(\$what[0])+" again.", \$actor);   
+                return FALSE;   
+            \} else \{   
+                /* Charge the income cost */   
+                if(\$this.roomcost) \{   
+                    \$actor."trait:incomecosts" = \$actor."trait:incomecosts" + \$this.roomcost;   
+                    /* Record the income cost */   
+                    Set(\$actor, "virtualhome:"+lower_case(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual)+":cost", \$this.roomcost);   
+                \}   
+           /*     EmitTo(\$actor, "You unlock "+Describe(\$what[0])+", and label "+Describe(\$this, nil, \$actor)+".");   
+                EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+".", \$actor); */   
+                if(\$this.roomcost \&\& (\$this.roomcost \> 0)) \{   
+                    if(Int(\$this.roomcost/100) \< 2) \{   
+                       \$cost = "1 florin";   
+                    \} else \{   
+                        \$cost = Str(Int(\$this.roomcost/100))+" florins";   
+                    \}   
+                    if(Int((Flt(\$actor."trait:income")+Flt(\$actor."trait:extraincome")-Flt(\$actor."trait:incomecosts")-0.5)/100.0) \< 1) \{   
+                        \$income = "no florins";   
+                    \} else if(Int((Flt(\$actor."trait:income")+Flt(\$actor."trait:extraincome")-Flt(\$actor."trait:incomecosts")-0.5)/100.0) \< 2) \{   
+                        \$income = "1 florin";   
+                    \} else \{   
+                        \$income = Str(Int((Flt(\$actor."trait:income")+Flt(\$actor."trait:extraincome")-Flt(\$actor."trait:incomecosts")-0.5)/100.0))+" florins";   
+                    \}   
+                    EmitTo(\$actor, "This room has an ongoing cost of "+\$cost+". You now have an effective income of "+\$income+".");   
+                \}   
+            \}   
+          \}   
+   
+            /* Create the room */   
+            /*\$newroom = Spawn(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")));*/   
+   
+            if(catch(\$newroom = Spawn(Obj(\$this."base:keycode")))) \{   
+                EmitTo(\$actor, "Error: The room failed to be created. This is a low-level problem with the code, we are waiting for the engineers to figure out what's going on and fix it. Please try again, or try a different room.");   
+                if(\$this.roomcost) \{   
+                    \$actor."trait:incomecosts" = \$actor."trait:incomecosts" - \$this.roomcost;   
+                    Set(\$actor, "virtualhome:"+lower_case(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual)+":cost", nil);   
+                \}   
+                return FALSE;   
+            \}   
+            /*\$newroom = Spawn(Obj(\$this."base:keycode"));*/   
+   
+            if(\$newroom) \{   
+                Set(\$actor, "virtualhome:"+lower_case(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual), \$newroom);   
+                \$newroom.homeowner = \$actor;   
+            \} else \{   
+                EmitTo(\$actor, "No new room! Unsetting the cost");   
+                /* remove the cost since the room wasn't created */   
+                if(\$this.roomcost) \{   
+                    \$actor."trait:incomecosts" = \$actor."trait:incomecosts" - \$this.roomcost;   
+                    Set(\$actor, "virtualhome:"+lower_case(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual)+":cost", nil);   
+                \}   
+                return FALSE;   
+            \}   
+      \}   
+      /* Label the key */   
+      \$this."trait:owner" = \$actor;   
+      \$this."details:tag:description:writing" = Describe(\$actor);   
+      \$this."details:default:description:writing" = Describe(\$actor);   
+      EmitTo(\$actor, "You unlock "+Describe(\$what[0])+", and label "+Describe(\$this, nil, \$actor)+".");   
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+".", \$actor);   
+      return FALSE;   
+    \} else \{   
+      /* The key is already owned */   
+      if(\$this."trait:owner" != \$actor) \{   
+        /* Open the door to the key owner's room */   
+        \$hallway = NRefOb(\$what[0]);   
+        \$detail = NRefDetail(\$what[0]);   
+        \$dest = NRefOb(Get(\$hallway, "details:"+\$detail+":exit:dest"));   
+   
+        \$room = Get(\$this."trait:owner", "virtualhome:"+lower_case(\$dest.isvirtual));   
+        if(!\$room) return TRUE;   
+        \$dest.VirtualCurrent = \$room;   
+   
+        EmitTo(\$actor, "You unlock "+Describe(\$what[0])+".");   
+        EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+".", \$actor);   
+   
+        /* Tell the door to open... */   
+        Set(\$hallway, "details:"+\$detail+":exit:closed:local", 0);   
+   
+        /* This is needed, so that the door will self-close after you enter */   
+        Set(\$hallway, "details:"+\$detail+":opener", \$actor);   
+   
+        return FALSE;   
+      \} else \{   
+        EmitTo(\$actor, "You unlock "+Describe(\$what[0])+".");   
+        EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+".", \$actor);   
+        return FALSE;   
+      \}   
+    \}   
+  \}   
+\}   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1599339427, "sendnoodlez", "E", 1599339473, "sendnoodlez", "E", 1599339581, "sendnoodlez", "E", 1599339720, "sendnoodlez", "E", 1599339858, "sendnoodlez", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

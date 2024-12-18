@@ -1,0 +1,113 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-pre:take%cheating">
+         X[M] if(!\$what) return TRUE;
+if(!sizeof(\$what)) return TRUE;
+
+if(\$actor."udat:host") return TRUE;
+
+\$cheating = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$what); \$i++) \{
+    if(\$lastdropped = NRefOb(\$what[\$i])."misc:lastdropped") \{
+        sscanf(\$lastdropped, "%s %s[%s]", \$timestamp, \$charName, \$lastdroppedAccount);
+    \}
+
+    \$account1 = \$actor."skotos:creator";
+    \$account2 = \$lastdroppedAccount;
+
+    if(!\$account1) return TRUE;
+    if(!\$account2) return TRUE;
+
+    if(lower_case(\$charName) == lower_case(\$actor."skotos:charname")) return TRUE;
+    if(contains(lower_case(\$charName), lower_case(\$actor."skotos:charname"))) return TRUE;
+    if(contains(lower_case(\$actor."skotos:charname"), lower_case(\$charName))) return TRUE;
+
+    if(Call(\$\{Allegory:Lib:Guide\}, "ip_check", \$account1: \$account1, \$account2: \$account2)) \{
+        \$cheating += (\{ NRefOb(\$what[\$i]) \});
+    \}
+\}
+
+if(sizeof(\$cheating) \&\& !\$actor.assisting) \{
+    \$actor.assisting = 1;
+    \$assisttext = "ALT ABUSE WARNING: " + proper(\$actor."skotos:charname") + " took items (" + dump_value(\$cheating) + ") that were last dropped by an alt or an account with the same ip address (" + Str(\$charName) + ").";
+
+    assist::dofileassist(\$actor: \$\{Chatters:AE:to:topsy\}, \$data: \$\{Data:DB:assist:AssistGeneralDB\}, \$char: Str(\$\{Chatters:AE:to:topsy\}), \$queue: "guide", \$assisttext: \$assisttext, \$log: "[TAS]");
+
+    \$delay(3, TRUE, "9767");
+    \$actor.assisting = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:ip_check">
+         X[M] /* This script will take two account names and compare ip addresses. Will return TRUE if there is a match. */
+/* \$account1 and \$account2 should be passed to this script as chatter objects */
+
+int i;
+
+\$exceptions = (\{ (\{ "reivns", "harpdragon" \}) \});
+
+for(\$j = 0; \$j \< sizeof(\$exceptions); \$j++ )\{
+    \$temp = \$exceptions[\$j];
+    if(member(\$account1, \$temp)) \{
+        \$temp -= (\{ \$account1 \});
+
+        if(member(\$account2, \$temp)) \{
+            return FALSE;
+        \}
+    \}
+\}
+
+/* Grab the ip data for account1 */
+\$data1 = udat::udat_ipdata(\$category: "text", \$name: \$account1);
+
+/* More sanity checks to ensure the script doesn't crash */
+if(!\$data1) return FALSE;
+if(!sizeof(\$data1)) return FALSE;
+if(!sizeof(\$data1[0])) return FALSE;
+
+/* Convert the ip data into a condensed list and only take into account ip addresses used within the last 3 months */
+\$list1 = (\{ \});
+for(i = 0; i \< sizeof(\$data1); i++) \{
+    if((\$data1[i][2] - time()) \<= 7257600) \{
+        \$list1 \|= (\{ \$data1[i][0] \});
+    \}
+\}
+
+/* Grab the ip data for account2 */
+\$data2 = udat::udat_ipdata(\$category: "text", \$name: \$account2);
+
+/* More sanity checks to ensure the script doesn't crash */
+if(!\$data2) return FALSE;
+if(!sizeof(\$data2)) return FALSE;
+if(!sizeof(\$data2[0])) return FALSE;
+
+/* Convert the ip data into a condensed list and only take into account ip addresses used within the last 3 months */
+\$list2 = (\{ \});
+for(i = 0; i \< sizeof(\$data2); i++) \{
+    if((\$data2[i][2] - time()) \<= 7257600) \{
+        \$list2 \|= (\{ \$data2[i][0] \});
+    \}
+\}
+
+\$list1 -= (\{ "23.239.4.223", "45.33.40.193" \});
+\$list2 -= (\{ "23.239.4.223", "45.33.40.193" \});
+
+/* Compare all the ip addresses in list1 with list2. Return TRUE if a match is found. */
+for(i = 0; i \< sizeof(\$list1); i++) \{
+    if(member(\$list1[i], \$list2)) \{
+        return TRUE;
+    \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1604164778, "jominey", "E", 1604164911, "jominey", "E", 1604165000, "jominey", "E", 1604165073, "jominey", "E", 1604165125, "jominey", "E", 1604165145, "jominey", "E", 1636428848, "ezralee", "E", 1647913073, "ezralee", "E", 1647914518, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

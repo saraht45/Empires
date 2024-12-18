@@ -1,0 +1,151 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:add_object_to_mapping">
+         X[M] /*
+  D=Add sname/pname/adjective data to a set of mappings.
+*/
+NRef dest;
+string det, *strings, *details;
+int i, j, jsz, sz;
+
+if( \$all_details ) \{
+  details = \$ob."base:details";
+  sz = sizeof( details );
+\} else \{
+  details = (\{ NRefDetail(\$ob) \});
+  sz = 1;
+\}
+
+for( i = 0; i \< sz; i++ ) \{
+
+    det = details[i];
+    dest = NewNRef( \$ob, det );
+    \$destinations++;
+    \$destination[\$destinations] = dest;
+    strings = Get( \$ob, "details:"+det+":snames" ); 
+    jsz = sizeof( strings );
+    if( !\$snames[\$destinations] ) \{
+      \$snames[\$destinations] = ([ ]);
+      \$pnames[\$destinations] = ([ ]);
+      \$adjectives[\$destinations] = ([ ]);
+    \}
+
+    for( j = 0; j \< jsz; j++ ) \{
+      \$snames[\$destinations] += ([ strings[j] : TRUE ]); 
+
+      \$pname = Get( \$ob, "details:"+det+":sname:"+strings[j] );
+      if( typeof(\$pname) == T_STRING )
+        \$pnames[\$destinations] += ([ \$pname : TRUE ]);
+    \}
+    strings = Get( \$ob, "details:"+det+":adjectives" );
+    jsz = sizeof( strings );
+    for( j = 0; j \< jsz; j++ )
+      \$adjectives[\$destinations] += ([ strings[j] : TRUE ]);
+
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:load">
+         X[M] \$this."weapon:loaded" = \$ammo;
+\$ammo."base:environment" = \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\};
+
+if(\$ammo."combat:effects") \{
+    \$this."combat:effects" = \$ammo."combat:effects";
+    \$ammo."combat:effects" = nil;
+\}
+
+\$ammo = Str(\$this."weapon:ammo:accepts");
+Set(\$this, "details:projectile:sname:" + \$ammo, TRUE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:unload">
+         X[M] \$ammo = \$this."weapon:loaded";
+\$this."weapon:loaded" = nil;
+
+if(!\$env) \$env = \$actor;
+
+\$ammo."base:environment" = \$env;
+
+if(\$this."combat:effects") \{
+    \$ammo."combat:effects" = \$this."combat:effects";
+    \$this."combat:effects" = nil;
+\}
+
+if(\$ammo."base:environment" != \$env) \$ammo."base:environment" = \$env."base:environment";
+
+if(!\$ammo."weapon:noslay") \{
+    Slay(\$ammo);
+\}
+
+\$accepts = Str(\$this."weapon:ammo:accepts");
+Set(\$this, "details:projectile:sname:" + \$accepts, FALSE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:load-dob">
+         X[M] Call(\$this, "load", \$ammo: \$ammo);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:unload-dob">
+         X[M] return Call(\$this, "unload");
+      </Core:Property>
+      <Core:Property property="merry:react-pre:load-dob">
+         X[M] if(!\$using) \{
+    EmitTo(\$actor, "What did you want to load " + Describe(\$this, nil, \$actor) + " with?");
+    return FALSE;
+\}
+
+if(!sizeof(\$using)) \{
+    EmitTo(\$actor, "What did you want to load " + Describe(\$this, nil, \$actor) + " with?");
+    return FALSE;
+\}
+
+\$accepted = Str(\$this."weapon:ammo:accepts");
+
+if(\$this."weapon:loaded") \{
+    EmitTo(\$actor, Describe(\$this) + " is already loaded with " + common::aan(\$what: \$accepted) + ".");
+    return FALSE;
+\}
+
+if(sizeof(\$using) \> 1) \{
+    EmitTo(\$actor, "You can only load " + Describe(\$this, nil, \$actor) + " with one " + \$accepted + " at a time.");
+    return FALSE;
+\}
+
+\$ammo = NRefOb(\$using[0]);
+
+if(\$ammo."weapon:ammo" != \$accepted) \{
+    EmitTo(\$actor, "You can only load " + Describe(\$this, nil, \$actor) + " with " + \$accepted + "s.");
+    return FALSE;
+\}
+
+if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + ".");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unload-dob">
+         X[M] if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + ".");
+    return FALSE;
+\}
+
+if(!\$this."weapon:loaded") \{
+    EmitTo(\$actor, Describe(\$this) + " is not loaded.");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1567894396, "jominey", "E", 1567906155, "jominey", "P", 1567906215, "jominey", "P", 1567906222, "jominey", "P", 1567906320, "jominey", "P", 1567906348, "jominey", "P", 1567906436, "jominey", "P", 1567962129, "jominey", "E", 1567962158, "jominey", "E", 1567962189, "jominey", "E", 1567962208, "jominey", "E", 1567962233, "jominey", "E", 1567962262, "jominey", "E", 1567974216, "jominey", "E", 1567974237, "jominey", "E", 1567974584, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

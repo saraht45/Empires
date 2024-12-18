@@ -1,0 +1,183 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Props:Animals:Falconing:Glove)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="heavy"/>
+          <Base:Adjective adjective="leather"/>
+        </Base:Adjectives>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="base:initialcontents"/>
+      <Core:Property property="bird">
+         \<[IronClaw:Staff:Voodoo:Props:Misc:BrownOwl]#116076\>
+      </Core:Property>
+      <Core:Property property="export:birdtype">
+         \<IronClaw:Staff:Voodoo:Props:Misc:BrownOwl\>
+      </Core:Property>
+      <Core:Property property="merry:act-post:approach%falconry">
+         X[M] /* make the bird move with the person */
+if(\$actor."falconry:glove" \&\& \$actor."falconry:glove".bird \&\& \$actor."falconry:glove".bird."base:environment" == \$actor."base:environment" \&\& \$actor."falconry:glove".bird.onhand) \{
+  \$delay(0.1, TRUE, "d4ca");
+  \$target = NewNRef(\$actor, "right-arm");
+  \$actor."falconry:glove".bird."base:proximity" = \$target;
+  \$actor."falconry:glove".bird."base:prepositionstring" = "on";
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:enter%falconry">
+         X[M] /* make the bird move with the person */
+if(\$actor."falconry:glove" \&\& \$actor."falconry:glove".bird \&\& \$actor."falconry:glove".bird."base:environment" != \$actor."base:environment" \&\& \$actor."falconry:glove".bird.onhand) \{
+  \$actor."falconry:glove".bird."base:environment" = \$actor."base:environment";
+  \$target = NewNRef(\$actor, "right-arm");
+  \$actor."falconry:glove".bird."base:proximity" = \$target;
+  \$actor."falconry:glove".bird."base:prepositionstring" = "on";
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:raise%falconry">
+         X[M] if(\$actor."falconry:glove" \&\& NRefDetail(\$target) == "right-arm")
+  return Call(\$actor."falconry:glove", "call_bird");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:call_bird">
+         X[M] /* someone called their bird */
+/* do we have a bird associated with this glove? */
+if(!this.bird) \{
+  /* no bird. Create one */
+  if(this.birdtype) \{
+    \$ob = this.birdtype;
+  \} else \{
+    \$ob = nil /* defunct */;
+  \}
+  if(\$ob) \{
+    this.bird = Spawn(\$ob);
+    this.bird.ownerglove = this;
+  \} else \{
+    EmitTo(\$actor, "Error: Bird type not found. Please @bug this.");
+    return FALSE;
+  \}
+\}
+
+/* where will the bird land */
+\$target = NewNRef(\$actor, "right-arm");
+
+/* make the bird arrive */
+if(this.bird."base:environment" != \$actor."base:environment") \{
+  if(this.bird."base:environment")
+    EmitIn(this.bird."base:environment", Describe(this.bird)+" flies up and away.");
+  this.bird."base:environment" = \$actor."base:environment";
+  EmitTo(\$actor, Describe(this.bird)+" flies in, and lands on "+Describe(\$target, nil, \$actor)+".");
+  EmitIn(\$actor."base:environment", Describe(this.bird)+" flies in, and lands on "+Describe(\$target)+".", \$actor);
+\} else \{
+  if(this.bird."base:proximity" \&\& (NRefOb(this.bird."base:proximity") == \$actor \&\& NRefDetail(this.bird."base:proximity") == "right-arm")) \{
+    EmitTo(\$actor, Describe(this.bird)+" flutters slightly, perched on your arm.");
+    EmitIn(\$actor."base:environment", Describe(this.bird)+" flutters slightly, perched on "+Describe(\$target)+".", \$actor);
+  \} else \{
+    EmitTo(\$actor, Describe(this.bird)+" flies back to "+Describe(\$target, nil, \$actor)+".");
+    EmitIn(\$actor."base:environment", Describe(this.bird)+" flies back to "+Describe(\$target)+".", \$actor);
+  \}
+\}
+this.bird."base:proximity" = \$target;
+this.bird."base:prepositionstring" = "on";
+this.bird.onhand = TRUE;
+this.bird.caller = \$actor;
+
+Call(this.bird, "ingame:loop");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:raise-dob%falconry">
+         X[M] if(this."base:environment" != \$actor) return TRUE;
+return Call(this, "call_bird");
+      </Core:Property>
+      <Core:Property property="merry:react-post:unwear%falconry">
+         X[M] /* make the falcon no longer respond to the person wearing the glove */
+\$actor."falconry:glove" = nil;
+\$actor."merry:inherit:act-post:raise%falconry" = nil;
+\$actor."merry:inherit:act-post:approach%falconry" = nil;
+\$actor."merry:inherit:act-post:enter%falconry" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:wear%falconry">
+         X[M] /* make the falcon respond to the person wearing the glove */
+\$actor."falconry:glove" = this;
+\$actor."merry:inherit:act-post:raise%falconry" = \$\{Ironclaw:Props:Animals:Falconing:Glove\};
+\$actor."merry:inherit:act-post:approach%falconry" = \$\{Ironclaw:Props:Animals:Falconing:Glove\};
+\$actor."merry:inherit:act-post:enter%falconry" = \$\{Ironclaw:Props:Animals:Falconing:Glove\};
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unwear%falconry">
+         X[M] /* make sure the falcon isn't still their arm already */
+if(this.bird \&\& this.bird.onhand \&\& this.bird."base:environment" == \$actor."base:environment") \{
+  EmitTo(\$actor, "You cannot remove "+Describe(this, nil, \$actor)+" while "+Describe(this.bird)+" is on your arm.");
+  return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="misc:lastdropped">
+         "1268463092 StoryBuilder Voodoo[catobelpas]"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1265526563, "catobelpas", "E", 1265526605, "catobelpas", "E", 1265526709, "catobelpas", "E", 1265526759, "catobelpas", "E", 1265526775, "catobelpas", "E", 1265526781, "catobelpas", "E", 1265526810, "catobelpas", "E", 1265526815, "catobelpas", "E", 1265526846, "catobelpas", "E", 1265526854, "catobelpas", "E", 1265526943, "catobelpas", "E", 1265526964, "catobelpas", "E", 1265526994, "catobelpas", "E", 1265527010, "catobelpas", "E", 1265527031, "catobelpas", "E", 1265527075, "catobelpas", "E", 1265527093, "catobelpas", "E", 1265527145, "catobelpas", "E", 1265527174, "catobelpas", "E", 1265527196, "catobelpas", "E", 1265527203, "catobelpas", "E", 1265527223, "catobelpas", "E", 1265527244, "catobelpas", "E", 1265527265, "catobelpas", "E", 1265527358, "catobelpas", "E", 1265527446, "catobelpas", "E", 1265528074, "catobelpas", "E", 1265528182, "catobelpas", "E", 1265531846, "catobelpas", "E", 1265531878, "catobelpas", "E", 1268031739, "orcsuit", "S" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="spawn:creator">
+         (\{ "catobelpas", 1265526527 \})
+      </Core:Property>
+      <Core:Property property="trait:master">1</Core:Property>
+      <Core:Property property="trait:material">
+         "leather"
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

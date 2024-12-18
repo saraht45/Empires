@@ -1,0 +1,250 @@
+<object clone="/obj/properties" owner="sendnoodlez">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:emboss">
+         X[S] \<zform actor="\$(actor)" item="\$(item)" error="\$(error)" examine1="\$(examine1)"\>
+\$[\$item= Obj(\$item);                             
+    \$actor = Obj(\$actor);                    
+    \$thread = \$thread;]
+\<input type="hidden" name="error" value="\$(error)"/\>
+\<table\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td colspan="3"\>\<font size="2"\>\<i\>Type the description of the embossing in the box below. Whatever you type will replace 'EMBOSSING_TEXT' in the sample description... pay special attention to periods.\</i\>\</font\>\</td\>
+\</tr\>
+\<tr\>
+        \<td\>\<b\>Description:\</b\>\</td\>
+        \<td colspan="2"\>\$[Set(\$item, "trait:embossing", "EMBOSSING_TEXT");               
+                          \$desc = UnSAM(ParseXML("\<describe-view view=\\"\$(item)\\" type=\\"examine\\"/\>"));             
+                          Set(\$item, "trait:embossing", nil);               
+                          if(!contains(\$desc, "EMBOSSING_TEXT")) error("This item cannot be embossed.");               
+                          return \$desc;]\</td\>
+\</tr\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td valign="top"\>\<b\>EMBOSSED_TEXT:\</b\>\</td\>
+        \<td colspan="2"\>\<textarea name="examine" style="height:350px; width:100%"\>\$(examine1)\</textarea\>\</td\>
+\</tr\>
+\<tr\>
+        \<td colspan="3" align="right"\>(Note: By clicking "Finish" you agree to the rules outlined below.) \<input type="submit" name="update" value="Finish" style="height:30px"/\>\</td\>
+\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>Rules:\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>1. Submissions can have magical/supernatural themes but cannot be magical/supernatural themselves (ie. a painting of a figure that moves around the canvas).\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>2. Vulgar/sexually explicit material is forbidden--if the content is not acceptable for a minor, do not submit it! When in doubt, contact staff.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>3. Avoid phrasing that forces the viewer to think or feel a certain way (ie 'this painting is so beautiful you can't help but cry').\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>4. Do not reference details of the canvas that do not actually exist, such as a frame.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>5. I understand if I violate these rules, access to this command will be revoked.\</font\>\</td\>\</tr\>
+\</table\>
+    \<action\>
+        \$["";                                              
+              Call(\$this, "emboss", \$design: \$examine, \$actor: \$actor, \$item: \$item, \$cost: 10);                  
+              \$error = nil;]
+        \{? \| \$(error) \| \<redirect propob="\$(this)" prop="index" actor="\$(actor)" item="\$(item)" error="\$(error)" examine1="\$(examine)"/\> \| \<redirect propob="\$(this)" prop="finish" actor="\$(actor)" item="\$(item)" error="\$(error)" examine1="\$(examine)"/\> \}
+    \</action\>
+\</zform\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" actor="\$(actor)" item="\$(item)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+    \<title\>Custom Embossing\</title\>
+    \<meta http-equiv="content-type" content="text/html; charset=UTF-8"/\>
+\</head\>
+   \<body\>
+      \$(this.xtra:header)
+      \<div id="main"\>
+        \<div id="textareafull"\>
+        \$[::popup_initialize();           
+            \$actor = Obj(\$actor);]
+            \$(this.html:emboss)
+        \</div\>
+        \<span id="bottombox"\>
+          \<div id="footer"\>\\\&nbsp;\</div\>
+        \</span\>
+      \</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="merry:lib:emboss">
+         X[M] /* emboss an item */    
+  
+/* set the embossing */         
+\$item."trait:embossing" = \$design;  
+  
+if(\$cost) \{  
+    \$text = "! EMBOSSING ! " + Describe(\$item) + ":\<" + Str(\$item) + "\> -\> " + \$design;  
+    assist::dofileassist(\$data: Obj("Data:DB:assist:AssistGeneralDB"), \$char: Str(\$actor), \$queue: "custom", \$assisttext: \$text, \$log: "[TAS]");   
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] if(\$dat == nil) \{  
+    error("page reached without a udat");  
+\}  
+if(\$name == nil) \{  
+    error("page reached without a name");  
+\}  
+if(\$actor == nil) \{  
+    error("page reached without an actor");  
+\}  
+if(!Obj(\$actor)) \{  
+    error("page reached without a valid actor");  
+\}  
+\$actor = Obj(\$actor);  
+  
+if(!Obj(\$item)) \{  
+    error("page reached without a valid item");  
+\}  
+\$item = Obj(\$item);  
+  
+if(\$item."trait:embossing") \{  
+    error("item has already been embossed");  
+\}  
+  
+if(\$item."base:environment" != \$actor) \{  
+    error("you  must be holding the item");  
+\}  
+  
+/* Check the player isn't trying to access someone elses body */  
+/* Check if the players roster of characters */  
+\$bodies = Udat::query_bodies_in_roster(\$user: \$name);  
+  
+if(!member(\$actor, \$bodies)) \{  
+    error(dump_value(\$actor)+" body not found in "+dump_value(\$name)+" character roster");  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:emboss-dob">
+         X[M] object database;  
+database = \$\{Allegory:Lib:Crafting:EmbossingDB\}; /* defunct */;  
+ 
+if(\$this."trait:embossing") \{ 
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " has already been embossed."); 
+    return FALSE; 
+\} 
+  
+Set(\$this, "trait:embossing", "EMBOSS TEST");      
+\$desc = UnSAM(ParseXML("\<describe-view view=\\"\$(this)\\" type=\\"examine\\"/\>"));       
+Set(\$this, "trait:embossing", nil);  
+if(!contains(\$desc, "EMBOSS TEST")) \{  
+    EmitTo(\$actor, "You cannot emboss that.");  
+    return FALSE;  
+\}  
+  
+/* sanity check */  
+if(this."trait:embossing") \{  
+ EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is already embossed.");  
+ return FALSE;  
+\}  
+  
+if(sizeof(\$dob) != 1) \{  
+ EmitTo(\$actor, "Please only attempt to emboss one item at a time.");  
+ return FALSE;  
+\}  
+  
+if(this."base:worn-by") \{  
+ EmitTo(\$actor, "How can you emboss " + Describe(this, nil, \$actor) + " while someone is wearing it?");  
+ return FALSE;  
+\}  
+  
+if(\$this."base:environment" != \$actor) \{  
+ EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + " to emboss it.");  
+ return FALSE;  
+\}  
+  
+/* Only scholars can emboss */ 
+  
+if(Int(\$actor."skill:alteration:bookbinding") \<= 0) \{  
+    EmitTo(\$actor, "You don't know how to emboss " + Describe(\$this, nil, \$actor) + ".");  
+    return FALSE;  
+\}  
+ 
+\$skill = Int(\$actor."skill:alteration:bookbinding"); 
+ 
+if(\$(raw-evoke)) \{  
+    \$inv = \$actor."base:inventory"; 
+ 
+    \$match = 0; 
+    for(\$i = 0; \$i \< sizeof(\$inv); \$i++) \{ 
+        if(\$inv[\$i]."base:urparent" == \$\{IronClaw:Props:Tools:Misc:EmbossingStylus\}) \{ 
+            \$match = 1; 
+        \} 
+    \} 
+ 
+    if(\$match == 0) \{ 
+        EmitTo(\$actor, "You need to be holding an embossing stylus before you can emboss anything."); 
+        return FALSE; 
+    \} 
+ 
+    if(\$(raw-evoke) == "custom") \{  
+        if(\$actor.mobimode) \{  
+            EmitTo(\$actor, "POPUPURL::http://ironclaw.skotos.net/SAM/Prop/Ironclaw%3ALib%3ACrafting%3ACustom%3AEmbossing/html:index?actor=" + url_encode(name(\$actor)));  
+        \}  
+  
+  
+        EmitTo(\$actor, "http://ironclaw.skotos.net/SAM/Prop/Ironclaw%3ALib%3ACrafting%3ACustom%3AEmbossing/html:index?actor=" + url_encode(name(\$actor)) + "\&item=" + url_encode(name(\$this)));  
+  
+        \$delay(0.1, FALSE, "8e96");  
+  
+        Popup(\$actor, \$\{Allegory:Lib:Crafting:Custom:Embossing\}, "html:index", \$actor: \$actor, \$item: \$this);  
+  
+        return FALSE;  
+    \} else \{  
+        \$tmp = Get(database, \$(raw-evoke));  
+        if(\$tmp) \{  
+            /* found a change to make */  
+            if(\$tmp["skill"] \&\& \$tmp["skill"] \> \$skill) \{  
+                EmitTo(\$actor, "You don't have enough skill to emboss " + Describe(this, nil, \$actor) + " in that way.");  
+                return FALSE;  
+            \}  
+  
+            if(\$tmp["design"]) \{  
+                \$design = \$tmp["design"];  
+            \} else \{  
+                \$design = "It has been embossed with a " + \$(raw-evoke) + " design.";  
+            \}  
+  
+            /* no further objections. Make the change. */  
+            EmitTo(\$actor, "You emboss " + Describe(this, nil, \$actor) + " with a "+\$(raw-evoke) + " pattern.");  
+            EmitIn(\$actor."base:environment", Describe(\$actor) + " embosses " + Describe(this, \$actor) + " with a " + \$(raw-evoke) + " pattern.", \$actor);  
+            Call(\$\{Allegory:Lib:Crafting:Custom:Embossing\}, "emboss", \$actor: \$actor, \$item: \$this, \$design: \$design);  
+            return FALSE;  
+        \}  
+    \}  
+\}  
+  
+/* list embossing options */  
+\$options = (\{ \});  
+\$tmp = Get(database, "*");  
+\$indices = map_indices(\$tmp);  
+\$indices -= (\{ "revisions" \});  
+  
+for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{  
+ if(typeof(\$tmp[\$indices[\$i]]) == T_MAPPING \&\& (!\$tmp[\$indices[\$i]]["skill"] \|\| Int(\$tmp[\$indices[\$i]]["skill"]) \<= \$skill)) \{  
+  \$options \|= (\{ \$indices[\$i] \});  
+ \}  
+\}  
+/* No options for embossing yet */  
+/*  
+if(!sizeof(\$options)) \{  
+ EmitTo(\$actor, "You don't know how to emboss " + Describe(this, nil, \$actor) + ".");  
+ return FALSE;  
+\} */  
+  
+EmitTo(\$actor, "To emboss an item, it must not be worn. Then the command is:");  
+EmitTo(\$actor, "emboss " + Describe(this) + " 'PATTERN");  
+EmitTo(\$actor, "Your pattern options are: " + implode(\$options, ", "));  
+EmitTo(\$actor, "You can also do a custom embossing using the syntax: emboss my item 'custom'.");  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1562789912, "jominey", "E", 1562790075, "jominey", "R", 1562790415, "jominey", "X", 1562790536, "jominey", "E", 1562796777, "jominey", "E", 1562797114, "jominey", "E", 1562797261, "jominey", "E", 1570121625, "sendnoodlez", "X", 1570294687, "jominey", "R", 1572303807, "jominey", "E", 1572749827, "jominey", "E", 1573096095, "jominey", "E", 1573096364, "jominey", "E", 1573096381, "jominey", "E", 1576685993, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,136 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCrafting)"/>
+    <Base:Bulk immobile="false" mass="0.3" density="1.1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="flavoring"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="flavorings"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="tobacco"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.trait:flavor) | $(this.trait:flavor) } tobacco flavoring
+          </Base:Description>
+          <Base:Description type="examine">
+             Some {? | $(this.trait:flavor) | $(this.trait:flavor) } flavoring, suitable for flavoring tobacco.<sbr/> There seems to be enough for another $(this.trait:quantity) uses. <newly><br/>[Hint: You can try DIPPING a tobacco leaf IN the flavoring to create a flavored tobacco leaf]</newly>
+          </Base:Description>
+          <Base:Description type="look">
+             Some {? | $(this.trait:flavor) | $(this.trait:flavor) } tobacco flavoring.
+          </Base:Description>
+          <Base:Description type="smell">
+             $(this.trait:smell)
+          </Base:Description>
+          <Base:Description type="taste">
+             $(this.trait:taste)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties>
+      <Base:InitialProperty property="trait:quantity">
+         10
+      </Base:InitialProperty>
+    </Base:InitialProperties>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "flavoring"
+      </Core:Property>
+      <Core:Property property="export:trait:flavor">
+         "vanilla"
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "tobaccoflavoring"
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         10
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "a sweet lushness, hinting of spices and rum"
+      </Core:Property>
+      <Core:Property property="export:trait:taste">
+         "rich, full, aromatic and powerful"
+      </Core:Property>
+      <Core:Property property="merry:react-pre:add-dob">
+         X[M] if(\$iob \&\& sizeof(\$iob) == 1 \&\& NRefOb(\$iob[0])."base:environment" == \$actor) \{
+  if(NRefOb(\$iob[0])."trait:objecttype" != "tobaccoleaf") \{
+EmitTo(\$actor, Str(NRefOb(\$iob[0])."base.urparent"));
+    return TRUE;
+  \}
+
+  if(FALSE \&\& NRefOb(\$iob[0])."trait:flavor") \{
+    EmitTo(\$actor, Describe(\$iob[0], nil, \$actor)+" has already been flavored with " + Str(NRefOb(\$iob[0])."trait:flavor") + " flavoring.");
+    return FALSE;
+  \}
+
+  this."trait:quantity" = Int(this."trait:quantity") - 1;
+  EmitTo(\$actor, "You flavor "+Describe(\$iob[0], nil, \$actor)+" with "+Describe(this, nil, \$actor)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" flavors "+Describe(\$iob[0], \$actor)+" with "+Describe(this, \$actor)+".", \$actor);
+
+  NRefOb(\$iob[0])."trait:flavor" = Str(this."trait:flavor");
+  NRefOb(\$iob[0])."trait:taste" = Str(NRefOb(\$iob[0])."trait:taste") + " and " + this."trait:taste";
+  NRefOb(\$iob[0])."trait:smell" = Str(NRefOb(\$iob[0])."trait:smell") + " and " + this."trait:smell";
+  Set(NRefOb(\$iob[0]), "details:default:adjective:" + Str(\$this."trait:flavor"),  TRUE);
+  Set(NRefOb(\$iob[0]), "details:default:adjective:" + Str(\$this."trait:flavor") + "-flavored",  TRUE);
+  return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quantity">
+         X[M] if(\$this."trait:quantity" == 0 \|\| 0 \>= \$this."trait:quantity") \{         
+  if(\$this."no:slay" == 1) \{         
+    return FALSE;         
+  \} else \{  
+    EmitTo(\$this."base:environment", "You have squeezed the last drops out of the pot of " +Describe(\$this, nil, \$actor, STYLE_NONPOSS)+ ".");    
+    Slay(\$this);         
+    return TRUE;  
+  \}         
+\}
+      </Core:Property>
+      <Core:Property property="no:slay">1</Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1271905968, "jominey", "E", 1271905986, "jominey", "E", 1271906017, "jominey", "E", 1271906033, "jominey", "E", 1271906047, "jominey", "E", 1271906117, "jominey", "E", 1271906772, "jominey", "E", 1271906831, "jominey", "E", 1271906864, "jominey", "E", 1271907680, "jominey", "K", 1272077138, "jominey", "E", 1272077156, "jominey", "E", 1272077460, "jominey", "E", 1272077521, "jominey", "E", 1272077551, "jominey", "E", 1272077590, "jominey", "E", 1272077617, "jominey", "E", 1272077654, "jominey", "E", 1272077747, "jominey", "E", 1272077820, "jominey", "E", 1272077877, "jominey", "E", 1272080089, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:quantity">10</Core:Property>
+      <Core:Property property="trait:trash">1</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

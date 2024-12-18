@@ -1,0 +1,224 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="SkotOS">
+  <SkotOS:MerAcHa action_id="whisper">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-desc:action">
+         X[M] /* 
+  Multi-whisper action (Kalle) 
+ 
+  This action is called whenever someone whispers without a target (e.g. `whisper "I like cookies!"') or if the target is without volition (e.g. `whisper table "Hey guys, I've got some cookies...!"'). 
+ 
+  Known bugs: language processing is not (yet) functional, i.e. if you whisper in for instance eastern, all subjects will hear it in common.  
+  2003-08-30 Zwoc: Language processing now works. 
+ 
+*/ 
+ 
+ 
+if( !\$evoke ) return TRUE; /* Make this instead tell the actor who would hear his whispers without whispering. */ 
+if( strlen( \$evoke ) \< 3 ) return TRUE; 
+
+if(\$target) \{ 
+  if(NRefOb(\$target)."base:holder" == \$actor) \{
+      return Call(\$this, "make_whisper");
+  \}
+
+  if(\$target == \$actor) \{
+      return Call(\$this, "make_whisper");
+  \}
+
+  if(\$target."base:environment" != \$actor."base:environment") \{
+      return Call(\$this, "make_whisper");
+  \}
+ 
+  \$tgt = NRefOb(\$target);  
+ 
+  if(\$tgt."base:environment") \{ 
+    if(\$tgt.volition) \{
+        return Call(\$this, "make_whisper"); /* whispering regular pup */ 
+    \}
+  \} 
+ 
+\} else \$tgt = \$actor; /* whispering myself = whispering without target */ 
+
+/* get a list of listeners */ 
+ 
+\$env = \$actor."base:environment"; 
+ 
+\$inv = \$env."base:inventory"; 
+ 
+\$listeners = (\{ \$actor \}); 
+ 
+\$tagged = ([ \$actor : TRUE ]); 
+ 
+\$queue = (\{ \$actor \}); 
+ 
+while( sizeof( \$queue ))\{ 
+  \$targ = \$queue[0]; 
+  \$queue = \$queue[1..]; 
+  \$tprox = \$targ."base:proximity"; 
+  if( !\$tprox ) \$tprox = \$actor."base:environment"; 
+  if( NRefOb( \$tprox ) != \$actor."base:environment" ) \$tprox = NRefOb( \$tprox ); 
+ 
+  for( \$i = 0; \$i \< sizeof( \$inv ); \$i++ )\{ 
+    if( \$tprox )\{ 
+      if( !\$tagged[\$inv[\$i]] \&\& NRefsEqual( \$tprox, \$inv[\$i] ))\{ 
+        \$listeners += (\{ \$inv[\$i] \}); 
+        \$tagged[\$inv[\$i]] = TRUE; 
+        \$queue += (\{ \$inv[\$i] \}); 
+      \} 
+    \} 
+ 
+    \$a = \$inv[\$i]."base:proximity"; 
+    if( \$a ) \$aob = NRefOb( \$a ); else \$aob = nil; 
+    if( \$aob != \$actor."base:environment" ) \$a = \$aob; 
+    if( \$a )\{ 
+      \$b = NRefOb( \$a ); 
+      if( !\$tagged[\$inv[\$i]] \&\& ( NRefsEqual( \$a, \$targ ) \|\| NRefsEqual( \$tprox, \$a )))\{ 
+        \$listeners += (\{ \$inv[\$i] \}); 
+        \$tagged[\$inv[\$i]] = TRUE; 
+        \$queue += (\{ \$inv[\$i] \}); 
+      \} 
+    \} 
+  \} 
+\} 
+ 
+/* remove unvolitioned objects */ 
+for( \$i = 0; \$i \< sizeof( \$listeners ); \$i++ ) \{
+  if( !\$listeners[\$i]."base:volition" ) \$listeners[\$i] = nil; 
+\}
+
+\$list = (\{ \});
+for( \$i = 0; \$i \< sizeof( \$listeners ); \$i++ ) \{
+  if(\$listeners[\$i] != \$actor) \$list += (\{ Describe(\$listeners[\$i]) \});
+\}
+ 
+\$listeners -= (\{ nil \}); 
+ 
+/* if( sizeof( \$listeners ) \<= 1 ) return TRUE; */
+ 
+if( \$adverb ) \$adv = \$adverb + " "; else \$adv = ""; 
+ 
+if( \$(evoke-witness) ) 
+  \$parsedEvoke = " " + \$(verb-extra:pe) + ", " + \$(evoke-witness); 
+else 
+  \$parsedEvoke = ", " + \$evoke; 
+ 
+for( \$i = 0; \$i \< sizeof( \$listeners ); \$i++ )\{ 
+  if( \$listeners[\$i] == \$actor ) \{ 
+    \$z = "You whisper "+\$adv+"to "; 
+    \$myEvoke = (\$(verb-extra:pe) ? " " + \$(verb-extra:pe) : "" ) + ", " + \$evoke; 
+    \$tag = "evoke:first";
+  \} else \{ 
+    \$z = Describe( \$actor ) + " whispers "+\$adv+"to "; 
+    \$myEvoke = \$parsedEvoke; 
+    \$tag = "evoke:second";
+  \} 
+   
+  \$and = ""; 
+  if(sizeof(\$listeners) \> 1) \{
+    for( \$x = 0; \$x \< sizeof( \$listeners ); \$x++ )\{ 
+      if( \$listeners[\$x] != \$actor )\{ 
+        if( \$x == \$i ) \$z += \$and + "you";else \$z += \$and + Describe( \$listeners[\$x] ); 
+        if( \$x + 2 \< sizeof( \$listeners )) \$and = ", "; else \$and = " and "; 
+      \}  
+    \} 
+  \} else \{
+    \$z += "yourself";
+  \}
+
+  \$z += \$myEvoke; 
+  EmitTo(\$listeners[\$i], TAG(\$z, \$tag));
+\}
+
+return Call(\$this, "make_whisper", \$indirect: 1);
+      </Core:Property>
+      <Core:Property property="merry:lib:garble-whisper">
+         X[M] int skill, result, c, i;
+string output;
+string * words;
+
+/* Not reading anyone's lips at the moment */
+if(!\$witness."lipread:target") return nil;
+if(\$witness."lipread:target" != \$targ) return nil;
+
+/* Roll for reach word */
+words = explode(replace_strings(\$text, ".\\"", "", "\\"", ""), " ");
+
+output = "";
+for(i = 0; i \< sizeof(words); i++) \{
+    result = ironclaw::roll(\$roller: \$witness, \$skills: (\{ "social:lipread" \}), \$bonus: (\{ "trait:perception" \}));
+    result = (result*4)/5;
+
+    c = strlen(words[i]);
+
+    if(result \> c) \{
+        output += words[i];
+    \} else \{
+        if(random(100) \< 95) \{
+            output += oneof("...", "mmm", "...", "...", "mumble", "psst", "psst", "pssst", "blahblah", "blah", "meh", "...", "...", "psst", "psst");
+        \} else \{
+            output += oneof("assassinate", "kill", "murder", "poison", "death", "ugly", "kiss", "hug", "marry", "trick", "steal");
+        \}
+    \}
+
+    if(i \< (sizeof(words)-1)) output += " ";
+\}
+
+return "\\"" + output + ".\\"";
+      </Core:Property>
+      <Core:Property property="merry:lib:make_whisper">
+         X[M] mixed langlevel, langname, langskill;
+string lang;
+int legibility;
+
+
+\$inv = \$actor."base:environment"."base:inventory";
+
+if(!\$listeners) \$listeners = (\{ \$actor \});
+if(!\$list) \$list = (\{ \});
+
+if(\$target \&\& sizeof(\$listeners) == 1 \&\& !sizeof(\$list)) \{
+   \$listeners += (\{ NRefOb(\$target) \});
+   \$list += (\{ Describe(NRefOb(\$target)) \});
+\}
+
+for(\$i = 0; \$i \< sizeof(\$inv); \$i++) \{
+  if(!member(\$inv[\$i], \$listeners) \&\& \$inv[\$i]."base:volition") \{
+    if(\$msg = Call(\$this, "garble-whisper", \$text: \$evoke, \$witness: \$inv[\$i], \$targ: \$actor)) \{
+
+      langlevel = Str((\$r1 = \$actor."skotos:currentlang") ? \$r1 : 0);
+      langname = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + langlevel);
+      langskill = Get(\$actor, "skill:lang:" + langname);
+
+      \$l = "";
+      if (langlevel \&\& langlevel != "0" \&\& strlen(\$msg) \> 0) \{
+          \$msg = INLANG(langname, langskill, \$msg);
+          sscanf(\$msg, "\\000%s\|%d\\001%s\\002", lang, legibility, \$msg);
+          \$msg = Call(\$\{Allegory:Lib:Languages:Actions:encounter-language\}, "garble-reading", \$text: \$msg, \$language: langname, \$actor: Obj(\$inv[\$i]), \$legibility: langskill); 
+          \$l = " in " + capitalize(langname);
+      \}
+
+      if(\$indirect) \{
+        EmitTo(\$inv[\$i], TAG(Describe(\$actor) + " whispers" + (\$adverb ? " " + \$adverb : "") + \$l +", " + Str(\$msg), "evoke:third"));
+      \} else \{
+        EmitTo(\$inv[\$i], TAG(Describe(\$actor) + " whispers" + (\$adverb ? " " + \$adverb : "") + " to " + common::string_list(\$list: \$list) + \$l + ", " + Str(\$msg), "evoke:third")); 
+      \}
+    \} else \{
+      if(sizeof(\$list) \&\& !\$indirect) \{
+        EmitTo(\$inv[\$i], TAG(Describe(\$actor) + " whispers" + (\$adverb ? " " + \$adverb : "") + " to " + common::string_list(\$list: \$list) + ".", "evoke:third")); 
+      \} else \{
+        EmitTo(\$inv[\$i], TAG(Describe(\$actor) + " whispers" + (\$adverb ? " " + \$adverb : "") + ".", "evoke:third")); 
+      \}
+    \}
+  \}
+\}
+
+if(\$indirect) return FALSE;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1570322792, "jominey", "E", 1570322917, "jominey", "E", 1570323338, "jominey", "E", 1570323448, "jominey", "E", 1570323474, "jominey", "E", 1570323508, "jominey", "E", 1570324391, "jominey", "E", 1570324965, "jominey", "E", 1570325020, "jominey", "E", 1570327500, "jominey", "E", 1570327527, "jominey", "E", 1570327973, "jominey", "E", 1572911796, "jominey", "E", 1572912209, "jominey", "E", 1573314728, "jominey", "E", 1573314991, "jominey", "E", 1574177221, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

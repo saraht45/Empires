@@ -1,0 +1,501 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="export:log:creator">
+         "Azrael"
+      </Core:Property>
+      <Core:Property property="merry:lib:ask_opinions">
+         X[M] /* ask for the PCs opinions about other PCs */ 
+ 
+if(!\$par) \$par = ([ ]); 
+if(!\$par["count"]) \$par["count"] = 0; 
+ 
+/* only ask three questions or less */ 
+if(\$par["count"] \>= 3) return TRUE; 
+ 
+\$delay(1, TRUE, "f5e6"); 
+ 
+if(!\$actor."favor:opinion:gathered") 
+ \$actor."favor:opinion:gathered" = (\{ \}); 
+ 
+\$actor."favor:opinion:gathered" -= (\{ nil \}); 
+ 
+if(sizeof(\$actor."favor:opinion:gathered")) \{ 
+ \$char = \$actor."favor:opinion:gathered"[0]; 
+  
+ /* Check that we're not asking about a VP */ 
+ if(Call(\$\{Ironclaw:Lib:Characters:Veep:Lib\}, "veep:check_roster", \$char: \$char)) \{ 
+  \$actor."favor:opinion:gathered" -= (\{ \$char \}); 
+  return ::ask_opinions(); 
+ \} 
+ 
+ /* Check that we're not asking about staff */ 
+ if(\$char."trait:title" \&\& strlen(\$char."trait:title") \> 5 \&\& lower_case(\$char."trait:title"[..4]) == "story") \{ 
+  \$actor."favor:opinion:gathered" -= (\{ \$char \}); 
+  return ::ask_opinions(); 
+ \} 
+ 
+ \$name = capitalize(Str(\$actor."favor:opinion:gathered"[0]."skotos:charname")); 
+ if(!\$par["favorasked"]) \{ 
+  EmitTo(\$actor, "A scribe approaches you, and explains that "+oneof("his", "her")+oneof(" master", " mistress")+" has requested a reference for "+\$name+"."); 
+  \$question = "How do you respond?"; 
+ \} else \{ 
+  \$question = "The scribe next asks if you could give a reference for "+\$name+"."; 
+ \} 
+ interaction::question(\$actor: \$actor, \$question: \$question, \$a: "Tell the scribe that "+Describe(\$actor)+" has a positive opinion of "+\$name+".", \$b: "Tell the scribe that "+Describe(\$actor)+" has a neutral opinion of "+\$name+".", \$c: "Tell the scribe that "+Describe(\$actor)+" has a negative opinion of "+\$name+".", \$d: "Tell the scribe that "+Describe(\$actor)+" doesn't know "+\$name+".", \$expire: "Having waited too long for your answer, the scribe leaves.", \$a_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$b_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$c_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$d_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$a_fun: "opinion_good", \$b_fun: "opinion_neutral", \$c_fun: "opinion_bad", \$d_fun: "opinion_unknown", \$expires: 60*3, \$par: (["target":\$actor."favor:opinion:gathered"[0], "name":lower_case(\$name), "base:objective":\$actor."favor:opinion:gathered"[0]."base:objective", "base:possessive":\$actor."favor:opinion:gathered"[0]."base:possessive", "count":\$par["count"]+1, "favorasked":1])); 
+ 
+/* 
+ interaction::question(\$actor: \$actor, \$question: \$question, \$a: "Tell the scribe that "+Describe(\$actor)+" supports "+\$name+", and gives a good reference.", \$b: "Tell the scribe that "+Describe(\$actor)+" knows "+\$name+", and gives a neutral reference.", \$c: "Tell the scribe that "+Describe(\$actor)+" gives a negative reference.", \$d: "Tell the scribe that "+Describe(\$actor)+" doesn't know "+\$name+".", \$expire: "Having waited too long for your answer, the scribe leaves.", \$a_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$b_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$c_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$d_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$a_fun: "opinion_good", \$b_fun: "opinion_neutral", \$c_fun: "opinion_bad", \$d_fun: "opinion_unknown", \$expires: 60, \$par: (["target":\$actor."favor:opinion:gathered"[0], "name":lower_case(\$name), "base:objective":\$actor."favor:opinion:gathered"[0]."base:objective", "base:possessive":\$actor."favor:opinion:gathered"[0]."base:possessive", "count":\$par["count"]+1, "favorasked":1])); 
+*/ 
+ 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:friend_high">
+         X[M] \$actor."favor:opinion:mapping"[\$par["name"]] = (\{ 3, time() \});
+/* Remove the PC from the list of people to ask about */
+\$actor."favor:opinion:gathered" -= (\{ \$par["target"] \});
+\$actor."favor:opinion:all" += (\{ \$par["target"] \});
+
+EmitTo(\$actor, "The scribe "+oneof("nods", "writes a note", "thanks you", "seems to agree with you", "records the information")+".");
+
+::opinion_given();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:friend_low">
+         X[M] \$actor."favor:opinion:mapping"[\$par["name"]] = (\{ 1, time() \});
+/* Remove the PC from the list of people to ask about */
+\$actor."favor:opinion:gathered" -= (\{ \$par["target"] \});
+\$actor."favor:opinion:all" += (\{ \$par["target"] \});
+
+EmitTo(\$actor, "The scribe "+oneof("nods", "writes a note", "thanks you", "seems to agree with you", "records the information")+".");
+
+::opinion_given();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:friend_mid">
+         X[M] \$actor."favor:opinion:mapping"[\$par["name"]] = (\{ 2, time() \});
+/* Remove the PC from the list of people to ask about */
+\$actor."favor:opinion:gathered" -= (\{ \$par["target"] \});
+\$actor."favor:opinion:all" += (\{ \$par["target"] \});
+
+EmitTo(\$actor, "The scribe "+oneof("nods", "writes a note", "thanks you", "seems to agree with you", "records the information")+".");
+
+::opinion_given();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:getfavor">
+         X[M] /* get the favor rating of a group (or one individual) towards an individual */
+int i, j, opinioncount, baseopinions;
+float total;
+object *from_pcs;
+
+\$from = Arr(\$from);
+if(!sizeof(\$from)) error("No character(s) specified to get the favor from.");
+if(!\$to) error("No character(s) specified to get the favor for.");
+
+/* expand any guilds listed in \$from */
+for(i=0;i\<sizeof(\$from);i++) \{
+ if(\$from[i].isguild) \{
+  /* include the members from this guild */
+  if(\$from[i].members) \{
+   /* Check when the character was last active */
+   /* if they were absent more than 30 days, don't count opinions */
+   for(j=0;j\<sizeof(\$from[i].members);j++) \{
+    if(Int(\$from[i].members[j]."cdat:lastlogin")+60*60*24*30 \> time())
+     \$from \|= (\{ \$from[i].members[j] \});
+   \}
+  \}
+  \$from -= (\{ \$from[i] \});
+  i--;
+ \}
+\}
+
+/* how many PCs have an opinion about this character? */
+opinioncount = 0;
+total = 0.0;
+for(i=0;i\<sizeof(\$from);i++) \{
+ /* do they have any favor opinions? */
+ if(\$from[i]."favor:opinion:mapping") \{
+  /* convert the raw favor into object references */
+  /* THIS SHOULD ONLY BE TEMPORARY, UNTIL WE'VE UPDATED HOW FAVOR IS RECORDED */
+  ::sanitize(\$char: \$from[i]);
+
+  /* do they have an opinion of this PC? */
+  if(\$from[i]."favor:opinion:mapping"[\$to]) \{
+   /* they have an opinion. Tally it */
+   total += (\$from[i]."favor:opinion:mapping"[\$to][0] \> 0) ? 1.0 : Flt(\$from[i]."favor:opinion:mapping"[\$to][0]);
+   /*total += Flt(\$from[i]."favor:opinions"[\$to]["rating"]);*/
+   opinioncount++;
+  \}
+ \}
+\}
+/* We have enough opinions. So return this value. */
+if(opinioncount \>= 5) return (\{ total/Flt(opinioncount), opinioncount, opinioncount \});
+
+/* Not enough PCs to judge an opinion on. Include opinions of friends. */
+baseopinions = opinioncount; /* record how many of the intial requests had opinions, for reporting */
+from_pcs = \$from;
+for(i=0;i\<sizeof(from_pcs);i++) \{
+ \$from \|= favor::getfriends(\$char: from_pcs[i], \$to: \$to);
+\}
+
+opinioncount = 0;
+total = 0.0;
+for(i=0;i\<sizeof(\$from);i++) \{
+ /* do they have any favor opinions? */
+ if(\$from[i]."favor:opinion:mapping") \{
+  /* do they have an opinion of this PC? */
+  if(\$from[i]."favor:opinion:mapping"[\$to]) \{
+   /* they have an opinion. Tally it */
+   /*total += Flt(\$from[i]."favor:opinions"[\$to]["rating"]);*/
+   total += (\$from[i]."favor:opinion:mapping"[\$to][0] \> 0) ? 1.0 : Flt(\$from[i]."favor:opinion:mapping"[\$to][0]);
+   opinioncount++;
+  \}
+ \}
+\}
+
+/* We have enough opinions. So return this value. */
+if(opinioncount \>= 3) return (\{ total/Flt(opinioncount), opinioncount, baseopinions \});
+
+/* We don't have enough opinions. Assume 3 opinions (in other word the value is worth less without more opinions */
+return (\{ total/3.0, opinioncount, baseopinions \});
+      </Core:Property>
+      <Core:Property property="merry:lib:getfavorfromgroup">
+         X[M] /* get the favor rating of a group (or one individual) towards an individual */
+int i, j, opinioncount, baseopinions;
+float total;
+object *from_pcs;
+
+\$from = Arr(\$from);
+if(!sizeof(\$from)) error("No character(s) specified to get the favor from.");
+
+/*EmitTo(\$actor, "From is "+dump_value(\$from));*/
+
+/* expand any guilds listed in \$from */
+for(i=0;i\<sizeof(\$from);i++) \{
+ /* convert a string name into an object */
+ if(typeof(\$from[i]) == T_STRING) \{
+  if(Obj("Ironclaw:Guilds:"+\$from[i]))
+   \$from[i] = Obj("Ironclaw:Guilds:"+\$from[i]);
+  else \{
+   \$from -= (\{ \$from[i] \});
+   i--;
+   continue;
+  \}
+ \}
+ if(\$from[i].isguild) \{
+  /* include the members from this guild */
+  if(\$from[i].members) \{
+   /* Check when the character was last active */
+   /* if they were absent more than 30 days, don't count opinions */
+   for(j=0;j\<sizeof(\$from[i].members);j++) \{
+    if(Int(\$from[i].members[j]."cdat:lastlogin")+60*60*24*30 \> time())
+     \$from \|= (\{ \$from[i].members[j] \});
+   \}
+  \}
+  \$from -= (\{ \$from[i] \});
+  i--;
+ \}
+\}
+
+/*EmitTo(\$actor, "From is "+dump_value(\$from));*/
+
+/* Gather their opinions */
+\$favorgivers = ([ ]);
+\$favormapping = ([ ]);
+for(i=0;i\<sizeof(\$from);i++) \{
+ /* do they have any favor opinions? */
+ if(\$from[i]."favor:opinion:mapping") \{
+  /* convert the raw favor into object references */
+  /* THIS SHOULD ONLY BE TEMPORARY, UNTIL WE'VE UPDATED HOW FAVOR IS RECORDED */
+  ::sanitize(\$char: \$from[i]);
+  \$indices = map_indices(\$from[i]."favor:opinion:mapping");
+  for(\$j=0;\$j\<sizeof(\$indices);\$j++) \{
+   if(\$favorgivers[\$from[i]]) \{
+    \$favorgivers[\$from[i]] += (\{ (\{ \$indices[\$j], \$from[i]."favor:opinion:mapping"[\$indices[\$j]][0] \}) \});
+   \} else \{
+    \$favorgivers[\$from[i]] = (\{ (\{ \$indices[\$j], \$from[i]."favor:opinion:mapping"[\$indices[\$j]][0] \}) \});
+   \}
+   if(\$favormapping[\$indices[\$j]]) \{
+    \$favormapping[\$indices[\$j]] += (\{ \$from[i]."favor:opinion:mapping"[\$indices[\$j]][0] \});
+   \} else \{
+    \$favormapping[\$indices[\$j]] = (\{ \$from[i]."favor:opinion:mapping"[\$indices[\$j]][0] \});
+   \}
+  \}
+ \}
+\}
+
+/*EmitTo(\$actor, "Favor givers: "+dump_value(\$favorgivers));*/
+EmitTo(\$actor, "Mapping is "+dump_value(\$favormapping));
+
+\$favorarray = (\{ \});
+\$indices = map_indices(\$favormapping);
+for(i=0;i\<sizeof(\$indices);i++) \{
+ \$count = 0;
+ for(\$j=0;\$j\<sizeof(\$favormapping[\$indices[i]]);\$j++) \{
+  if(\$favormapping[\$indices[i]][\$j] \> 0)
+   \$count += 1;
+  else if(\$favormapping[\$indices[i]][\$j] \< 0)
+   \$count -= 1;
+ \}
+ if(sizeof(\$favormapping[\$indices[i]]) \>= 3 )
+  \$count = Flt(\$count)/Flt(sizeof(\$favormapping[\$indices[i]]));
+ else
+  \$count = Flt(\$count)/3.0;
+ \$favorarray += (\{ (\{ \$indices[i], \$count, sizeof(\$favormapping[\$indices[i]]) \}) \});
+\}
+
+/*EmitTo(\$actor, "Array is "+dump_value(\$favorarray));*/
+
+for(i=1;i\<sizeof(\$favorarray);i++) \{
+ if(i \>= 1 \&\& (\$favorarray[i][1] \> \$favorarray[i-1][1] \|\| (\$favorarray[i][1] ==  \$favorarray[i-1][1] \&\& \$favorarray[i][2] \> \$favorarray[i-1][2] ))) \{
+  \$tmp = \$favorarray[i];
+  \$favorarray[i] = \$favorarray[i-1];
+  \$favorarray[i-1] = \$tmp;
+  i = i-2;
+ \}
+\}
+
+/*EmitTo(\$actor, "Sorted Array is "+dump_value(\$favorarray));*/
+
+return \$favorarray;
+
+
+/* Not enough PCs to judge an opinion on. Include opinions of friends. */
+baseopinions = opinioncount; /* record how many of the intial requests had opinions, for reporting */
+from_pcs = \$from;
+for(i=0;i\<sizeof(from_pcs);i++) \{
+ \$from \|= favor::getfriends(\$char: from_pcs[i], \$to: \$to);
+\}
+
+opinioncount = 0;
+total = 0.0;
+for(i=0;i\<sizeof(\$from);i++) \{
+ /* do they have any favor opinions? */
+ if(\$from[i]."favor:opinion:mapping") \{
+  /* do they have an opinion of this PC? */
+  if(\$from[i]."favor:opinion:mapping"[\$to]) \{
+   /* they have an opinion. Tally it */
+   /*total += Flt(\$from[i]."favor:opinions"[\$to]["rating"]);*/
+   total += (\$from[i]."favor:opinion:mapping"[\$to][0] \> 0) ? 1.0 : \$from[i]."favor:opinion:mapping"[\$to][0];
+   opinioncount++;
+  \}
+ \}
+\}
+
+/* We have enough opinions. So return this value. */
+if(opinioncount \>= 3) return (\{ total/Flt(opinioncount), opinioncount, baseopinions \});
+
+/* We don't have enough opinions. Assume 3 opinions (in other word the value is worth less without more opinions */
+return (\{ total/3.0, opinioncount, baseopinions \});
+      </Core:Property>
+      <Core:Property property="merry:lib:getfriends">
+         X[M] mapping raw_favor, sorted;
+object *friends, *indices, char;
+int i, j;
+
+if(!\$char) error("No character specified.");
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* have they put in any favor at all? */
+raw_favor = \$char."favor:opinion:mapping";
+if(!raw_favor \|\| !sizeof(map_indices(raw_favor))) return (\{ \});
+
+/* convert the raw favor into object references */
+/* THIS SHOULD ONLY BE TEMPORARY, UNTIL WE'VE UPDATED HOW FAVOR IS RECORDED */
+::sanitize(\$char: \$char);
+
+/* loop through people they have an opinion about, recording how much we like each person */
+\$high = (\{ \});
+\$mid = (\{ \});
+\$low = (\{ \});
+indices = map_indices(raw_favor);
+
+for(i=0;i\<sizeof(indices);i++) \{
+ /* EXTENSION - should also include the time bound here */
+ if(raw_favor[indices[i]][0] == 3) \{
+  \$high \|= (\{ indices[i] \});
+ \} else if(raw_favor[indices[i]][0] == 2) \{
+  \$mid \|= (\{ indices[i] \});
+ \} else if(raw_favor[indices[i]][0] == 1) \{
+  \$low \|= (\{ indices[i] \});
+ \}
+\}
+
+/* now we've got a list of friends sorted by how much we like them */
+/* pick the first five people from this list (and add more if need be) that have an opinion about \$to */
+/* e.g. 7 people of level 1 friendship and nobody higher would return 7 friends instead of 5 */
+
+
+
+/* convert the raw favor into object references */
+/* THIS SHOULD ONLY BE TEMPORARY, UNTIL WE'VE UPDATED HOW FAVOR IS RECORDED */
+::sanitize(\$char: \$char);
+
+if(!\$to) \{
+ /* don't have a target, add everyone */
+ friends = \$high;
+ if(sizeof(friends) \< 5) friends \|= \$mid;
+ if(sizeof(friends) \< 5) friends \|= \$low;
+\} else \{
+ /* have a target. Check each friend to see if they have an opinion about \$to */
+ friends = (\{ \});
+ for(i=0;i\<sizeof(\$high);i++) \{
+  ::sanitize(\$char: \$high[i]);
+  if(\$high[i]."favor:opinion:mapping" \&\& \$high[i]."favor:opinion:mapping"[\$to])
+   friends \|= (\{ \$high[i] \});
+ \}
+ if(sizeof(friends) \< 5) \{
+  for(i=0;i\<sizeof(\$mid);i++) \{
+   ::sanitize(\$char: \$mid[i]);
+   if(\$mid[i]."favor:opinion:mapping" \&\& \$mid[i]."favor:opinion:mapping"[\$to])
+    friends \|= (\{ \$mid[i] \});
+  \}
+ \}
+ if(sizeof(friends) \< 5) \{
+  for(i=0;i\<sizeof(\$low);i++) \{
+   ::sanitize(\$char: \$low[i]);
+   if(\$low[i]."favor:opinion:mapping" \&\& \$low[i]."favor:opinion:mapping"[\$to])
+    friends \|= (\{ \$low[i] \});
+  \}
+ \}
+\}
+
+return friends;
+      </Core:Property>
+      <Core:Property property="merry:lib:opinion_bad">
+         X[M] /* gave a favor opinion */
+
+/* neutral about the PC. */
+\$actor."favor:opinion:mapping"[\$par["name"]] = (\{ -1, time() \});
+/* Remove the PC from the list of people to ask about */
+\$actor."favor:opinion:gathered" -= (\{ \$par["target"] \});
+\$actor."favor:opinion:all" += (\{ \$par["target"] \});
+
+EmitTo(\$actor, "The scribe "+oneof("nods", "writes a note", "thanks you", "seems to agree with you", "records the information")+".");
+
+::opinion_given();
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:opinion_given">
+         X[M] /* gave a favor opinion */
+if(\$par["count"] \>= 3 \|\| !\$actor."favor:opinion:gathered" \|\| !sizeof(\$actor."favor:opinion:gathered"))
+ EmitTo(\$actor, "The scribe thanks you for your reference, and leaves.");
+else
+ ::ask_opinions();
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:opinion_good">
+         X[M] /* gave a favor opinion */
+
+/* supportive of the PC. */
+
+\$delay(0.5, TRUE, "2712");
+
+/* ask how supportive they are */
+\$question = "The scribe asks how well you know "+capitalize(\$par["name"])+".";
+
+/*
+"I know "+\$par["base:objective"]+" well, and regularly rely on "+\$par["base:possessive"]+" advice."
+"I think I can rely on "+\$par["base:objective"]+"."
+"I have a positive impression, but that's the extent of my association."
+*/
+
+interaction::question(\$actor: \$actor, \$question: \$question, \$a: "I know "+\$par["base:objective"]+" well, and regularly rely on "+\$par["base:possessive"]+" advice.", \$b: "I think I can rely on "+\$par["base:objective"]+".", \$c: "I have a positive impression, but that's the extent of my association.", \$expire: "Having waited too long for your answer, the scribe leaves.", \$a_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$b_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$c_ob: \$\{Ironclaw:Lib:Favor:Mk2\}, \$a_fun: "friend_high", \$b_fun: "friend_mid", \$c_fun: "friend_low", \$expires: 60*3, \$par: (["target":\$par["target"], "name":\$par["name"], "count":\$par["count"], "favorasked":1]));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:opinion_neutral">
+         X[M] /* gave a favor opinion */
+
+/* neutral about the PC. */
+\$actor."favor:opinion:mapping"[\$par["name"]] = (\{ 0, time() \});
+/* Remove the PC from the list of people to ask about */
+\$actor."favor:opinion:gathered" -= (\{ \$par["target"] \});
+\$actor."favor:opinion:all" += (\{ \$par["target"] \});
+
+EmitTo(\$actor, "The scribe "+oneof("nods", "writes a note", "thanks you", "seems to agree with you", "records the information")+".");
+
+::opinion_given();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:opinion_unknown">
+         X[M] /* gave a favor opinion */
+
+/* doesn't know the PC. Remove the PC from the list of people to ask about */
+\$actor."favor:opinion:gathered" -= (\{ \$par["target"] \});
+
+EmitTo(\$actor, "The scribe nods.");
+
+::opinion_given();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:resetfavorinfo">
+         X[M] mixed *raw_favor;
+mapping favor_info;
+int i;
+
+if(!\$char) error("No character specified.");
+/* have they put in any favor at all? */
+raw_favor = \$char."favor:tracking";
+if(!raw_favor) return ([ ]);
+favor_info = ([ ]);
+/* loop through people they have an opinion about, looking for friends */
+for(i=0;i\<sizeof(raw_favor);i++) \{
+ /* do we have any existing info about this PC? */
+ if(!favor_info[raw_favor[i][0]]) \{
+  favor_info[raw_favor[i][0]] = ([ "rating":0, "positive":(\{\}), "negative":(\{\}) ]);
+ \}
+ if(raw_favor[i][2] == "positive") \{
+  /* positive, increase the count */
+  favor_info[raw_favor[i][0]]["rating"] += 1;
+  favor_info[raw_favor[i][0]]["positive"] += (\{ raw_favor[i][3] \});
+ \} else \{
+  /* negative, decrease the count */
+  favor_info[raw_favor[i][0]]["rating"] -= 1;
+  favor_info[raw_favor[i][0]]["negative"] += (\{ raw_favor[i][3] \});
+ \}
+\}
+\$char."favor:opinions" = favor_info;
+return favor_info;
+      </Core:Property>
+      <Core:Property property="merry:lib:sanitize">
+         X[M] mapping raw_favor;
+int i;
+
+if(!\$char) error("No character specified.");
+
+/* have they put in any favor at all? */
+raw_favor = \$char."favor:opinion:mapping";
+if(!raw_favor \|\| !sizeof(map_indices(raw_favor))) return TRUE;
+
+/* convert the raw favor into object references */
+/* THIS SHOULD ONLY BE TEMPORARY, UNTIL WE'VE UPDATED HOW FAVOR IS RECORDED */
+\$index = map_indices(raw_favor);
+for(i=0;i\<sizeof(\$index);i++) \{
+ if(typeof(\$index[i]) == T_STRING) \{
+  \$tmp = copy(raw_favor[\$index[i]]);
+  \$obj = Obj("Chatters:IC:"+\$index[i][..1]+":"+\$index[i]);
+  raw_favor[\$index[i]] = nil;
+  if(\$obj) \{
+   raw_favor[\$obj] = \$tmp;
+  \} else \{
+   EmitTo(\$az, "COULDN'T CONVERT "+\$index[i]);
+  \}
+ \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1277881248, "tonyd", "P", 1277881268, "tonyd", "P", 1277881706, "tonyd", "P", 1277881713, "tonyd", "P", 1277881723, "tonyd", "P", 1277881761, "tonyd", "P", 1277881778, "tonyd", "P", 1277881783, "tonyd", "P", 1277881837, "tonyd", "P", 1277881862, "tonyd", "P", 1277881879, "tonyd", "P", 1277881931, "tonyd", "P", 1277882000, "tonyd", "P", 1277882181, "tonyd", "P", 1277882264, "tonyd", "P", 1277882314, "tonyd", "P", 1277896378, "tonyd", "P", 1277896510, "tonyd", "P", 1277896714, "tonyd", "P", 1277896745, "tonyd", "P", 1277896915, "tonyd", "P", 1277897107, "tonyd", "P", 1277897255, "tonyd", "P", 1277897305, "tonyd", "P", 1277897405, "tonyd", "P", 1277897449, "tonyd", "P", 1277897470, "tonyd", "P", 1277897506, "tonyd", "P", 1277897556, "tonyd", "P", 1277897715, "tonyd", "P", 1277897738, "tonyd", "P", 1277897755, "tonyd", "P", 1277898098, "tonyd", "P", 1277898113, "tonyd", "P", 1277898731, "tonyd", "P", 1277898941, "tonyd", "P", 1277899103, "tonyd", "P", 1277899254, "tonyd", "P", 1277899352, "tonyd", "P", 1277899385, "tonyd", "P", 1277899575, "tonyd", "P", 1277899598, "tonyd", "P", 1277899647, "tonyd", "P", 1277899660, "tonyd", "P", 1277899672, "tonyd", "P", 1277899770, "tonyd", "P", 1277899805, "tonyd", "P", 1277899832, "tonyd", "P", 1277899847, "tonyd", "P", 1277899855, "tonyd", "P", 1277899909, "tonyd", "P", 1277903439, "tonyd", "P", 1277903869, "tonyd", "P", 1277904154, "tonyd", "P", 1277904935, "tonyd", "P", 1277904940, "tonyd", "P", 1277905025, "tonyd", "P", 1277905090, "tonyd", "P", 1277905139, "tonyd", "P", 1277905199, "tonyd", "P", 1277905267, "tonyd", "P", 1277905296, "tonyd", "P", 1277905582, "tonyd", "P", 1277905647, "tonyd", "P", 1278235861, "tonyd", "P", 1278235977, "tonyd", "P", 1278236039, "tonyd", "P", 1278236120, "tonyd", "P", 1278236177, "tonyd", "P", 1278236274, "tonyd", "P", 1278236344, "tonyd", "P", 1278236371, "tonyd", "P", 1278236841, "tonyd", "P", 1278236920, "tonyd", "P", 1278237032, "tonyd", "P", 1278237143, "tonyd", "P", 1278237230, "tonyd", "P", 1278237303, "tonyd", "P", 1278237387, "tonyd", "P", 1278237653, "tonyd", "P", 1278237788, "tonyd", "P", 1278237858, "tonyd", "P", 1278238382, "tonyd", "P", 1278238450, "tonyd", "P", 1278238626, "tonyd", "P", 1278239292, "tonyd", "P", 1278239305, "tonyd", "P", 1278239421, "tonyd", "P", 1278239472, "tonyd", "P", 1278239581, "tonyd", "P", 1278239605, "tonyd", "P", 1278239836, "tonyd", "P", 1278241616, "tonyd", "P", 1278241646, "tonyd", "P", 1278241674, "tonyd", "P", 1278241774, "tonyd", "P", 1278241990, "tonyd", "P", 1278242005, "tonyd", "P", 1278242034, "tonyd", "P", 1278242388, "tonyd", "P", 1278242422, "tonyd", "P", 1278242513, "tonyd", "P", 1278242563, "tonyd", "P", 1278242603, "tonyd", "P", 1278242631, "tonyd", "P", 1278242644, "tonyd", "P", 1278242739, "tonyd", "P", 1278243276, "tonyd", "P", 1278243343, "tonyd", "P", 1291867597, "tonyd", "P", 1291867637, "tonyd", "P", 1291867673, "tonyd", "P", 1291867683, "tonyd", "P", 1291867692, "tonyd", "P", 1291867798, "tonyd", "P", 1291868144, "tonyd", "P", 1291868247, "tonyd", "P", 1291868303, "tonyd", "P", 1291868390, "tonyd", "P", 1291868508, "tonyd", "P", 1291868603, "tonyd", "P", 1291868660, "tonyd", "P", 1291868933, "tonyd", "P", 1291868958, "tonyd", "P", 1291869082, "tonyd", "P", 1291869114, "tonyd", "P", 1291869307, "tonyd", "P", 1291869437, "tonyd", "P", 1291869461, "tonyd", "P", 1291869473, "tonyd", "P", 1291869544, "tonyd", "P", 1291869623, "tonyd", "P", 1291869640, "tonyd", "P", 1291869697, "tonyd", "P", 1291869709, "tonyd", "P", 1291870013, "tonyd", "P", 1291870018, "tonyd", "P", 1291881411, "tonyd", "P", 1292486131, "tonyd", "P", 1292486267, "tonyd", "P", 1292486357, "tonyd", "P", 1292486392, "tonyd", "P", 1292486425, "tonyd", "P", 1292487692, "tonyd", "P", 1292487705, "tonyd", "P", 1292487898, "tonyd", "P", 1292487904, "tonyd", "P", 1292487963, "tonyd", "P", 1292487976, "tonyd", "P", 1292488057, "tonyd", "P", 1292488107, "tonyd", "P", 1292488142, "tonyd", "P", 1292488174, "tonyd", "P", 1292488186, "tonyd", "P", 1292488240, "tonyd", "P", 1292488320, "tonyd", "P", 1292488338, "tonyd", "P", 1292488347, "tonyd", "P", 1292488398, "tonyd", "P", 1292488454, "tonyd", "P", 1292488609, "tonyd", "P", 1292488677, "tonyd", "P", 1292542878, "tonyd", "P", 1292542897, "tonyd", "P", 1292560324, "tonyd", "P", 1292560368, "tonyd", "P", 1292560638, "tonyd", "P", 1292560651, "tonyd", "P", 1292560777, "tonyd", "P", 1292560900, "tonyd", "P", 1292560963, "tonyd", "P", 1292560997, "tonyd", "P", 1292561034, "tonyd", "P", 1292561064, "tonyd", "P", 1292561096, "tonyd", "P", 1292561117, "tonyd", "P", 1292561186, "tonyd", "P", 1292561375, "tonyd", "P", 1292561495, "tonyd", "P", 1292561510, "tonyd", "P", 1292561588, "tonyd", "P", 1292561729, "tonyd", "P", 1292561805, "tonyd", "P", 1292561987, "tonyd", "P", 1292562092, "tonyd", "P", 1292562113, "tonyd", "P", 1292562388, "tonyd", "P", 1292562537, "tonyd", "P", 1292563132, "tonyd", "P", 1292563311, "tonyd", "P", 1292563598, "tonyd", "P", 1292563714, "tonyd", "P", 1292568953, "tonyd", "P", 1293687363, "tonyd", "P", 1294719219, "tonyd", "P", 1294719487, "tonyd", "P", 1295226966, "tonyd", "E", 1295227103, "tonyd", "P", 1295227130, "tonyd", "P", 1295227186, "tonyd", "P", 1295227364, "tonyd", "P", 1295227706, "tonyd", "P", 1295228051, "tonyd", "P", 1295228067, "tonyd", "P", 1295228180, "tonyd", "P", 1295228218, "tonyd", "P", 1295228278, "tonyd", "P", 1295228411, "tonyd", "P", 1295228442, "tonyd", "P", 1295228651, "tonyd", "P", 1295228684, "tonyd", "P", 1295228700, "tonyd", "P", 1295228928, "tonyd", "P", 1295229994, "tonyd", "P", 1295236374, "tonyd", "P", 1295236449, "tonyd", "P", 1295236538, "tonyd", "P", 1297127637, "tonyd", "P", 1297127719, "tonyd", "P", 1297128017, "tonyd", "P", 1297128125, "tonyd", "P", 1297128372, "tonyd", "P", 1297128595, "tonyd", "P", 1297128663, "tonyd", "P", 1297128762, "tonyd", "P", 1297128794, "tonyd", "P", 1297128836, "tonyd", "P", 1297129407, "tonyd", "P", 1297129497, "tonyd", "P", 1297129656, "tonyd", "P", 1297129677, "tonyd", "P", 1297129714, "tonyd", "P", 1297129777, "tonyd", "P", 1297129809, "tonyd", "P", 1297129841, "tonyd", "P", 1297129865, "tonyd", "P", 1297129875, "tonyd", "P", 1297130220, "tonyd", "P", 1304818172, "tunk_bodin", "X" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

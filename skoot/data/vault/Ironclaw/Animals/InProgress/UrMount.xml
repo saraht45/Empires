@@ -1,0 +1,271 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="20" maxweight="200"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="destrier"/>
+            <Base:SName sname="lizard"/>
+            <Base:SName sname="reptile"/>
+            <Base:SName sname="steed"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="lizards"/>
+            <Base:PName pname="reptiles"/>
+            <Base:PName pname="steeds"/>
+            <Base:PName pname="destriers"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="black"/>
+          <Base:Adjective adjective="mounted"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:build) $(this.trait:color) destrier
+          </Base:Description>
+          <Base:Description type="examine">
+             A massive lizard with $(this.trait:scaletype) $(this.trait:color) scales covering the body. This creature {? | $(this.trait:build) | is $(this.trait:build), and} looks like it could swallow you whole.
+          </Base:Description>
+          <Base:Description type="look">
+             A massive lizard with smooth scales covering the body.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property=" merry:inherit:react:mount-dob">
+         \<Ironclaw:Lib:NIP:mount\>
+      </Core:Property>
+      <Core:Property property="export:mount:gearaccepted">
+         ([ \<Allegory:Props:Mounts:SaddleBags\>:2, \<Allegory:Props:Mounts:Bridle\>:1, \<Allegory:Props:Mounts:Saddle\>:1, \<Allegory:Props:Mounts:Harness\>:1 ])
+      </Core:Property>
+      <Core:Property property="export:nip:trait:mounting:control-detail">
+         "reins"
+      </Core:Property>
+      <Core:Property property="export:nip:trait:mounting:mount-stable-type">
+         "stable"
+      </Core:Property>
+      <Core:Property property="export:nip:trait:mounting:mount-stance">
+         5
+      </Core:Property>
+      <Core:Property property="export:nip:trait:mounting:mount-type">
+         "riding a mount"
+      </Core:Property>
+      <Core:Property property="export:nip:trait:mounting:rider-capacity">
+         1
+      </Core:Property>
+      <Core:Property property="export:nip:trait:mounting:rider-gait">
+         "rides"
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "mount"
+      </Core:Property>
+      <Core:Property property="merry:inherit:lib:start">
+         \<Ironclaw:Lib:Stables\>
+      </Core:Property>
+      <Core:Property property="merry:inherit:react:dismount-dob">
+         \<Ironclaw:Lib:NIP:mount\>
+      </Core:Property>
+      <Core:Property property="merry:inherit:react:mount-dob">
+         \<Ironclaw:Lib:NIP:mount\>
+      </Core:Property>
+      <Core:Property property="merry:inherit:react:return-dob%stabling">
+         \<Ironclaw:Lib:Stables\>
+      </Core:Property>
+      <Core:Property property="merry:lib:inventory_check">
+         X[M] /* \$what = thing we are looking for */
+
+int i, counter;
+mixed* inventory;
+mixed item;
+
+inventory = \$this."base:inventory";
+
+counter = 0;
+for(i = 0; i \< sizeof(inventory); i++) \{
+    item = inventory[i];
+    if(item."base:urparent" == \$what) counter++;
+\}
+
+return counter;
+      </Core:Property>
+      <Core:Property property="merry:lib:take">
+         X[M] EmitTo(\$actor, TAG("You cannot pick up " + Describe(\$this) + ".", "social:first"));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:attach-iob">
+         X[M] \$acceptedGearMap = \$this."mount:gearaccepted";
+\$acceptedGear = map_indices(\$acceptedGearMap);
+
+\$mount = NRefOb(\$iob[0]);
+
+if(!\$dob \|\| !sizeof(\$dob)) \{
+    EmitTo(\$actor, "What did you want to equip " + Describe(\$this) + " with?");
+    return FALSE;
+\}
+
+if(\$mount.owner != \$actor) \{
+    EmitTo(\$actor, Describe(\$this) + " does not belong to you.");
+    return FALSE;
+\}
+
+\$gear = \$dob;
+\$wearing = (\{ \});
+\$notwearing = (\{ \});
+\$overstock = (\{ \});
+\$notholding = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$gear); \$i++) \{
+    \$item = NRefOb(\$dob[\$i]);
+
+    if(\$item."base:environment" == \$actor) \{
+        /* Is the mount already equipped with something of this type? */
+        /* If so, check how many of this type the mount is allowed to wear */
+        \$equipped = ::inventory_check(\$what: \$item."base:urparent");
+        if(member(\$item."base:urparent", \$acceptedGear)) \{
+            if(\$equipped \< \$acceptedGearMap[\$item."base:urparent"]) \{
+                \$wearing += (\{ \$item \});
+                \$item."base:environment" = \$this;
+            \} else \{
+                \$overstock \|= (\{ Str(\$item."trait:objecttype") \});
+            \}
+        \} else \{
+            \$notwearing += (\{ \$item \});
+        \}
+    \} else \{
+        \$notholding += (\{ \$item \});
+    \}
+\}
+
+if(sizeof(\$notholding)) \{
+    EmitTo(\$actor, "You need to be holding " + Describe(\$notholding) + " first.");
+    return FALSE;
+\}
+
+if(sizeof(\$overstock)) \{
+    if(sizeof(\$overstock) == 1) \$str = \$overstock[0];
+    if(sizeof(\$overstock) == 2) \$str = \$overstock[0] + " or " + \$overstock[1];
+    if(sizeof(\$overstock) == 3) \$str = \$overstock[0] + ", " + \$overstock[1] + ", or " + \$overstock[2];
+    EmitTo(\$actor, Describe(\$this) + " cannot wear another " + \$str + ".");
+\}
+
+if(sizeof(\$notwearing)) \{
+    EmitTo(\$actor, Describe(\$this) + " cannot be equipped with " + Describe(\$notwearing, nil, \$actor) + ".");
+\}
+
+if(sizeof(\$wearing)) \{
+    EmitTo(\$actor, TAG("You attach " + Describe(\$wearing) + " to " + Describe(\$this) + ".", "social:first"));
+    EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " attaches " + Describe(\$wearing) + " to " + Describe(\$this) + ".", "social:third"), \$actor);
+
+    Act(\$this, "wear", \$articles: \$wearing);
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:catch-what">
+         X[M] return ::take();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:retrieve-what">
+         X[M] return ::take();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:snatch-dob">
+         X[M] return ::take();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] return ::take();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take-from">
+         X[M] \$mount = NRefOb(\$target);
+\$riders = \$mount."npc:mounting";
+
+if(\$mount.owner != \$actor) \{
+    EmitTo(\$actor, TAG(Describe(\$mount) + " does not belong to you.", "social:first"));
+    return FALSE;
+\}
+
+if(!\$what \|\| !sizeof(\$what)) \{
+    EmitTo(\$actor, TAG("What did you want to take from " + Describe(\$this) + "?", "social:first"));
+    return FALSE;
+\}
+
+if(\$mount."npc:mounted" \&\& sizeof(\$mount."npc:mounted")) \{
+    EmitTo(\$actor, TAG("You cannot take anything from " + Describe(\$this) + " while it is being mounted.", "social:first"));
+    return FALSE;
+\}
+
+for(\$i = 0; \$i \< sizeof(\$what); \$i++) \{
+    Act(\$this, "unwear", \$articles: (\{ NRefOb(\$what[\$i]) \}));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness-post:enter-into">
+         X[M] /* We notice someone trying to leave */
+/* Are we attached to someone's reins? */
+
+if(!\$this.reins) return TRUE;
+
+/* We are */
+\$reins = \$this.reins;
+
+/* Is the person leaving holding our reins? */
+if(\$reins."base:environment" != \$actor) return TRUE;
+
+/* They are */
+/* Is that person riding us? */
+if(\$actor."npc:mounting" == \$this) return TRUE;
+
+/* They aren't so let's follow them. */
+/* Let's follow (give appropriate emits) */
+EmitIn(\$this."base:environment", TAG(capitalize(Describe(\$this)) + " trails out after " + Describe(\$actor) + ".", "social:third"));
+EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " trails in after you.", "social:first"));
+\$this."base:environment" = \$actor."base:environment";
+\$actor."base:proximates" \|= (\{ \$this \});
+\$this."base:proximity" = NewNRef(\$actor, "default");
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " trails in after " + Describe(\$actor) + ".", "social:third"), \$actor);
+
+mount::move_riders(\$actor: \$actor, \$mount: \$this);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1509926019, "jominey", "E", 1510010070, "jominey", "E", 1510010102, "jominey", "E", 1510010119, "jominey", "E", 1510010425, "jominey", "E", 1510012357, "jominey", "E", 1510012394, "jominey", "E", 1510412990, "jominey", "E", 1510413275, "jominey", "E", 1510413297, "jominey", "E", 1510414018, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,200 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:clean_vandalism">
+         X[M] /* hire a work crew to clean up this area */  
+if(!\$actor) return FALSE;  
+if(!\$par["location"]) return FALSE;  
+\$location = \$par["location"];  
+if(!\$location.vandalized) return FALSE;  
+if(\$location."vandalized:workcrew") return FALSE;  
+  
+/* Can't clean up more than one location a day */  
+if(Int(\$actor."vandal:cleanup")+60*60*16 \> time()) \{  
+  EmitTo(\$actor, "You've already got a work crew cleaing up the city. Wait until they're done, before assigning them another location.");  
+  return FALSE;  
+\}  
+  
+/* Charge for the workers */  
+\$actor."trait:money" = Int(\$actor."trait:money")-2400;  
+  
+/* What workers do they get? */  
+if(Int(\$actor."skill:career:constable") \> 5  
+\|\| Int(\$actor."skill:career:enforcer") \> 5  
+\|\| Int(\$actor."skill:career:slaver") \> 5) \{  
+  \$workcrew = "a line of criminals and slaves";  
+\} else if(Int(\$actor."skill:career:buccaneer") \> 5  
+       \|\| Int(\$actor."skill:career:fisherman") \> 5  
+       \|\| Int(\$actor."skill:career:sailor") \> 5  
+       \|\| Int(\$actor."skill:career:pirate") \> 5) \{  
+  \$workcrew = "a group of dockworkers";  
+\} else if(Int(\$actor."skill:career:dilettant") \> 5  
+       \|\| Int(\$actor."rank:rank") \> 8) \{  
+  \$workcrew = "a gathering of peasants";  
+\} else if(Int(\$actor."skill:career:blacksmith") \> 5  
+       \|\| Int(\$actor."skill:career:carpenter") \> 5  
+       \|\| Int(\$actor."skill:career:stonemason") \> 5  
+       \|\| Int(\$actor."skill:career:tailor") \> 5) \{  
+  \$workcrew = "a gathering of apprentice craftsmen";  
+\} else if(Int(\$actor."skill:career:bodyguard") \> 5  
+       \|\| Int(\$actor."skill:career:brawler") \> 5  
+       \|\| Int(\$actor."skill:career:housecarl") \> 5  
+       \|\| Int(\$actor."skill:career:thug") \> 5  
+       \|\| Int(\$actor."skill:career:mercenary") \> 5  
+       \|\| Int(\$actor."skill:career:pickpocket") \> 5) \{  
+  \$workcrew = "a group of low-paid peasants in need of work";  
+\} else \{  
+  \$workcrew = "a group of workers";  
+\}  
+  
+EmitTo(\$actor, "You arrange for "+\$workcrew+" to tidy up here.");  
+  
+\$actor."vandal:cleanup" = time();  
+\$location."vandalized:workcrew" = \$workcrew;  
+\$delay(60*60*16, TRUE, "1e4c");  
+\$location."vandalized:workcrew" = nil;  
+\$location.vandalized = nil;  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_vandalism">
+         X[M] /* Allows the PC to start vandalizing a room */  
+  
+if(!\$actor."base:environment"."vandalized:allowed") \{  
+  EmitTo(\$actor, "This doesn't look like a good place to vandalize. Maybe try out on the streets in a bad part of town?");  
+  return FALSE;  
+\} else if (\$actor."base:environment".vandalized) \{  
+  EmitTo(\$actor, "It looks like someone has already vandalized this place.");  
+  return FALSE;  
+\}  
+  
+if(Int(\$actor."vandal:time")+60*60*16 \> time()) \{  
+  EmitTo(\$actor, "You'd better not do that again so soon after your last destructive rampage.");  
+  return FALSE;  
+\}  
+  
+if(ironclaw::busy_check(\$character: \$actor)) \{  
+  /* Are they just trying to emote vandalizing this place? */  
+  if(ironclaw::busy_check(\$character: \$actor) == "vandalizing "+Describe(\$actor."base:environment")) \{  
+    EmitTo(\$actor, "You are already vandalizing "+Describe(\$actor."base:environment")+".");  
+    EmitTo(\$actor, "[OOC: If you want to stop, type @stop]");  
+    return FALSE;  
+  \};  
+  /* Nope. Tell them they can't, because they are currently busy. */  
+  EmitTo(\$actor, "You cannot do that while you are "+ironclaw::busy_check(\$character: \$actor)+".");  
+  return FALSE;  
+\}  
+  
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "vandalizing "+Describe(\$actor."base:environment"));  
+\$environment = \$actor."base:environment";  
+  
+/* Send emits about busting up the place. A random number of emits over time */  
+\$emits_count = random(5)+5;  
+for(\$i=0;\$i\<\$emits_count;\$i++) \{  
+  \$emit = ::emit_vandalism(\$character: \$actor);  
+  EmitTo(\$actor, \$emit[0]);  
+  EmitIn(\$actor."base:environment", \$emit[1], \$actor);  
+  
+  \$delay(random(30)+10, FALSE, "684c");  
+  /* If they have used @stop to stop vandalizing stuff */  
+  if(\$actor."busy:id" != \$id) return FALSE;  
+  /* Or moved room */  
+  if(\$environment != \$actor."base:environment") \{  
+    ironclaw::busy_stop(\$character: \$actor, \$id: \$id);  
+    return FALSE;  
+  \}  
+\}  
+  
+if(\$item \&\& \$item."base:environment" == \$actor) \{  
+  EmitTo(\$actor, "You throw "+Describe(\$item, nil, \$actor)+" into the wreckage, completing your vandalism.");  
+  EmitTo(\$actor, Describe(\$actor)+" throws "+Describe(\$item, \$actor)+" into the wreckage, completing "+\$actor."base:possessive"+" vandalism.");  
+  if(\$environment.vandalized) return FALSE;  
+  \$environment.vandalized = TRUE;  
+  Slay(\$item);  
+  /* create an item that will emit the vandalism */  
+  \$van_item = Spawn(\$\{Ironclaw:Lib:Skills:Vandalizing-object\});  
+  \$van_item."base:environment" = \$environment;  
+  \$actor."vandal:count" = Int(\$actor."vandal:count")+1;  
+  \$actor."vandal:time" = time();  
+\} else if(\$item) \{  
+  EmitTo(\$actor, "You are no longer holding "+Describe(\$item)+", so you can't complete your vandalism.");  
+\} else \{  
+  EmitTo(\$actor, "You tire yourself out, and stop smashing the area.");  
+\}  
+  
+ironclaw::busy_stop(\$character: \$actor, \$id: \$id);  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:emit_vandalism">
+         X[M] /* Emits as the PC starts to vandalize */  
+if(!\$character) \$character = \$actor;  
+switch(random(8)) \{  
+  case 7:  
+    return (\{ "You throw a glass against a wall, sending dangerous shards flying everywhere.", Describe(\$character) + " throws a glass against the wall, sending dangerous shards flying everywhere." \});  
+    break;  
+  case 6:  
+    \$tmp = oneof("him", "her");  
+    return (\{ "Growling violently, you rush at an innocent bystander, causing " + \$tmp + " to run away screaming.", "Growling violently, " + Describe(\$character) + " rushes at an innocent bystander, causing " + \$tmp + " to run away screaming." \});  
+    break;  
+  case 5:  
+    return (\{ "You clang a metal bar repeatedly against a wall, assaulting those around you with an obnoxious racket.", Describe(\$character) + " clangs a metal bar repeatedly against a wall, assaulting you with an obnoxious racket." \});  
+    break;  
+  case 4:  
+    return (\{ "You march through the area, igniting nearby piles of trash.", Describe(\$character) + " marches through the area, igniting nearby piles of trash." \});  
+    break;  
+  case 3:  
+    return (\{ "You scatter trash around with a menacing howl.", Describe(\$character) + " scatters trash around with a menacing howl." \});  
+    break;  
+  case 2:  
+    return (\{ "You kick in the window of a nearby building.", Describe(\$character)+" kicks in the windows of a nearby building." \});  
+    break;  
+  case 1:  
+    return (\{ "You rip the shutter off a nearby window.", Describe(\$character)+" rips the shutter off a nearby window." \});  
+    break;  
+  default:  
+    return (\{ "You expose yourself, and urinate on "+Describe(\$character."base:environment")+".", Describe(\$character)+" exposes "+\$character."base:objective"+"self and urinates on "+Describe(\$character."base:environment")+"." \});  
+    break;  
+\}  
+return \$emits;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_vandalism">
+         X[M] /* Display any vandalism */  
+\$delay(0.01, TRUE, "86c9");  
+if(\$location.vandalized \&\& !\$location."vandalized:hide") \{  
+  /* This area has been vandalized */  
+  EmitTo(\$actor, "The buildings along "+Describe(\$location)+" have been "+oneof("severely", "seriously", "badly")+" damaged. Windows have been shattered, and shutters have been ripped off their hinges. Many of the buildings show fire damage.");  
+  if(\$location."vandalized:workcrew")  
+    EmitTo(\$actor, capitalize(\$location."vandalized:workcrew")+" is cleaning up, and fixing much of the damage.");  
+\} else if(\$vand_obj) \{  
+  /* We have an object to emit the vandalizing. We no longer need it */  
+  Slay(\$vand_obj);  
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:clean-dob%vandals">
+         X[M] /* Allows the PC to clean up a vandalized room */  
+if(!\$this.vandalized) return TRUE;  
+  
+if(\$this."vandalized:workcrew") \{  
+  EmitTo(\$actor, "You don't need to clean "+Describe(\$this)+" - "+\$this."vandalized:workcrew"+" is already doing it.");  
+  return FALSE;  
+\}  
+  
+EmitTo(\$actor, "There is too much mess here to clean by yourself.");  
+if(\$actor."trait:money" \>= 2400) \{  
+  interaction::question(\$actor: \$actor, \$question: "Do you want to hire a work crew? It will cost an aureal.", \$expires: 20, \$env: "TRUE", \$yes_ob: \$\{Ironclaw:Lib:Skills:Vandalizing\}, \$yes_fun: "clean_vandalism", \$no: "You decide not to spend your money.", \$expire: "You decide not to spend your money right at this moment.", \$par: ([ "location":\$this ]));  
+\} else \{  
+  EmitTo(\$actor, "If you had an aureal in the bank, you could hire a work crew to fix up "+Describe(\$this)+".");  
+\}  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1327642272, "tonyd", "E", 1327642336, "tonyd", "E", 1327642402, "tonyd", "E", 1327642426, "tonyd", "E", 1327642473, "tonyd", "E", 1327642511, "tonyd", "E", 1327642521, "tonyd", "E", 1327642565, "tonyd", "E", 1327642604, "tonyd", "E", 1327642655, "tonyd", "P", 1327642675, "tonyd", "P", 1327642742, "tonyd", "P", 1327642767, "tonyd", "P", 1327642791, "tonyd", "P", 1327643923, "tonyd", "P", 1327643941, "tonyd", "P", 1327644023, "tonyd", "P", 1327644740, "tonyd", "P", 1327644756, "tonyd", "P", 1327644950, "tonyd", "P", 1327645191, "tonyd", "P", 1327645491, "tonyd", "P", 1327645632, "tonyd", "P", 1327645692, "tonyd", "P", 1327645725, "tonyd", "P", 1327645879, "tonyd", "P", 1327645947, "tonyd", "P", 1327646019, "tonyd", "P", 1327646219, "tonyd", "P", 1327647804, "jominey", "E", 1327648110, "jominey", "E", 1327648334, "jominey", "E", 1327648343, "tonyd", "P", 1327648382, "tonyd", "P", 1327648665, "jominey", "E", 1327649025, "jominey", "E", 1327651130, "jominey", "E", 1327724069, "tonyd", "P", 1327726467, "tonyd", "P", 1327726673, "tonyd", "P", 1327726687, "tonyd", "P", 1327726693, "tonyd", "P", 1327726700, "tonyd", "P", 1327726748, "tonyd", "P", 1327726802, "tonyd", "P", 1327726878, "tonyd", "P", 1327727009, "tonyd", "P", 1327727037, "tonyd", "P", 1327727756, "tonyd", "P", 1327727771, "tonyd", "P", 1327727784, "tonyd", "P", 1327727813, "tonyd", "P", 1327727826, "tonyd", "P", 1327727920, "tonyd", "P", 1327728045, "tonyd", "P", 1327728278, "tonyd", "P", 1327728430, "tonyd", "P", 1327728443, "tonyd", "P", 1327728653, "tonyd", "P", 1327728686, "tonyd", "P", 1327728721, "tonyd", "P", 1327728735, "tonyd", "P", 1327728762, "tonyd", "P", 1327728778, "tonyd", "P", 1327728843, "tonyd", "P", 1327728855, "tonyd", "P", 1327728889, "tonyd", "P", 1327728929, "tonyd", "P", 1327729543, "tonyd", "P", 1327729606, "tonyd", "P", 1327729682, "tonyd", "P", 1327729760, "tonyd", "P", 1327729769, "tonyd", "P", 1327729951, "tonyd", "P", 1327730001, "tonyd", "P", 1327730029, "tonyd", "P", 1327730047, "tonyd", "P", 1327730397, "tonyd", "P", 1327731420, "tonyd", "P", 1327732273, "tonyd", "P", 1327732444, "tonyd", "P", 1327732491, "tonyd", "P", 1327732671, "tonyd", "P", 1327732691, "tonyd", "P", 1327732752, "tonyd", "P", 1327732771, "tonyd", "P", 1327733730, "tonyd", "P", 1328158724, "tonyd", "E", 1328158838, "tonyd", "E", 1328161407, "tonyd", "E", 1328161421, "tonyd", "E", 1366568343, "pp74", "X", 1367157126, "pp74", "X" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

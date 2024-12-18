@@ -1,0 +1,119 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:emptytrash">
+         X[M] /* empty the trash cans */
+int i;
+
+/* empty at a random point after the hour */
+/*\$delay(random(60*60), TRUE, "2a0b");*/
+
+/* gather a list of trash cans */
+\$which = \$\{Allegory:Props:Furniture:Outdoor:TrashReceptacle\};
+while (\$ob = common::query_objects()) \{
+    \$things = \$ob."base:inventory";
+
+    for(\$counter = 0; \$counter \< sizeof(\$things); \$counter++) \{
+        \$delay(0.05, TRUE, "6023");
+
+        if(!(\$things[\$counter]."base:volition") \&\& !(\$things[\$counter]."base:integration") \&\& !(\$things[\$counter]."base:immobile") \&\& !(\$things[\$counter]."trait:nottrash")) \{
+            if(\$things[\$counter]."trait:trash" \|\| \$things[\$counter]."base:edible" \|\| \$things[\$counter]."base:potable") \{
+                Slay(\$things[\$counter]);
+            \} else \{
+                \$things[\$counter]."base:environment" = \$\{[IronClaw:Props:Furniture:Container:Crates:Large]#102810\};
+                \$things[\$counter]."base:stancestring" = "lying";
+            \}
+        \}
+    \}
+
+\}
+return TRUE;
+
+/* now empty the cans */
+
+/* only empty craftable raw materials if they're running out */
+\$craftable = (\{ "IronClaw:Props:Crafting:Lumber:", "IronClaw:Props:Crafting:Fabrics:" \});
+
+/* loop through each can */
+EmitTo(\$\{Chatters:AE:hi:hilarion\}, "EMPTY TRASH SCRIPT FOR: " + dump_value(\$canlist));
+for(\$cans_i = 0; \$cans_i\<sizeof(\$canlist);\$cans_i++) \{
+  \$things = \$canlist[\$cans_i]."base:inventory";
+  for(\$counter = 0; \$counter \< sizeof(\$things); \$counter++) \{
+    EmitTo(\$\{Chatters:AE:hi:hilarion\}, "CAN: " + dump_value(\$canlist[\$cans_i]));
+    \$delay(0.05, TRUE, "f3cd");
+    if(!(\$things[\$counter]."base:volition") \&\& !(\$things[\$counter]."base:integration") \&\& !(\$things[\$counter]."base:immobile") \&\& !(\$things[\$counter]."trait:nottrash")) \{
+      if(\$things[\$counter]."trait:trash") \{
+        Slay(\$things[\$counter]);
+      \} else \{
+        /* if this is an empty craftable item or food */
+        for(i=0;i\<sizeof(\$craftable)\&\&\$things[\$counter];i++) \{
+          if(\$things[\$counter] \&\& contains(name(\$things[\$counter]), \$craftable[i])) \{
+            if(!\$things[\$counter]."trait:quantity" \|\| \$things[\$counter]."trait:quantity" \< 30)
+              Slay(\$things[\$counter]);
+          \}
+        \}
+        if(\$things[\$counter]) \{
+          \$things[\$counter]."base:environment" = \$\{[IronClaw:Props:Furniture:Container:Crates:Large]#102810\};
+          \$things[\$counter]."base:stancestring" = "lying";
+        \}
+      \}
+    \}
+  \}
+  /* add stink to this can */
+  \$canlist[\$cans_i]."smell:level" = nil;
+
+  /*
+  if(!\$canlist[\$cans_i]."smell:level") \{
+    \$canlist[\$cans_i]."smell:level" = 1;
+  \} else \{
+    if(!random(3))
+      \$canlist[\$cans_i]."smell:level"++;
+  \}
+  if(!\$canlist[\$cans_i]."trait:smells") \{
+    \$canlist[\$cans_i]."trait:smells" = ([ "garbage":(\{ 1, time() \}) ]);
+  \} else if(\$canlist[\$cans_i]."trait:smells"["garbage"]) \{
+    \$canlist[\$cans_i]."trait:smells"["garbage"][0] = \$canlist[\$cans_i]."smell:level";
+  \} else \{
+    \$canlist[\$cans_i]."trait:smells"["garbage"] = (\{ 1, time() \});
+  \}
+  */
+\}
+
+return TRUE;;
+      </Core:Property>
+      <Core:Property property="merry:lib:gather_canlist">
+         X[M] /* gather a list of trash cans in the game */
+object *canlist;
+
+/* do we already have a list? */
+if(\$this.canlist \&\& \$this.cantime \&\& \$this.cantime \< time())
+  return \$this.canlist;
+
+/* starting trash cans */
+canlist = (\{ \$\{Allegory:Props:Furniture:Outdoor:TrashReceptacle\} \});
+
+/* loop through, adding child and sibling cans */
+for(\$i=0;\$i\<sizeof(canlist);\$i++) \{
+  /* add child objects */
+  if(canlist[\$i]."core:ur:firstchild")
+    canlist \|= (\{ Obj(canlist[\$i]."core:ur:firstchild") \});
+  /* add sibling objects */
+  if(canlist[\$i]."core:ur:sibling:next")
+    canlist \|= (\{ Obj(canlist[\$i]."core:ur:sibling:next") \});
+\}
+
+/* save these values, so we don't need to check for trash cans every hour */
+canlist -= (\{ nil \});
+\$this.cantime = time()+60*60*25;
+\$this.canlist = canlist;
+
+return canlist;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1179022060, "tonyd", "E", 1179022282, "tonyd", "P", 1179022302, "tonyd", "P", 1179022321, "tonyd", "P", 1179022375, "tonyd", "P", 1179022481, "tonyd", "P", 1179022636, "tonyd", "P", 1179022680, "tonyd", "P", 1179022715, "tonyd", "P", 1179022730, "tonyd", "P", 1179022760, "tonyd", "P", 1179022820, "tonyd", "P", 1179022836, "tonyd", "P", 1179022855, "tonyd", "P", 1179022891, "tonyd", "P", 1179022911, "tonyd", "P", 1179023071, "tonyd", "P", 1179023079, "tonyd", "P", 1179023257, "tonyd", "P", 1179023329, "tonyd", "P", 1179023498, "tonyd", "P", 1179023574, "tonyd", "P", 1179023618, "tonyd", "P", 1179023638, "tonyd", "P", 1179023664, "tonyd", "P", 1179023886, "tonyd", "P", 1179024008, "tonyd", "P", 1179024167, "tonyd", "P", 1179024185, "tonyd", "P", 1179024210, "tonyd", "P", 1179024231, "tonyd", "P", 1179024260, "tonyd", "P", 1179024315, "tonyd", "P", 1179024484, "tonyd", "R", 1179027351, "tonyd", "P", 1179027510, "tonyd", "P", 1179027644, "tonyd", "P", 1179027679, "tonyd", "P", 1179042254, "tonyd", "P", 1179042275, "tonyd", "P", 1179042331, "tonyd", "P", 1179042452, "tonyd", "P", 1179063577, "tonyd", "P", 1179063588, "tonyd", "P", 1179063617, "tonyd", "P", 1179063660, "tonyd", "P", 1179063669, "tonyd", "P", 1179063695, "tonyd", "P", 1179063724, "tonyd", "P", 1179064020, "tonyd", "P", 1179064059, "tonyd", "P", 1179064433, "tonyd", "P", 1179064477, "tonyd", "P", 1197275547, "tonyd", "E", 1575174865, "jominey", "P", 1575177653, "jominey", "P", 1575177692, "jominey", "P", 1584995229, "jominey", "E", 1592064236, "jominey", "E", 1592064268, "jominey", "E", 1592064334, "jominey", "E", 1592065300, "jominey", "E", 1592065717, "jominey", "E", 1592065848, "jominey", "E", 1592072532, "jominey", "R", 1592072544, "jominey", "E", 1643730007, "sendnoodlez", "E", 1643742059, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

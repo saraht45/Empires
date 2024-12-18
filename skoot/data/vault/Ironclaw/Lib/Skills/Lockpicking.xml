@@ -1,0 +1,390 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-post:approach%lockpick">
+         X[M] Call(\$actor, "lockpick:abort");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:leave%lockpick">
+         X[M] Call(\$actor, "lockpick:abort");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:linkdie%lockpick">
+         X[M] if (!\$this) \{ 
+    return nil; 
+\}
+
+Call(\$actor, "lockpick:dc_timer");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:place%lockpick">
+         X[M] int i;
+if(!\$what) \{
+    return TRUE;
+\}
+
+if(!sizeof(\$what)) \{
+    return TRUE;
+\}
+
+for(i = 0; i \< sizeof(\$what); i++) \{
+    if(\$actor."lockpick:pick" \&\& (NRefOb(\$what[i]) == \$actor."lockpick:pick")) \{
+        EmitTo(\$actor, "Oops, you dropped your lockpick tool and have to start over.");
+        Call(\$actor, "lockpick:end", \$cancel: 1);
+        return TRUE;
+    \}
+    if(\$actor."lockpick:lock" \&\& (NRefOb(\$what[i]) == NRefOb(\$actor."lockpick:lock"))) \{
+        EmitTo(\$actor, "Oops, you dropped what you were working on and have to start over.");
+        Call(\$actor, "lockpick:end", \$cancel: 1);
+        return TRUE;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:quit%lockpick">
+         X[M] if (!\$this) \{ 
+    return nil; 
+\}
+
+Call(\$actor, "lockpick:dc_timer");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:zthrow%lockpick">
+         X[M] int i;
+if(!\$what) \{
+    return TRUE;
+\}
+
+if(!sizeof(\$what)) \{
+    return TRUE;
+\}
+
+for(i = 0; i \< sizeof(\$what); i++) \{
+    if(\$actor."lockpick:pick" \&\& (NRefOb(\$what[i]) == \$actor."lockpick:pick")) \{
+        EmitTo(\$actor, "Oops, you dropped your lockpick tool and have to start over.");
+        Call(\$actor, "lockpick:end", \$cancel: 1);
+        return TRUE;
+    \}
+    if(\$actor."lockpick:lock" \&\& (NRefOb(\$what[i]) == NRefOb(\$actor."lockpick:lock"))) \{
+        EmitTo(\$actor, "Oops, you dropped what you were working on and have to start over.");
+        Call(\$actor, "lockpick:end", \$cancel: 1);
+        return TRUE;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:enter%lockpick">
+         X[M] Call(\$actor, "lockpick:abort");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:teleport%lockpick">
+         X[M] Call(\$actor, "lockpick:abort");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:findlockpick">
+         X[M] int i;
+mixed *inv;
+
+/* Check if a lockpick is being used */
+if(\$using) \{
+    for(i = 0; i \< sizeof(\$using); i++) \{
+        if(NRefOb(\$using[i])."trait:objecttype" == "lockpick") \{
+            if(NRefOb(\$using[i])."base:environment" != \$actor) \{
+                EmitTo(\$actor, "You need to be holding " + Describe(NRefOb(\$using[i])) + ".");
+                return FALSE;
+            \}
+            return NRefOb(\$using[i]);
+        \}
+    \}
+    EmitTo(\$actor, Describe(\$using) + " is not a valid lockpick.");
+    return FALSE;
+\}
+
+/* Check if a lockpick is in our inventory */
+inv = \$actor."base:inventory";
+
+for(i = 0; i \< sizeof(inv); i++) \{
+    if(inv[i]."trait:objecttype" == "lockpick") \{
+        return NRefOb(inv[i]);
+    \}
+\}
+
+EmitTo(\$actor, "You cannot do that without a lockpick.");
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:lockpick:abort">
+         X[M] EmitTo(\$actor, "Your movement causes you to lose track of what you were doing.");
+Call(\$actor, "lockpick:end", \$cancel: 1);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lockpick:configure">
+         X[M] if(\$type != "set") \{
+    \$lib = nil;
+\}
+
+\$actor."merry:inherit:lib:lockpick:start" = \$lib;
+\$actor."merry:inherit:act-post:place%lockpick" = \$lib;
+\$actor."merry:inherit:act-post:zthrow%lockpick" = \$lib;
+\$actor."merry:inherit:act-post:approach%lockpick" = \$lib;
+\$actor."merry:inherit:act-post:leave%lockpick" = \$lib;
+\$actor."merry:inherit:act:enter%lockpick" = \$lib;
+\$actor."merry:inherit:act:teleport%lockpick" = \$lib;
+\$actor."merry:inherit:lib:lockpick:abort" = \$lib;
+\$actor."merry:inherit:act-post:linkdie%lockpick" = \$lib;
+\$actor."merry:inherit:act-post:quit%lockpick" = \$lib;
+\$actor."merry:inherit:lib:lockpick:dc_timer" = \$lib;
+\$actor."merry:inherit:lib:lockpick:roll" = \$lib;
+\$actor."merry:inherit:lib:lockpick:end" = \$lib;
+\$actor."merry:inherit:lib:lockpick:emitter" = \$lib;
+\$actor."merry:inherit:timer:lockpick:end" = \$lib;
+\$actor."merry:inherit:timer:lockpick:emitter" = \$lib;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lockpick:dc_timer">
+         X[M] \$delay(30, FALSE, "9ac2");
+
+if(!\$actor."udat:possessed") \{
+    Call(\$actor, "lockpick:end", \$cancel: 1);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lockpick:emitter">
+         X[M] if(\$actor."handler:lockpick:emitter") \{
+    Stop(\$actor."handler:lockpick:emitter");
+    \$actor."handler:lockpick:emitter" = nil;
+\}
+
+if(\$actor."handler:lockpick:timer") \{
+    \$actor."handler:lockpick:emitter" = In("lockpick:emitter", 30 + random(15));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lockpick:end">
+         X[M] mixed lock, pick, detail;
+mapping history;
+
+if(\$actor."handler:lockpick:timer") \{
+    Stop(\$actor."handler:lockpick:timer");
+    \$actor."handler:lockpick:timer" = nil;
+\}
+
+if(\$actor."handler:lockpick:emitter") \{
+    Stop(\$actor."handler:lockpick:emitter");
+    \$actor."handler:lockpick:emitter" = nil;
+\}
+
+lock = NRefOb(\$actor."lockpick:lock");
+detail = NRefDetail(\$actor."lockpick:lock");
+pick = \$actor."lockpick:pick";
+if(!\$cancel) \{
+    if(lock != \$actor."base:environment") \{
+        detail = "default";
+    \}
+    
+    Call(\$actor, "lockpick:roll", \$lock: lock, \$detail: detail, \$pick: pick);
+    
+    history = ([ ]);
+    if(Get(lock, "lock:" + detail + ":lockpick:history")) \{
+        history = Get(lock, "lock:" + detail + ":lockpick:history");
+    \}
+
+    history[\$actor] = time();
+
+    Set(lock, "lock:" + detail + ":lockpick:history", history);
+\}
+
+Call(\$\{Ironclaw:Lib:Skills:Lockpicking\}, "lockpick:configure");
+
+\$actor."lockpick:lock" = nil;
+\$actor."lockpick:pick" = nil;
+\$actor.isbusy = nil;
+lock.isbusy = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lockpick:roll">
+         X[M] mixed lock, pick, *skills, *bonus;
+int quality, roll;
+string detail;
+
+lock = \$lock;
+detail = \$detail;
+pick = \$pick;
+
+if(\$actor."base:environment" == lock) \{
+    quality = Int(Get(lock, "trait:" + detail + ":lock:quality"));
+\} else \{
+    quality = Int(lock."trait:quality");
+    if(lock."trait:lock:quality") \{
+        quality = Int(lock."trait:lock:quality");
+    \}
+\}
+
+quality *= 2;
+
+skills = (\{ "career:thief:lock-picking", "skill:thief:lock-picking" \});
+
+if(Get(\$actor, "career:thief:lock-picking") \|\| Get(\$actor, "skill:thief:lock-picking")) \{
+    roll = ironclaw::roll(\$roller: \$actor, \$skills: skills);
+\} else \{
+    roll = 0;
+\}
+
+if(roll \> quality) \{
+    EmitTo(\$actor, "Suddenly, the mechanism within the lock gives way as you give " + Describe(pick, nil, \$actor) + " one solid turn.");                           
+    EmitIn(\$actor."base:environment", "The mechanism within the lock seems to give way as " + Describe(\$actor) + " gives " + Describe(pick, nil, \$actor) + " one solid turn.", \$actor);  
+    Set(lock, "details:" + detail + ":exit:locked", FALSE);
+\} else \{
+    EmitTo(\$actor, "Having made no progress, you extract " + Describe(pick, nil, \$actor) + " from the lock in defeat.");                           
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" stops fiddling with " + Describe(lock) + ".", \$actor);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lockpick:start">
+         X[M] int timeroll, maxtimer, timer;
+mixed *skills, *bonus;
+
+maxtimer = 300;
+
+skills = (\{ "skill:thief:lock-picking" \});
+timeroll = ironclaw::roll(\$roller: \$actor, \$skills: skills)*2;
+timer = Int(Flt(maxtimer) - Flt(maxtimer) * (Flt(timeroll)/100.0));
+
+EmitTo(\$actor, "You begin picking " + Describe(\$lock) + ".");                           
+EmitIn(\$actor."base:environment", Describe(\$actor) + " starts fiddling with " + Describe(\$lock) + ".", \$actor);                           
+
+\$actor."handler:lockpick:timer" = In("lockpick:end", timer);
+\$actor."handler:lockpick:emitter" = In("lockpick:emitter", 15);
+
+\$actor."lockpick:lock" = \$lock;
+\$actor."lockpick:pick" = \$pick;
+\$actor.isbusy = 1;
+NRefOb(\$lock).isbusy = \$actor;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:pick">
+         X[M] object lock, pick, lib;
+string detail;
+int lastattempt;
+
+lib = \$\{Ironclaw:Lib:Skills:Lockpicking\};
+
+/* Check if a target is specified */
+if(!\$dob \|\| !sizeof(\$dob)) \{
+    return FALSE;
+\}
+
+/* Make sure we're not choosing more than on target */
+if(sizeof(\$dob) \> 2) \{
+    return FALSE;
+\}
+
+lock = \$dob[0];
+detail = NRefDetail(lock);
+if(NRefOb(lock) != \$actor."base:environment") \{
+    detail = "default";
+\}
+
+/* Make sure we are within range of the lock */
+if((!\$actor."base:proximity" \|\| NRefOb(\$actor."base:proximity") != NRefOb(lock)) \&\&
+   (NRefOb(lock)."base:environment" != \$actor)) \{
+    EmitTo(\$actor, "You need to get closer to " + Describe(NRefOb(lock)) + ".");
+    return TRUE;
+\}
+
+/* Make sure someone else isn't holding the lock */
+if((NRefOb(lock)."base:environment" != \$actor."base:environment") \&\&
+   (NRefOb(lock)."base:environment" != \$actor)) \{
+    EmitTo(\$actor, "You cannot pick a lock that someone else is holding.");
+    return TRUE;
+\}
+
+/* Verify that the target is actually a lock */
+if(!NRefOb(lock)."trait:lockpicking" \&\& !Get(NRefOb(lock), "trait:" + detail + ":lockpicking")) \{
+    return FALSE;
+\}
+
+/* Make sure lock isn't already unlocked */
+if(!Get(NRefOb(lock), "details:" + detail + ":exit:locked")) \{
+    EmitTo(\$actor, Describe(lock) + " is not locked.");
+    return TRUE;
+\}
+
+/* Make sure we haven't tried to pick the lock too recently */
+if(Get(NRefOb(lock), "lock:" + detail + ":lockpick:history") \&\&
+    Get(NRefOb(lock), "lock:" + detail + ":lockpick:history")[\$actor]) \{
+    lastattempt = Get(NRefOb(lock), "lock:" + detail + ":lockpick:history")[\$actor];
+
+/*
+    if((time() - lastattempt) \< (7 * 24 * 60 * 60)) \{
+        EmitTo(\$actor, "It has been too recent since your last lockpick attempt on this target.");
+        return TRUE;
+    \}
+*/
+
+\}
+
+/* Check if we're using or holding a lockpick */
+pick = Call(lib, "findlockpick");
+if(!pick) \{
+    return TRUE;
+\}
+
+if(\$actor.isbusy) \{
+    EmitTo(\$actor, "You are busy.");
+    return TRUE;
+\}
+
+if(NRefOb(lock).isbusy) \{
+    EmitTo(\$actor, Describe(NRefOb(lock).isbusy) + " is already busy with that lock.");
+    return TRUE;
+\}
+
+/* We need to be configured with the appropriate scripts before continuing */
+Call(lib, "lockpick:configure", \$type: "set", \$lib: lib);
+
+/* Start the lockpicking process */
+Call(\$actor, "lockpick:start", \$lock: lock, \$pick: pick);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:lockpick:emitter">
+         X[M] \$actor = \$this;
+\$lock = \$actor."lockpick:lock";
+\$pick = \$actor."lockpick:pick";
+EmitTo(\$actor, "You " + oneof("carefully", "thoughtfully", "focusedly", "methodically") + " " + oneof("turn", "twist", "work", "adjust") + " " + Describe(\$pick, nil, \$actor) + " within " + Describe(\$lock, nil, \$actor) + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " " + oneof("carefully", "", "thoughtfully", "", "focusedly", "", "methodically") + " " + oneof("turns", "twists", "works", "adjusts") + " " + Describe(\$pick,\$actor) + " " + oneof("within", "inside of", "in") + " " + Describe(\$lock, \$actor) + ".", \$actor);
+
+Call(\$actor, "lockpick:emitter");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:lockpick:end">
+         X[M] \$actor = \$this;
+
+Call(\$actor, "lockpick:end");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1305167510, "jominey", "E", 1305167731, "jominey", "E", 1305167817, "jominey", "E", 1305167903, "jominey", "E", 1305168411, "jominey", "E", 1305168585, "jominey", "E", 1305168838, "jominey", "E", 1305168875, "jominey", "E", 1305168985, "jominey", "E", 1305169428, "jominey", "E", 1305170074, "jominey", "E", 1305170108, "jominey", "E", 1305170129, "jominey", "E", 1305170217, "jominey", "E", 1305170248, "jominey", "E", 1305170286, "jominey", "E", 1305170406, "jominey", "E", 1305170638, "jominey", "E", 1305170740, "jominey", "E", 1305170763, "jominey", "E", 1305170787, "jominey", "E", 1305170801, "jominey", "E", 1305170857, "jominey", "E", 1305170896, "jominey", "E", 1305170986, "jominey", "E", 1305171324, "jominey", "E", 1305171398, "jominey", "E", 1305171613, "jominey", "E", 1305171658, "jominey", "E", 1305171682, "jominey", "E", 1305171734, "jominey", "E", 1305171832, "jominey", "E", 1305171938, "jominey", "E", 1305171972, "jominey", "E", 1305172119, "jominey", "E", 1305172161, "jominey", "E", 1305172792, "jominey", "E", 1305173131, "jominey", "E", 1305173176, "jominey", "E", 1305173426, "jominey", "E", 1305173884, "jominey", "E", 1305174279, "jominey", "E", 1305174382, "jominey", "E", 1305174429, "jominey", "E", 1305174557, "jominey", "E", 1305174588, "jominey", "E", 1305174789, "jominey", "E", 1305174850, "jominey", "E", 1305174970, "jominey", "E", 1305175953, "jominey", "E", 1305175974, "jominey", "E", 1305175993, "jominey", "E", 1305176393, "jominey", "E", 1305176560, "jominey", "E", 1305176592, "jominey", "E", 1305176648, "jominey", "E", 1305176692, "jominey", "E", 1305176943, "jominey", "E", 1305177157, "jominey", "E", 1305177394, "jominey", "E", 1387691117, "tonyd", "P", 1387691131, "tonyd", "P", 1478303912, "jominey", "E", 1504137822, "jominey", "E", 1504137894, "jominey", "E", 1504137963, "jominey", "E", 1504138047, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

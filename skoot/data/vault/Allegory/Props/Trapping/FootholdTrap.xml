@@ -1,0 +1,141 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Trapping:UrTrap)"/>
+    <Base:Bulk immobile="false" mass="0.005" density="1.4"/>
+    <Base:Container flexible="true" transparent-container="true" public-container="true" tight="false" capacity="1" maxweight="1" verb2="hold" verb3="holds"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="foothold"/>
+        </Base:Adjectives>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "foothold trap"
+      </Core:Property>
+      <Core:Property property="export:trait:trap:type">
+         "foothold trap"
+      </Core:Property>
+      <Core:Property property="merry:lib:capture">
+         X[M] int roll;
+
+EmitIn(\$this."base:environment", TAG(Describe(\$what) + " runs into " + Describe(\$this) + "!", "first:third"));
+\$actor."base:environment" = \$this;
+
+
+\$delay(1, FALSE, "5039");
+EmitIn(\$this."base:environment", TAG(Describe(\$what) + " lets out a yelp as the trap clamps down on its foot.", "first:third"));
+\$what."base:environment" = \$this;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:unfix_trap">
+         X[M] /* Immobilize */
+\$this."base:immobile" = FALSE;
+
+/* Remove the integration */
+if(\$this.id) \{
+    \$id = \$this.id;
+    Set(\$this."base:environment", "auto-trait:integration:" + \$id, nil);
+    Set(\$this, "base:integration", nil);
+    Set(\$this, "base:integration:local", nil);
+    \$this.id = nil;
+\}
+      </Core:Property>
+      <Core:Property property="merry:react-post:place-what">
+         X[M] object env;
+
+env = NRefOb(\$where[0]);
+
+if(\$actor."base:environment" != env) \{
+    return TRUE;
+\}
+
+if(env."trait:area" != "outlands") \{
+    EmitTo(\$actor, "This is not a suitable place to set a trap.");
+    return FALSE;
+\}
+
+/* Immobilize and integrate it */
+\$this."base:immobile" = TRUE;
+
+\$id = random(100000);
+Set(\$this."base:environment", "auto-trait:integration:" + \$id, \$this);
+Set(\$this, "base:integration", "auto-trait:integration:" + \$id);
+Set(\$this, "base:integration:local", "auto-trait:integration:" + \$id);
+Set(\$this, "id", \$id);
+
+Call(\$this, "set_trap", \$trap: \$this);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:place-what">
+         X[M] int i;
+object env;
+mixed* inv;
+
+env = NRefOb(\$where[0]);
+
+if(\$actor."base:environment" != env) \{
+    return TRUE;
+\}
+
+if(env."trait:area" != "outlands") \{
+    EmitTo(\$actor, "This is not a suitable place to set a trap.");
+    return FALSE;
+\}
+
+inv = env."base:inventory";
+
+for(i = 0; i \< sizeof(inv); i++) \{
+    if(inv[i]."base:objecttype" == "trap") \{
+        EmitTo(\$actor, "You cannot place another trap here.");
+        return FALSE;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1587691543, "jominey", "E", 1587691841, "jominey", "E", 1588291511, "jominey", "E", 1588291650, "jominey", "E", 1588292652, "jominey", "E", 1588292691, "jominey", "E", 1588292756, "jominey", "E", 1588292819, "jominey", "E", 1588292969, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

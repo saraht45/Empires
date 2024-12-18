@@ -1,0 +1,225 @@
+<object clone="/base/obj/thing" owner="tunk_bodin">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Clothing:UrClothingContainer)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="true" transparent-container="false" public-container="false" tight="false" capacity="2" maxweight="10" verb2="contain" verb3="contains"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="sack"/>
+            <Base:SName sname="bag"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="sacks"/>
+            <Base:PName pname="bags"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="shoulders"/>
+      <Base:Covered value="waist"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="database">
+         \<Ironclaw:Lib:Staff:Donations\>
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "donation bag"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "It is a bag; being used to test some donation box code."
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "sack"
+      </Core:Property>
+      <Core:Property property="merry:react-post:poke-dob">
+         X[M] /* displays any updates this person hasn't yet seen */   
+int counter, target;   
+string message, body;   
+/* Only work for staffers */ 
+body = Describe(\$actor); 
+if (sizeof(explode(body, " ")) \>= 2 \&\& contains(body, "Story")) \{ 
+if(!\$actor) return TRUE;   
+\$db = this.database;   
+if(!\$db) \{   
+  EmitTo(\$actor, "No database set. Please set the property \\"database\\" in "+name(this)+" to point to a propcontainer.");   
+  return FALSE;   
+\}   
+   
+/* DONATIONS */   
+/* Is there something to read? */   
+if(!\$db.id \|\| !\$db.counter \|\| !\$db.counter2)   
+  return TRUE;   
+   
+/* where do we start? */   
+if(\$actor."donatetracker:id" == \$db.id) \{   
+  /* we don't need to reset the counter */   
+  if(\$actor."donatetracker:counter" \>= \$db.counter \&\& \$actor."donatetracker:counter2" \>= \$db.counter2) \{   
+    /* we have already read all the notes */   
+EmitTo(\$actor, "Nothing new has been donated or retrieved.");   
+    return TRUE;   
+  \}   
+\} else \{   
+  /* need to reset things */   
+  \$actor."donatetracker:id" = \$db.id;   
+  \$actor."donatetracker:counter" = 0;  
+  \$actor."donatetracker:counter2" = 0;   
+\}   
+   
+/* display the messages */   
+EmitTo(\$actor, "\\n");   
+EmitTo(\$actor, "Donated Items:");   
+counter = \$actor."donatetracker:counter";   
+target = \$db.counter;   
+while (counter \< target) \{   
+  if(message = Get(\$db, "donated"+Str(counter)))   
+    EmitTo(\$actor, Str(message));   
+  counter++;   
+\}   
+EmitTo(\$actor, "\\n");   
+/* set the new counter in the player's body */   
+\$actor."donatetracker:counter" = counter;    
+   
+/* RETRIEVALS */    
+   
+/* display the messages */   
+EmitTo(\$actor, "\\n");   
+EmitTo(\$actor, "Retrieved Items:");   
+counter = \$actor."donatetracker:counter2";   
+target = \$db.counter2;   
+while (counter \< target) \{   
+  if(message = Get(\$db, "retrieves"+Str(counter)))   
+    EmitTo(\$actor, Str(message));   
+  counter++;   
+\}   
+EmitTo(\$actor, "\\n");   
+/* set the new counter in the player's body */   
+\$actor."donatetracker:counter2" = counter;   
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:put-where">
+         X[M] /* tracks the donation box */             
+string items;             
+int counter;             
+\$db = this.database;             
+if(!\$db) \{             
+  EmitTo(\$actor, "No database set. Please set the property \\"database\\" in "+name(this)+" to point to a propcontainer.");             
+  return FALSE;             
+\}             
+if(!\$db.id) \{ \$db.id = random(1000); \}             
+if(!\$db.counter) \{             
+  \$db.counter = 1;             
+  counter = 1;             
+\} else \{             
+  counter = \$db.counter;             
+\}             
+while(Get(\$db, Str(counter))) \{             
+  \$db.counter = counter;             
+  counter++;             
+\}             
+\$info = short_time(time())+" "+Describe(\$actor)+" donated the following: ";            
+\$sz = sizeof(\$what);            
+for (\$i = 0; \$i \< \$sz; \$i++) \{            
+\$info += Describe(\$what[\$i], nil, nil, STYLE_NONPOSS);            
+\$temp = \$i + 1;           
+if(\$sz == \$temp) \{            
+\$info += ".";            
+\} else \{            
+\$info += ", ";            
+\}            
+\}            
+Set(\$db, "donated"+Str(counter), \$info);            
+\$db.counter++;            
+            
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:take-from">
+         X[M] /* tracks the donation box */           
+string items;           
+int counter2;           
+\$db = this.database;           
+if(!\$db) \{           
+  EmitTo(\$actor, "No database set. Please set the property \\"database\\" in "+name(this)+" to point to a propcontainer.");           
+  return FALSE;           
+\}           
+     
+/* odd code via the take verb actually hides multiple actions for each item taken */     
+/* an attempt to void that in the db tracking */     
+if(\$actor.donationbox) \{     
+return FALSE;     
+\}     
+Set(\$actor, "donationbox", time());     
+     
+if(!\$db.id) \{ \$db.id = random(1000); \}           
+if(!\$db.counter2) \{           
+  \$db.counter2 = 1;           
+  counter2 = 1;           
+\} else \{           
+  counter2 = \$db.counter2;           
+\}           
+while(Get(\$db, Str(counter2))) \{           
+  \$db.counter2 = counter2;           
+  counter2++;           
+\}           
+\$info = short_time(time())+" "+Describe(\$actor)+" retrieved the following: ";          
+\$sz = sizeof(\$what);          
+for (\$i = 0; \$i \< \$sz; \$i++) \{          
+\$info += Describe(\$what[\$i], nil, nil, STYLE_NONPOSS);          
+\$temp = \$i + 1;         
+if(\$sz == \$temp) \{          
+\$info += ".";          
+\} else \{          
+\$info += ", ";          
+\}          
+\}          
+Set(\$db, "retrieves"+Str(counter2), \$info);          
+\$db.counter2++;         
+/* reset due to wonky take verb code */     
+\$delay(1, TRUE, "6497");     
+Set(\$actor, "donationbox", nil);     
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1291603634, "tunk_bodin", "X", 1291603748, "tunk_bodin", "X", 1291604700, "tunk_bodin", "X", 1291605225, "tunk_bodin", "X", 1291605563, "tunk_bodin", "X" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:smells:lastchecked">
+         1291604718
+      </Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

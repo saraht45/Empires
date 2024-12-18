@@ -1,0 +1,125 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Jewelry:Urs:UrJewelryContainer)"/>
+    <Base:Bulk immobile="false" mass="0.02" density="8"/>
+    <Base:Container flexible="true" transparent-container="true" public-container="true" tight="false" capacity="2" maxweight="0.5" verb2="hold" verb3="holds"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="true"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="false" under="false" on="true" inside="false" near="true" over="false" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="keyring"/>
+            <Base:SName sname="container"/>
+            <Base:SName sname="ring"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="keyrings"/>
+            <Base:PName pname="containers"/>
+            <Base:PName pname="rings"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="jewel"/>
+          <Base:Adjective adjective="jewelry"/>
+          <Base:Adjective adjective="keyring"/>
+        </Base:Adjectives>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="hips"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "keyring"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         X[S] This circular keyring is made of \$(this.trait:color) \$(this.trait:material), designed to assist in organization by holding a large amount of keys.
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "keyring"
+      </Core:Property>
+      <Core:Property property="merry:react-pre:lock-using">
+         X[M] \$keys = \$this."base:inventory";
+
+if(!\$what \|\| !sizeof(\$what)) return TRUE;
+\$room = NRefOb(\$what[0]);
+\$detail = NRefDetail(\$what[0]);
+
+if(Get(\$room, "details:" + \$detail + ":exit:locked")) return TRUE;
+
+if(!Get(\$room, "details:" + \$detail + ":exit:keycode")) return TRUE;
+
+\$keycode = Get(\$room, "details:" + \$detail + ":exit:keycode");
+
+for(\$i = 0; \$i \< sizeof(\$keys); \$i++) \{
+   if(\$keys[\$i]."base:keycode" \&\& \$keys[\$i]."base:keycode" == \$keycode \|\| (\$keycode == "Master:DocktownCentral:Unknown:Warehouse2" \&\& \$keys[\$i]."base:keycode" == "Ironclaw:World:DockTown:Buildings:Warehouse2:GroundFloor:Main")) \{
+        Act(\$actor, "lock", \$what: \$what, \$using: (\{ \$keys[\$i] \}));
+        return FALSE;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unlock-using">
+         X[M] \$keys = \$this."base:inventory";
+
+if(!\$what \|\| !sizeof(\$what)) return TRUE;
+\$room = NRefOb(\$what[0]);
+\$detail = NRefDetail(\$what[0]);
+
+if(\$dest = Get(\$room, "details:" + \$detail + ":exit:dest")) \{
+    if(!NRefOb(\$dest).isvirtual \&\& !Get(\$room, "details:" + \$detail + ":exit:locked") \&\& !Get(\$room, "details:" + \$detail + ":exit:closed")) return TRUE;
+\} else \{
+    if(!Get(\$room, "details:" + \$detail + ":exit:locked")) return TRUE;
+\}
+
+if(!Get(\$room, "details:" + \$detail + ":exit:keycode")) return TRUE;
+
+\$keycode = Get(\$room, "details:" + \$detail + ":exit:keycode");
+
+for(\$i = 0; \$i \< sizeof(\$keys); \$i++) \{
+    if(  (\$keys[\$i]."base:keycode" \&\& \$keys[\$i]."base:keycode" == \$keycode) 
+    \&\& ( (\$keycode == "Master:DocktownCentral:Unknown:Warehouse2" \&\& \$keys[\$i]."base:keycode" == "Ironclaw:World:DockTown:Buildings:Warehouse2:GroundFloor:Main") 
+       \|\| FindMerry(\$keys[\$i], "react-pre", "unlock-using") \|\| contains(\$keycode, "Props:Tinkering:Locks:Shop"))) \{
+            Act(\$actor, "unlock", \$what: \$what, \$using: (\{ \$keys[\$i] \}));
+            return FALSE;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1574388874, "jominey", "E", 1574388878, "jominey", "E", 1574447941, "sendnoodlez", "E", 1574448057, "sendnoodlez", "E", 1574448127, "sendnoodlez", "E", 1579722233, "jominey", "E", 1579722339, "jominey", "E", 1579722363, "jominey", "E", 1579722399, "jominey", "E", 1579722484, "jominey", "E", 1579722663, "jominey", "E", 1579722690, "jominey", "E", 1579722701, "jominey", "E", 1579722735, "jominey", "E", 1579722794, "jominey", "E", 1579722820, "jominey", "E", 1579723195, "jominey", "E", 1579723281, "jominey", "E", 1579723334, "jominey", "E", 1579723352, "jominey", "E", 1579723384, "jominey", "E", 1579723401, "jominey", "E", 1579723483, "jominey", "E", 1579723516, "jominey", "E", 1579723757, "jominey", "E", 1585234106, "jominey", "E", 1586054344, "jominey", "E", 1586054431, "jominey", "E", 1586054486, "jominey", "E", 1586054577, "jominey", "E", 1586054689, "jominey", "E", 1586054707, "jominey", "E", 1599015884, "jominey", "E", 1599613380, "sendnoodlez", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

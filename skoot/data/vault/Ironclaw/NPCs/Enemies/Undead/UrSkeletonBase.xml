@@ -1,0 +1,259 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:NPCs:Enemies:Undead:UrUndead)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="skeleton"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="skeletons"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.appearance:body) skeleton
+          </Base:Description>
+          <Base:Description type="examine">
+             The bones that once were a person. This $(this.appearance:body) skeleton is so decayed that you cannot even tell what sort of animal it once was. This skeleton is very obviously animated, returned to a mockery of life through some dark magics.
+          </Base:Description>
+          <Base:Description type="look">
+             The bones that once were a person. This $(this.appearance:body) skeleton is so decayed that you cannot even tell what sort of animal it once was. This skeleton is very obviously animated, returned to a mockery of life through some dark magics.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="base:infravision">1</Core:Property>
+      <Core:Property property="export:combat:state:hurt">
+         1
+      </Core:Property>
+      <Core:Property property="export:gifts:brawling fighter">
+         1
+      </Core:Property>
+      <Core:Property property="export:gifts:fast mover">
+         1
+      </Core:Property>
+      <Core:Property property="export:gifts:pack tactics">
+         1
+      </Core:Property>
+      <Core:Property property="export:gifts:resolve">
+         1
+      </Core:Property>
+      <Core:Property property="export:gifts:vengeful fighter">
+         1
+      </Core:Property>
+      <Core:Property property="export:race:undead">6</Core:Property>
+      <Core:Property property="export:skill:combat:dodge">
+         4
+      </Core:Property>
+      <Core:Property property="export:skill:combat:parry">
+         6
+      </Core:Property>
+      <Core:Property property="export:skill:combat:sword">
+         8
+      </Core:Property>
+      <Core:Property property="export:species:combat:observation">
+         6
+      </Core:Property>
+      <Core:Property property="export:species:combat:stealth">
+         6
+      </Core:Property>
+      <Core:Property property="export:species:combat:unarmed">
+         6
+      </Core:Property>
+      <Core:Property property="export:trait:body">4</Core:Property>
+      <Core:Property property="export:trait:mind">0</Core:Property>
+      <Core:Property property="export:trait:speed">8</Core:Property>
+      <Core:Property property="export:trait:will">6</Core:Property>
+      <Core:Property property="merry:lib:choose_target">
+         X[M] /* choose a target to attack */
+
+/* pick a target */
+/* Only attack possessed PCs */
+\$targets = Match(\$this."base:environment", "pc");
+while(sizeof(Arr(\$targets))) \{
+  \$target = NRefOb(\$targets[random(sizeof(\$targets))]);
+  /* Target PCs */
+  if(\$target."udat:object")
+    return \$target;
+  \$targets -= (\{ \$target \});
+\}
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:choose_defence">
+         X[M] /* Choose which defence to use */ 
+if(!\$options) return nil; 
+if(member("counterattack", \$options)) return "counterattack"; 
+if(member("parry", \$options)) return "parry"; 
+if(member("dodge", \$options)) return "dodge"; 
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:dead">
+         X[M] /* Skeleton dies */
+combat::remove_from_combat(\$fighter: \$this, \$description: FALSE);
+if(!random(3)) \{
+  Social(\$this, "wobble", "unsteadily");
+  \$delay(2, FALSE, "ee57");
+\}
+if(!random(3)) \{
+  Social(\$this, "stagger", "backwardly");
+  \$delay(2, FALSE, "cd71");
+\}
+Social(\$this, "crumble");
+\$delay(0.25, FALSE, "ec2b");
+Slay(\$this);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:dying">
+         X[M] /* Skeleton dies */
+return Call(\$this, "combat:dead");
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:perform_actions">
+         X[M] /* When we get a turn in combat */ 
+/*Social(\$this, "grin", nil, "It's my turn to act!"); */
+
+/* Maybe do an emote */
+if(!random(3)) \{ 
+  Social(\$this, "chatter", "horrifically", nil, nil, NewNRef(\$this, "teeth"));
+\} else if(!random(3)) \{
+  Social(\$this, "twist", "unnaturally", nil, nil, NewNRef(\$this, "neck"));
+\} else if(!random(3)) \{
+  Social(\$this, "stare", "vacantly");
+\}
+
+/* Sanity check */ 
+if(!this.combat) return FALSE; 
+ 
+/* Do we have any actions remaining? */ 
+if(!this."combat:actions" \|\| this."combat:actions" \< 1) \{ 
+  /* No actions remaining */ 
+  combat::pass_action(\$actor: this); 
+  return FALSE; 
+\} 
+ 
+/*Social(\$this, "ask", nil, "Do I still have a target?");*/ 
+if(!this.combat["target"] \|\| this.combat["target"]."base:environment" != this."base:environment") \{ 
+  /*Social(\$this, "state", nil, "I need a new target!"); */
+  \$target = ::choose_target(); 
+  this.combat["target"] = \$target; 
+\} else \{ 
+  \$target = this.combat["target"]; 
+\} 
+ 
+/*Social(\$this, "ask", nil, "Is there anyone still to fight?");*/ 
+if(!\$target) \{ 
+  /* No valid target. Try to break from combat. */ 
+  /*Social(\$this, "state", nil, "I don't have a valid target. I guess I'll try to stop fighting"); */
+  Social(\$this, "breakcombat", nil); 
+\} 
+ 
+/*Social(\$this, "ask", nil, "Should I change target? - No. I blindly attack until I kill my target");*/ 
+ 
+/*Social(\$this, "ask", nil, "Do I want to attempt any tricky actions? - No. I'm just a stupid skeleton.");*/ 
+ 
+/*Social(\$this, "state", nil, "I'm making an attack now"); 
+Social(\$this, "ask", nil, "What weapon should I use?"); */
+\$weapon = combat::get_weapon(\$fighter: this, \$type: "primary"); 
+ 
+\$delay(0.1, TRUE, "dae1"); 
+combat::hit_attempt(\$fighter: this, \$target: \$target, \$weapon: \$weapon); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight">
+         X[M] /* start up a fight */
+
+/*Social(\$this, "state", nil, "I'm starting a fight!");*/
+
+/* are we in a fight? */
+if(\$this."combat:fighting") return TRUE;
+
+/* record when they entered */
+/* this is to stop players running through rooms with enemies */
+this.lastentered = time();
+
+/* give some time before making a decision */
+\$delay(1+random(10), TRUE, "e37b");
+
+/* the decision is to attack anyone! Ha! */
+
+/* pick a target */
+\$target = ::choose_target();
+
+if(!\$target) return TRUE;
+
+/*Social(\$this, "state", nil, "My chosen target is: "+dump_value(\$target));*/
+/* check again that we aren't already fighting */
+if(\$this."combat:fighting") return TRUE;
+
+Social(\$this, "fight", nil, nil, nil, \$target);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:appearance:body">
+         X[M] Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: \$this);  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness-post:enter-from%npcfighting">
+         X[M] /* spot people entering the room */ 
+/*Social(\$this, "grin", nil, "I saw you arrive!");*/ 
+::start_fight(); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness-post:teleport%npcfighting">
+         X[M] /* spot people entering the room */ 
+/*Social(\$this, "grin", nil, "I see witness-post:teleport");*/ 
+::start_fight(); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness:enter-into%npcfighting">
+         X[M] /* spot people leaving the room */ 
+/*Social(\$this, "grin", nil, "I see you leaving!");*/ 
+ 
+/* do we want to block or chase them? */ 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1333770543, "tonyd", "E", 1333770717, "tonyd", "R", 1333786631, "tonyd", "S", 1333786640, "tonyd", "S", 1333786646, "tonyd", "S", 1335070748, "tonyd", "P", 1335093614, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

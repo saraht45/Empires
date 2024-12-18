@@ -1,0 +1,48 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="jominey">
+  <SkotOS:MerAcHa action_id="aim" verb="OBJ(Socials:Verbs:A:aim)">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-pre:action">
+         X[M] object target, bodypartDB;
+string detail;
+
+if(\$actor.combat) \{
+    if(\$actor.combat["target"]) \{
+        target = NRefOb(\$target);
+        detail = NRefDetail(\$target);
+        bodypartDB = \$\{Allegory:Data:Combat:BodyParts\};
+
+        if(\$actor.combat["target"] == target) \{
+            if(detail == "default") \{
+                EmitTo(\$actor, "What detail did you want to take aim at on " + Describe(target) + "? If you are trying to switch to a different person or thing, use the 'fight' or 'target' commands.");
+                return FALSE;
+            \} else \{
+                if(!Call(bodypartDB, "check_forbidden", \$bodypart: detail)) \{
+                    EmitTo(\$actor, Describe(\$target) + " is not a valid detail you can aim at.");
+                    return FALSE;
+                \}
+
+                detail = Call(bodypartDB, "get_associatedpart", \$bodypart: NRefDetail(\$target));
+
+                \$target = NewNRef(target, detail);
+
+                EmitTo(\$actor, TAG("You take aim at " + Describe(\$target) + ".", "social:first"));
+                EmitTo(NRefOb(\$target), TAG(Describe(\$actor) + " takes aim at you.", "social:second"));
+                EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " takes aim at " + Describe(NRefOb(\$target)) + ".", "social:third"), \$actor, NRefOb(\$target));
+                \$actor.combat["target_detail"] = \$target;
+                return FALSE;
+            \}
+        \} else \{
+            EmitTo(\$actor, "You can only take aim at someone or something you are fighting. Use the 'fight' or 'target' commands to change targets.");
+            return FALSE;
+        \}
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1566936510, "jominey", "E", 1566939456, "jominey", "E", 1566939842, "jominey", "E", 1566940727, "jominey", "E", 1566940879, "jominey", "E", 1566940996, "jominey", "E", 1566941046, "jominey", "E", 1567204709, "jominey", "E", 1567204800, "jominey", "E", 1567204906, "jominey", "E", 1567204924, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

@@ -1,0 +1,64 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="SkotOS">
+  <SkotOS:MerAcHa action_id="scratch">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-post:action">
+         X[M] /* is this a combat injury? */
+
+/* disabled */
+return TRUE;
+
+if(!\$actor.combat) return TRUE;
+if(!\$actor.combat["actions"]) return TRUE;
+if(!sizeof(\$actor.combat["actions"])) return TRUE;
+
+\$index = nil;
+for(\$i=0;\$i\<sizeof(\$actor.combat["actions"]);\$i++) \{
+ if(\$actor.combat["actions"][\$i][1] == "scratch"
+ \&\& \$actor.combat["actions"][\$i][2] == \$adverb)
+  \$index = \$i+1;
+\}
+
+if(!\$index) \{
+ for(\$i=0;\$i\<sizeof(\$actor.combat["actions"]);\$i++) \{
+  if(\$actor.combat["actions"][\$i][1] == "scratch"
+  \&\& !\$actor.combat["actions"][\$i][2])
+   \$index = \$i+1;
+ \}
+\}
+
+if(!\$index) \{
+ for(\$i=0;\$i\<sizeof(\$actor.combat["actions"]);\$i++) \{
+  if(\$actor.combat["actions"][\$i][1] == "scratch")
+   \$index = \$i+1;
+ \}
+\}
+
+if(!\$adverb) \$adverb = \$actor.combat["actions"][\$index-1][2];
+
+/* remove this action from the list */
+\$actor.combat["actions"][\$index-1] = nil;
+\$actor.combat["actions"] -= (\{ nil \});
+
+/* do a combat injury */
+if(\$index) \{
+ EmitTo(\$actor, "You "+Str(\$adverb)+" scratch "+Describe(\$actor.combat["target"])+", leaving a wound.");
+ EmitTo(\$actor.combat["target"], Describe(\$actor)+" "+Str(\$adverb)+" scratches you, leaving a wound.");
+ EmitIn(\$actor."base:environment", Describe(\$actor)+" "+Str(\$adverb)+" scratches "+Describe(\$actor.combat["target"])+", leaving a wound.", \$actor, \$actor.combat["target"]);
+\}
+
+if(!sizeof(\$actor.combat["actions"])) \{
+ /* no more actions. Assign some new ones */
+ Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+\} else \{
+ EmitTo(\$actor, "You still have "+Str(sizeof(\$actor.combat["actions"]))+" action remaining:");
+ Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "list_actions", \$fighter: \$actor);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1245064080, "tonyd", "E", 1245064278, "tonyd", "E", 1247815076, "tonyd", "R", 1248011872, "tonyd", "E", 1337344053, "tonyd", "R" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

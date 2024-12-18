@@ -1,0 +1,333 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Clothing:UrClothingContainer)"/>
+    <Base:Bulk immobile="false" mass="0.3" density="1.1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="pouch"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="pouches"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="money"/>
+        </Base:Adjectives>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="hips"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:cash:amount_to_fill">
+         1000
+      </Core:Property>
+      <Core:Property property="export:cash:balance">
+         0
+      </Core:Property>
+      <Core:Property property="export:cash:max">8000</Core:Property>
+      <Core:Property property="export:trait:brief">
+         "money pouch"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "Money pouches are common, from the lowliest servant to the mightiest king, everyone needs somewhere to keep their coins."
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "moneypouch"
+      </Core:Property>
+      <Core:Property property="merry:react-pre:deposit-where">
+         X[M] if(NRefOb(\$what[0])."cash:value") \{      
+  EmitTo(\$actor, "You have made a deposit into " + Describe(\$this, nil, \$actor) + ".");      
+  EmitIn(\$actor."base:environment", Describe(\$actor)+ " makes a deposit into " + Describe(\$this, \$actor) + ".", \$actor);    
+return FALSE;      
+\}      
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:count-dob">
+         X[M] if(\$this."base:environment" != \$actor) return TRUE;        
+            
+/* Check we are only trying to take from one thing */            
+if(sizeof(\$dob) != 1)\{            
+  EmitTo(\$actor, "You may only take money from one thing at a time.");            
+  return FALSE;            
+\}            
+            
+\$target = NRefOb(\$dob[0]);            
+            
+/* Check that the object is a money purse */            
+if(\$this."trait:objecttype" != "moneypouch")\{            
+  EmitTo(\$actor, "You may only get money from purses and money pouches.");            
+  return FALSE;            
+\}            
+            
+/* How much do we get? */            
+\$amount = Int(\$evoke[1..strlen(\$evoke)-2])*100;            
+            
+EmitTo(\$actor, "Amount is "+Str(\$amount));            
+            
+EmitTo(\$actor, "The pouch holds "+Str(\$this."cash:balance"));            
+            
+if(\$amount \> \$this."cash:balance")            
+  \$amount = \$this."cash:balance";            
+            
+EmitTo(\$actor, "Amount is now "+Str(\$amount));            
+            
+/* Take the money */            
+            
+/* take money from the pouch */            
+\$this."cash:balance" -= \$amount;            
+            
+/* Add money to the owner */            
+/* Who is the owner*/            
+while(\$this."base:environment" \&\& !\$owner)            
+\{            
+  \$this = \$this."base:environment";            
+  if(\$this."base:volition")            
+    \$owner = \$actor;            
+\}            
+if(\$owner) \{            
+  /* We have an owner, give him the money */            
+  if(\$owner."trait:money") \{            
+    \$owner."trait:money" += \$amount;            
+  \} else \{            
+    \$owner."trait:money" = \$amount;            
+  \}            
+  EmitTo(\$actor, "We have an owner");            
+  EmitTo(\$actor, "We have an owner of "+Describe(\$owner));            
+\}            
+            
+/* Spawn the coins */            
+while(\$amount \&\& (\$amount \> 0))            
+\{            
+  if(\$amount \>= 2400) \{            
+    \$coin = Spawn(\$\{Allegory:Props:Finance:Cash:Lira\});            
+    \$amount -= 2400;            
+  \} else if(\$amount \>= 100) \{            
+    \$coin = Spawn(\$\{Allegory:Props:Finance:Cash:Florin\});            
+    \$amount -= 100;            
+  \} else if(\$amount \< 100) \{            
+    \$coin = Spawn(\$\{Allegory:Props:Finance:Cash:Florin\});            
+    \$amount -= 100;            
+  \}            
+  \$coin."base:environment" = \$actor;            
+\}            
+            
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:set-what">
+         X[M] if(\$this."base:environment" != \$actor) return TRUE;     
+     
+if(!\$where)     
+\{     
+  if(!\$evoke)     
+  \{     
+    EmitTo(\$actor, "Format: Set my pouch \\"20");     
+  \} else \{     
+    \$this."cash:amount_to_fill" = Int(\$evoke[1..strlen(\$evoke)-2])*100;     
+  \}     
+  return FALSE;     
+\}     
+     
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:shake-dob">
+         X[M] \$owner = ironclaw::find_owner(\$object: this); 
+if(!\$owner \|\| \$owner == -1) return TRUE; 
+ 
+if(Int(\$owner."trait:money") \>= 1000 ) \{ 
+  EmitTo(\$actor, "You shake "+Describe(this, nil, \$actor)+" and it jingles with coins."); 
+  EmitIn(\$actor."base:environment", Describe(\$actor) + " shakes "+Describe(this, \$actor)+" and it jingles with coins.", \$actor); 
+  return FALSE; 
+\} else if(Int(\$owner."trait:money") \> 0) \{ 
+  EmitTo(\$actor, "You shake "+Describe(this, nil, \$actor)+" and it jingles with a few stray bits."); 
+  EmitIn(\$actor."base:environment", Describe(\$actor) + " shakes "+Describe(this, \$actor)+" and it jingles with a few stray bits.", \$actor); 
+  return FALSE; 
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:withdraw-dob">
+         X[M] /* You can only take from your own pouches */ 
+\$owner = ironclaw::find_owner(\$object: this); 
+if(\$owner != \$actor) return TRUE; 
+ 
+/* Check we are only trying to take from one thing */ 
+if(sizeof(\$dob) != 1)\{ 
+  EmitTo(\$actor, "You may only take money from one thing at a time."); 
+  return FALSE; 
+\} 
+ 
+/* If no evoke */ 
+if(!\$evoke) \{ 
+EmitTo(\$actor, "The correct syntax is: withdraw from [this] '[amount]. i.e. withdraw from my money pouch '12."); 
+return FALSE; 
+\} 
+\$target = NRefOb(\$dob[0]); 
+ 
+/* Check that the object is a money purse */ 
+if(\$this."trait:objecttype" != "moneypouch")\{ 
+  EmitTo(\$actor, "You may only get money from purses and money pouches."); 
+  return FALSE; 
+\} 
+ 
+/* How much do we get? */ 
+\$amount = Int(\$evoke[1..strlen(\$evoke)-2])*100; 
+ 
+if(\$amount \< 0) \{ 
+  EmitTo(\$actor, "You cannot withdraw a negative amount from your money pouch."); 
+  return FALSE; 
+\} 
+ 
+if(\$amount \> 10000) \{ 
+  EmitTo(\$actor, TAG("[Withdrawing too many coins is bad for the game. Please keep them in the money pouch unless you specifically need to hand them over to another character. Even then, hand over a few, and have the other character deposit the coins first. Thank you.]", "imp")); 
+  return TRUE; 
+\} 
+ 
+/* 
+EmitTo(\$actor, "Amount is "+Str(\$amount)); 
+EmitTo(\$actor, "The pouch holds "+Str(\$actor."trait:money")); 
+*/ 
+ 
+if(\$amount \> Int(\$actor."trait:money")) 
+  \$amount = Int(\$actor."trait:money"); 
+ 
+/*EmitTo(\$actor, "Amount is now "+Str(\$amount));*/ 
+ 
+/* Take the money */ 
+ 
+/* take money from the pouch */ 
+\$actor."trait:money" = Int(\$actor."trait:money") - \$amount; 
+ 
+/* Spawn the coins */ 
+while(\$amount \&\& (\$amount \> 0)) 
+\{ 
+  if(\$amount \>= 2400) \{ 
+    \$coin = Spawn(\$\{Allegory:Props:Finance:Cash:Lira\}); 
+    \$amount -= 2400; 
+  \} else if(\$amount \>= 100) \{ 
+    \$coin = Spawn(\$\{Allegory:Props:Finance:Cash:Florin\}); 
+    \$amount -= 100; 
+  \} else if(\$amount \>= 10) \{ 
+    \$coin = Spawn(\$\{Ironclaw:Props:Finance:Cash:10\}); 
+    \$amount -= 10; 
+  \} else if(\$amount \>= 1) \{ 
+    \$coin = Spawn(\$\{Ironclaw:Props:Finance:Cash:1\}); 
+    \$amount -= 1; 
+  \} 
+  \$coin."owner:original" = \$actor; 
+  \$coin."base:environment" = \$actor; 
+\} 
+EmitTo(\$actor, "You make a withdrawal from " + Describe(\$this, nil, \$actor) + "."); 
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " makes a withdrawal from " + Describe(\$this, \$actor) + ".", \$actor); 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:withdraw-iob">
+         X[M] /* You can only take from your own pouches */ 
+\$owner = ironclaw::find_owner(\$object: this); 
+if(\$owner != \$actor) return TRUE; 
+ 
+/* Check we are only trying to take from one thing */ 
+if(sizeof(\$iob) != 1)\{ 
+  EmitTo(\$actor, "You may only take money from one thing at a time."); 
+  return FALSE; 
+\} 
+ 
+\$target = NRefOb(\$iob[0]); 
+ 
+/* Check that the object is a money purse */ 
+if(\$this."trait:objecttype" != "moneypouch")\{ 
+  EmitTo(\$actor, "You may only get money from purses and money pouches."); 
+  return FALSE; 
+\} 
+ 
+/* If no evoke */ 
+if(!\$evoke) \{ 
+EmitTo(\$actor, "The correct syntax is: withdraw from [this] '[amount]. i.e. withdraw from my money pouch '12."); 
+return FALSE; 
+\} 
+ 
+/* How much do we get? */ 
+\$amount = Int(\$evoke[1..strlen(\$evoke)-2])*100; 
+ 
+/* 
+EmitTo(\$actor, "Amount is "+Str(\$amount)); 
+EmitTo(\$actor, "The pouch holds "+Str(\$this."cash:balance")); 
+*/ 
+ 
+if(\$amount \< 0) \{ 
+  EmitTo(\$actor, "You cannot withdraw a negative amount from your money pouch."); 
+  return FALSE; 
+\} 
+ 
+if(\$amount \> Int(\$actor."trait:money")) 
+  \$amount = Int(\$actor."trait:money"); 
+ 
+/*EmitTo(\$actor, "Amount is now "+Str(\$amount));*/ 
+ 
+/* Take the money */ 
+ 
+/* take money from the pouch */ 
+\$actor."trait:money" = Int(\$actor."trait:money") - \$amount; 
+ 
+/* Spawn the coins */ 
+while(\$amount \&\& (\$amount \> 0)) 
+\{ 
+  if(\$amount \>= 2400) \{ 
+    \$coin = Spawn(\$\{Allegory:Props:Finance:Cash:Lira\}); 
+    \$amount -= 2400; 
+  \} else if(\$amount \>= 100) \{ 
+    \$coin = Spawn(\$\{Allegory:Props:Finance:Cash:Florin\}); 
+    \$amount -= 100; 
+  \} else if(\$amount \>= 10) \{ 
+    \$coin = Spawn(\$\{Ironclaw:Props:Finance:Cash:10\}); 
+    \$amount -= 10; 
+  \} else if(\$amount \>= 1) \{ 
+    \$coin = Spawn(\$\{Ironclaw:Props:Finance:Cash:1\}); 
+    \$amount -= 1; 
+  \} 
+  \$coin."owner:original" = \$actor; 
+  \$coin."base:environment" = \$actor; 
+\} 
+      EmitTo(\$actor, "You make a withdrawal from " + Describe(\$this, nil, \$actor) + "."); 
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " makes a withdrawal from " + Describe(\$this, \$actor) + ".", \$actor); 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1102312379, "tonyd", "X", 1102312418, "tonyd", "X", 1102312676, "tonyd", "E", 1102312804, "tonyd", "E", 1102312946, "tonyd", "E", 1102312971, "tonyd", "E", 1102313360, "tonyd", "E", 1102313385, "tonyd", "E", 1102313698, "tonyd", "E", 1102313730, "tonyd", "E", 1102313760, "tonyd", "E", 1102313778, "tonyd", "E", 1102313910, "tonyd", "E", 1102314969, "tonyd", "E", 1102314986, "tonyd", "E", 1102315252, "tonyd", "E", 1102315331, "tonyd", "E", 1102315419, "tonyd", "E", 1102315469, "tonyd", "E", 1102315509, "tonyd", "E", 1102315653, "tonyd", "E", 1102315689, "tonyd", "E", 1102315913, "tonyd", "E", 1102315944, "tonyd", "E", 1102316160, "tonyd", "E", 1102722113, "tonyd", "E", 1102722121, "tonyd", "E", 1102723433, "tonyd", "E", 1102723452, "tonyd", "E", 1102725463, "tonyd", "E", 1102725971, "tonyd", "E", 1102727694, "tonyd", "E", 1102728027, "tonyd", "E", 1102737382, "tonyd", "E", 1102818089, "tonyd", "E", 1102823410, "tonyd", "E", 1102823445, "tonyd", "E", 1102824774, "tonyd", "E", 1102825200, "tonyd", "E", 1102825270, "tonyd", "E", 1102825861, "tonyd", "E", 1103000935, "tonyd", "E", 1103002715, "tonyd", "E", 1103002786, "tonyd", "E", 1103069521, "tonyd", "E", 1103070439, "tonyd", "E", 1103071522, "tonyd", "E", 1103072176, "tonyd", "E", 1103072602, "tonyd", "E", 1103072808, "tonyd", "E", 1103078278, "tonyd", "E", 1103084033, "tonyd", "E", 1103084078, "tonyd", "E", 1103084148, "tonyd", "E", 1103084391, "tonyd", "E", 1103084493, "tonyd", "E", 1103084608, "tonyd", "E", 1103084651, "tonyd", "E", 1103084725, "tonyd", "E", 1103084822, "tonyd", "E", 1103084892, "tonyd", "E", 1103084923, "tonyd", "E", 1103084953, "tonyd", "E", 1103085056, "tonyd", "E", 1103085100, "tonyd", "E", 1103089195, "tonyd", "E", 1103091115, "tonyd", "E", 1103154368, "tonyd", "E", 1103253009, "tonyd", "E", 1103253256, "tonyd", "E", 1103253438, "tonyd", "E", 1103253537, "tonyd", "P", 1103253693, "tonyd", "P", 1103253903, "tonyd", "E", 1103253939, "tonyd", "E", 1103253967, "tonyd", "E", 1103254055, "tonyd", "P", 1107035735, "tonyd", "E", 1107035881, "tonyd", "X", 1107035977, "tonyd", "E", 1107036131, "tonyd", "E", 1107036221, "tonyd", "E", 1107036238, "tonyd", "E", 1107038959, "tonyd", "E", 1107038973, "tonyd", "X", 1107039000, "tonyd", "E", 1107039260, "tonyd", "E", 1107039329, "tonyd", "E", 1107044820, "tonyd", "E", 1116297860, "tonyd", "E", 1116297929, "tonyd", "E", 1116297943, "tonyd", "E", 1116297971, "tonyd", "E", 1122081852, "tonyd", "E", 1122082074, "tonyd", "E", 1122082108, "tonyd", "E", 1122082257, "tonyd", "E", 1122082970, "tonyd", "E", 1122083059, "tonyd", "E", 1122083672, "tonyd", "E", 1122083803, "tonyd", "E", 1122083884, "tonyd", "E", 1127023090, "tonyd", "E", 1127023129, "tonyd", "E", 1127023157, "tonyd", "E", 1127024212, "tonyd", "E", 1127024467, "tonyd", "P", 1131232480, "tunk_bodin", "X", 1131767069, "tunk_bodin", "X", 1131767114, "tunk_bodin", "X", 1196272982, "slurpeeslurp", "X", 1196276810, "slurpeeslurp", "X", 1263310857, "slurpeeslurp", "E", 1263311017, "slurpeeslurp", "E", 1305856589, "slurpeeslurp", "E", 1305856597, "slurpeeslurp", "E", 1305856616, "slurpeeslurp", "E", 1305856627, "slurpeeslurp", "E", 1305856650, "slurpeeslurp", "R", 1443057405, "rorschakovacs", "X", 1443235972, "rorschakovacs", "X", 1572984666, "sendnoodlez", "R", 1572984745, "sendnoodlez", "X", 1572984756, "sendnoodlez", "E", 1572984859, "sendnoodlez", "X", 1572984886, "sendnoodlez", "E", 1572984887, "sendnoodlez", "E", 1572984889, "sendnoodlez", "E", 1572984912, "sendnoodlez", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

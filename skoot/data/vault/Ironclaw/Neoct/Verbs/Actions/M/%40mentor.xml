@@ -1,0 +1,130 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tonyd">
+  <SkotOS:MerAcHa action_id="ic_mentor">
+    <Core:PCProperties>
+      <Core:Property property="mentoring:areas">
+         (\{ "all", "boarding", "clothing", "combat", "food", "guilds", "houses", "income", "purchases", "religion", "socializing" \})
+      </Core:Property>
+      <Core:Property property="merry:global:action">
+         X[M] /*
+ * Syntax is: @mentor \<person\> "\<task\> complete"
+ */
+
+object student;
+string *areas, *commands;
+int i, done;
+
+/* set areas of mentoring */
+areas = this."mentoring:areas";
+
+if (!\$(dob:words) \|\|
+ sizeof(\$(dob:words)) \< 1) \{
+    EmitTo(\$actor, "Type @mentor \<character\> - to see mentoring information.");
+    EmitTo(\$actor, "To mark a mentoring area as complete type @mentor \<character\> '\<area\> complete");
+    return FALSE;
+\}
+
+if(sizeof(\$(dob:words)) \> 1) \{
+  EmitTo(\$actor, "You can only @mentor one person at a time.");
+  return FALSE;
+\}
+
+/* who are we @mentoring? */
+\$name = \$(dob:words)[0];
+student = common::lookup();
+
+if(!student) \{
+  EmitTo(\$actor, "Unknown character.");
+  return FALSE;
+\}
+
+if(!\$evoke) \{
+  /* didn't set anything, so... */
+  /* give mentoring information */
+  EmitTo(\$actor, "Name: "+student."skotos:playercapname");
+  if(student."skotos:creation_time") \{
+    EmitTo(\$actor, "Creation Date: "+ctime(student."skotos:creation_time"));
+  \} else \{
+    EmitTo(\$actor, "Creation Date: unknown");
+  \}
+  /* are we done mentoring this student? */
+  /* disabled. This information is given at the end anyway */
+/*
+  done = TRUE;
+  for(i=1;i\<sizeof(areas);i++) \{
+    if(!Get(student, "mentoring:"+areas[i]))
+      done = FALSE;
+  \}
+  if(done) \{
+    EmitTo(\$actor, "Areas of Mentoring: COMPLETED.");
+  \} else \{
+    EmitTo(\$actor, "Areas of Mentoring: INCOMPLETE.");
+  \}
+*/
+  EmitTo(\$actor, "Areas of Mentoring:");
+  for(i=1;i\<sizeof(areas);i++) \{
+    if(Get(student, "mentoring:"+areas[i])) \{
+      EmitTo(\$actor, capitalize(areas[i])+": Completed ("+Get(student, "mentoring:"+areas[i])+").");
+    \} else \{
+      EmitTo(\$actor, capitalize(areas[i])+": Incomplete.");
+    \}
+  \}
+  if(student."mentoring:finished") \{
+    EmitTo(\$actor, "Date Exited: "+ctime(student."mentoring:finished"));
+  \} else \{
+    EmitTo(\$actor, student."skotos:playercapname"+" has not completed the mentoring program.");
+  \}
+  return FALSE;
+\}
+
+/* we have an evoke. See if it changes a mentoring area */
+commands = explode(\$evoke[1..strlen(\$evoke)-2], " ");
+if(sizeof(commands) \> 1) \{
+  if(member(commands[0], areas)) \{
+    EmitTo(\$actor, "Valid area");
+    switch(commands[1]) \{
+      case "incomplete":
+        Set(student, "mentoring:"+lower_case(commands[0]), nil);
+        EmitTo(\$actor, "Updated. "+capitalize(commands[0])+" in "+student."skotos:playercapname"+" set to Incomplete.");
+        break;
+      case "completed":
+        Set(student, "mentoring:"+lower_case(commands[0]), \$actor."skotos:playercapname");
+        EmitTo(\$actor, "Updated. "+capitalize(commands[0])+" in "+student."skotos:playercapname"+" set to Completed.");
+        break;
+      case "ignored":
+        Set(student, "mentoring:"+lower_case(commands[0]), "ignored");
+        EmitTo(\$actor, "Updated. "+capitalize(commands[0])+" in "+student."skotos:playercapname"+" set to Ignored.");
+        break;
+      default:
+        EmitTo(\$actor, "Unknown command. Possible options are: completed, incomplete, ignored");
+        break;
+    \}
+    /* check if all mentoring areas are completed */
+    done = TRUE;
+    for(i=1;i\<sizeof(areas);i++) \{
+      if(!Get(student, "mentoring:"+areas[i]))
+        done = FALSE;
+    \}
+    if(done) \{
+      /* finished mentoring */
+      EmitTo(\$actor, student."skotos:playercapname"+" has completed the mentoring program.");
+      EmitTo(student, "You have completed the mentoring program. Congratulations!");
+      student."mentoring:finished" = time();
+    \}
+  \} else \{
+    EmitTo(\$actor, "That is not a valid mentoring area. Valid areas are: "+implode(areas, ", "));
+    EmitTo(\$actor, "To mark a mentoring area as complete type @mentor \<character\> '\<area\> complete");
+    return FALSE;
+  \}
+\} else \{
+  EmitTo(\$actor, "To mark a mentoring area as complete type @mentor \<character\> '\<area\> complete");
+  return FALSE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1084521147, "zwoc", "P", 1084521161, "zwoc", "P", 1084521175, "zwoc", "P", 1084521200, "zwoc", "P", 1084521226, "zwoc", "P", 1084521301, "zwoc", "P", 1084521329, "zwoc", "P", 1084521343, "zwoc", "P", 1084521394, "zwoc", "P", 1086519462, "zwoc", "P", 1086519591, "zwoc", "P", 1086519623, "zwoc", "P", 1086519637, "zwoc", "P", 1086519652, "zwoc", "P", 1086519670, "zwoc", "P", 1086519763, "zwoc", "P", 1086520567, "zwoc", "P", 1093536885, "zwoc", "P", 1094964247, "zwoc", "P", 1094964280, "zwoc", "P", 1094964321, "zwoc", "P", 1094964750, "zwoc", "P", 1094974244, "zwoc", "P", 1095127068, "zwoc", "P", 1096227937, "sorcha", "E", 1100757985, "zwoc", "P", 1100768800, "zwoc", "P", 1100768854, "zwoc", "P", 1100768863, "zwoc", "P", 1100768949, "zwoc", "P", 1100769088, "zwoc", "P", 1100979723, "zwoc", "P", 1123518427, "zwoc", "P", 1149025774, "tonyd", "E", 1149026132, "tonyd", "P", 1149026518, "tonyd", "P", 1149026978, "tonyd", "P", 1149027054, "tonyd", "P", 1149027125, "tonyd", "P", 1149027206, "tonyd", "P", 1149027237, "tonyd", "P", 1149027482, "tonyd", "P", 1149027538, "tonyd", "P", 1149027579, "tonyd", "P", 1149027638, "tonyd", "P", 1149031888, "tonyd", "P", 1149031949, "tonyd", "P", 1149032059, "tonyd", "P", 1149032135, "tonyd", "P", 1149032347, "tonyd", "P", 1149032452, "tonyd", "P", 1149032644, "tonyd", "P", 1149033011, "tonyd", "P", 1149033129, "tonyd", "P", 1149033180, "tonyd", "P", 1149033604, "tonyd", "P", 1149034362, "tonyd", "P", 1149034539, "tonyd", "P", 1149034580, "tonyd", "P", 1149034728, "tonyd", "P", 1149034749, "tonyd", "P", 1149034769, "tonyd", "P", 1149034865, "tonyd", "P", 1149035514, "tonyd", "P", 1149035787, "tonyd", "P", 1149035884, "tonyd", "P", 1149042681, "lunamoon", "E", 1173189141, "librarysage", "R" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

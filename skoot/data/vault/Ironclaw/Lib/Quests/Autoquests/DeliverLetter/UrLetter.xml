@@ -1,0 +1,119 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="letter"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="letters"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">letter</Base:Description>
+          <Base:Description type="look">A letter.</Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:react-pre:sign-what">
+         X[M] /* Allows a PC to sign the letter */
+
+if(this."base:environment" != \$actor) \{
+  EmitTo(\$actor, "You must be holding "+Describe(this, nil, \$actor)+" before you can sign it.");
+  return FALSE;
+\}
+
+/* Check if a skill is needed */
+if(this."bonus:skill") \{
+  EmitTo(\$actor, "Need a skill: "+dump_value(this."bonus:skill"));
+  \$skill_level = Int(Get(\$actor, this."bonus:skill"));
+  EmitTo(\$actor, "Skill is: "+dump_value(\$skill));
+  
+  /* They have enough skill to sign it */
+  if(this."bonus:description") \{
+    \$tmp = Arr(this."bonus:description");
+    EmitTo(\$actor, Str(\$tmp[0]));
+    if(sizeof(\$tmp) \> 1)
+      EmitIn(\$actor."base:environment", replace_strings(Str(\$tmp[1]), "[name]", Describe(\$actor)), \$actor);
+    else
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" writes something on "+Describe(this, \$actor)+".", \$actor);
+  \} else \{
+    EmitTo(\$actor, "You sign "+Describe(this, nil, \$actor)+".");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" signs "+Describe(this, \$actor)+".", \$actor);
+  \}
+  
+  if(\$skill_level \< 4) \{
+    /* They don't have the skill to sign this */
+    EmitTo(\$actor, "You don't know enough to confirm this information.");
+    return FALSE;
+  \}
+
+  /* They have enough skill to sign it */
+  
+\} else \{
+  /* Just sign it */
+  EmitTo(\$actor, "You sign "+Describe(this, nil, \$actor)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" signs "+Describe(this, \$actor)+".", \$actor);
+\}
+this."lastsigner:object" = \$actor;
+\$signature = \$actor."skotos:playercapname" ? \$actor."skotos:playercapname" : Describe(\$actor);
+if(\$actor."skotos:playercapname" \&\& \$actor."trait:title") \$signature = \$actor."trait:title" + " " + \$signature;
+this."details:default:descriptions:delivery-from" = \$signature;
+
+/* stop the normal signing script from triggering */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:offer-what">
+         X[M] /* Is this item being delivered? */
+if(\$who \&\& sizeof(\$who) == 1 \&\& \$who[0] == this."delivery:target") \{
+  /* Delivered to the right person */
+  if(this."delivery:successscript") \{
+    Call(this."delivery:successscript"[0], this."delivery:successscript"[1], \$parms: this."delivery:successscript"[2], \$item: this, \$id: this."delivery:id", \$(quest:callback): 1);
+  \}
+  return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1315460261, "tonyd", "X", 1315460684, "tonyd", "P", 1315460717, "tonyd", "P", 1315460753, "tonyd", "P", 1315460762, "tonyd", "P", 1315460770, "tonyd", "P", 1315460843, "tonyd", "P", 1315460849, "tonyd", "P", 1315460957, "tonyd", "P", 1315460995, "tonyd", "P", 1315461204, "tonyd", "P", 1315461250, "tonyd", "P", 1315461328, "tonyd", "P", 1315461368, "tonyd", "P", 1315461489, "tonyd", "P", 1315461691, "tonyd", "P", 1321530633, "tonyd", "P", 1321530782, "tonyd", "P", 1321530941, "tonyd", "P", 1321531065, "tonyd", "P", 1326598287, "tonyd", "P", 1326598303, "tonyd", "P", 1326598401, "tonyd", "P", 1326598614, "tonyd", "P", 1326599771, "tonyd", "P", 1326599779, "tonyd", "P", 1326599844, "tonyd", "P", 1326599871, "tonyd", "P", 1326599901, "tonyd", "P", 1326599916, "tonyd", "P", 1326599926, "tonyd", "P", 1326599971, "tonyd", "P", 1326599983, "tonyd", "P", 1326599998, "tonyd", "P", 1326600024, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

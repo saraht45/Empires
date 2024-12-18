@@ -1,0 +1,194 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="map:data">
+         (\{ (\{ "WestBeach:01", "WestBeach:02", "WestBeach:03", "WestBeach:04", nil, nil, nil, nil, nil, "Plains:08", "Plains:10", "Plains:12", "Road:57", "Plains:14", "Plains:16", "SouthForest:11", "SouthForest:12", "SouthForest:13", "SouthForest:14", "SouthForest:20", "SouthForest:21", "SouthForest:22", "Plains:41", "SouthForest:24", nil, nil, nil, nil, nil \}), (\{ "Ocean:01", "WestBeach:05", "WestBeach:06", "WestBeach:07", "WestBeach:08", nil, nil, nil, nil, nil, "Plains:09", "Plains:11", "Plains:13", "Road:58", "Plains:15", "Plains:17", "Plains:19", "SouthForest:15", "SouthForest:16", "Plains:48", nil, "SouthForest:23", "Plains:34", "River:19", "River:20", "SouthForest:25", "SouthForest:26", nil, nil \}), (\{ "Ocean:02", "Ocean:03", "Ocean:04", "WestBeach:09", "WestBeach:10", "WestBeach:11", nil, nil, nil, nil, nil, nil, nil, nil, "Plains:18", "Plains:20", "Plains:21", "Plains:23", "SouthForest:17", "SouthForest:18", nil, nil, "Plains:35", "River:21", "Plains:42", "SouthForest:27", nil, nil, nil \}), (\{ "Ocean:05", "Ocean:06", "Ocean:08", "Ocean:09", "WestBeach:12", "WestBeach:13", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "Plains:22", "Plains:24", "Plains:27", "SouthForest:19", nil, nil, "Plains:36", "River:22", "River:23", "Plains:43", "Plains:49", nil, nil \}), (\{ "Ocean:10", "Ocean:11", "Ocean:12", "Ocean:13", "Ocean:14", "Ocean:15", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "Plains:25", "Plains:28", "Plains:29", "Plains:30", "Plains:32", "Plains:37", "Plains:39", "River:24", "River:25", "Plains:44", nil, nil \}), (\{ "Ocean:16", "Ocean:17", "Ocean:18", "Ocean:19", "Ocean:20", "Ocean:21", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "Plains:31", "Plains:33", "Plains:38", "Plains:40", "River:26", "River:27", "Plains:45", nil, nil \}), (\{ "Ocean:22", "Ocean:23", "Ocean:24", "Ocean:25", "Ocean:26", "Ocean:27", "Ocean:28", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "Plains:47", "River:28", "Plains:46", nil, nil \}), (\{ "Ocean:29", "Ocean:30", "Ocean:31", nil, "Ocean:32", "Ocean:33", "Ocean:34", "Ocean:35", nil, nil, nil, nil, nil, nil, nil, "SouthBeach:01", "SouthBeach:02", "Ocean:36", "Ocean:37", "Ocean:38", "Ocean:39", "Ocean:40", "Ocean:41", "Ocean:42", "Ocean:43", "Ocean:44", "Ocean:45", "Ocean:46", "Ocean:47" \}) \})
+      </Core:Property>
+      <Core:Property property="merry:lib:generate_map">
+         X[M] int x, y;
+mapping urs;
+
+urs = ([ "Road":\$\{Allegory:Setting:Outlands:UrRoad\}, "EastForest":\$\{Allegory:Setting:Outlands:UrEastForest\}, "WestForest":\$\{Allegory:Setting:Outlands:UrWestForest\}, "Outland":\$\{Allegory:Setting:Outlands:UrOutlands\}, "LumberMill":\$\{Allegory:Setting:Outlands:UrLumberMill\}, "Mine":\$\{Allegory:Setting:Outlands:UrMine\}, "MineArea":\$\{Allegory:Setting:Outlands:UrMineArea\}, "River":\$\{Allegory:Setting:Outlands:UrRiver\}, "Plains":\$\{Allegory:Setting:Outlands:UrPlains\}, "SouthForest":\$\{Allegory:Setting:Outlands:UrSouthForest\}, "SouthBorder":\$\{Allegory:Setting:Outlands:UrSouthBorder\}, "WestLake":\$\{Allegory:Setting:Outlands:UrLake\}, "EastLake":\$\{Allegory:Setting:Outlands:UrMineArea\}, "Ocean":\$\{Allegory:Setting:Outlands:UrOcean\} ]);
+
+\$mapData = \$this."map:data";
+
+\$baseDir = "Allegory:Setting:Outlands:";
+
+/* Make all the rooms first */
+for(x = 0; x \< sizeof(\$mapData); x++) \{
+    \$row = \$mapData[x];
+
+    for(y = 0; y \< sizeof(\$row); y++) \{
+        if(\$row[y] != nil) \{
+            \$room = \$mapData[x][y];
+
+            if(sizeof(explode(\$room, ":")) \> 1) \{
+                if(urs[explode(\$room, ":")[0]]) \{
+                    \$ur = urs[explode(\$room, ":")[0]];
+                \} else \{
+                    \$ur = urs["Outland"];
+                \}
+            \} else \{
+                \$ur = urs["Outland"];
+            \}
+
+            \$roomDir = \$baseDir + \$room;
+
+            if(!Obj(\$roomDir)) \{
+                \$newRoom = Spawn(\$ur);
+                \$newRoom."base:objectname" = \$roomDir;
+                \$newRoom."core:objectname" = \$roomDir;
+                \$newRoom."details:default:description:mapurl" = ParseXML("\<mapurl cat=\\"Outlands\\"\>" + replace_strings(\$room, ":", "") + ".png\</mapurl\>");
+            \} else \{
+                \$newRoom = Obj(\$roomDir);
+                \$newRoom."details:default:description:mapurl" = ParseXML("\<mapurl cat=\\"Outlands\\"\>" + replace_strings(\$room, ":", "") + ".png\</mapurl\>");
+            \}
+        \}
+    \}
+\}
+
+return TRUE;
+
+/* Link all the rooms next */
+/* Also add map data */
+for(x = 0; x \< sizeof(\$mapData); x++) \{
+    \$row = \$mapData[x];
+    \$maxRows = sizeof(\$mapData) - 1;
+    for(y = 0; y \< sizeof(\$row); y++) \{
+        if(\$row[y] != nil) \{
+            \$room = \$mapData[x][y];
+            \$maxCols = sizeof(\$row) - 1;
+
+            if(sizeof(explode(\$room, ":")) \> 1) \{
+                if(urs[explode(\$room, ":")[0]]) \{
+                    \$ur = urs[explode(\$room, ":")[0]];
+                \} else \{
+                    \$ur = urs["Outland"];
+                \}
+            \} else \{
+                \$ur = urs["Outland"];
+            \}
+
+            \$roomDir = Obj(\$baseDir + \$room);
+
+            /* Check west */
+            if(y \> 0) \{
+                if(\$mapData[x][y-1] != nil) \{
+                    \$exitDetail = "west";
+                    \$destOb = Obj(\$baseDir + \$mapData[x][y-1]);
+                                if(Obj(\$destOb)) \{
+                \$test = NewNRef(Obj(\$destOb), "exit-" + \$exitDetail);
+                Set(\$roomDir, "details:" + "exit-" + \$exitDetail + ":exit:dest", \$test);
+                Set(\$roomDir, "details:exit-" + \$exitDetail + ":exit:directions:" + \$exitDetail, TRUE);
+            \}
+                \}
+            \}
+
+            /* Check northwest */
+            if(y \> 0 \&\& x \> 0) \{
+                if(\$mapData[x-1][y-1] != nil) \{
+                    \$exitDetail = "northwest";
+                    \$destOb = Obj(\$baseDir + \$mapData[x-1][y-1]);
+                                if(Obj(\$destOb)) \{
+                \$test = NewNRef(Obj(\$destOb), "exit-" + \$exitDetail);
+                Set(\$roomDir, "details:" + "exit-" + \$exitDetail + ":exit:dest", \$test);
+                Set(\$roomDir, "details:exit-" + \$exitDetail + ":exit:directions:" + \$exitDetail, TRUE);
+            \}
+                \}
+            \}
+
+            /* Check north */
+            if(x \> 0) \{
+                if(\$mapData[x-1][y] != nil) \{
+                    \$exitDetail = "north";
+                    \$destOb = Obj(\$baseDir + \$mapData[x-1][y]);
+                                if(Obj(\$destOb)) \{
+                \$test = NewNRef(Obj(\$destOb), "exit-" + \$exitDetail);
+                Set(\$roomDir, "details:" + "exit-" + \$exitDetail + ":exit:dest", \$test);
+                Set(\$roomDir, "details:exit-" + \$exitDetail + ":exit:directions:" + \$exitDetail, TRUE);
+            \}
+                \}
+            \}
+
+            /* Check northeast */
+            if(y \< \$maxCols \&\& x \> 0) \{
+                if(\$mapData[x-1][y+1] != nil) \{
+                    \$exitDetail = "northeast";
+                    \$destOb = Obj(\$baseDir + \$mapData[x-1][y+1]);
+                                if(Obj(\$destOb)) \{
+                \$test = NewNRef(Obj(\$destOb), "exit-" + \$exitDetail);
+                Set(\$roomDir, "details:" + "exit-" + \$exitDetail + ":exit:dest", \$test);
+                Set(\$roomDir, "details:exit-" + \$exitDetail + ":exit:directions:" + \$exitDetail, TRUE);
+            \}
+                \}
+            \}
+
+            /* Check east */
+            if(y \< \$maxCols) \{
+                if(\$mapData[x][y+1] != nil) \{
+                    \$exitDetail = "east";
+                    \$destOb = Obj(\$baseDir + \$mapData[x][y+1]);
+                                if(Obj(\$destOb)) \{
+                \$test = NewNRef(Obj(\$destOb), "exit-" + \$exitDetail);
+                Set(\$roomDir, "details:" + "exit-" + \$exitDetail + ":exit:dest", \$test);
+                Set(\$roomDir, "details:exit-" + \$exitDetail + ":exit:directions:" + \$exitDetail, TRUE);
+            \}
+                \}
+            \}
+
+            /* Check southeast */
+            if(y \< \$maxCols \&\& x \< \$maxRows) \{
+                if(\$mapData[x+1][y+1] != nil) \{
+                    \$exitDetail = "southeast";
+                    \$destOb = Obj(\$baseDir + \$mapData[x+1][y+1]);
+                                if(Obj(\$destOb)) \{
+                \$test = NewNRef(Obj(\$destOb), "exit-" + \$exitDetail);
+                Set(\$roomDir, "details:" + "exit-" + \$exitDetail + ":exit:dest", \$test);
+                Set(\$roomDir, "details:exit-" + \$exitDetail + ":exit:directions:" + \$exitDetail, TRUE);
+            \}
+                \}
+            \}
+
+            /* Check south */
+            if(x \< \$maxRows) \{
+                if(\$mapData[x+1][y] != nil) \{
+                    \$exitDetail = "south";
+                    \$destOb = Obj(\$baseDir + \$mapData[x+1][y]);
+                                if(Obj(\$destOb)) \{
+                \$test = NewNRef(Obj(\$destOb), "exit-" + \$exitDetail);
+                Set(\$roomDir, "details:" + "exit-" + \$exitDetail + ":exit:dest", \$test);
+                Set(\$roomDir, "details:exit-" + \$exitDetail + ":exit:directions:" + \$exitDetail, TRUE);
+            \}
+                \}
+            \}
+
+            /* Check southwest */
+            if(y \> 0 \&\& x \< \$maxRows) \{
+                if(\$mapData[x+1][y-1] != nil) \{
+                    \$exitDetail = "southwest";
+                    \$destOb = Obj(\$baseDir + \$mapData[x+1][y-1]);
+
+                                if(Obj(\$destOb)) \{
+                \$test = NewNRef(Obj(\$destOb), "exit-" + \$exitDetail);
+                Set(\$roomDir, "details:" + "exit-" + \$exitDetail + ":exit:dest", \$test);
+                Set(\$roomDir, "details:exit-" + \$exitDetail + ":exit:directions:" + \$exitDetail, TRUE);
+            \}
+                \}
+            \}
+
+
+        \}
+    \}
+\}
+      </Core:Property>
+      <Core:Property property="old:map:data">
+         (\{ (\{ nil, nil, nil, "Waterfall", nil, "WestLake:01", "Plains:01", "Plains:02", "Road:21", "Road:20", nil, nil, nil, nil, nil, "EastLake:01", "EastLake:02", "EastLake:03", "Road:56", "Road:55", "Road:54", "EastForest:17", "EastForest:18", "EastForest:19", "EastForest:20", "EastForest:21", "EastForest:22", "EastForest:23", "EastForest:24", "EastForest:25" \}), (\{ nil, nil, nil, "SecretPassage", "WestLake:02", "River:01", "River:02", "River:03", "River:04", "WestBridge", nil, nil, nil, nil, nil, nil, nil, nil, "EastLake:04", "EastForest:16", "Road:53", "Road:52", "Road:51", "Road:50", "Road:49", "EastForest:26", "EastForest:27", "EastForest:28", "EastForest:29", "EastForest:30" \}), (\{ "Mine:01", "Mine:02", "Mine:03", "Mine:04", nil, "WestForest:16", "WestForest:17", "WestForest:18", "WestForest:19", "Road:19", "River:05", "River:06", "River:07", nil, nil, nil, nil, nil, nil, "EastForest:11", "EastForest:12", "EastForest:13", "EastForest:14", "EastForest:15", "Road:48", "EastForest:31", "EastForest:32", "EastForest:33", "EastForest:34", "EastForest:35" \}), (\{ "MineArea:01", "Road:01", "MineArea:02", "MineArea:03", "MineArea:04", nil, "WestForest:13", "WestForest:14", "WestForest:15", "Road:18", "Plains:03", "Plains:04", "Plains:05", "River:08", "River:09", "River:10", "River:11", "River:12", nil, nil, nil, "EastForest:08", "EastForest:09", "EastForest:10", "Road:47", "EastForest:36", "EastForest:37", "EastForest:38", "EastForest:39", "EastForest:40" \}), (\{ "MineArea:05", "Road:02", "MineArea:06", "MineArea:07", "MineArea:08", "WestForest:09", "WestForest:10", "WestForest:11", "WestForest:12", "Road:17", "Road:16", "Road:22", "Road:23", "Road:24", "Road:25", "Road:26", "Road:27", "River:13", "River:14", "EastForest:01", "EastForest:02", nil, "EastForest:06", "EastForest:07", "Road:46", "EastForest:41", "EastForest:42", "EastForest:43", "EastForest:44", "EastForest:45" \}), (\{ "MineArea:09", "Road:03", "MineArea:10", "WestForest:01", "WestForest:02", "WestForest:03", "WestForest:04", "WestForest:06", "WestForest:07", "WestForest:08", "Road:15", "SouthForest:06", "SouthForest:07", "SouthForest:08", "SouthForest:09", "SouthForest:10", "Road:28", "Plains:06", "River:15", "LumberMill:04", "LumberMill:03", "EastForest:03", "EastForest:04", "EastForest:05", "Road:45", "EastForest:46", "EastForest:47", "EastForest:48", "EastForest:49", "EastForest:50" \}), (\{ "Road:05", "Road:04", "Road:06", "Road:07", "Road:08", "Road:09", "Road:10", "Road:11", "Road:12", "Road:13", "Road:14", "SouthForest:01", "SouthForest:02", "SouthForest:03", "SouthForest:04", "SouthForest:05", "Road:29", "Plains:07", "River:16", "LumberMill:02", "LumberMill:01", "Road:41", "Road:42", "Road:43", "Road:44", "EastForest:51", "EastForest:52", "EastForest:53", "EastForest:54", nil \}), (\{ "SouthBorder:01", "SouthBorder:02", "SouthBorder:03", "SouthBorder:04", "SouthBorder:05", "SouthBorder:06", "SouthBorder:07", "SouthBorder:08", "SouthBorder:09", "SouthBorder:10", "Road:30", "Road:31", "Road:32", "Road:33", "Road:34", "Road:35", "Road:36", "Road:37", "Road:38", "Road:39", "SouthBridge", "Road:40", "SouthBorder:11", "SouthBorder:12", "SouthBorder:13", "SouthBorder:14", "SouthBorder:15", nil, nil, nil \}) \})
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1563590550, "jominey", "E", 1563594486, "jominey", "E", 1563594538, "jominey", "E", 1563594624, "jominey", "E", 1563594734, "jominey", "E", 1563594864, "jominey", "E", 1563595215, "jominey", "E", 1563595270, "jominey", "E", 1563596670, "jominey", "E", 1563596973, "jominey", "E", 1563597387, "jominey", "P", 1563597437, "jominey", "P", 1563597460, "jominey", "E", 1563597520, "jominey", "P", 1563597572, "jominey", "P", 1563597602, "jominey", "P", 1563597658, "jominey", "P", 1563597794, "jominey", "P", 1563597856, "jominey", "P", 1563598326, "jominey", "P", 1563598803, "jominey", "P", 1563599091, "jominey", "P", 1563599207, "jominey", "P", 1563599878, "jominey", "P", 1563978036, "jominey", "E", 1563980708, "jominey", "E", 1563982511, "jominey", "E", 1563982550, "jominey", "E", 1563982715, "jominey", "E", 1563984597, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

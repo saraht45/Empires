@@ -1,0 +1,159 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:NPCs:Enemies:Animals:Vermin:GiantSpiders:UrGiantSpider)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="NEW"/>
+          <Base:Adjective adjective="green"/>
+          <Base:Adjective adjective="swamp"/>
+        </Base:Adjectives>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:nip:trait:death:death_object">
+         \<Ironclaw:Props:Plot:Spider:Swamp:GreenSpiderCorpse\>
+      </Core:Property>
+      <Core:Property property="export:nip:webbing:percentage">
+         100
+      </Core:Property>
+      <Core:Property property="export:norespawn">1</Core:Property>
+      <Core:Property property="export:trait:body">13</Core:Property>
+      <Core:Property property="export:trait:size">
+         "massive"
+      </Core:Property>
+      <Core:Property property="export:trait:type">
+         "blue-stripped"
+      </Core:Property>
+      <Core:Property property="merry:lib:cocoon">
+         X[M] \$inside = Spawn(\$\{Ironclaw:Props:Plot:Spider:Swamp:CocoonInside\});  
+\$outside = Spawn(\$\{Ironclaw:Props:Plot:Spider:Swamp:CocoonOutside\});  
+  
+\$inside."cocoon:outter" = \$outside;  
+\$outside."cocoon:inner" = \$inside;  
+\$inside."cocoon:inhabitant" = \$target;  
+\$outside."cocoon:inhabitant" = \$target;  
+\$outside."base:environment" = \$this."base:environment";  
+  
+Act(\$target, "teleport", \$dest: \$inside, \$silently: TRUE);
+      </Core:Property>
+      <Core:Property property="merry:lib:die">
+         X[M] \$delay(5, TRUE, "27d9");  
+if(this."combat:damage" \&\& this."combat:damage" \> this."trait:body"+3) \{  
+    if(this."base:environment") \{  
+        EmitIn(this."base:environment", Describe(this)+" collapses, now just a corpse.");  
+        Call(\$\{Ironclaw:Lib:timers:rot\}, "rot", \$target: this);  
+    \}  
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fighting_checktarget">
+         X[M] /* is this a valid target? */  
+  
+/* sanity checking */  
+if(!\$target) return FALSE;  
+  
+/* If broken from combat and not dead, cocoon em. */  
+\$endur = Int(\$target."career:combat:endurance") + Int(\$target."skill:combat:endurance");  
+if(Int(\$target."combat:damage") \> (Int(\$target."trait:body") + 3 + \$endur)) \{  
+  if(!\$target."nip:spider:cocooned") \{  
+    \$target."nip:spider:cocooned" = 1;  
+    EmitTo(\$target, TAG(replace_strings(proper(Describe(\$this)), "M", "m", "G", "g", "S", "s") + " starts spinning you in webbing.", "social:second"));  
+    EmitIn(\$target."base:environment", TAG(replace_strings(proper(Describe(\$this)), "M", "m", "G", "g", "S", "s") + " starts spinning " + Describe(\$target) + " in webbing.", "social:first"), \$target);  
+    \$delay(5, FALSE, "13bb");  
+    if(\$target."base:environment" == \$this."base:environment") \{  
+        EmitTo(\$target, TAG("You find it more difficult to move as you are covered from head to toe in a snug cocoon..", "social:second"));  
+        EmitIn(\$target."base:environment", TAG(Describe(\$target) + " struggles uselessly as " + \$target."base:pronoun" + " is covered from head to toe in a snug cocoon.", "social:first"), \$target);  
+        \$delay(2, FALSE, "000d");  
+        if(\$target."base:environment" == \$this."base:environment") \{  
+          this."base:proximity" = \$target;  
+          ::cocoon(\$target: \$target);  
+        \}  
+    \}  
+    if(\$target."nip:spider:cocooned") \{  
+        \$target."nip:spider:cocooned" = nil;  
+    \}  
+  \}  
+  return FALSE;  
+\}  
+  
+/* yes, a valid target */  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fighting_finish">
+         X[M] /* Beaten someone in a fight. Finish them! */  
+this."base:proximity" = \$target;  
+  
+/* Wrap in cocoon */  
+if(!\$target."nip:spider:cocooned") \{  
+    \$target."nip:spider:cocooned" = 1;  
+    EmitTo(\$target, TAG(replace_strings(proper(Describe(\$this)), "M", "m") + " starts spinning you in webbing.", "social:second"));  
+    EmitIn(\$target."base:environment", TAG(replace_strings(proper(Describe(\$this)), "M", "m") + " starts spinning " + Describe(\$target) + " in webbing.", "social:first"), \$target);  
+    \$delay(5, FALSE, "13bb");  
+    if(\$target."base:environment" == \$this."base:environment") \{  
+        EmitTo(\$target, TAG("You find it more difficult to move as you are covered from head to toe.", "social:second"));  
+        EmitIn(\$target."base:environment", TAG(Describe(\$target) + " struggles uselessly as " + \$target."base:pronoun" + " is covered from head to toe.", "social:first"), \$target);  
+        \$delay(2, FALSE, "000d");  
+        if(\$target."base:environment" == \$this."base:environment") \{  
+          this."base:proximity" = \$target;  
+          ::cocoon(\$target: \$target);  
+        \}  
+    \}  
+    if(\$target."nip:spider:cocooned") \{  
+        \$target."nip:spider:cocooned" = nil;  
+    \}  
+\}
+      </Core:Property>
+      <Core:Property property="nip:trait:death:death_object">
+         \<Ironclaw:Props:Plot:Spider:Swamp:GreenSpiderCorpse\>
+      </Core:Property>
+      <Core:Property property="nip:webbing:percentage">
+         100
+      </Core:Property>
+      <Core:Property property="npc:status:spawndate">
+         1253687352
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1205214510, "tonyd", "X", 1253687334, "jominey", "E", 1253687499, "jominey", "E", 1253688325, "jominey", "E", 1253688481, "jominey", "E", 1253688593, "jominey", "E", 1253689274, "jominey", "E", 1253689366, "jominey", "E", 1253690257, "jominey", "E", 1253690265, "jominey", "E", 1253690301, "jominey", "E", 1253690649, "jominey", "E", 1253690888, "jominey", "E", 1253690915, "jominey", "E", 1253691435, "jominey", "E", 1253693540, "jominey", "E", 1253693777, "jominey", "E", 1253693869, "jominey", "E", 1253693987, "jominey", "E", 1253694153, "jominey", "E", 1253694211, "jominey", "E", 1253694572, "jominey", "E", 1253695009, "jominey", "E", 1253695033, "jominey", "E", 1253695267, "jominey", "E", 1253695672, "jominey", "E", 1253695941, "jominey", "E", 1253697166, "jominey", "E", 1253698199, "jominey", "E", 1253698463, "jominey", "E", 1253698523, "jominey", "E", 1253698611, "jominey", "E", 1253713238, "balkaar", "E", 1253713254, "balkaar", "E", 1253719467, "jominey", "E", 1253751469, "jominey", "E", 1253751777, "jominey", "E", 1353025063, "meandmine", "X", 1353025709, "meandmine", "X" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,221 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Effects:Extensions:Describer)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:apply_severity_level">
+         X[M] /* 
+ * D=The user's severity level has changed to \$degree. \$increasing is set to 1 if dosage is positive, 0 if dosage is negative. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Jan  9 21:46, 2006 
+ * State:  EXPERIMENTAL 
+ */ 
+mapping appearance; 
+string *details, prev, app; 
+int i, ix, chance, at_decrease; 
+ 
+/* Firstly, we undo what might have been done by a previous severity apply'ing. */ 
+prev = Get(\$who, "sys:effect:appearance:" + \$effect."effect:name" + ":prev"); 
+ 
+if (prev != nil) \{ 
+    string val; 
+ 
+    appearance = Get(\$effect, "effect:appearance-for-" + prev); 
+    if (appearance) \{ 
+        details = map_indices(appearance); 
+        ix      = sizeof(details); 
+        EmitTo(\$who, "prev = " + dump_value(prev) + "; appearance = " + dump_value(appearance)); 
+        for (i = 0; i \< ix; i++) 
+            if (Get(\$who, "sys:effect:temp-appearance-set:" + details[i])) \{ 
+                val = Get(\$who, "sys:effect:temp-appearance:" + details[i]); 
+                Set(\$who, "appearance:" + details[i], val); 
+                Set(NewNRef(\$who, details[i]), "detail:adjective:" + Get(\$who, "sys:effect:temp-appearance:" + details[i]), FALSE); 
+                Set(\$who, "sys:effect:temp-appearance-set:" + details[i], nil); 
+                Set(\$who, "sys:effect:temp-appearance:" + details[i], nil); 
+            \} 
+    \} 
+\} 
+ 
+/* Now we apply this severity. */ 
+appearance = Get(\$effect, "effect:appearance-for-" + \$degree); 
+chance     = Int(Get(\$effect, "effect:appearance-chance-" + \$degree)); 
+if (random(chance)) 
+    return nil; 
+ 
+if (!appearance) 
+    return nil; 
+ 
+details = map_indices(appearance); 
+ix      = sizeof(details); 
+for (i = 0; i \< ix; i++) \{ 
+    if (!Get(\$who, "sys:effect:temp-appearance-set:" + details[i])) \{ 
+        /* They do not have a temp-appearance for this bodypart yet. Which means the bodypart is their "real" one. */ 
+        Set(\$who, "sys:effect:temp-appearance:" + details[i], Get(\$who, "appearance:" + details[i])); 
+        Set(\$who, "sys:effect:temp-appearance-set:" + details[i], 1); 
+    \} 
+    app = appearance[details[i]][random(sizeof(appearance[details[i]]))]; 
+    Set(\$who, "appearance:" + details[i], app); 
+    Set(NewNRef(\$who, details[i]), "detail:adjective:" + app, TRUE); 
+\} 
+ 
+/* Finally set the mark so the next severity-applier knows what's up. */ 
+Set(\$who, "sys:effect:appearance:" + \$effect."effect:name" + ":prev", \$degree); 
+/* 
+ * ChangeLog [ 
+ *    Change(Jan  9 21:46, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:clear_effect">
+         X[M] /* 
+ * D=Clear the effects of this ... uh ... effect. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Jan  9 22:09, 2006 
+ * State:  EXPERIMENTAL 
+ */ 
+mapping appearance; 
+string *details, prev; 
+int i, ix, chance, at_decrease; 
+ 
+ 
+return TRUE; 
+ 
+/* Grab the most recently applied severity. */ 
+prev = Get(\$who, "sys:effect:appearance:" + \$effect."effect:name" + ":prev"); 
+ 
+/* If it's non-nil, we remove it. */ 
+if (prev != nil) \{ 
+    string val; 
+ 
+    appearance = Get(\$effect, "effect:appearance-for-" + prev); 
+    details = map_indices(appearance); 
+    ix      = sizeof(details); 
+    for (i = 0; i \< ix; i++) 
+        if (Get(\$who, "sys:effect:temp-appearance-set:" + details[i])) \{ 
+            val = Get(\$who, "sys:effect:temp-appearance:" + details[i]); 
+            Set(\$who, "appearance:" + details[i], val); 
+            Set(NewNRef(\$who, details[i]), "detail:adjective:" + Get(\$who, "sys:effect:temp-appearance:" + details[i]), FALSE); 
+            Set(\$who, "sys:effect:temp-appearance-set:" + details[i], nil); 
+            Set(\$who, "sys:effect:temp-appearance:" + details[i], nil); 
+        \} 
+ 
+    /* And now we nil the prev prop. */ 
+    Set(\$who, "sys:effect:appearance:" + \$effect."effect:name" + ":prev", nil); 
+\} 
+/* 
+ * ChangeLog [ 
+ *    Change(Jan  9 22:09, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:cured">
+         X[M] /* 
+ * D=Cured signal for the 'appearance-changer' effects extension. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Jan  9 22:11, 2006 
+ * State:  EXPERIMENTAL 
+ * 
+ * This is an extension to the 'describer' extension, which states: 
+ *   This script checks for the SAM strings "effect:cure-actor" 
+ *   and "effect:cure-audience". If either exists, it is evaluated 
+ *   and emitted to the appropriate parties. 
+ * 
+ * Part from that, this script also removes the appearance-tweaks (if any) upon \$who. 
+ */ 
+ 
+return TRUE; 
+ 
+::describe(\$what: "cure"); 
+ 
+::clear_effect(); 
+/* 
+ * ChangeLog [ 
+ *    Change(Jan  9 22:11, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:expired">
+         X[M] /* 
+ * D=Expired signal for the 'appearance-changer' effects extension. 
+ * 
+ * Author: Kalle Alm 
+ * Email:  kalle@mortalis.skotos.net 
+ * Since:  Jan  9 22:11, 2006 
+ * State:  EXPERIMENTAL 
+ * 
+ * This works just like the cured signal. 
+ */ 
+ 
+return TRUE; 
+ 
+::describe(\$what: "expire"); 
+ 
+::clear_effect(); 
+/* 
+ * ChangeLog [ 
+ *    Change(Jan  9 22:11, 2006; Zwoc)=Added script to codebase. 
+ * ] 
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:severity-capped">
+         X[M] /* 
+ * D=Severity has reached the cap for the 'appearance-changer' effects extension. 
+ * 
+ * By default, these effects are non-lethal. To make them lethal, create a child extension to this one and set the 
+ * merry:lib:severity-capped to whatever should happen when a person is sick-to-the-bone. 
+ */ 
+ 
+/* 
+Call(\$effect, "set_acceleration", \$acceleration: -1, \$goal: -1); 
+*/
+      </Core:Property>
+      <Core:Property property="merry:lib:severity-decrease">
+         X[M] string ldeg; 
+ 
+/*  
+ldeg = Str(Get(\$who, "sys:effect:appearance-changer:" + \$effect."effect:name" + ":last-degree")); 
+ 
+if (\$degree != ldeg) \{ 
+    Border passed. Apply curse. 
+    Set(\$who, "sys:effect:appearance-changer:" + \$effect."effect:name" + ":last-degree", \$degree); 
+    ::apply_severity_level(); 
+\} 
+*/ 
+ 
+ 
+if(Int(\$who."effect:health:severity") \< 0) \$who."effect:health:severity" = 0;
+      </Core:Property>
+      <Core:Property property="merry:lib:severity-increase">
+         X[M] /* D=Increase-severity signal for the 'appearance-changer' effects extension. 
+ * 
+ * This script replaces the 'describer' extension's default behavior 
+ * with a border-check. 
+ * 
+ * Expected relevant arguments (internal): 
+ *   \$degree       (string): The (new) degree. 
+ */ 
+ 
+string ldeg; 
+ 
+/* 
+ldeg = Str(Get(\$who, "sys:effect:appearance-changer:" + \$effect."effect:name" + ":last-degree")); 
+ 
+if (\$degree != ldeg) \{ 
+    Border passed. Apply curse. 
+    Set(\$who, "sys:effect:appearance-changer:" + \$effect."effect:name" + ":last-degree", \$degree); 
+    ::apply_severity_level(); 
+\} 
+*/
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1566058035, "jominey", "E", 1567608766, "jominey", "R" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

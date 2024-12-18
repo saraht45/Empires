@@ -1,0 +1,123 @@
+<object clone="/usr/SkotOS/obj/verb" owner="jominey">
+  <Socials:Verb imp="@unlearn" second="reduce" third="reduces" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] if(!\$evoke) \{
+  EmitTo(\$actor, "Format is: @unlearn 'spy");
+  EmitTo(\$actor, "(or whatever class you want to unlearn)");
+  return FALSE;
+\}
+
+\$char = \$actor;
+
+\$classname = replace_strings(lower_case(\$(raw-evoke)), " ", "-");
+\$class1 = Str(\$char."trait:class1");
+\$class2 = Str(\$char."trait:class2");
+
+
+if(\$classname == "" \|\| \$classname == "-") \{
+    EmitTo(\$actor, "That is not a valid class name.");
+    return FALSE;
+\}
+
+if(\$class1 != \$classname \&\& \$class2 != \$classname) \{
+    EmitTo(\$actor, "You don't seem to have a class named " + \$classname + ".");
+    return FALSE;
+\}
+
+if(\$class2 == \$classname) \{
+    \$classstr = "SECOND";
+    \$trait = "trait:class2";
+    \$trait2 = "trait:class1";
+\} else \{
+    \$classstr = "FIRST";
+    \$trait = "trait:class1";
+    \$trait2 = "trait:class2";
+\}
+
+\$skillListKeeping = Call(\$\{Allegory:Data:SkillsDB\}, "get-skillmap", \$subclass: Get(\$char, \$trait2), \$skillMap: nil);
+\$skillsKeeping = map_indices(\$skillListKeeping);
+
+\$removing = ([ ]);
+for(\$i = 0; \$i \< sizeof(\$skillsKeeping); \$i++ ) \{
+    \$skill = \$skillsKeeping[\$i];
+    \$max = \$skillListKeeping[\$skill];
+
+    if(Int(Get(\$char, "skill:" + \$skill)) \> \$max) \{
+        \$removing["skill:" + \$skill] = Int(Get(\$char, "skill:" + \$skill) - \$max);
+    \}
+\}
+
+\$skillListRemoving = Call(\$\{Allegory:Data:SkillsDB\}, "get-skillmap", \$subclass: Get(\$char, \$trait), \$skillMap: nil);
+
+\$skillsRemoving = map_indices(\$skillListRemoving) - \$skillsKeeping;
+for(\$i = 0; \$i \< sizeof(\$skillsRemoving); \$i++) \{
+    \$skill = \$skillsRemoving[\$i];
+
+    /* Overlapping skills have already been adjusted */
+    /* Completely remove any that do not exist in other class */
+    if(!\$skillListKeeping["skill:" + \$skill]) \{
+        \$removing["skill:" + \$skill] = Int(Get(\$char, "skill:" + \$skill));
+    \}
+\}
+
+\$removing2 = map_indices(\$removing);
+\$removing3 = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$removing2); \$i++) \{
+    \$removing3 += (\{ explode(\$removing2[\$i], ":")[2] + "(" + Str(\$removing[\$removing2[\$i]]) + ")" \});
+\}
+
+\$question = "Are you sure you want to UNLEARN your " + Str(\$classstr) + " class " + upper_case(Get(\$char, \$trait)) + "? You will lose the following skills: " + implode(\$removing3, ", ");
+\$yes_ob = \$this;
+\$yes_fun = "unlearn";
+\$no = "OKAY";
+\$expire = "OKAY";
+\$env = FALSE;
+\$expires = 30;
+\$par = ([ "char":\$char, "trait":\$trait, "removing":\$removing ]);
+
+interaction::question();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:unlearn">
+         X[M] \$trait = \$par["trait"];
+\$removing = \$par["removing"];
+\$char = \$par["char"];
+
+\$oldMap = structure_propmap(copy(\$char."*"))["skill"];        
+\$oldMap["fatigue"] = nil;
+Set(\$char, "unlearn:" + Get(\$char, \$trait) + ":" + time(), \$oldMap);
+
+\$removing2 = map_indices(\$removing);
+
+for(\$i = 0; \$i \< sizeof(\$removing2); \$i++) \{
+    \$newLevel = Int(Get(\$char, \$removing2[\$i])) - \$removing[\$removing2[\$i]];
+
+    Set(\$char, \$removing2[\$i], \$newLevel);
+    if(Get(\$char, \$removing2[\$i]) == 0) Set(\$char, \$removing2[\$i], nil);
+\}
+
+EmitTo(\$actor, "You unlearn " + Get(\$char, \$trait) + ".");
+
+Set(\$char, \$trait, nil);
+
+if(\$trait == "trait:class1") \{
+    if(\$char."trait:class2") \{
+        \$char."trait:class1" = \$char."trait:class2";
+        \$char."trait:class2" = nil;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1583422719, "jominey", "E", 1583422962, "jominey", "E", 1583423061, "jominey", "E", 1583423145, "jominey", "E", 1583423173, "jominey", "E", 1583423537, "jominey", "E", 1583423589, "jominey", "E", 1583423606, "jominey", "E", 1583423663, "jominey", "E", 1583423685, "jominey", "E", 1583423946, "jominey", "E", 1583428740, "jominey", "P", 1583428761, "jominey", "P", 1583428886, "jominey", "P", 1583428954, "jominey", "P", 1583429044, "jominey", "P", 1583429159, "jominey", "P", 1583429233, "jominey", "P", 1583429583, "jominey", "P", 1583429852, "jominey", "P", 1583430017, "jominey", "P", 1583431034, "jominey", "P" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

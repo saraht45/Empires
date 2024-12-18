@@ -1,0 +1,549 @@
+<object clone="/obj/properties" owner="balkaar">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-pre:evoke%headless">
+         X[M] EmitTo(\$actor, "You have no head and no mouth, and thus no tongue, glib or otherwise. Speaking is thus difficult. Let me @roll. Nope, you fail to talk.");      
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:evoke%speakghost">
+         X[M] if(\$actor."skotos:currentlang" \&\& \$actor."skotos:currentlang" == 24) \{  
+return TRUE;  
+\} else \{  
+Set(\$actor, "skotos:currentlang", 24);   
+return TRUE;  
+\}   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:evoke%speakowl">
+         X[M] if(\$actor."skotos:currentlang" \&\& \$actor."skotos:currentlang" == 35) \{     
+return TRUE;     
+\} else \{     
+EmitTo(\$actor, "Your little owl beak and little owl tongue can only shape little owl sounds.");  
+Set(\$actor, "skotos:currentlang", 35);  
+Set(\$actor, "dialect", "Owl");     
+return TRUE;     
+\}      
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:apply_tattoo">
+         X[M] \$victim = \$par["target"];
+\$bodypart = \$par["bodypart"];
+\$desc = \$par["desc"];
+\$tattooist = \$par["tattooist"];
+\$detail = NewNRef(\$victim, \$bodypart);
+
+if(\$tattooist != \$victim) \{
+    EmitTo(\$tattooist, TAG("You apply some henna paste to " + Describe(\$detail) + ".", "social:first"));
+    EmitTo(\$victim, TAG(Describe(\$tattooist) + " applies some henna paste to " + Describe(\$detail, \$victim) + ".", "social:second"));
+\} else \{
+    EmitTo(\$tattooist, TAG("You apply some henna paste to " + Describe(\$detail, nil, \$tattooist) + ".", "social:first"));
+\}
+
+EmitIn(\$tattooist."base:environment", TAG(Describe(\$tattooist) + " applies some henna paste to " + Describe(\$detail) + ".", "social:third"), \$tattooist, \$victim);
+
+\$id = ironclaw::set_prop(\$obj: \$victim, \$prop: "appearance:symbol:" + \$bodypart, \$value: \$desc, \$timer: 60*60*24);
+\$id = ironclaw::set_prop(\$obj: \$victim, \$prop: "appearance:symbol:" + \$bodypart + ":adjective", \$value: "tattooed", \$timer: 60*60*24);
+
+Slay(\$paste);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:effect">
+         X[M] /* EFFECTS OF SALVES, POTIONS, OILS */  
+/* reference this in the urs of plants and add the effect with an if block to below */  
+/* so far involved Urs are:  
+  
+IronClaw:Props:Misc:Oils:UrOil  
+Ironclaw:Props:Gardening:Gel  
+Ironclaw:Props:Gardening:Paste  
+  
+*/  
+  
+if(!\$paste."trait:effect") return TRUE;  
+if(!\$iob) \$target = \$actor;  
+  
+  
+/* Spider Itch infections */  
+if(\$paste."trait:effect" == "spideritch") \{  
+   Call(\$\{Ironclaw:Effects:Disease:SpiderItch\}, "apply",  
+   \$who: \$actor, \$severity: 5 + random(10));  
+   return TRUE;  
+\}  
+  
+  
+/* Allspice */  
+if( \$paste."trait:effect" == "allspice") \{  
+  EmitTo( \$target, Describe(\$paste)+" faintly numbs your flesh after a brief moment of burning sensation.");  
+   return TRUE;  
+\}  
+  
+/* Aloe Vera */  
+if(\$paste."trait:effect" == "aloe") \{  
+   EmitTo(\$target, Describe(\$actor)+" smoothly rubs the "+Describe(\$paste)+" into your skin alleviating some of the present pressure or irritation of the surface.");  
+   return TRUE;  
+\}  
+  
+/* anise */  
+if( \$paste."trait:effect" == "anise") \{  
+    EmitTo(\$target, Describe(\$actor)+" spreads "+Describe(\$paste, nil, nil, STYLE_NONPOSS)+" into your skin relieving some of the itching and irritation caused by any pests hiding in your fur.");  
+   return TRUE;  
+\}  
+
+if(\$paste."trait:effect" == "anica") \{
+    EmitTo(\$target, "The salve seeps through your skin and into your muscles, bringing soothing relief.");
+    return TRUE;
+\}
+  
+/* basil */  
+if(\$paste."trait:effect" == "basil") \{  
+   EmitTo(\$target, "Sinks into your skin and gradually starts to clear up unsightly blemishes.");  
+   return TRUE;  
+\}  
+  
+/* bay */  
+if(\$paste."trait:effect" == "bay") \{  
+   EmitTo(\$target, "Old pains somewhat fade away allowing for ease of movement without the aching.");  
+   return TRUE;  
+\}  
+  
+/* cardamom */  
+if( \$paste."trait:effect" == "cardamom") \{  
+  EmitTo( \$target, Describe(\$paste, nil, nil, STYLE_NONPOSS)+" gradually numbs your throat and chest. You may feel the inclination to cough every now and then.");  
+   return TRUE;  
+\}  
+  
+/* catnip */  
+if(\$paste."trait:effect" == "catnip") \{  
+if(\$actor."trait:animaltype" == "cat")  
+EmitTo(\$actor, "A sense of contentment, laziness, and/or playfulness overcomes you, leaving you feeling warm and fuzzy all over.");  
+else(EmitTo(\$actor, "You are not a cat, thus catnip just doesn't  do anything for you. Doesn't that suck."));  
+return TRUE;  
+\}  
+  
+/* Chamomile */  
+if(\$paste."trait:effect" == "chamomile") \{  
+   EmitTo(\$target, "Tranquility and calmness seem to soothe your frazzled nerves and wash away any stresses.");  
+   return TRUE;  
+\}  
+  
+/* cinnamon */  
+if(\$paste."trait:effect" == "cinnamon") \{  
+   EmitTo(\$target, "Relieves some of your muscular aches and can help relax you if you are feeling jittery.");  
+   return TRUE;  
+\}  
+  
+/* clove */  
+if(\$paste."trait:effect" == "clove") \{  
+   EmitTo(\$target, Describe(\$paste, nil, nil, STYLE_NONPOSS)+" touches your skin and leaves you slightly desensitized to most sensations.");  
+   return TRUE;  
+\}  
+  
+/* coneflower */  
+if(\$paste."trait:effect" == "coneflower") \{  
+   EmitTo(\$target, Describe(\$paste, nil, nil, STYLE_NONPOSS)+" gradually aids in clearing your chest and nasal passages of unwanted gunk.");  
+   return TRUE;  
+\}  
+  
+  /* cubeb */  
+if(\$paste."trait:effect" == "cubeb") \{  
+   EmitTo(\$target, Describe(\$paste, nil, nil, STYLE_NONPOSS)+" settles into your chest, gradually relieving any wheezing or tightness.");  
+   return TRUE;  
+\}  
+  
+/* cumin */  
+if(\$paste."trait:effect" == "cumin") \{  
+   EmitTo(\$target, Describe(\$paste, nil, nil, STYLE_NONPOSS)+" gradually eases some of the pain from your head.");  
+   return TRUE;  
+\}  
+  
+/* Eucalyptus */  
+if(\$paste."trait:effect" == "eucalyptus") \{  
+   EmitTo(\$target, "Your nasal passages and chest seem to clear a bit, allowing you to breathe easier.");  
+   return TRUE;  
+\}  
+  
+/* fennel */  
+if(\$paste."trait:effect" == "fennel") \{  
+   EmitTo(\$target, "A warming sensation washes over you and lessens some of the tension residing inside your head.");  
+   return TRUE;  
+\}  
+  
+/* ginger */  
+if(\$paste."trait:effect" == "ginger") \{  
+   EmitTo(\$target, Describe(\$paste, nil, nil, STYLE_NONPOSS)+" eases most dizziness and nausea you might be feeling.");  
+   return TRUE;  
+\}  
+  
+/* lavender */  
+if(\$paste."trait:effect" == "lavender") \{  
+   EmitTo(\$target, "A wave of relaxation sweeps over you while a cozy comfort soothes your body and soul.");  
+   return TRUE;  
+\}  
+  
+/* lemongrass */  
+if(\$paste."trait:effect" == "lemongrass") \{  
+   EmitTo(\$target, "Gently cools your skin, simultaneously lowering excessive body temperature.");  
+   return TRUE;  
+\}  
+  
+/* mint */  
+if(\$paste."trait:effect" == "mint") \{  
+   EmitTo( \$target, Describe(\$paste, nil, nil, STYLE_NONPOSS)+" tingles coolly before slightly reducing the soreness and swelling inside your throat.");  
+   return TRUE;  
+ \}  
+  
+/* Marigold */  
+if(\$paste."trait:effect" == "marigold") \{  
+   EmitTo( \$target, Describe(\$paste, nil, nil, STYLE_NONPOSS)+" pleasantly tingles on your skin for a moment, leaving a clean feeling behind.");  
+   return TRUE;  
+ \}  
+/* Sage */  
+if(\$paste."trait:effect" == "sage") \{  
+   EmitTo(\$target, "You feel stimulated with a sense of renewed energy.");  
+   return TRUE;  
+\}  
+  
+/* HALLOWEEN */  
+/* -------------------------------------------------------------------------                                                                                           /*  change to bird */  
+  
+if(\$paste."trait:effect" == "bird") \{  
+EmitTo(\$actor, "A mild fruity sweetness coats your tongue before giving way to the familiar taste of alcohol. The mixture unexpectedly fizzes as it mingles with your saliva and slides down your hatch. It burns as it works through your system and your world flashes and swirls before your eyes as you experience unbearable pain.");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " takes a drink of black widow drink and then bends and twists " +\$actor."base:possessive"+ " body as a sudden flash blinds the room for a moment. Standing where " +Describe(\$actor)+ " used to be is a small owl.", \$actor);  
+  
+/* make effects last 24 hours*/  
+  
+  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:animal", \$value: "owl", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:animaltype", \$value: "bird", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:build", \$value: "bird-like", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:height", \$value: "small", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:hands", \$value: "nonexistent", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:arms", \$value: "owlish wing-like", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:feet", \$value: "taloned", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:eyeshape", \$value: "huge, round", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:tailtexture", \$value: "feathered", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:teeth", \$value: "nonexistent", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:lipshape", \$value: "nonexistent", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:fangs", \$value: "nonexistent", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:noseshape", \$value: "bird-like", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:muzzle", \$value: "nonexistent", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:whiskers", \$value: "nonexistent", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:earshape", \$value: "owlish", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:furtexture", \$value: "feathers and", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:hairlength", \$value: nil, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:hairstyle", \$value: nil, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:hairstyle_string", \$value: nil, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:haircolor", \$value: nil, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:hairtexture", \$value: nil, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:hairtype", \$value: nil, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:mouthshape", \$value: "broad, beak-like", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:title", \$value: "Bird version of", \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "skill:lang:owl", \$value: 15, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:transformed", \$value: 1, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "skotos:currentlang", \$value: 35, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "merry:inherit:act-pre:evoke%speakowl", \$value: \$this, \$timer: 60*60*24);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "dialect", \$value: "Owl", \$timer: 60*60*24);  
+Slay(\$paste);  
+return FALSE;  
+\}  
+  
+/* fat */  
+if(\$paste."trait:effect" == "fat") \{  
+  EmitTo(\$actor, "The powerful flavor of black licorice invades your mouth, but quickly submits to a palate punching, surprise splash of moonshine. It tickles for a moment before you start to feel all sorts of swollen.");  
+  EmitIn(\$actor."base:environment", Describe(\$actor)+ " takes a drink of bat juice drink and looks funny as " +\$actor."base:possessive"+ " body ripples and starts to expand in the most grotesque of manners.", \$actor);  
+  
+  /* effects of fat last until cookie eaten or a week passes*/  
+  \$changes = ([ "appearance:height":"grotesquely", "appearance:build":"fat", "appearance:waist":"unattractively flabby", "appearance:face":"chubby", "appearance:butt":"expansive", "trait:speed":1, "trait:transformed":1, "appearance:ankles":"cankles" ]);  
+  if(!\$actor.got_fat) \$actor.got_fat = (\{ \});  
+  \$actor.got_fat += ironclaw::set_prop(\$obj: \$actor, \$propmapping: \$changes, \$timer: 60*60*24*7);  
+/*  Slay(\$paste);*/  
+  return FALSE;  
+\}  
+  
+/* returned from fat */  
+if(\$paste."trait:effect" == "thin") \{  
+if(\$actor.got_fat) \{  
+  EmitTo(\$actor, "You hear bells and fell like you are being squished from every side.");  
+  EmitIn(\$actor."base:environment", Describe(\$actor)+ " eats a gingerbread cookie and looks oddly disproportionate as " +\$actor."base:possessive"+ " body shrinks one by one to a more normal appearance.", \$actor);  
+  
+  /* reset the changes found in the got_fat property */  
+  ironclaw::unset_prop(\$proplist: \$actor.got_fat);  
+/*  \$actor.got_fat = nil;*/  
+/*  Slay(\$paste); */  
+  return FALSE;  
+\}  
+\}  
+  
+  
+  
+  
+ /* headless */  
+  
+if(\$paste."trait:effect" == "headless") \{  
+EmitTo(\$actor,  "A warm and complex aged red wine darkened with rich black cocoa and cinnamon spice mingles in your mouth. It leaves behind a rather musty aftertaste, but is otherwise unsuspicious. You start to get a blinding headache.  All noises, smells, and tastes dissipate leaving you in a strange fog.");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " takes a drink of wine of the dead and screams while holding " +\$actor."base:possessive"+ " head. The screaming fades away as " +\$actor."base:possessive"+ " head shrinks with a POP, finally disappearing.", \$actor);  
+  
+/* make effect last till pumpkin on head */  
+  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:head", \$value: "creepily missing", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:eyeshape", \$value: "so not here", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:mind", \$value: 1, \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:eyecolor", \$value: nil, \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:noseshape", \$value: "missing", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:face", \$value: "nonexistent", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:expression", \$value: "blank", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:earshape", \$value: "so not here", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:muzzle", \$value: "misplaced", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:whiskers", \$value: "removed", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:mouthshape", \$value: "unavailable", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:lipshape", \$value: "gone  astray", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:cheeks", \$value: "not here ", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:chin", \$value: "omitted", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:teeth", \$value: "voided", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:fangs", \$value: "what", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:eyebrows", \$value: "gone baby, gone", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:tongue", \$value: "nonfunctional", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:forehead", \$value: "lost in space", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:scalp", \$value: "voided", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "mute", \$value: 1, \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:title", \$value: "Headless", \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:transformed", \$value: 1, \$timer: 60*60*24*2);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "merry:inherit:act-pre:evoke%headless", \$value: \$this, \$timer: 60*60*24*2);  
+Slay(\$paste);  
+return FALSE;  
+  
+\}  
+  
+/* anne*/  
+  
+if(\$paste."trait:effect" == "anne") \{  
+EmitTo(\$actor,  "You are changed.");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " changes.", \$actor);  
+  
+/* make effect last one week */  
+  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:eyecolor", \$value: "crystalline bright blue", \$timer: 60*60*24*7);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:haircolor", \$value: "shimmering dark red", \$timer: 60*60*24*7);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:voice", \$value: "quiet", \$timer: 60*60*24*7);  
+return FALSE;  
+\}  
+  
+/* 1) change fingers to skeletal*/  
+if(\$paste."trait:effect" == "skeletalfinger") \{  
+   EmitTo(\$actor, "A sudden, harsh pain claims your fingers. In a most horrifying manner the skin parches on your bones leaving you with only a shadow of your fingers' former glory.");  
+   EmitIn(\$actor."base:environment", Describe(\$actor)+ " curls " +\$actor."base:possessive"+ " fingers as a sudden pain lashes over " +\$actor."base:possessive"+ " body. In a most horrifying manner the skin parches on " +\$actor."base:possessive"+ " bones leaving only the shadow of the fingers' former glory.", \$actor);  
+   /* make the effect last for 2 hours */  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:fingers", \$value: "skeletal", \$timer: 60*60*2);  
+   return TRUE;  
+\}  
+  
+/* 2) change fur to falling*/  
+if(\$paste."trait:effect" == "fallingfur") \{  
+   EmitTo(\$actor, "You have this hard to resist urge to shake yourself and your skin tingles with an uncomfortable unease. Touching your fur results in patches of fur dropping out of your body.");  
+   EmitIn(\$actor."base:environment", Describe(\$actor)+ " seems to be at unease. No wonder, seeing the amount of fur that suddenly decided to part from " +\$actor."base:possessive"+ " skin, you can but imagine what feelings go with such effects.", \$actor);  
+   /* make the effect last for 2 hours */  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:furtexture", \$value: "falling", \$timer: 60*60*2);  
+   return TRUE;  
+\}  
+  
+/* 3) change skin to wrinkled*/  
+if(\$paste."trait:effect" == "wrinkledskin") \{  
+   EmitTo(\$actor, "A set of sharp pain jolts your body into an arch, while your skin loses its texture and folds into countless wrinkles.");  
+   EmitIn(\$actor."base:environment", Describe(\$actor)+ " jolts in pain as "+\$actor."base:possessive"+" skin loses its texture and folds into countless of wrinkles.", \$actor);  
+   /* make the effect last for 2 hours */  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:skin", \$value: "wrinkled", \$timer: 60*60*2);  
+   return TRUE;  
+\}  
+  
+/* 4) change tongue to forked*/  
+if(\$paste."trait:effect" == "forkedtongue") \{  
+   EmitTo(\$actor, "Your tongue feels swollen and odd. Testing your muscles causes a sudden, yet passing pain leaving the taste of blood in your mouth.");  
+   EmitIn(\$actor."base:environment", Describe(\$actor)+ " grimaces somewhat before the tips of "+\$actor."base:possessive"+" blue forked tongue slink through "+\$actor."base:possessive"+" lips.", \$actor);  
+   /* make the effect last for 2 hours */  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:tongue", \$value: "blue, forked", \$timer: 60*60*2);  
+   return TRUE;  
+\}  
+  
+/* 5) change chin to wart covered*/  
+if(\$paste."trait:effect" == "wartedchin") \{  
+   EmitTo(\$actor, "You hear a loud *PLOP*, then another one, and another one. You scratch your chin while trying to locate the noise, but your fingers stumble into a newfound set of warts on your skin. *PLOP* *PLOP* and new wart, and new one...");  
+   EmitIn(\$actor."base:environment", "You hear a loud *PLOP*, then another, and another. Focusing your eyes toward the direction of the noise's source your gaze stumbles against a set of newfound warts on " +Describe(\$actor)+ "'s chin. With each passing *PLOP* a new wart emerges. *PLOP* *PLOP* *PLOP*", \$actor);  
+   /* make the effect last for 2 hours */  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:chin", \$value: "wart-covered", \$timer: 60*60*2);  
+   return TRUE;  
+\}  
+  
+/* 6) change body to corpse-like + ghostly */  
+if(\$paste."trait:effect" == "corpsebody") \{  
+   EmitTo(\$actor, "Your skin suddenly feels so tight, painfully it tenses against your bones while your flesh melts away into nothingness.");  
+   EmitIn(\$actor."base:environment", "The skin of" +Describe(\$actor)+" tenses squeezing "+\$actor."base:possessive"+ " flesh into smaller and smaller place until nothing is left, but skin and bone.", \$actor);  
+   /* make the effect last for 2 hours */  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:build", \$value: "corpse-like", \$timer: 60*60*2);  
+   return TRUE;  
+\}  
+  
+if(\$paste."trait:effect" == "ghostbody") \{  
+   EmitTo(\$actor, "You feel so unsubstantial and light as if your bones would have filled with air.");  
+   EmitIn(\$actor."base:environment", Describe(\$actor)+ " seems to lose " +\$actor."base:possessive"+ " contours shifting "+\$actor."base:possessive"+" body into a blurry vision.", \$actor);  
+   /* make the effect last for 2 hours */  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "appearance:height", \$value: "ghostly visage of", \$timer: 60*60*2);  
+   return TRUE;  
+\}  
+  
+/* 7) change face to distorted */  
+  
+  
+/* 8) change teeth to oversized */  
+  
+/* 9) change eyes to glowing */  
+  
+/* 10) change claws to wicked */  
+  
+/* 11) change nose to gigantic, misplaced */  
+  
+/* 12) change hair to translucent */  
+  
+/* 13) give weather-worn wings */  
+  
+/* 14) change arms to spiked */  
+  
+/* 15) speak ghost */  
+  
+if(\$paste."trait:effect" == "ghostspeak") \{  
+   EmitTo(\$actor, "You feel a closer connection with ethereal planes, as your mouth unwillingly opens and closes emptily.");  
+   EmitIn(\$actor."base:environment", Describe(\$actor)+ "'s mouth soundlessly opens and closes momentarily.", \$actor);  
+   /* make the effect last for 2 hours */  
+   /* the 1st \$id needs to end before the 2nd one therefor the timer has a -5 seconds */  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "skill:lang:ghost", \$value: 15, \$timer: 60*30-10);  
+   \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "merry:inherit:act-pre:evoke%speakghost", \$value: \$this, \$timer: 60*30-5);  
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "skotos:currentlang", \$value: 24, \$timer: 60*30);  
+   return TRUE;  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_consent">
+         X[M] \$tattooist = \$actor;
+
+/* ask if the player wants a tattoo */   
+interaction::question(\$actor: \$target, \$question: "Do you want to allow " +Describe(\$actor)+ " to tattoo "+\$desc+" on "+Describe(NewNRef(\$target, \$bodypart), \$target)+"?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "apply_tattoo", \$no_fun: "no_mod", \$expire_fun: "no_mod", \$par: ([ "target": \$target, "bodypart": \$bodypart, "tattooist": \$tattooist, "desc": \$desc ]));
+      </Core:Property>
+      <Core:Property property="merry:lib:no_mod">
+         X[M] \$target = \$par["target"];
+
+EmitTo(\$actor, Describe(\$target) + " denies your request.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:apply-dob">
+         X[M] \$paste = \$this;    
+ if(!\$iob) \{     
+      EmitTo(\$actor, "You need to specify where you wish to apply your" +Describe(\$paste)+".");    
+      return FALSE;    
+   \}    
+ \$target = NRefOb(\$iob[0]);      
+
+ if(\$this."trait:material" == "henna") \{
+    return FALSE;
+ \} else \{
+    Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");    
+ \}
+ Slay(\$paste);
+      </Core:Property>
+      <Core:Property property="merry:react-post:bite-dob">
+         X[M] \$paste = \$this;    
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");
+      </Core:Property>
+      <Core:Property property="merry:react-post:chew-dob">
+         X[M] \$paste = \$this;    
+ Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");
+      </Core:Property>
+      <Core:Property property="merry:react-post:eat-what">
+         X[M] \$paste = \$this;    
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:gobble-dob">
+         X[M] \$paste = \$this;    
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");
+      </Core:Property>
+      <Core:Property property="merry:react-post:inhale-dob">
+         X[M] \$paste = \$this;     
+return Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");
+      </Core:Property>
+      <Core:Property property="merry:react-post:nibble-dob">
+         X[M] \$paste = \$this;    
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");
+      </Core:Property>
+      <Core:Property property="merry:react-post:rub-dob">
+         X[M] if(\$this  == "IronClaw:Props:Flora:Harvestable:Parts:A:Anise")\{           
+EmitTo(\$actor, "Nothing happens, you need to process this to make it effective.");                     
+return FALSE;  
+\}  
+if("Ironclaw:Props:Plot:Spider:Paste")\{  
+\$paste = \$this;          
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");      
+\}
+      </Core:Property>
+      <Core:Property property="merry:react-post:savor-dob">
+         X[M] \$paste = \$this;    
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");
+      </Core:Property>
+      <Core:Property property="merry:react-post:savour-dob">
+         X[M] \$paste = \$this;    
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");
+      </Core:Property>
+      <Core:Property property="merry:react-post:sniff-dob">
+         X[M] \$paste = \$this;     
+return Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");
+      </Core:Property>
+      <Core:Property property="merry:react-post:taste-dob">
+         X[M] \$paste = \$this;       
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect"); 
+Slay(\$paste);
+      </Core:Property>
+      <Core:Property property="merry:react:apply-dob">
+         X[M] \$paste = \$this;    
+ if(!\$iob) \{     
+      EmitTo(\$actor, "You need to specify where you wish to apply your" +Describe(\$paste)+".");    
+      return FALSE;    
+   \}    
+ \$target = NRefOb(\$iob[0]);      
+
+ if(\$this."trait:material" == "henna") \{
+    if(!\$evoke) \{
+       EmitTo(\$actor, "[OOC Syntax: apply henna paste to forearm \\"Leafy vines wrap around the forearm and bloom into an elegant flower at the base of the hand.\\"]");
+       return FALSE;
+    \} else \{
+       if(Get(\$target, "appearance:symbol:" + NRefDetail(\$iob[0]))) \{
+           EmitTo(\$actor, Describe(\$target) + " already has a tattoo there.");
+           return FALSE;
+       \} else \{
+           if(\$target == \$actor) \{
+               Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "apply_tattoo", \$par: ([ "target": \$target, "bodypart": NRefDetail(\$iob[0]), "tattooist": \$actor, "desc": replace_strings(\$evoke, "\\"", "") ]));
+           \} else \{
+               Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "get_consent", \$bodypart: NRefDetail(\$iob[0]), \$desc: replace_strings(\$evoke, "\\"", ""));
+           \}
+       \}
+    \}
+    return FALSE;
+ \} 
+
+ return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:drink-what">
+         X[M] \$paste = \$this;        
+Call(\$\{Ironclaw:Props:Herbalism:EffectLib\}, "effect");  
+Slay(\$paste);
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1288306688, "tunk_bodin", "E", 1288395132, "tunk_bodin", "X", 1318234305, "meandmine", "X", 1318234478, "meandmine", "X", 1318284125, "meandmine", "X", 1318284785, "balkaar", "E", 1318285123, "balkaar", "E", 1318285150, "balkaar", "E", 1318285243, "balkaar", "E", 1318285274, "balkaar", "E", 1318285499, "balkaar", "E", 1318285534, "balkaar", "E", 1318285565, "balkaar", "E", 1318287158, "meandmine", "X", 1318287289, "meandmine", "X", 1318290656, "meandmine", "X", 1318290865, "meandmine", "X", 1318292053, "meandmine", "E", 1318292349, "meandmine", "E", 1318292366, "meandmine", "E", 1318292384, "meandmine", "E", 1318292418, "meandmine", "E", 1318292508, "meandmine", "E", 1318292621, "meandmine", "X", 1318292814, "meandmine", "X", 1318292912, "meandmine", "X", 1318292924, "meandmine", "E", 1318292974, "meandmine", "E", 1318293190, "meandmine", "X", 1318293215, "meandmine", "E", 1318293223, "meandmine", "E", 1318294135, "meandmine", "X", 1318294407, "meandmine", "X", 1318298567, "meandmine", "X", 1318299038, "meandmine", "X", 1318299802, "meandmine", "X", 1318300174, "meandmine", "X", 1318300415, "meandmine", "X", 1318300537, "meandmine", "X", 1318300928, "meandmine", "X", 1318301303, "meandmine", "X", 1318301418, "meandmine", "X", 1318301544, "meandmine", "X", 1318301755, "meandmine", "X", 1318302609, "meandmine", "X", 1318302675, "meandmine", "X", 1318302707, "meandmine", "X", 1318302773, "meandmine", "X", 1318304268, "meandmine", "X", 1318304281, "meandmine", "X", 1318304514, "meandmine", "X", 1318304727, "meandmine", "X", 1318309656, "rastalabor", "X", 1318310330, "meandmine", "X", 1318310461, "meandmine", "X", 1318310573, "meandmine", "X", 1318342856, "meandmine", "X", 1318342930, "meandmine", "E", 1318343016, "meandmine", "X", 1318345004, "meandmine", "X", 1318353617, "meandmine", "X", 1318355840, "meandmine", "X", 1318356345, "meandmine", "X", 1318356401, "meandmine", "X", 1318357558, "meandmine", "X", 1318358710, "meandmine", "X", 1318358998, "meandmine", "X", 1318361094, "meandmine", "X", 1318361232, "meandmine", "E", 1318361267, "meandmine", "X", 1318361616, "meandmine", "X", 1318361935, "meandmine", "X", 1318362514, "meandmine", "X", 1318364268, "meandmine", "X", 1318364682, "meandmine", "X", 1318364718, "meandmine", "X", 1318365570, "meandmine", "X", 1318366718, "meandmine", "X", 1318552541, "meandmine", "E", 1318552608, "meandmine", "X", 1318559005, "meandmine", "X", 1318559079, "meandmine", "X", 1318559107, "meandmine", "X", 1318559130, "meandmine", "X", 1318559192, "meandmine", "X", 1318559271, "meandmine", "X", 1318559295, "meandmine", "X", 1318559317, "meandmine", "X", 1318559434, "meandmine", "X", 1318559536, "meandmine", "X", 1318559690, "meandmine", "X", 1318559758, "meandmine", "X", 1318561966, "meandmine", "X", 1318562293, "meandmine", "X", 1318562352, "meandmine", "X", 1318562388, "meandmine", "X", 1318562812, "meandmine", "X", 1318562868, "meandmine", "X", 1318563410, "meandmine", "X", 1318563501, "meandmine", "X", 1318563622, "meandmine", "X", 1318563709, "meandmine", "X", 1318563888, "meandmine", "X", 1318564126, "meandmine", "X", 1318567355, "meandmine", "X", 1318567783, "meandmine", "X", 1318684221, "meandmine", "X", 1318740960, "meandmine", "X", 1318791023, "meandmine", "X", 1318791066, "meandmine", "X", 1318791104, "meandmine", "X", 1318866621, "meandmine", "X", 1318866875, "meandmine", "X", 1318867441, "meandmine", "X", 1318867645, "meandmine", "X", 1318867726, "meandmine", "X", 1318867808, "meandmine", "X", 1318867878, "meandmine", "X", 1318867937, "meandmine", "X", 1318868194, "meandmine", "X", 1318868665, "meandmine", "X", 1318869298, "meandmine", "X", 1318891681, "meandmine", "X", 1318892296, "meandmine", "X", 1318892504, "meandmine", "X", 1318893020, "meandmine", "X", 1318893190, "meandmine", "X", 1318893460, "meandmine", "X", 1318894172, "meandmine", "X", 1318895097, "meandmine", "X", 1318895340, "meandmine", "X", 1318895432, "meandmine", "X", 1318895612, "meandmine", "X", 1318895960, "meandmine", "X", 1318896050, "meandmine", "X", 1318896211, "meandmine", "X", 1318896277, "rastalabor", "X", 1318897190, "meandmine", "X", 1318897469, "meandmine", "X", 1318898318, "meandmine", "X", 1318902077, "meandmine", "X", 1318902388, "slurpeeslurp", "E", 1318902829, "meandmine", "X", 1318902865, "slurpeeslurp", "E", 1318904266, "meandmine", "X", 1318904741, "meandmine", "X", 1318904967, "meandmine", "X", 1318905241, "meandmine", "X", 1318905327, "meandmine", "E", 1318905639, "meandmine", "X", 1318906784, "meandmine", "X", 1318906863, "meandmine", "X", 1318907539, "meandmine", "X", 1318908328, "meandmine", "E", 1318908889, "meandmine", "X", 1318909026, "meandmine", "X", 1318909240, "meandmine", "X", 1318910365, "meandmine", "X", 1318910895, "meandmine", "X", 1318966800, "meandmine", "X", 1318966974, "meandmine", "X", 1318966998, "meandmine", "X", 1318967867, "meandmine", "X", 1318968170, "meandmine", "X", 1318968649, "meandmine", "X", 1318968843, "meandmine", "X", 1318969541, "meandmine", "E", 1318969735, "meandmine", "X", 1318969968, "meandmine", "E", 1318970617, "meandmine", "E", 1318970646, "meandmine", "E", 1318970681, "meandmine", "E", 1318971966, "meandmine", "E", 1318971982, "rastalabor", "X", 1318972297, "meandmine", "X", 1318972298, "rastalabor", "X", 1318972306, "meandmine", "X", 1318972459, "meandmine", "X", 1318972689, "rastalabor", "X", 1318973197, "rastalabor", "X", 1318973230, "rastalabor", "X", 1319050222, "meandmine", "X", 1319050339, "meandmine", "E", 1319050747, "meandmine", "E", 1319051707, "meandmine", "X", 1319051844, "meandmine", "X", 1319052505, "meandmine", "X", 1319053432, "rastalabor", "X", 1319054210, "rastalabor", "X", 1319055010, "rastalabor", "X", 1319056961, "meandmine", "X", 1319057901, "meandmine", "X", 1319058036, "meandmine", "X", 1319058378, "meandmine", "X", 1319059562, "meandmine", "X", 1319060685, "meandmine", "X", 1319084833, "meandmine", "X", 1319086360, "meandmine", "X", 1319086599, "meandmine", "X", 1319088124, "meandmine", "X", 1319088270, "meandmine", "E", 1319088549, "meandmine", "X", 1319088710, "meandmine", "X", 1319088902, "meandmine", "X", 1319089340, "meandmine", "X", 1319089685, "meandmine", "X", 1319129484, "meandmine", "X", 1319129644, "meandmine", "X", 1319130710, "meandmine", "X", 1319133751, "meandmine", "X", 1319134245, "meandmine", "X", 1319134592, "meandmine", "X", 1319135270, "meandmine", "X", 1319135324, "meandmine", "X", 1319135648, "meandmine", "X", 1319135793, "meandmine", "X", 1319136101, "meandmine", "X", 1319136453, "meandmine", "X", 1319136986, "meandmine", "X", 1319137207, "meandmine", "X", 1319143963, "meandmine", "X", 1319144307, "meandmine", "X", 1319144356, "meandmine", "X", 1319158782, "meandmine", "X", 1319220034, "meandmine", "X", 1319220430, "rastalabor", "X", 1319220863, "meandmine", "X", 1319221903, "meandmine", "X", 1319222481, "meandmine", "X", 1319223901, "rastalabor", "X", 1319223958, "rastalabor", "X", 1319248724, "rastalabor", "X", 1319251870, "rastalabor", "X", 1319251898, "rastalabor", "X", 1319251928, "rastalabor", "X", 1319251957, "rastalabor", "X", 1319252240, "rastalabor", "X", 1319252382, "rastalabor", "E", 1319252434, "rastalabor", "E", 1319315429, "meandmine", "E", 1319315504, "meandmine", "X", 1319316103, "meandmine", "X", 1319319472, "rastalabor", "E", 1319319570, "rastalabor", "E", 1319319939, "rastalabor", "E", 1319320213, "rastalabor", "X", 1319320339, "rastalabor", "X", 1319320376, "rastalabor", "X", 1319321445, "rastalabor", "X", 1319321615, "rastalabor", "X", 1319321725, "rastalabor", "X", 1319322140, "rastalabor", "X", 1319322210, "rastalabor", "X", 1319322228, "rastalabor", "X", 1319322328, "rastalabor", "X", 1319322351, "rastalabor", "X", 1319322509, "rastalabor", "X", 1319322786, "rastalabor", "X", 1319322901, "rastalabor", "X", 1319395118, "meandmine", "X", 1319395851, "meandmine", "X", 1319405735, "meandmine", "X", 1319513099, "tonyd", "P", 1319513155, "tonyd", "P", 1319513256, "tonyd", "P", 1319513332, "tonyd", "P", 1319513453, "tonyd", "P", 1319513552, "tonyd", "P", 1319515049, "tonyd", "P", 1319515076, "tonyd", "P", 1319515195, "tonyd", "P", 1319515265, "tonyd", "P", 1319515856, "tonyd", "P", 1319515867, "tonyd", "P", 1319515920, "tonyd", "P", 1319515983, "tonyd", "P", 1319515991, "tonyd", "P", 1319516097, "tonyd", "P", 1319516129, "tonyd", "P", 1319516230, "tonyd", "P", 1319516241, "tonyd", "P", 1319516249, "tonyd", "P", 1319679255, "meandmine", "X", 1319679377, "meandmine", "X", 1319680078, "meandmine", "X", 1319680291, "meandmine", "X", 1319680432, "meandmine", "X", 1319754470, "meandmine", "X", 1319755406, "meandmine", "E", 1319755443, "meandmine", "X", 1319766040, "meandmine", "X", 1319766152, "meandmine", "X", 1320569857, "tonyd", "P", 1320570349, "tonyd", "P", 1320570447, "tonyd", "P", 1324144135, "meandmine", "X", 1324144320, "meandmine", "X", 1347220648, "jominey", "R", 1412299191, "jominey", "E", 1412299695, "jominey", "E", 1412299951, "jominey", "E", 1412299991, "jominey", "E", 1412300060, "jominey", "E", 1412300150, "jominey", "E", 1412300208, "jominey", "E", 1412300267, "jominey", "E", 1412300279, "jominey", "E", 1412300398, "jominey", "E", 1412300434, "jominey", "E", 1412300485, "jominey", "E", 1412300529, "jominey", "E", 1412300748, "jominey", "E", 1412300831, "jominey", "E", 1412300873, "jominey", "E", 1412300954, "jominey", "E", 1412300986, "jominey", "E", 1412301084, "jominey", "E", 1412301146, "jominey", "E", 1412301336, "jominey", "E", 1412301457, "jominey", "E", 1412301491, "jominey", "E", 1412301645, "jominey", "E", 1412301654, "jominey", "E", 1412301746, "jominey", "E", 1412301769, "jominey", "E", 1412302083, "jominey", "E", 1412302260, "jominey", "E", 1412302272, "jominey", "E", 1412302297, "jominey", "E", 1412302420, "jominey", "E", 1412302462, "jominey", "E", 1412302535, "jominey", "E", 1412302743, "jominey", "E", 1575512737, "jominey", "E", 1575513144, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

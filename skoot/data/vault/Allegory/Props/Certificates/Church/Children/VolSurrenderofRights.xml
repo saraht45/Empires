@@ -1,0 +1,213 @@
+<object clone="/base/obj/thing" owner="annemairi">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="document" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="document"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="documents"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="parental"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             voluntary surrender of parental rights document
+          </Base:Description>
+          <Base:Description type="look">
+             A voluntary surrender of parental rights document.<br/>
+$(this.writing)
+          </Base:Description>
+          <Base:Description type="writing">
+             $[Str(NRefOb($target).writing)]
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:nip:item:cost">
+         5000
+      </Core:Property>
+      <Core:Property property="export:writing">
+         "The document hasn't yet been filled in. It needs to be signed by both parents, and then by an ordained member of the Catholic Church."
+      </Core:Property>
+      <Core:Property property="merry:lib:not_signing_certificate">
+         X[M] /* decided not to sign */
+EmitTo(\$actor, "You decide not to sign the voluntary surrender of parental rights.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:not_witness_certificate">
+         X[M] /* decided not to witness */
+EmitTo(\$actor, "You decide not to be a witness.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:signing_certificate">
+         X[M] /* check if this signing is valid */
+if(this.termparent \&\& \$actor."base:gender" == 1) \{
+ if(this."termparent:woe" == \$actor) \{
+  EmitTo(\$actor, "This document has already been signed by you.");
+ \} else \{
+  EmitTo(\$actor, "This document has already been signed by a surrendering parent.");
+ \}
+ return FALSE;
+\} else if(this.soleparent \&\& \$actor."base:gender" == 2) \{
+ if(this."soleparent:woe" == \$actor) \{
+  EmitTo(\$actor, "This document has already been signed by you.");
+ \} else \{
+  EmitTo(\$actor, "This document has already been signed by a co-parent.");
+ \}
+ return FALSE;
+\}
+
+/* sign the certificate */
+EmitTo(\$actor, "You sign "+Describe(this, nil, \$actor)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" signs "+Describe(this, \$actor)+".", \$actor);
+
+/* mark the details */
+if(\$actor."base:gender" == 1) \{
+ this.termparent = capitalize(Str(\$actor."skotos:charname"));
+ this."termparent:woe" = \$actor;
+ if(this.soleparent) \{
+  this.writing = "The document has been signed by "+this.termparent+" and "+this.soleparent+".";
+ \} else \{
+  this.writing = "The document has been signed by "+this.termparent+", and is still awaiting a signature from the co-parent, and then a signature from a member of the Church.";
+ \}
+\} else if(\$actor."base:gender" == 2) \{
+ this.soleparent = capitalize(Str(\$actor."skotos:charname"));
+ this."soleparent:woe" = \$actor;
+ if(this.termparent) \{
+  this.writing = "The document has been signed by "+this.termparent+" and "+this.soleparent+".";
+ \} else \{
+  this.writing = "The document has been signed by "+this.soleparent+", and is still awaiting a signature from the surrendering parent, and then a signature from a member of the Church.";
+ \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:signing_certificate_expire">
+         X[M] /* took too long to answer the question */
+EmitTo(\$actor, "You have taken too long to decide if you will sign the document. If you still wish to surrender your parental rights, please sign the document.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:witness_certificate">
+         X[M] /* sign the certificate */
+
+EmitTo(\$actor, "You witness "+Describe(this, nil, \$actor)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" witnesses "+Describe(this, \$actor)+".", \$actor);
+
+EmitIn(\$actor."base:environment", "A church page boy takes note of the surrender of rights agreement details, and rushes off to file them in the church archives.");
+
+/* We should replace the below code with the ictime() function! */
+
+\{
+string icmonth, days;
+int daynumber, year;
+string *daynames;
+
+daynames = (\{ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" \});
+
+/* Find the details we want */
+sscanf(ctime( time() ), "%*s %s %d %*s %d", icmonth, daynumber, year);
+
+/* find in-character day of week */
+days = daynames[time()/(60*60*16)%7];
+
+/* Replace strings */
+icmonth = replace_strings(icmonth, "Jan", "January", "Feb", "February", "Mar", "March", "Apr", "April", "May", "May", "Jun", "June", "Jul", "July", "Aug", "August", "Sep", "September", "Oct", "October", "Nov", "November", "Dec", "December" );
+
+ 
+ this.writing += "This Agreement is entered into on the "+Str(desc_ordinal(daynumber))+" day of "+Str(icmonth)+", "+Str(year-420)+" \\n";
+ this.writing += " "+this.termparent+", the surrendering parent, and "+this.soleparent+", the custodial parent, hereby agree that from this date forward voluntarily and lawfully surrenders all parental rights and responsibilities to their Child, including but not limited to custody, decision-making authority, visitation rights, and access to education and medical information. The surrendering parent acknowledges that they shall have no contact with the Child unless explicitly agreed upon writing between all parties through the Church and that the custodial parent shall assume sole custody and shall have the exclusive authority to make all decisions regarding Child's upbringing, education, healthcare, and general welfare. For the benefit of the child, both parties agree to the confidentiality of this Agreement until the Child is of legal age. It bears the official seals of the Holy Roman Catholic Church and the Chief Justicar of the Kingdom of Italy.\\n"; 
+this.writing += "The document is signed by both parties, and has been witnessed by "+this.witness+".";
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:witness_certificate_expire">
+         X[M] /* took too long to answer the question */
+EmitTo(\$actor, "You have taken too long to decide if you will witness the surrender of parental rights. If you still wish to be a witness, please sign the document.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:sign-what">
+         X[M] /* are we holding the certificate? */
+if(this."base:environment" != \$actor) return TRUE;
+
+/* Do we have a termparent and soleparent signature? */
+if(!this.termparent \&\& \$actor."base:gender" == 1) \{
+ EmitTo(\$actor, "Signing this document will mean that you will be voluntarily surrendering any and all of your rights to the child identified in this document to the guardian(s) specified.");
+ EmitTo(\$actor, "Once this document is signed, this will most likely be permanent.");
+
+ interaction::question(\$actor: \$actor, \$question: "Are you sure you want to sign this document and surrender your rights?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "signing_certificate", \$no_fun: "not_signing_certificate", \$expire_fun: "signing_certificate_expire", \$par: ([ "actor": \$actor]));
+ return FALSE;
+\} else if(!this.soleparent \&\& \$actor."base:gender" == 2) \{
+ EmitTo(\$actor, "Signing this document will mean that you will be voluntarily accepting the role as guardian to the child identified in this document.");
+ EmitTo(\$actor, "Once this document is signed, this will most likely be permanent.");
+
+ interaction::question(\$actor: \$actor, \$question: "Are you sure you want to sign this document and assume sole custody?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "signing_certificate", \$no_fun: "not_signing_certificate", \$expire_fun: "signing_certificate_expire", \$par: ([ "actor": \$actor]));
+ return FALSE;
+\}
+
+/* do we need a priest's signature? */
+if(this.termparent \&\& this.soleparent \&\& !this.witness) \{
+ /* are we an ordained priest? */
+ if(\$actor.ordained) \{
+  EmitTo(\$actor, "Signing this surrender of parental rights will mean that you officially witness that  "+this.termparent+" voluntarily reliquishes their rights and "+this.soleparent+" will assume sole custody of the child, and that it is a valid agreement.");
+  EmitTo(\$actor, "Once this document is signed, this will most likely be permanent.");
+
+  interaction::question(\$actor: \$actor, \$question: "Are you sure you want to sanctify this document?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "witness_certificate", \$no_fun: "not_witness_certificate", \$expire_fun: "witness_certificate_expire", \$par: ([ "actor": \$actor]));
+
+  return FALSE;
+ \} else \{
+  EmitTo(\$actor, "Sorry, only an ordained priest can finalize a this type of document.");
+  return FALSE;
+ \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1173273901, "tonyd", "E", 1173274064, "tonyd", "E", 1173274096, "tonyd", "E", 1173274153, "tonyd", "E", 1173274190, "tonyd", "E", 1173274277, "tonyd", "E", 1173274341, "tonyd", "E", 1173274399, "tonyd", "E", 1173274480, "tonyd", "E", 1238823716, "tonyd", "E", 1238823724, "tonyd", "E", 1238823749, "tonyd", "E", 1238823791, "tonyd", "E", 1238823871, "tonyd", "E", 1238823919, "tonyd", "E", 1238824000, "tonyd", "E", 1238824081, "tonyd", "E", 1238824134, "tonyd", "E", 1238824244, "tonyd", "E", 1238824305, "tonyd", "E", 1238824339, "tonyd", "E", 1238824416, "tonyd", "E", 1238824524, "tonyd", "E", 1238824566, "tonyd", "E", 1238824610, "tonyd", "E", 1238824651, "tonyd", "E", 1238824714, "tonyd", "E", 1238824762, "tonyd", "E", 1238824801, "tonyd", "E", 1238824839, "tonyd", "E", 1238824884, "tonyd", "E", 1238824950, "tonyd", "E", 1238825014, "tonyd", "E", 1238825063, "tonyd", "E", 1238825105, "tonyd", "E", 1238825145, "tonyd", "E", 1238826578, "tonyd", "P", 1238826605, "tonyd", "P", 1238826627, "tonyd", "P", 1238827017, "tonyd", "P", 1238827033, "tonyd", "P", 1238827362, "tonyd", "P", 1238847364, "tonyd", "E", 1238886367, "tonyd", "P", 1238886635, "tonyd", "P", 1238886752, "tonyd", "P", 1238886853, "tonyd", "P", 1238887248, "tonyd", "P", 1238887283, "tonyd", "P", 1238887351, "tonyd", "P", 1238887608, "tonyd", "P", 1238887995, "tonyd", "P", 1238888928, "tonyd", "P", 1238889039, "tonyd", "P", 1238889137, "tonyd", "P", 1238889258, "tonyd", "P", 1238889740, "tonyd", "P", 1238890523, "tonyd", "P", 1238891195, "tonyd", "P", 1238891225, "tonyd", "P", 1238891321, "tonyd", "P", 1238891448, "tonyd", "P", 1238891706, "tonyd", "P", 1238929434, "tonyd", "P", 1238932841, "tonyd", "P", 1238932983, "tonyd", "P", 1238933453, "tonyd", "P", 1238933618, "tonyd", "P", 1238936307, "tonyd", "P", 1238936343, "tonyd", "P", 1238936384, "tonyd", "P", 1238936399, "tonyd", "P", 1238936590, "tonyd", "P", 1238936601, "tonyd", "P", 1238936673, "tonyd", "P", 1238936829, "tonyd", "P", 1238936907, "tonyd", "P", 1238936984, "tonyd", "P", 1239164961, "tonyd", "P", 1312878863, "morwenlorelie", "R", 1460190462, "tonyd", "R", 1460190548, "tonyd", "R", 1460190765, "tonyd", "P", 1460200181, "tonyd", "P", 1698169249, "annemairi", "E", 1698169999, "annemairi", "E", 1698186653, "annemairi", "E", 1698186729, "annemairi", "E", 1698188060, "annemairi", "E", 1698189254, "annemairi", "E", 1698189385, "annemairi", "E", 1698191793, "annemairi", "E", 1698192841, "ezralee", "E", 1698192952, "ezralee", "E", 1698215254, "annemairi", "E", 1698215863, "annemairi", "E", 1698215911, "annemairi", "E", 1698215946, "annemairi", "E", 1698217094, "annemairi", "E", 1698233414, "annemairi", "E", 1698233749, "annemairi", "E", 1698233775, "annemairi", "E", 1698233851, "annemairi", "E", 1698233895, "annemairi", "E", 1698233987, "annemairi", "E", 1698234078, "annemairi", "E", 1698235708, "annemairi", "E", 1698235988, "annemairi", "E", 1698236025, "annemairi", "E", 1698236071, "annemairi", "E", 1698236130, "annemairi", "E", 1698236236, "annemairi", "E", 1698236333, "annemairi", "E", 1698236358, "annemairi", "R", 1698236384, "annemairi", "E", 1698236552, "annemairi", "E", 1698238142, "annemairi", "K", 1698238226, "annemairi", "E", 1698238297, "annemairi", "E", 1698242207, "annemairi", "E", 1698242417, "annemairi", "E", 1698243233, "annemairi", "E", 1698243737, "annemairi", "E", 1698243825, "annemairi", "E", 1698243848, "annemairi", "E", 1698244045, "annemairi", "E", 1698244100, "annemairi", "E", 1698244149, "annemairi", "E", 1698244259, "annemairi", "E", 1698244307, "annemairi", "E", 1698245157, "annemairi", "E", 1698246347, "annemairi", "E", 1698246652, "annemairi", "E", 1698253024, "annemairi", "E", 1698253138, "annemairi", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

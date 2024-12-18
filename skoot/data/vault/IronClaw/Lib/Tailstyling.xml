@@ -1,0 +1,961 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:check_taillength">
+         X[M] /* check if the actor can style this tailstyle */   
+string input_words;   
+input_words = \$style;   
+   
+/* check if the style exists */   
+if(!Get(\$db, input_words+":texture")) return FALSE;   
+   
+/* check if the style requires skill */   
+if(Get(\$db, input_words+":level")) \{   
+  /* if so, check if the actor has the skill */   
+  \$level = 0;   
+  /* check skill:social:tailstyling and career:social:tailstyling */   
+  if(\$actor."skill:social:tailstyling") \$level = \$actor."skill:social:tailstyling";   
+  if(\$actor."career:social:tailstyling" \&\& \$actor."career:social:tailstyling" \> \$level) \$level = \$actor."career:social:tailstyling";   
+  /* do we know enough? */   
+  if(\$level \>= Get(\$db, input_words+":level")) return TRUE;   
+\} else \{   
+  return TRUE;   
+\}   
+   
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_tailstyle">
+         X[M] /* check if the actor can style this tailstyle */   
+string input_words;   
+input_words = \$style;   
+   
+/* check if the style exists */   
+if(!Get(\$db, input_words+":brief")) return FALSE;   
+   
+/* check if the style requires skill */   
+if(Get(\$db, input_words+":level")) \{   
+  /* if so, check if the actor has the skill */   
+  \$level = 0;   
+  /* check skill:social:tailstyling and career:social:tailstyling */   
+  if(\$actor."skill:social:tailstyling") \$level = \$actor."skill:social:tailstyling";   
+  if(\$actor."career:social:tailstyling" \&\& \$actor."career:social:tailstyling" \> \$level) \$level = \$actor."career:social:tailstyling";   
+  /* do we know enough? */   
+  if(\$level \>= Get(\$db, input_words+":level")) return TRUE;   
+\} else \{   
+  return TRUE;   
+\}   
+   
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_tailtexture">
+         X[M] /* check if the actor can style this tailstyle */   
+string input_words;   
+input_words = \$style;   
+   
+/* check if the style exists */   
+if(!Get(\$db, input_words+":texture")) return FALSE;   
+   
+/* check if the style requires skill */   
+if(Get(\$db, input_words+":level")) \{   
+  /* if so, check if the actor has the skill */   
+  \$level = 0;   
+  /* check skill:social:tailstyling and career:social:tailstyling */   
+  if(\$actor."skill:social:tailstyling") \$level = Int(\$actor."skill:social:tailstyling");   
+  if(\$actor."career:social:tailstyling" \&\& Int(\$actor."career:social:tailstyling") \> \$level) \$level = \$actor."career:social:tailstyling";   
+  /* do we know enough? */   
+  if(\$level \>= Get(\$db, input_words+":level")) return TRUE;   
+\} else \{   
+  return TRUE;   
+\}   
+   
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_tools">
+         X[M] /* return an error if we need tools, return FALSE if we HAVE tools */   
+/* UNUSUAL NOTE ON LINE ABOVE! */   
+int counter;   
+   
+/*Check if we require tools*/   
+/* check we have a scissors and comb */   
+\$tmp = (\{ "a pair of scissors and a comb", (\{ "scissors" \}), (\{ "comb" \}) \});   
+for(counter=1; counter\<sizeof(\$tmp); counter++) \{   
+  /*We need a tool*/   
+  \$found = nil;   
+  for(\$i = 0; (\$i \< sizeof(\$tmp[counter]))\&\&(!\$found); \$i++)   
+  \{   
+    /*We need a tool of type \$tmp[counter][\$i] */   
+    for(\$j = 0; (\$j \< sizeof(\$actor."base:inventory"))\&\&(!\$found); \$j++)   
+    \{   
+      if(\$actor."base:inventory"[\$j]."trait:objecttype" == \$tmp[counter][\$i])   
+      \{   
+        /*We found the tool!*/   
+        \$found = 1;   
+      \}   
+    \}   
+    /* We didn't find the tool in our inventory. Is the player "using" the tool? */   
+    if(!\$found \&\& \$using)   
+    \{   
+      for(\$j=0; (\$j \< sizeof(\$using))\&\&(!\$found); \$j++)   
+      \{   
+        if(NRefOb(\$using[\$j])."trait:objecttype" == \$tmp[counter][\$i])   
+        \{   
+          /*We found the tool!*/   
+          /* make sure someone else isn't holding it */   
+          if(NRefOb(\$using[\$j])."base:environment"."base:volition")   
+          \{   
+            EmitTo(\$actor, "You can't use a tool that's being held by someone else.");   
+            return FALSE;   
+          \} else \{   
+            \$found = 1;   
+          \}   
+        \}   
+      \}   
+    \}   
+  \}   
+  /* If we are missing a tool we need */   
+  if(!\$found)   
+  \{   
+    return \$tmp[0];   
+  \}   
+\}   
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:display_options">
+         X[M] /* displays your options for styling a tail */  
+string tmp_string;  
+string *list1, *list2;  
+int counter, level;  
+  
+/* get the players tailstyling skill */  
+level = 0;  
+/* check skill:social:tailstyling and career:social:tailstyling */  
+if(\$actor."skill:social:tailstyling") level = Int(\$actor."skill:social:tailstyling");  
+if(\$actor."career:social:tailstyling" \&\& Int(\$actor."career:social:tailstyling") \> level) level = Int(\$actor."career:social:tailstyling");  
+  
+/* display tailstyling options */  
+EmitTo(\$actor, "That is not a valid tailstyle. What would you like to style the tail into?");  
+  
+/* display style choices */  
+list1 = map_indices(\$db."*");  
+list2 = (\{ \});  
+for(counter=0;counter\<sizeof(list1);counter++) \{  
+  if(sscanf(list1[counter], "%s:brief", tmp_string))  
+    /* if this style doesn't require skill, or we have enough skill, list it */  
+    if(!Get(\$db, tmp_string+":level") \|\| level \>= Get(\$db, tmp_string+":level"))  
+      list2 += (\{ "\\""+tmp_string+"\\"" \});  
+\}  
+EmitTo(\$actor, "Valid tailstyle options are: "+implode(list2, ", "));  
+  
+/* display texture choices */  
+list2 = (\{ \});  
+for(counter=0;counter\<sizeof(list1);counter++) \{  
+  if(sscanf(list1[counter], "%s:texture", tmp_string))  
+    /* if this style doesn't require skill, or we have enough skill, list it */  
+    if(!Get(\$db, tmp_string+":level") \|\| level \>= Get(\$db, tmp_string+":level"))  
+      list2 += (\{ "\\""+tmp_string+"\\"" \});  
+\}  
+EmitTo(\$actor, "Valid hair texture options are: "+implode(list2, ", "));  
+  
+/* display length choices */  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_taillength">
+         X[M] /* setting a tail style */  
+string input_words;  
+input_words = \$style;  
+  
+/* Set the property */  
+NRefOb(\$target)."appearance:tailtype" = Get(\$db, input_words+":texture");  
+  
+/* describe the change */  
+EmitTo(\$actor, "You style "+Describe(\$target, nil, \$actor)+" to be "+Get(\$db, input_words+":texture")+".");  
+if(NRefOb(\$target) != \$actor)  
+  EmitTo(NRefOb(\$target), Describe(\$actor)+" styles your hair to be "+Get(\$db, input_words+":texture")+".");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+" styles "+Describe(\$target, \$actor)+" to be "+Get(\$db, input_words+":texture")+".", \$actor, NRefOb(\$target));  
+  
+/* update the descriptions in the body */  
+return Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$target);
+      </Core:Property>
+      <Core:Property property="merry:lib:set_tailstyle">
+         X[M] /* setting a tail style */  
+string input_words;  
+input_words = \$style;  
+  
+/* Describe the styling */  
+EmitTo(\$actor, "You style "+Describe(\$target, nil, \$actor)+" into "+Get(\$db, input_words+":brief")+".");  
+if(NRefOb(\$target) != \$actor)  
+  EmitTo(NRefOb(\$target), Describe(\$actor)+" styles your tail into "+Get(\$db, input_words+":brief")+".");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+" styles "+Describe(\$target, \$actor)+" into "+Get(\$db, input_words+":brief")+".", \$actor, NRefOb(\$target));  
+  
+/* set the new tail style */  
+NRefOb(\$target)."appearance:tailstyle" = input_words;  
+if(Get(\$db, input_words+":look")) \{  
+  NRefOb(\$target)."appearance:tailstyle_string" = Get(\$db, input_words+":look");  
+\} else \{  
+  NRefOb(\$target)."appearance:tailstyle_string" = ", worn in "+Get(\$db, input_words+":brief");  
+\}  
+if(Get(\$db, input_words+":examine")) \{  
+  NRefOb(\$target)."appearance:tailstyle_examinestring" = Get(\$db, input_words+":examine");  
+\} else \{  
+  NRefOb(\$target)."appearance:tailstyle_examinestring" = NRefOb(\$target)."appearance:tailstyle_string";  
+\}  
+if(Get(\$db, input_words+":description")) \{  
+  NRefOb(\$target)."appearance:tailstyle_lookdescription" = Get(\$db, input_words+":description");  
+\} else \{  
+  NRefOb(\$target)."appearance:tailstyle_lookdescription" = nil;  
+\}  
+if(Get(\$db, input_words+":examinedescription")) \{  
+  NRefOb(\$target)."appearance:tailstyle_examinedescription" = Get(\$db, input_words+":examinedescription");  
+\} else \{  
+  NRefOb(\$target)."appearance:tailstyle_examinedescription" = NRefOb(\$target)."appearance:tailstyle_lookdescription";  
+\}  
+  
+/* check the tail length is valid, and if not, unset it */  
+if(Get(\$db, \$style+":invalid_lengths") \&\& NRefOb(\$target)."appearance:taillength") \{  
+  if(member( NRefOb(\$target)."appearance:taillength", Get(\$db, \$style+":invalid_lengths"))) \{  
+    /* this is an invalid tail length - hide the tail length */  
+    NRefOb(\$target)."appearance:taillength" = nil;  
+  \}  
+\}  
+  
+  
+/* update the descriptions in the body */  
+return Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$target);
+      </Core:Property>
+      <Core:Property property="merry:lib:set_tailtexture">
+         X[M] /* setting a tail style */  
+string input_words;  
+input_words = \$style;  
+  
+/* Set the property */  
+NRefOb(\$target)."appearance:tailtype" = Get(\$db, input_words+":texture");  
+  
+/* describe the change */  
+EmitTo(\$actor, "You style "+Describe(\$target, nil, \$actor)+" to be "+Get(\$db, input_words+":texture")+".");  
+if(NRefOb(\$target) != \$actor)  
+  EmitTo(NRefOb(\$target), Describe(\$actor)+" styles your tail to be "+Get(\$db, input_words+":texture")+".");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+" styles "+Describe(\$target, \$actor)+" to be "+Get(\$db, input_words+":texture")+".", \$actor, NRefOb(\$target));  
+  
+/* update the descriptions in the body */  
+return Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$target);
+      </Core:Property>
+      <Core:Property property="merry:lib:style">
+         X[M] string * blocklist;  
+int counter, counter2;  
+string input_words;  
+mapping changemap;  
+mapping changemap2;  
+object new_object;  
+string * valid_options;  
+string tmp_string;  
+  
+\$db = \$\{IronClaw:Lib:UrPeople:Tailstyles\};  
+  
+/* check that we're trying to style a tail */  
+if(NRefDetail(\$target[0]) != "tail")  
+  return TRUE;  
+  
+/* check we were only given one direct object */  
+if(!\$target \|\| sizeof(\$target) \> 1) \{  
+  EmitTo(\$actor, "You can only style one persons tail at a time");  
+  return FALSE;  
+\}  
+  
+/* make sure we're only dealing with one target */  
+\$target = Arr(\$target)[0];  
+  
+if(!\$words) \{  
+  if(\$words_string) \{  
+    input_words = \$words_string;  
+    sscanf(input_words, "\\"%s\\"", input_words);  
+  \} else \{  
+    input_words = "default";  
+  \}  
+\} else \{  
+  /* We have a target to alter the object to */  
+  input_words = implode(\$words, " ");  
+\}  
+  
+/* Remove any "a" "the" "an" etc. from the targetwords */  
+sscanf(input_words, "a %s", input_words);  
+sscanf(input_words, "an %s", input_words);  
+sscanf(input_words, "the %s", input_words);  
+  
+/* Replace any apostrophes. Players are too erratic in their use */  
+input_words = replace_strings(input_words, "'", "");  
+  
+/* check if we require tools */  
+\$neededtools = Call(\$this, "check_tools", \$style: input_words);  
+if(\$neededtools) \{  
+  EmitTo(\$actor, "You can't style "+Describe(\$target, nil, \$actor)+" without "+\$neededtools+".");  
+  return FALSE;  
+\}  
+  
+/* Check if the input words were valid */  
+  
+/* is this a hair length? */  
+/*  
+if(Call(\$this, "check_taillength", \$style: input_words)) \{  
+  Call(\$this, "set_taillength", \$style: input_words);  
+  return FALSE;  
+\}  
+*/  
+  
+/* is this a hair style? */  
+/* do we have enough skill to style it? */  
+if(Call(\$this, "check_tailstyle", \$style: input_words)) \{  
+  Call(\$this, "set_tailstyle", \$style: input_words);  
+  return FALSE;  
+\}  
+  
+/* is this a tail texture? */  
+if(Call(\$this, "check_tailtexture", \$style: input_words)) \{  
+  Call(\$this, "set_tailtexture", \$style: input_words);  
+  return FALSE;  
+\}  
+  
+/* was this a valid tailstyle? */  
+/* if not, list valid choices */  
+Call(\$this, "display_options");  
+  
+return FALSE;  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+blocklist = (\{ "input-list", "input-list-actor", "input-list-actor-remote", "requiredtools", "description", "newobject", "newobject-properties", "noslay", "properties", "stopvalue", "skill", "fixed", "noskillroll", "cost", "modification", "finished" \});  
+  
+/* check we were only given one direct object */  
+if(!\$target \|\| sizeof(\$target) \> 1) \{  
+  EmitTo(\$actor, "You can only alter one object at a time");  
+  return FALSE;  
+\}  
+  
+if(!\$words) \{  
+  if(\$words_string) \{  
+    input_words = \$words_string;  
+    sscanf(input_words, "\\"%s\\"", input_words);  
+  \} else \{  
+    input_words = "default";  
+  \}  
+\} else \{  
+  /* We have a target to alter the object to */  
+  input_words = implode(\$words, " ");  
+\}  
+  
+/* Remove any "a" "the" "an" etc. from the targetwords */  
+sscanf(input_words, "a %s", input_words);  
+sscanf(input_words, "an %s", input_words);  
+sscanf(input_words, "the %s", input_words);  
+  
+/* Replace any apostrophes. Players are too erratic in their use */  
+input_words = replace_strings(input_words, "'", "");  
+  
+/* Check that input_words isn't included in the blocklist */  
+for(counter = 0; counter \< sizeof(blocklist); counter++)  
+\{  
+  if(input_words == blocklist[counter])  
+  \{  
+    EmitTo(\$actor, "Invalid input.");  
+    return FALSE;  
+  \}  
+\}  
+  
+/* Check what modification is being made */  
+/* E.g. A symbol being sewn onto a shirt, or iron being forged into something new */  
+if(!\$modification) \{  
+  EmitTo(\$actor, "Unknown modification.");  
+  return FALSE;  
+\}  
+  
+/* verify this is a valid modification */  
+if(!(changemap = Get(NRefOb(\$target[0]), "alteration:create:" + NRefDetail(\$target[0]) + ":" + \$modification))) \{  
+  EmitTo(\$actor, "You can't " + \$modification + " " + Describe(\$target[0], nil, \$actor) + ".");  
+  return FALSE;  
+\}  
+  
+/* Check that we are holding the object we are modifying */  
+  /* Unless we are allowed to modify without holding */  
+if(!changemap["fixed"])  
+\{  
+  if(NRefOb(\$target[0])."base:environment" != \$actor)  
+  \{  
+    EmitTo(\$actor, "You can't " + \$modification + " " + Describe(\$target[0], nil, \$actor) + " if you are not holding it.");  
+    return FALSE;  
+  \}  
+\}  
+  
+/* Check if the actor is carrying any necessary tools */  
+if(\$tmp = changemap["requiredtools"])  
+\{  
+  /*We require tools*/  
+  for(counter=1; counter\<sizeof(\$tmp); counter++)  
+  \{  
+    /*We need a tool*/  
+    \$found = nil;  
+    for(\$i = 0; (\$i \< sizeof(\$tmp[counter]))\&\&(!\$found); \$i++)  
+    \{  
+      /*We need a tool of type \$tmp[counter][\$i] */  
+      for(\$j = 0; (\$j \< sizeof(\$actor."base:inventory"))\&\&(!\$found); \$j++)  
+      \{  
+        if(\$actor."base:inventory"[\$j]."trait:objecttype" == \$tmp[counter][\$i])  
+        \{  
+          /*We found the tool!*/  
+          \$found = 1;  
+        \}  
+      \}  
+      /* We didn't find the tool in our inventory. Is the player "using" the tool? */  
+      if(!\$found \&\& \$using)  
+      \{  
+        for(\$j=0; (\$j \< sizeof(\$using))\&\&(!\$found); \$j++)  
+        \{  
+          if(NRefOb(\$using[\$j])."trait:objecttype" == \$tmp[counter][\$i])  
+          \{  
+            /*We found the tool!*/  
+            /* make sure someone else isn't holding it */  
+            if(NRefOb(\$using[\$j])."base:environment"."base:volition")  
+            \{  
+              EmitTo(\$actor, "You can't use a tool that's being held by someone else.");  
+              return FALSE;  
+            \} else \{  
+              \$found = 1;  
+            \}  
+          \}  
+        \}  
+      \}  
+    \}  
+    /* If we are missing a tool we need */  
+    if(!\$found)  
+    \{  
+      EmitTo(\$actor, "You can't "+\$modification+" "+Describe(\$target[0], nil, \$actor)+" without "+\$tmp[0]+".");  
+      return FALSE;  
+    \}  
+  \}  
+\}  
+  
+/* Check that the character isn't wearing the object */  
+if(NRefOb(\$target[0])."base:clothing:worn")  
+\{  
+  EmitTo(\$actor, "You can't "+\$modification+" "+Describe(\$target[0], nil, \$actor)+" while you are wearing it.");  
+  return FALSE;  
+\}  
+  
+/* Check if we were passed the input, and if so, if it's valid */  
+/* Get details for the modification */  
+if(!(changemap2 = changemap[input_words]))  
+\{  
+  /* if property set, check in the actor for valid input */  
+  if(changemap["input-list-actor"])  
+  \{  
+    for(counter = 0; counter \< sizeof(changemap["input-list-actor"]); counter++)  
+    \{  
+      if(Get(\$actor, changemap["input-list-actor"][counter]) \&\& (changemap2 = Get(\$actor, changemap["input-list-actor"][counter])[input_words])) break;  
+    \}  
+  \}  
+  /* if property set, check the remote lists for valid input */  
+  if(!changemap2 \&\& changemap["input-list-actor-remote"])  
+  \{  
+    for(counter = 0; counter \< sizeof(changemap["input-list-actor-remote"]); counter++)  
+    \{  
+      if(Get(\$actor, changemap["input-list-actor-remote"][counter])) \{  
+        \$list = Get(\$actor, changemap["input-list-actor-remote"][counter]);  
+        for(counter2 = 0; counter2 \< sizeof(\$list); counter2++) \{  
+          if(Get(\$\{Ironclaw:Lib:Crafting:Old:CraftingDB\}, \$list[counter2]) \&\& (changemap2 = Get(\$\{Ironclaw:Lib:Crafting:Old:CraftingDB\}, \$list[counter2])[input_words])) break;  
+        \}  
+      \}  
+    \}  
+  \}  
+  /* if not found, and property set, search other places for valid input */  
+  if(!changemap2 \&\& changemap["input-list"])  
+  \{  
+    for(counter = 0; counter \< sizeof(changemap["input-list"]); counter++)  
+    \{  
+      /* Check if the object exists, and if we can retrieve the property */  
+      if(changemap["input-list"][counter][0] \&\& Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1]) \&\& (changemap2 = Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1])[input_words])) break;  
+    \}  
+    if(!changemap2) \{  
+      /* Check for alterations that each of the careers can make */  
+      \$careers = Get(\$actor, "*");  
+      \$careers = map_indices(prefixed_map(\$careers, "skill:career:"));  
+      for(\$i=0;(\$i\<sizeof(\$careers))\&\&!changemap2;\$i++) \{  
+        \$careercount = Int(Get(\$actor, \$careers[\$i]));  
+        sscanf(\$careers[\$i], "skill:career:%s", \$career);  
+        for(counter = 0; (counter \< sizeof(changemap["input-list"]))\&\&!changemap2; counter++)  
+        \{  
+          for(\$carcount=1;\$carcount \<= \$careercount;\$carcount++) \{  
+            if(changemap["input-list"][counter][0] \&\& Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1]+":"+\$career+":"+Str(\$carcount)) \&\& (changemap2 = Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1]+":"+\$career+":"+Str(\$carcount))[input_words]))\{  
+              break;  
+            \}  
+          \}  
+        \}  
+      \}  
+    \}  
+  \}  
+  
+  /* If we don't have valid input to modify the object */  
+  /* Output valid options, then exit */  
+  if(!changemap2)  
+  \{  
+    /* Check if we are allowed to continue, or if there is a stopvalue */  
+    if(changemap["stopvalue"]) \{  
+      /* We have a stopvalue. Check if we are allowed to continue */  
+      /* If this property exists in the object, then we need to stop, unless it matches the value */  
+      if(Get(NRefOb(\$target[0]), changemap["stopvalue"][0])) \{  
+        /* if stopvalue doesn't match the property, then we have no tailoring options*/  
+        if((sizeof(changemap["stopvalue"]) \> 1) \&\& (Get(NRefOb(\$target[0]), changemap["stopvalue"][0]) != changemap["stopvalue"][1])) \{  
+          /* Stopvalue doesn't match. Output error message */  
+          if(sizeof(changemap["stopvalue"]) \> 2) \{  
+            EmitTo(\$actor, changemap["stopvalue"][2]);  
+          \} else \{  
+            EmitTo(\$actor, Describe(\$target[0], nil, \$actor) + " already has a modification of that type.");  
+          \}  
+          return FALSE;  
+        \}  
+      \}  
+    \}  
+  
+    /* Output valid options */  
+    valid_options = map_indices(changemap);  
+    if(changemap["input-list-actor"])  
+    \{  
+      for(counter = 0; counter \< sizeof(changemap["input-list-actor"]); counter++)  
+      \{  
+        if(Get(\$actor, changemap["input-list-actor"][counter]) \&\& map_indices(Get(\$actor, changemap["input-list-actor"][counter])))  
+        \{  
+          valid_options += map_indices(Get(\$actor, changemap["input-list-actor"][counter]));  
+        \}  
+      \}  
+    \}  
+    /* if property set, check the remote lists for valid input */  
+    if(changemap["input-list-actor-remote"])  
+    \{  
+      for(counter = 0; counter \< sizeof(changemap["input-list-actor-remote"]); counter++)  
+      \{  
+        if(Get(\$actor, changemap["input-list-actor-remote"][counter])) \{  
+          \$list = Get(\$actor, changemap["input-list-actor-remote"][counter]);  
+          for(counter2 = 0; counter2 \< sizeof(\$list); counter2++) \{  
+            if(Get(\$\{Ironclaw:Lib:Crafting:Old:CraftingDB\}, \$list[counter2])) valid_options += map_indices(Get(\$\{Ironclaw:Lib:Crafting:Old:CraftingDB\}, \$list[counter2]));  
+          \}  
+        \}  
+      \}  
+    \}  
+    if(changemap["input-list"])  
+    \{  
+      for(counter = 0; counter \< sizeof(changemap["input-list"]); counter++)  
+      \{  
+        if(Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1]) \&\& map_indices(Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1])))  
+        \{  
+          valid_options += map_indices(Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1]));  
+        \}  
+      \}  
+      /* Check for alterations that each of the careers can make */  
+      \$careers = Get(\$actor, "*");  
+      \$careers = map_indices(prefixed_map(\$careers, "skill:career:"));  
+      for(\$i=0;\$i\<sizeof(\$careers);\$i++) \{  
+        \$careercount = Int(Get(\$actor, \$careers[\$i]));  
+        sscanf(\$careers[\$i], "skill:career:%s", \$career);  
+        for(counter = 0; counter \< sizeof(changemap["input-list"]); counter++)  
+        \{  
+          for(\$carcount=1;\$carcount \<= \$careercount;\$carcount++) \{  
+            if(Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1]+":"+\$career+":"+Str(\$carcount)) \&\& map_indices(Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1]+":"+\$career+":"+Str(\$carcount))))  
+            \{  
+              valid_options += map_indices(Get(changemap["input-list"][counter][0], changemap["input-list"][counter][1]+":"+\$career+":"+Str(\$carcount)));  
+            \}  
+          \}  
+        \}  
+      \}  
+    \}  
+  
+    /* Remove results that aren't options */  
+    valid_options -= blocklist;  
+  
+    /* Put options in alphabetical order */  
+    valid_options = map_indices(arr_to_set(valid_options));  
+  
+    if(sizeof(valid_options)) \{  
+      tmp_string = "Valid options are: ";  
+      for(counter = 0; counter \< sizeof(valid_options); counter++)  
+      \{  
+        tmp_string += "\\"" + valid_options[counter] + "\\" ";  
+      \}  
+    \} else \{  
+      tmp_string = "You have no valid options available.";  
+    \}  
+    EmitTo(\$actor, "That is not valid input to " + \$modification + " " + Describe(\$target[0], nil, \$actor));  
+    EmitTo(\$actor, tmp_string);  
+    return FALSE;  
+  \}  
+\}  
+  
+/* We have valid input for this modification */  
+  
+/* Check that this modification hasn't already been made */  
+if(changemap["stopvalue"]) \{  
+  /* We have a stopvalue. Check if we are allowed to continue */  
+  /* If this property exists in the object, then we need to stop, unless it matches the value */  
+  if(Get(NRefOb(\$target[0]), changemap["stopvalue"][0])) \{  
+    /* if stopvalue doesn't match the property, then exit with message*/  
+    if((sizeof(changemap["stopvalue"]) \> 1) \&\& (Get(NRefOb(\$target[0]), changemap["stopvalue"][0]) != changemap["stopvalue"][1])) \{  
+      /* Stopvalue doesn't match. Output error message */  
+      if(sizeof(changemap["stopvalue"]) \> 2) \{  
+        EmitTo(\$actor, changemap["stopvalue"][2]);  
+      \} else \{  
+        EmitTo(\$actor, Describe(\$target[0], nil, \$actor) + " already has a modification of that type.");  
+      \}  
+      return FALSE;  
+    \}  
+  \}  
+\}  
+  
+/* Check if the actor is carrying any necessary tools */  
+if(\$tmp = changemap2["requiredtools"])  
+\{  
+  /*We require tools*/  
+  for(counter=1; counter\<sizeof(\$tmp); counter++)  
+  \{  
+    /*We need a tool*/  
+    \$found = nil;  
+    for(\$i = 0; (\$i \< sizeof(\$tmp[counter]))\&\&(!\$found); \$i++)  
+    \{  
+      /*We need a tool of type \$tmp[counter][\$i] */  
+      for(\$j = 0; (\$j \< sizeof(\$actor."base:inventory"))\&\&(!\$found); \$j++)  
+      \{  
+        if(\$actor."base:inventory"[\$j]."trait:objecttype" == \$tmp[counter][\$i])  
+        \{  
+          /*We found the tool!*/  
+          \$found = 1;  
+        \}  
+      \}  
+      /* We didn't find the tool in our inventory. Is the player "using" the tool? */  
+      if(!\$found \&\& \$using)  
+      \{  
+        for(\$j=0; (\$j \< sizeof(\$using))\&\&(!\$found); \$j++)  
+        \{  
+          if(NRefOb(\$using[\$j])."trait:objecttype" == \$tmp[counter][\$i])  
+          \{  
+            /*We found the tool!*/  
+            /* make sure someone else isn't holding it */  
+            if(NRefOb(\$using[\$j])."base:environment"."base:volition")  
+            \{  
+              EmitTo(\$actor, "You can't use a tool that's being held by someone else.");  
+              return FALSE;  
+            \} else \{  
+              \$found = 1;  
+            \}  
+          \}  
+        \}  
+      \}  
+    \}  
+    /* If we are missing a tool we need */  
+    if(!\$found)  
+    \{  
+      EmitTo(\$actor, "You can't "+\$modification+" "+Describe(\$target[0], nil, \$actor)+" without "+\$tmp[0]+".");  
+      return FALSE;  
+    \}  
+  \}  
+\}  
+  
+/* -------------------------------------------------------------------------*/  
+/* -------------------------------------------------------------------------*/  
+/* -------------------------------------------------------------------------*/  
+  
+/* Check if we should decrease the quantity of our original object */  
+if(changemap2["cost"]) \{  
+  \$cost = changemap2["cost"][0];  
+\} else if(changemap["cost"]) \{  
+  \$cost = changemap["cost"][0];  
+\}  
+  
+if(\$cost == 0) \$cost = nil;  
+  
+if(\$cost)  
+\{  
+  if(NRefOb(\$target[0])."trait:quantity" \&\& NRefOb(\$target[0])."trait:quantity" \>= \$cost)  
+  \{  
+    NRefOb(\$target[0])."trait:quantity" -= \$cost;  
+    \$cost = nil;  
+  \}  
+\}  
+  
+  
+if(\$cost)  
+\{  
+  if(changemap2["cost"] \&\& (sizeof(changemap2["cost"]) \> 1)) \{  
+    \$message = changemap2["cost"][1];  
+  \} else if(changemap["cost"] \&\& (sizeof(changemap["cost"]) \> 1)) \{  
+    \$message = changemap["cost"][1];  
+  \} else \{  
+    \$message = "You haven't got enough remaining of "+Describe(\$target[0], nil, \$actor)+" to make this.";  
+  \}  
+  
+  \$message = replace_strings(\$message, "ORIGINAL_OBJECT", Describe(\$target[0], nil, \$actor));  
+  EmitTo(\$actor, \$message);  
+  
+  return FALSE;  
+\}  
+  
+/* -------------------------------------------------------------------------*/  
+/* -------------------------------------------------------------------------*/  
+/* -------------------------------------------------------------------------*/  
+  
+/* Check if this turns the object into a new object */  
+if(((changemap2["newobject"]) \&\& (new_object = Spawn(changemap2["newobject"]))) \|\| ((changemap["newobject"]) \&\& (new_object = Spawn(changemap["newobject"]))))  
+\{  
+  new_object."base:environment" = Get(NRefOb(\$target[0]), "base:environment");  
+/* If this is a new object, check what properties we should copy from the existing object */  
+  if(changemap["newobject-properties"]) \{  
+    /* loop through the properties, adding each one */  
+    for(counter = 0; counter \< sizeof(changemap["newobject-properties"]); counter++) \{  
+      Set(new_object, changemap["newobject-properties"][counter][1], Get(NRefOb(\$target[0]), changemap["newobject-properties"][counter][0]));  
+    \}  
+  \}  
+  /* And again for changemap 2 */  
+  if(changemap2["newobject-properties"]) \{  
+    /* loop through the properties, adding each one */  
+    for(counter = 0; counter \< sizeof(changemap2["newobject-properties"]); counter++) \{  
+      Set(new_object, changemap2["newobject-properties"][counter][1], Get(NRefOb(\$target[0]), changemap2["newobject-properties"][counter][0]));  
+    \}  
+  \}  
+\} else \{  
+  new_object = NRefOb(\$target[0]);  
+\}  
+  
+/* record the name of the original object, for the output description */  
+\$orig_desc = (\{ Describe(\$target[0], nil, \$actor), Describe(\$target[0], \$actor) \});  
+  
+/* Check if we need to copy new properties to the object */  
+if(changemap["properties"]) \{  
+  /* loop through the properties, adding each one */  
+  for(counter = 0; counter \< sizeof(changemap["properties"]); counter++) \{  
+    /* Do we have a value specified? */  
+    if(sizeof(changemap["properties"][counter]) \> 1)  
+    \{  
+      Set(new_object, changemap["properties"][counter][0], changemap["properties"][counter][1]);  
+    \} else \{  
+      /* Otherwise, use the modification description */  
+      if(changemap2["value"]) \{  
+        Set(new_object, changemap["properties"][counter][0], changemap2["value"]);  
+      \} else if(changemap2["brief"]) \{  
+        Set(new_object, changemap["properties"][counter][0], changemap2["brief"]);  
+      \}  
+    \}  
+  \}  
+\}  
+/* And again for changemap 2 */  
+if(changemap2["properties"]) \{  
+  /* loop through the properties, adding each one */  
+  for(counter = 0; counter \< sizeof(changemap2["properties"]); counter++) \{  
+    /* Do we have a value specified? */  
+    if(sizeof(changemap2["properties"][counter]) \> 1)  
+    \{  
+      Set(new_object, changemap2["properties"][counter][0], changemap2["properties"][counter][1]);  
+    \} else \{  
+      /* Otherwise, use the modification description */  
+      if(changemap2["value"]) \{  
+        Set(new_object, changemap2["properties"][counter][0], changemap2["value"]);  
+      \} else if(changemap2["brief"]) \{  
+        Set(new_object, changemap2["properties"][counter][0], changemap2["brief"]);  
+      \}  
+    \}  
+  \}  
+\}  
+  
+/* Check which new details need to be added to the new object */  
+  /* add detail snames/pnames and adjectives */  
+if(changemap["names"])  
+\{  
+  for(\$i = 0; \$i \< sizeof(changemap["names"]); \$i++)  
+  \{  
+    if(sizeof(changemap["names"][\$i]) == 2)  
+    \{  
+      Set(new_object, "details:default:" + changemap["names"][\$i][0] + ":" + changemap["names"][\$i][1], 1);  
+    \} else if(sizeof(changemap["names"][\$i]) \> 2)  
+    \{  
+      for(\$j = 1; \$j \< sizeof(changemap["names"][\$i]); \$j++)  
+      \{  
+        Set(\$object, "details:default:" + changemap["names"][\$i][0] + ":" + changemap["names"][\$i][\$j], 1);  
+      \}  
+    \}  
+  \}  
+\}  
+/* again for changemap2 */  
+if(changemap2["names"])  
+\{  
+  for(\$i = 0; \$i \< sizeof(changemap2["names"]); \$i++)  
+  \{  
+    if(sizeof(changemap2["names"][\$i]) == 2)  
+    \{  
+      Set(new_object, "details:default:" + changemap2["names"][\$i][0] + ":" + changemap2["names"][\$i][1], 1);  
+    \} else if(sizeof(changemap2["names"][\$i]) \> 2)  
+    \{  
+      for(\$j = 1; \$j \< sizeof(changemap2["names"][\$i]); \$j++)  
+      \{  
+        Set(\$object, "details:default:" + changemap2["names"][\$i][0] + ":" + changemap2["names"][\$i][\$j], 1);  
+      \}  
+    \}  
+  \}  
+\}  
+  
+  
+/* Check if we should make a skill roll, to see if the quality changes */  
+if((tmp_string = changemap2["skill"]) \|\| (tmp_string = changemap["skill"]))  
+\{  
+  counter = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$actor."trait:mind", Get(\$actor, "skill:alteration:"+tmp_string), Get(\$actor, "career:alteration:"+tmp_string) \}) );  
+  if(!NRefOb(\$target[0])."trait:quality")\{  
+    new_object."trait:quality" = 4;  
+  \} else \{  
+    /* set quality anyway, in case it was an inherited value */  
+    new_object."trait:quality" = NRefOb(\$target[0])."trait:quality";  
+  \}  
+  
+  if(counter \> new_object."trait:quality") \{  
+    new_object."trait:quality"++;  
+  \} else if(counter \< new_object."trait:quality") \{  
+    new_object."trait:quality"--;  
+  \}  
+\}  
+  
+/* Check if the item gets used up */  
+if(changemap["finished"] \&\& (NRefOb(\$target[0])."trait:quantity" == 0)) \{  
+  
+  /* Should we slay this object? */  
+  if((!(changemap["noslay"]) \|\| (changemap["noslay"] == "false")) \&\& (!(changemap2["noslay"]) \|\| (changemap2["noslay"] == "false"))) \{  
+    \$finished = TRUE;  
+  \}  
+  
+  if((sizeof(Arr(changemap["finished"])) \> 2) \&\& changemap["finished"][2]) \{  
+    \$replacement = Spawn(changemap["finished"][2]);  
+    \$replacement."base:environment" = NRefOb(\$target[0])."base:environment";  
+    if(sizeof(Arr(changemap["finished"])) \> 3) \{  
+      for(counter=0;counter\<sizeof(changemap["finished"][3]);counter++) \{  
+        Set(\$replacement, changemap["finished"][3][counter], Get(NRefOb(\$target[0]), changemap["finished"][3][counter]));  
+      \}  
+    \}  
+  \}  
+  if(sizeof(Arr(changemap["finished"])) \> 1) \{  
+    \$finddesc = (\{ changemap["finished"][0], changemap["finished"][1] \});  
+    /* make replacements */  
+    \$finddesc[0] = replace_strings(\$finddesc[0], "ACTOR", "you");  
+    \$finddesc[0] = replace_strings(\$finddesc[0], "ORIGINAL_OBJECT", \$orig_desc[0]);  
+    \$finddesc[0] = replace_strings(\$finddesc[0], "NEW_OBJECT", Describe(new_object, nil, \$actor, STYLE_NONPOSS));  
+    \$finddesc[0] = replace_strings(\$finddesc[0], "PRONOUN", \$actor."base:pronoun");  
+    \$finddesc[0] = replace_strings(\$finddesc[0], "POSSESSIVE", \$actor."base:possessive");  
+  
+    \$finddesc[1] = replace_strings(\$finddesc[1], "ACTOR", Describe(\$actor));  
+    \$finddesc[1] = replace_strings(\$finddesc[1], "ORIGINAL_OBJECT", \$orig_desc[1]);  
+    \$finddesc[1] = replace_strings(\$finddesc[1], "NEW_OBJECT", Describe(new_object, \$actor, nil, STYLE_NONPOSS));  
+    \$finddesc[1] = replace_strings(\$finddesc[1], "PRONOUN", \$actor."base:pronoun");  
+    \$finddesc[1] = replace_strings(\$finddesc[1], "POSSESSIVE", \$actor."base:possessive");  
+  
+    if((sizeof(Arr(changemap["finished"])) \> 2) \&\& changemap["finished"][2]) \{  
+      \$finddesc[0] = replace_strings(\$finddesc[0], "REPLACEMENT", Describe(\$replacement, nil, nil, STYLE_NONPOSS));  
+      \$finddesc[1] = replace_strings(\$finddesc[1], "REPLACEMENT", Describe(\$replacement, nil, nil, STYLE_NONPOSS));  
+    \}  
+  \}  
+\}  
+  
+/* Output an appropriate description of the action */  
+  
+/* Generate the descriptions */  
+if((changemap["description"] \&\& sizeof(changemap["description"]) \> 1) \|\| (changemap2["description"] \&\& sizeof(changemap2["description"]) \> 1)) \{  
+  /* properties for the 1st person and 3rd person description */  
+  string description1;  
+  string description3;  
+  
+  if(changemap2["description"] \&\& (sizeof(changemap2["description"]) \> 1)) \{  
+    description1 = changemap2["description"][0];  
+    description3 = Describe(\$actor) +" "+ changemap2["description"][1];  
+  \} else \{  
+    description1 = changemap["description"][0];  
+    description3 = Describe(\$actor) +" "+ changemap["description"][1];  
+  \}  
+  
+  /* replace keywords */  
+  if(changemap2["brief"])  
+  \{  
+    description1 = replace_strings(description1, "BRIEF", changemap2["brief"]);  
+    description3 = replace_strings(description3, "BRIEF", changemap2["brief"]);  
+  \}  
+  
+/*  description1 = replace_strings(description1, "ORIGINAL_OBJECT", Describe(\$target, nil, \$actor));*/  
+  description1 = replace_strings(description1, "ORIGINAL_OBJECT", \$orig_desc[0]);  
+  description1 = replace_strings(description1, "NEW_OBJECT", Describe(new_object, nil, \$actor, STYLE_NONPOSS));  
+  description1 = replace_strings(description1, "PRONOUN", \$actor."base:pronoun");  
+  description1 = replace_strings(description1, "POSSESSIVE", \$actor."base:possessive");  
+  
+/*  description3 = replace_strings(description3, "ORIGINAL_OBJECT", Describe(\$target, \$actor));*/  
+  description3 = replace_strings(description3, "ORIGINAL_OBJECT", \$orig_desc[1]);  
+  description3 = replace_strings(description3, "NEW_OBJECT", Describe(new_object, \$actor, nil, STYLE_NONPOSS));  
+  description3 = replace_strings(description3, "PRONOUN", \$actor."base:pronoun");  
+  description3 = replace_strings(description3, "POSSESSIVE", \$actor."base:possessive");  
+  
+  /* Check what the modification is, for the description */  
+  if(changemap2["modification"])  
+  \{  
+    description1 = replace_strings(description1, "MODIFICATION", changemap2["modification"]);  
+    description3 = replace_strings(description3, "MODIFICATION", changemap2["modification"]);  
+  \} else if(changemap["modification"]) \{  
+    description1 = replace_strings(description1, "MODIFICATION", changemap["modification"]);  
+    description3 = replace_strings(description3, "MODIFICATION", changemap["modification"]);  
+  \}  
+  
+  /* Should add an evoke, if any, to the end of the description */  
+  if(\$evoke) \{  
+    description1 += ", " + \$evoke;  
+    description3 += ", " + \$evoke;  
+  \} else \{  
+    description1 += ".";  
+    description3 += ".";  
+  \}  
+  
+  EmitTo(\$actor, description1);  
+  EmitIn(\$actor."base:environment", description3, \$actor);  
+  
+  /* Display a message if the raw materials are used up */  
+  if(\$finddesc \&\& (sizeof(\$finddesc) == 2)) \{  
+    EmitTo(\$actor, \$finddesc[0]);  
+    EmitIn(\$actor."base:environment", \$finddesc[1], \$actor);  
+  \}  
+  
+  
+  /* Slay the original object, if appropriate */  
+  if(\$finished \|\| (!changemap["cost"] \&\& !changemap2["cost"] \&\& (changemap["newobject"] \|\| changemap2["newobject"]) \&\& (!(changemap["noslay"]) \|\| (changemap["noslay"] == "false")) \&\& (!(changemap2["noslay"]) \|\| (changemap2["noslay"] == "false"))))  
+  \{  
+    Slay(NRefOb(\$target[0]));  
+  \}  
+  
+  return FALSE;  
+\} else \{  
+  /* Slay the original object, if appropriate */  
+  if(\$finished \|\| (!changemap["cost"] \&\& !changemap2["cost"] \&\& (changemap["newobject"] \|\| changemap2["newobject"]) \&\& (!(changemap["noslay"]) \|\| (changemap["noslay"] == "false")) \&\& (!(changemap2["noslay"]) \|\| (changemap2["noslay"] == "false"))))  
+  \{  
+    Slay(NRefOb(\$target[0]));  
+  \}  
+  
+  /* Display a message if the raw materials are used up */  
+  \$delay(1, TRUE, "67f3");  
+  if(\$finddesc \&\& (sizeof(\$finddesc) == 2)) \{  
+    EmitTo(\$actor, \$finddesc[0]);  
+    EmitIn(\$actor."base:environment", \$finddesc[1], \$actor);  
+  \}  
+  return TRUE;  
+\}  
+  
+/*  return Call(\$\{IronClaw:Lib:Tailstyling\}, "style", \$target: \$dob, \$modification: "style", \$words: \$(into:words)); */
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1237334867, "morwenlorelie", "E", 1237335043, "morwenlorelie", "X", 1237335241, "morwenlorelie", "X", 1237335478, "morwenlorelie", "X", 1237335651, "morwenlorelie", "X", 1237336212, "morwenlorelie", "X", 1237336758, "morwenlorelie", "X", 1237336882, "morwenlorelie", "R", 1237336939, "morwenlorelie", "X" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

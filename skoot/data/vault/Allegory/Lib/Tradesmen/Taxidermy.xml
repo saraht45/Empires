@@ -1,0 +1,209 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:do_nothing">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$original = \$par["original"];
+
+Act(\$npc, "refuse", \$what: (\{ \$original \}), \$who: \$actor);
+Social(\$npc, "nod", "solemnly", "Let me know when you make up your mind.", "at", \$actor);
+
+\$npc.busy = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:make_the_thing">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$original = \$par["original"];
+
+\$product = \$par[\$key + "_item"];
+\$cost = \$product."trait:cost";
+
+if(Int(\$actor."trait:money") \< \$cost) \{
+    Act(\$npc, "refuse", \$what: (\{ \$original \}), \$who: \$actor);
+    Social(\$npc, "frown", "disappointedly", "Come back when you have enough money.", "at", \$actor);
+    \$npc.busy = nil;
+    return FALSE;
+\}
+
+Act(\$npc, "accept", \$what: (\{ \$original \}), \$who: \$actor);
+\$actor."trait:money" = Int(\$actor."trait:money") - \$cost;
+
+\$spawn = Spawn(\$product);
+
+\$properties = \$original."taxidermy:options"[\$product]; 
+
+if(sizeof(\$properties) \&\& \$properties[0] == "all") \{
+    \$properties = map_values(prefixed_map(copy(\$original."*"), "trait:appearance"));
+
+    for(\$i = 0; sizeof(\$properties) \&\& \$i \< sizeof(\$properties); \$i++) \{
+        Set(\$spawn, "trait:appearance:" + \$properties[\$i], Get(\$original, "trait:appearance:" + \$properties[\$i]));
+    \}
+
+    \$inventory = \$original."base:inventory";
+    for(\$i = 0; \$i \< sizeof(\$inventory); \$i++) \{
+        if(\$inventory[\$i]."base:urparent" == \$\{Allegory:Props:Animals:UrAnimalParts\}) \{
+            \$inventory[\$i]."base:immobile" = FALSE;
+            \$inventory[\$i]."base:environment" = \$spawn;
+            Set(\$spawn, "petbody", TRUE);
+            \$inventory[\$i]."base:immobile" = TRUE;
+        \}
+    \}
+\} else \{
+    for(\$i = 0; sizeof(\$properties) \&\& \$i \< sizeof(\$properties); \$i+=2) \{
+        Set(\$spawn, \$properties[\$i+1], Get(\$original, \$properties[\$i]));
+    \}
+\}
+
+\$delay(2, FALSE, "1c3c");
+
+EmitTo(\$actor, "After a short while, " + Describe(\$npc) + " hands you " + Describe(\$spawn) + ".");
+EmitIn(\$actor."base:environment", "After a short while, " + Describe(\$npc) + " hands " + Describe(\$actor) + " " + Describe(\$spawn) + ".", \$actor);
+
+\$spawn."base:environment" = \$actor;
+ 
+\$delay(3, FALSE, "41f2");
+
+Social(\$npc, "nod", nil, "Thank you and come again.", "to", \$actor);
+
+Slay(\$original);
+
+\$npc.busy = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:offer-who%taxidermy">
+         X[M] if(\$this.busy) \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "drone", "monotonously", "I will be with you in a moment.", "to", \$actor);
+    return FALSE;
+\}
+
+if(sizeof(\$what) \> 1) \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "intone", "deeply", "One thing at a time, please.");
+    return FALSE;
+\}
+
+\$ob = NRefOb(\$what[0]);
+
+if(!\$ob."taxidermy:options") \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "intone", "deeply", "I can't do anything with that.");
+    return FALSE;
+\}
+
+/* Make sure it's not a living thing... */
+if(FindMerry(\$ob, "lib", "die")) \{
+    if(!\$ob."combat:dead") \{
+        Social(\$this, "cackle", "loudly", "It's still alive ya sicko!", "at", \$actor);
+        Act(this, "refuse", \$what: \$what, \$who: \$actor);
+        return FALSE;
+    \}
+\}
+
+\$this.busy = TRUE;
+
+\$optionsMap = \$ob."taxidermy:options";
+\$options = map_indices(\$optionsMap);
+
+Social(\$this, "study", "slowly", nil, nil, \$ob);
+
+\$delay(5, FALSE, "9926");
+
+\$optionsStr = "";
+
+
+\$par = ([ "npc": this, "actor":\$actor, "original":\$ob ]);
+for(\$i = 0; \$i \< sizeof(\$options); \$i++) \{
+    if(\$i == 0) \{
+        \$a_fun = "make_the_thing";
+        \$a_ob = \$\{Allegory:Lib:Tradesmen:Taxidermy\};
+        \$a_cost = Int(\$options[\$i]."trait:cost");
+        \$a_item = \$options[\$i];
+        \$a = capitalize(\$options[\$i]."taxidermy:description") + " (" + allegory::get_cost(\$cost: Flt(\$a_cost)/100.0) + ")";
+        \$par["a_item"] = \$a_item;
+    \}
+
+    if(\$i == 1) \{
+        \$b_fun = "make_the_thing";
+        \$b_ob = \$\{Allegory:Lib:Tradesmen:Taxidermy\};
+        \$b_cost = Int(\$options[\$i]."trait:cost");
+        \$b_item = \$options[\$i];
+        \$b = capitalize(\$options[\$i]."taxidermy:description") + " (" + allegory::get_cost(\$cost: Flt(\$b_cost)/100.0) + ")";
+        \$par["b_item"] = \$b_item;
+    \}
+
+    if(\$i == 2) \{
+        \$c_fun = "make_the_thing";
+        \$c_ob = \$\{Allegory:Lib:Tradesmen:Taxidermy\};
+        \$c_cost = Int(\$options[\$i]."trait:cost");
+        \$c_item = \$options[\$i];
+        \$c = capitalize(\$options[\$i]."taxidermy:description") + " (" + allegory::get_cost(\$cost: Flt(\$c_cost)/100.0) + ")";
+        \$par["c_item"] = \$c_item;
+    \}
+
+    if(\$i == 3) \{
+        \$d_fun = "make_the_thing";
+        \$d_ob = \$\{Allegory:Lib:Tradesmen:Taxidermy\};
+        \$d_cost = Int(\$options[\$i]."trait:cost");
+        \$d_item = \$options[\$i];
+        \$d = capitalize(\$options[\$i]."taxidermy:description") + " (" + allegory::get_cost(\$cost: Flt(\$d_cost)/100.0) + ")";
+        \$par["d_item"] = \$d_item;
+    \}
+
+    \$optionsStr += \$options[\$i]."taxidermy:description" + " for " + allegory::get_cost(\$cost: Flt(\$options[\$i]."trait:cost")/100.0);
+
+    if(sizeof(\$options) \> 1) \{
+        if(\$i == (sizeof(\$options) - 2)) \{
+            \$optionsStr += " or ";
+        \} else \{
+            if(sizeof(\$options) \> 2) \$optionsStr += ", ";
+        \}
+    \}
+\}
+
+if(!\$b) \{
+    \$b_fun = "do_nothing";
+    \$b_ob = \$\{Allegory:Lib:Tradesmen:Taxidermy\};
+    \$b = "Let me think about it.";
+    \$do_nothing = 1;
+\}
+
+if(!\$do_nothing \&\& !\$c) \{
+    \$c_fun = "do_nothing";
+    \$c_ob = \$\{Allegory:Lib:Tradesmen:Taxidermy\};
+    \$c = "Let me think about it.";
+    \$do_nothing = 1;
+\}
+
+if(!\$do_nothing \&\& !\$d) \{
+    \$d_fun = "do_nothing";
+    \$d_ob = \$\{Allegory:Lib:Tradesmen:Taxidermy\};
+    \$d = "Let me think about it.";
+    \$do_nothing = 1;
+\}
+
+if(!\$do_nothing \&\& !\$e) \{
+    \$e_fun = "do_nothing";
+    \$e_ob = \$\{Allegory:Lib:Tradesmen:Taxidermy\};
+    \$e = "Let me think about it.";
+    \$do_nothing = 1;
+\}
+
+Social(\$this, "ask", "finally", "What would you like me to do with that? I can " + \$optionsStr + ".", nil, \$actor);
+
+interaction::question(\$question: "", \$expires: 60, \$expire_ob: \$\{Allegory:Lib:Tradesmen:Taxidermy\}, \$expire_fun: "do_nothing", \$par: \$par);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1588961911, "jominey", "E", 1588962032, "jominey", "E", 1588962078, "jominey", "E", 1588962090, "jominey", "E", 1588962117, "jominey", "E", 1588962134, "jominey", "E", 1588962165, "jominey", "E", 1588962234, "jominey", "E", 1588962976, "jominey", "E", 1588963056, "jominey", "E", 1588963147, "jominey", "E", 1588963409, "jominey", "E", 1588963534, "jominey", "E", 1588963706, "jominey", "E", 1588963781, "jominey", "E", 1588963912, "jominey", "P", 1588965303, "jominey", "E", 1588965481, "jominey", "E", 1588965864, "jominey", "E", 1588965918, "jominey", "E", 1588966037, "jominey", "E", 1589069643, "jominey", "R", 1589148172, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

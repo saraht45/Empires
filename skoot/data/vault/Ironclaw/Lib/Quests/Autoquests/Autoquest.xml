@@ -1,0 +1,164 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:run_quest">
+         X[M] /* Create a random auto-run quest */
+int i;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* Get a list of PCs online */
+
+\$pc_list = (\{ \});
+\$pc_list = common::wholist();
+
+/* remove PCs that aren't findable */
+for(i=0;i\<sizeof(\$pc_list);i++) \{
+  \$char = \$pc_list[i];
+  if(Int(\$char."udat:idle") \> 60*10) \{
+    \$pc_list -= (\{ \$char \});
+    i--;
+  \} else if(!\$char."base:environment" \|\| \$char."base:environment".homeowner) \{
+    \$pc_list -= (\{ \$char \});
+    i--;
+  \} else if(\$char.nocharcost) \{
+    /* Ignore VPs */
+    \$pc_list -= (\{ \$char \});
+    i--;
+  \} else if(\$char."theatre:notwhobody") \{
+    /* Ignore dark PCs (and NPCs) */
+    \$pc_list -= (\{ \$char \});
+    i--;
+  \}
+\}
+
+/* Store the list of PCs online (same as PC list, but we remove characters from the PC list) */
+\$pcs_online = \$pc_list;
+\$quest_givers = \$pc_list;
+
+/* is there at least one person online? */
+if(!sizeof(\$pc_list)) return FALSE;
+
+/* Do we have an actor specified? */
+if(\$actor) \$pc_list = (\{ \$actor \});
+
+/* Get a list of quests that can be run */
+\$questdb = \$\{Ironclaw:Lib:Quests:Autoquests:miniquests\};
+if(\$quest)
+  \$quests_list = Arr(\$quest);
+else
+  \$quests_list = map_indices(prefixed_map(\$questdb."*", "merry:lib:quest:"));
+
+
+while(sizeof(\$pc_list)) \{
+  /* pick an actor from the list */
+  \$actor = \$pc_list[random(sizeof(\$pc_list))];
+  /* now we've got an \$actor that we're running the quest for, remove them from the list */
+  \$pc_list -= (\{ \$actor \});
+
+  /* make sure the actor has a miniquest mapping */
+  if(!\$actor."quest:miniquests") \$actor."quest:miniquests" = ([ ]);
+
+  /* First, see if we can give a quest based on another PC online */
+  while(sizeof(\$quest_givers)) \{
+    \$quest_giver = \$quest_givers[random(sizeof(\$quest_givers))];
+    \$quest_givers -= (\{ \$quest_giver \});
+    if(FindMerry(\$quest_giver, "lib", "give_quest")) \{
+      \$victim = Call(\$quest_giver, "give_quest", \$quest_giver: \$quest_giver, \$actor: \$actor, \$pc_list: \$pcs_online, \$state: "check_valid");
+      if(\$victim) \{
+        /* Valid quest. Run the quest now */
+        return Call(\$quest_giver, "give_quest", \$quest_giver: \$quest_giver, \$actor: \$actor, \$victim: \$victim, \$state: "run_quest");
+      \}
+    \}
+  \}
+
+  /* Pick a plot to run, based on the PCs available. If a plot is chosen, it'll then be run */
+  \$quests = \$quests_list;
+
+  while(sizeof(\$quests)) \{
+    \$quest = \$quests[random(sizeof(\$quests))];
+    \$quests -= (\{ \$quest \});
+    \$victim = Call(\$questdb, \$quest[10..], \$actor: \$actor, \$pc_list: \$pcs_online, \$state: "check_valid");
+    if(\$victim) \{
+      /* Valid quest. Run the quest now */
+      return Call(\$questdb, \$quest[10..], \$actor: \$actor, \$victim: \$victim, \$state: "run_quest");
+    \}
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_random_quest">
+         X[M] /* Create a random auto-run quest */
+int i;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* Get a list of PCs online */
+
+\$pc_list = (\{ \});
+\$pc_list = common::wholist();
+
+/* remove PCs that aren't findable */
+for(i=0;i\<sizeof(\$pc_list);i++) \{
+  \$char = \$pc_list[i];
+  if(Int(\$char."udat:idle") \> 60*10) \{
+    \$pc_list -= (\{ \$char \});
+    i--;
+  \} else if(!\$char."base:environment" \|\| \$char."base:environment".homeowner) \{
+    \$pc_list -= (\{ \$char \});
+    i--;
+  \} else if(\$char.nocharcost) \{
+    \$pc_list -= (\{ \$char \});
+    i--;
+  \}
+\}
+
+/* Store the list of PCs online (same as PC list, but we remove characters from the PC list) */
+\$pcs_online = \$pc_list;
+
+/* is there at least one person online? */
+if(!sizeof(\$pc_list)) return FALSE;
+
+/* Do we have an actor specified? */
+if(\$actor) \$pc_list = (\{ \$actor \});
+
+/* Get a list of quests that can be run */
+\$questdb = \$\{Ironclaw:Lib:Quests:Autoquests:miniquests\};
+if(\$quest)
+  \$quests_list = Arr(\$quest);
+else
+  \$quests_list = map_indices(prefixed_map(\$questdb."*", "merry:lib:quest:"));
+
+
+while(sizeof(\$pc_list)) \{
+  /* pick an actor from the list */
+  \$actor = \$pc_list[random(sizeof(\$pc_list))];
+  /* now we've got an \$actor that we're running the quest for, remove them from the list */
+  \$pc_list -= (\{ \$actor \});
+
+  /* make sure the actor has a miniquest mapping */
+  if(!\$actor."quest:miniquests") \$actor."quest:miniquests" = ([ ]);
+
+  /* Pick a plot to run, based on the PCs available. If a plot is chosen, it'll then be run */
+  \$quests = \$quests_list;
+
+  while(sizeof(\$quests)) \{
+    \$quest = \$quests[random(sizeof(\$quests))];
+    \$quests -= (\{ \$quest \});
+    \$victim = Call(\$questdb, \$quest[10..], \$actor: \$actor, \$pc_list: \$pcs_online, \$state: "check_valid");
+    if(\$victim) \{
+      /* Valid quest. Run the quest now */
+      return Call(\$questdb, \$quest[10..], \$actor: \$actor, \$victim: \$victim, \$state: "run_quest");
+    \}
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1302668659, "tonyd", "P", 1302668751, "tonyd", "P", 1302668852, "tonyd", "P", 1302668911, "tonyd", "P", 1302669027, "tonyd", "P", 1302669137, "tonyd", "P", 1302669237, "tonyd", "P", 1302669602, "tonyd", "P", 1302669613, "tonyd", "P", 1302669839, "tonyd", "P", 1302669854, "tonyd", "P", 1302669892, "tonyd", "P", 1302669912, "tonyd", "P", 1302670108, "tonyd", "P", 1302670174, "tonyd", "P", 1302670186, "tonyd", "E", 1302677750, "tonyd", "P", 1302677853, "tonyd", "P", 1302677873, "tonyd", "P", 1302677910, "tonyd", "P", 1302677932, "tonyd", "P", 1302677966, "tonyd", "P", 1302678201, "tonyd", "P", 1302678229, "tonyd", "P", 1302678301, "tonyd", "P", 1302678310, "tonyd", "P", 1302678382, "tonyd", "P", 1302678518, "tonyd", "P", 1302678542, "tonyd", "P", 1302678571, "tonyd", "P", 1302678586, "tonyd", "P", 1302678615, "tonyd", "P", 1302678671, "tonyd", "P", 1302678678, "tonyd", "P", 1303702498, "tonyd", "E", 1315294379, "tonyd", "P", 1315294501, "tonyd", "P", 1315295503, "tonyd", "E", 1315295552, "tonyd", "E", 1315295838, "tonyd", "P", 1315455966, "tonyd", "P", 1315456012, "tonyd", "P", 1315456124, "tonyd", "P", 1315459818, "tonyd", "P", 1315462781, "tonyd", "P", 1320539359, "tonyd", "E", 1321526021, "tonyd", "E", 1321527203, "tonyd", "E", 1321529365, "tonyd", "P", 1321529483, "tonyd", "P", 1321529654, "tonyd", "P", 1321529672, "tonyd", "P", 1321529720, "tonyd", "P", 1321529739, "tonyd", "P", 1321529765, "tonyd", "P", 1321530029, "tonyd", "P", 1321531689, "tonyd", "E", 1321767355, "tonyd", "P", 1321769496, "tonyd", "E", 1325285441, "tonyd", "P", 1335681177, "tonyd", "P", 1335681763, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,229 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:NPCs:UrNPC)"/>
+    <Base:Bulk immobile="false" mass="0.5" density="0.5"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="true" tight="false" capacity="1" maxweight="1" verb2="are carrying" verb3="is carrying"/>
+    <Base:Misc gender="neuter" volition="true" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="false" on="true" inside="false" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="pet"/>
+            <Base:SName sname="spider"/>
+            <Base:SName sname="house"/>
+            <Base:SName sname="unknown"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="pets"/>
+            <Base:PName pname="spiders"/>
+            <Base:PName pname="houses"/>
+            <Base:PName pname="unknowns"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="house"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             dark brown giant house spider
+          </Base:Description>
+          <Base:Description type="examine">
+             This is a dark brown giant house spider. It measures approximately three inches long with it's eight legs extended outward.
+          </Base:Description>
+          <Base:Description type="look">
+             This is a dark brown giant house spider.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:react-post:name-dob">
+         X[M] if(\$actor == \$this."trait:ownerone" \|\| \$actor == \$this."trait:ownertwo")\{
+if(this."trait:name") \{
+  EmitTo(\$actor, Describe(this)+" already has a name. Sheesh.");
+  return TRUE;
+\}
+
+\$name = capitalize(\$evoke[1..strlen(\$evoke)-2]);
+/* If we have any punctuation at the end of the command, remove it */
+if(!((\$name[strlen(\$name)-1] \>= 97) \&\& (\$name[strlen(\$name)-1] \<= 122)) \&\& !((\$name[strlen(\$name)-1] \>= 65) \&\& (\$name[strlen(\$name)-1] \<= 90)))
+  \$name = \$name[0..strlen(\$name)-2];
+/* Only take the first word of the name */
+sscanf(\$name, "%s %*s", \$name);
+
+/* Tell the actor that this was successful */
+EmitTo(\$actor, Describe(this)+" will now respond to "+\$name+".");
+
+/* Set the name */
+this."trait:name" = \$name;
+/* set the sname */
+Set(this, "details:default:sname:"+lower_case(\$name), 1);
+
+
+return TRUE;
+\} else \{return FALSE;\}
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] /* Record what room the actor is in */
+\$room = \$actor."Base:environment";
+
+/* if the pet has no owner, let the first person to take it become the owner */
+if(!\$this."trait:ownerone")
+ \$this."trait:ownerone" = \$actor;
+
+
+/* Check if the actor is allowed to pick up the pet */
+  /* check if \$actor is the pet's parent */
+if(\$actor == \$this."trait:ownerone" \|\| \$actor == \$this."trait:ownertwo") \{
+  /* if the actor is allowed to pick up the pet */
+  /* tell the actor that they picked up the pet */
+  /* tell the room that the actor picked up the pet */
+  EmitTo(\$actor, "You pick up "+Describe(\$this)+".");
+  EmitIn(\$room, Describe(\$actor)+" picks up "+ Describe(\$this)+".", \$actor);
+  \$this."base:environment" = \$actor;
+
+\} else \{
+  /* the actor is not the pet's mother */
+
+  /* if the pet is already being held by someone */
+  if(\$this."base:environment"."base:volition") \{
+    /* use the normal give/take/offer code */
+    return TRUE;
+  \} else \{
+    /* tell the actor that they can't take the pet */
+    /* tell the room that the actor is a kidnapper! */
+    EmitTo(\$actor, "That pet is not yours!");
+    EmitIn(\$room, Describe(\$actor)+" attempts to take "+ Describe(\$this)+".", \$actor);
+  \}
+\}
+
+/* return false, so that the actor doesn't see a message about not being allowed to pick up the pet */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:control-dob">
+         X[M] /* check if we are the mother, or if we are carrying the pet */
+if((\$actor != \$this."base:environment") \&\& (\$actor != \$this."trait:ownerone" \|\| \$actor != \$this."trait:ownertwo"))
+\{
+  /* we aren't allowed to give commands */
+  EmitTo(\$actor, "You cannot control "+Describe(\$this)+" unless you are carrying "+\$this."base:objective"+".");
+  return FALSE;
+\}
+
+if(\$evoke) \{
+
+  /* If the actor gave a command */
+  \$command = \$evoke[1..strlen(\$evoke)-2];
+
+  /* If the command is hiss */
+  if(\$command == "hiss") \{
+    EmitIn(\$actor."base:environment", Describe(\$this)+" lets out a low hiss in warning.");
+    \} else if(\$command == "dance") \{
+    EmitIn(\$actor."base:environment", Describe(\$this)+" dances with " + \$this."base:possessive" + " eight legs spiritedly.");
+    \} else if(\$command == "hold-me") \{
+    EmitIn(\$actor."base:environment", Describe(\$this)+" searches for someone to hold " + \$this."base:objective" + ".");
+    \} else if(\$command == "pout") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+" lifts " + \$this."base:possessive" + " eyes at " + Describe(\$actor) + " in an almost pleading fashion.");
+  \} else if(\$command == "sleep") \{
+    EmitIn(\$actor."base:environment", Describe(\$this)+" sleeps undisturbedly on " + \$actor."base:possessive" + " shoulder.", \$actor);
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " sleeps undisturbedly on your shoulder.");
+    \} else if(\$command == "skitter") \{
+    EmitIn(\$actor."base:environment", Describe(\$this)+"  frantically skitters across " + \$actor."base:possessive" + " shoulder.");
+    \} else if(\$command == "scamper") \{
+    EmitIn(\$actor."base:environment", Describe(\$this)+" daringly tries to scamper off of " + \$actor."base:possessive" + " shoulder.");
+  \} else if(\$command == "spin") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+ " crafts a small web with " + \$this."base:possessive" + " eight legs.");
+  \} else if(\$command == "curious") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+ " curiously gazes at nearby objects and people.");
+  \} else if(\$command == "stoop") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+ " stoops " + \$this."base:possessive" + " body, irritated with all the noise.");
+  \} else if(\$command == "hungry") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+ " scans the nearby area for sources of food.");
+  \} else if(\$command == "flee") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+" flees swiftly as " +Describe(\$actor) +" tries to kiss " + \$this."base:possessive" + ".");
+  \} else if(\$command == "nudge-kiss") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+" nudgingly kisses " +Describe(\$actor) + ".");
+  \} else if(\$command == "snuggle") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+" lightly snuggles " + Describe(\$actor) +"'s neck.");
+  \} else if(\$command == "coo") \{
+    EmitIn(\$actor."base:environment", Describe(\$this) + " makes unnatural cooing sounds.");
+  \} else if(\$command == "play") \{
+    EmitIn(\$actor."base:environment", Describe(\$this) + " gazes entertainedly at "+ \$actor."base:objective" + " as " + \$actor."base:pronoun" + " makes foolish gestures.");
+  \} else if(\$command == "peekaboo") \{
+    EmitIn(\$actor."base:environment", Describe(\$this, nil, nil, STYLE_NONPOSS)+" ridiclously observes as " + Describe(\$actor) + " repeatedly hides and reveals " + \$actor."base:possessive" + " face.");
+  \} else if(\$command == "sleepy") \{
+    switch(random(4)) \{
+      case 3:
+        EmitIn(\$actor."base:environment", Describe(\$this)+" sleepily winds into a ball.");
+        break;
+      case 2:
+        EmitIn(\$actor."base:environment", Describe(\$this)+" stretches wearily.");
+        break;
+      case 1:
+        EmitIn(\$actor."base:environment", Describe(\$this)+" attempts to stay awake.");
+        break;
+      case 0:
+        EmitIn(\$actor."base:environment", Describe(\$this)+" nearly falls and blinks wakefully.");
+        break;
+      default:
+        break;
+    \}
+  \} else \{
+  EmitTo(\$actor, "Valid controls for "+Describe(\$this)+" are: hiss, dance, hold-me, pout, sleep, skitter, scamper, spin, curious, stoop, hungry, peekaboo, flee, nudge-kiss, snuggle, coo, play and sleepy.");
+  \}
+
+\} else \{
+
+  /* If the actor did NOT give a command */
+   EmitTo(\$actor, "You must include a command you want followed. Such as: control "+Describe(\$this, nil, \$actor)+ " 'sleep'.");
+
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:object">
+         X[M] Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);   
+Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replacesname", \$object: this);   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1126228836, "tonyd", "E", 1126229253, "tonyd", "E", 1126229536, "tonyd", "E", 1126229717, "tonyd", "E", 1126229772, "tonyd", "E", 1126230509, "lunamoon", "E", 1126230896, "tonyd", "E", 1126240251, "roccon", "E", 1126241256, "tonyd", "E", 1126243405, "tonyd", "E", 1126243442, "tonyd", "E", 1126245888, "lunamoon", "P", 1126246183, "lunamoon", "P", 1126246254, "tonyd", "P", 1126246307, "tonyd", "P", 1126246504, "tonyd", "P", 1126247777, "lunamoon", "P", 1126247816, "lunamoon", "P", 1126248145, "lunamoon", "P", 1126248476, "tonyd", "P", 1126248595, "lunamoon", "P", 1126248875, "lunamoon", "P", 1126249175, "tonyd", "P", 1126499693, "lunamoon", "P", 1126499772, "lunamoon", "P", 1126499893, "lunamoon", "P", 1126500002, "lunamoon", "P", 1126500073, "lunamoon", "P", 1126500108, "lunamoon", "P", 1126500235, "lunamoon", "P", 1126500349, "lunamoon", "P", 1126500378, "lunamoon", "P", 1126500547, "lunamoon", "P", 1126500677, "lunamoon", "P", 1126501400, "lunamoon", "P", 1126501443, "lunamoon", "P", 1126501519, "lunamoon", "P", 1127267897, "lunamoon", "P", 1127267949, "lunamoon", "P", 1127268008, "lunamoon", "P", 1127269597, "lunamoon", "P", 1128055683, "lunamoon", "P", 1128055712, "lunamoon", "P", 1128128864, "lunamoon", "P", 1128129153, "lunamoon", "P", 1128129183, "lunamoon", "P", 1128129234, "lunamoon", "P", 1128129300, "lunamoon", "P", 1128129374, "lunamoon", "P", 1128129711, "lunamoon", "P", 1128129756, "lunamoon", "P", 1131060559, "tunk_bodin", "X", 1131061213, "tunk_bodin", "X", 1138238189, "lunamoon", "E", 1147751630, "tunk_bodin", "X", 1149323426, "lunamoon", "K", 1149323676, "lunamoon", "K", 1149360561, "lunamoon", "E", 1149362026, "lunamoon", "P", 1149362121, "lunamoon", "P", 1149362149, "lunamoon", "P", 1149362323, "lunamoon", "P", 1172538751, "necate", "E", 1172538819, "necate", "E", 1172539309, "necate", "E", 1172539353, "necate", "R", 1172539392, "necate", "E", 1172539400, "necate", "E", 1172539411, "necate", "E", 1172539571, "necate", "K", 1172542172, "necate", "K", 1172542194, "necate", "K", 1172542262, "necate", "K", 1172542342, "necate", "E", 1172542492, "necate", "K", 1172542563, "necate", "K", 1172542639, "necate", "K", 1172542658, "necate", "E", 1172542722, "necate", "E", 1172544929, "necate", "E", 1225464600, "slurpeeslurp", "E", 1225464641, "slurpeeslurp", "E", 1225465754, "slurpeeslurp", "E", 1225465771, "slurpeeslurp", "E", 1225466247, "slurpeeslurp", "E", 1225466595, "slurpeeslurp", "E", 1225466611, "slurpeeslurp", "E", 1225483634, "slurpeeslurp", "R", 1225483720, "slurpeeslurp", "E", 1225483804, "slurpeeslurp", "E", 1225484983, "balkaar", "E", 1225485121, "balkaar", "E", 1225485175, "balkaar", "E", 1225485212, "balkaar", "E", 1225485487, "balkaar", "E", 1225485738, "balkaar", "E", 1225485778, "balkaar", "E", 1225485850, "balkaar", "E", 1225490896, "tonyd", "P", 1225490960, "tonyd", "P", 1225491031, "tonyd", "P", 1225491055, "tonyd", "P", 1225491125, "tonyd", "P", 1225504382, "tonyd", "E", 1225505870, "slurpeeslurp", "R", 1288422828, "morwenlorelie", "K" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">1</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

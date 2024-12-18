@@ -1,0 +1,440 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="export:header:extra">
+         X[S] \<script src="https://code.jquery.com/jquery-1.6.2.min.js"\>\</script\>
+\<style\>
+#map_canvas \\\{
+  background-color: #aba1c1 !important;
+\\\}
+#lightbox \\\{
+    position:fixed; /* keeps the lightbox window in the current viewport */
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background-color: rgba(0,0,0,0.5);
+    text-align:center;
+    display:none;
+\\\}
+#content \\\{
+ margin:0px;
+ padding:0px;
+ overflow:hidden;
+ height: 100%;
+\\\}
+#popup_iframe \\\{
+ background-color: rgba(255,255,255,1.0);
+ width:80%;
+ height:90%;
+ border:none;
+ overflow:hidden;
+\\\}
+#lightbox p \\\{
+    text-align:right;
+    color:#fff;
+    margin-right:20px;
+    font-size:12px;
+\\\}
+\</style\>
+\<script\>
+jQuery(document).ready(function(\\\$) \\\{
+  \\\$('#lightbox').live('click', function() \\\{
+    \\\$('#lightbox').hide();
+  \\\});
+\\\});
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:location">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */                         
+::popup_initialize();
+if(!\$location) error("Unknown Location!");
+/* Is there a block of text for this location? */
+\$location_name = \$location;
+\$location_text = Get(\$\{Ironclaw:AAs:Map:Locations\}, "text:"+\$location);
+\$location = Get(\$\{Ironclaw:AAs:Map:Locations\}, "location:"+\$location);
+
+if(\$action == "msg") \{
+  \$az = \$\{Chatters:AE:az:azrael\};
+  EmitTo(\$az, "Hello from "+\$location_name+"!");
+\}
+
+
+if(\$msg) \{
+  \$az = \$\{Chatters:AE:az:azrael\};
+  EmitTo(\$az, "Message from "+\$location_name+": "+\$msg+"!");
+\}
+
+
+return nil;]
+\<h1\>\$(location.title)\</h1\>
+\{? \| \$(msg) \| \<p\>\$(msg)\</p\> \}
+\<p\>
+\<strong\>Ruled by:\</strong\> \{? \| \$(location.ruler_name) \| \$(location.ruler_name) \| Nobody \}\<break/\>
+\<strong\>Governor:\</strong\> \{? \| \$(location.governor_name) \| \$(location.governor_name) \| Nobody \}\<break/\>
+\<strong\>Tribute to:\</strong\> \{? \| \$(location.tribute_name) \| \$(location.tribute_name) \| Nobody \}\<break/\>
+\<strong\>Defence strength:\</strong\> \{? \| \$(location.tokens.defence) \| \$(location.tokens.defence) \| 0 \}\<break/\>
+\<strong\>Social strength:\</strong\> \{? \| \$(location.tokens.social) \| \$(location.tokens.social) \| 0 \}\<break/\>
+\</p\>
+\\\<!--
+\\\<zform char="\\\$(charname)" guild="\\\$(guild)" guildname="\\\$(guildname)" location_name="\\\$(location_name)" location="\\\$(location)"\\\>
+  Character: \\\<zlink base="/SAM/Prop/Ironclaw:Lib:Guilds:Guild/character" char="\\\$(charname)"\\\>\\\$(char)\\\</zlink\\\>\\\<br/\\\>
+  \\\<zlink base="/SAM/Prop/Ironclaw:AAs:Map:Conquest:map/location" char="\\\$(char)" location="\\\$(location_name)" action="msg"\\\>Linkback\\\</zlink\\\>\\\<br/\\\>
+  \\\<select name="viewguild"\\\>
+              \\\$[/* get a list of all guilds */
+                \\\$folder = "Ironclaw:Guilds";
+                \\\$guilds = Call(\\\$\\\{/usr/System/sys/idd\\\}, "idd:get-objects");
+                \\\$output = "";
+                for(\\\$i=0;\\\$i\\\<sizeof(\\\$guilds);\\\$i++) \\\{
+                  \\\$output += "\\\<option value=\\\\""+\\\$guilds[\\\$i]+"\\\\"\\\>"+Get(Obj("Ironclaw:Guilds:"+\\\$guilds[\\\$i]), "shortname")+"\\\</option\\\>";
+                \\\}
+                return \\\$output;]
+  \\\</select\\\>
+  \\\<input type="submit" value="Go!" class="submit-button"/\\\>
+  \\\<action\\\>
+    \\\<redirect base="/SAM/Prop/Ironclaw:Lib:Guilds:Guild/popup" char="\\\$(char)" guild="\\\$(viewguild)"/\\\>
+  \\\</action\\\>
+\\\</zform\\\>
+--\\\>
+\{? \| \$(location.disable_martial_conflict) \|
+  \\\<!-- No martial conflict --\\\>
+\|
+  \\\<!-- Martial conflict allowed --\\\>
+  \<zform char="\$(char)" charname="\$(charname)" guild="\$(guild)" guildname="\$(guildname)" location_name="\$(location_name)" location="\$(location)"\>
+    \$[\$count = Int(\$char."tokens:martial");]
+    I want to invade \$(location.title) using \<input TYPE="text" size="1" NAME="number_martial_tokens"/\> martial tokens \<input type="submit" value="Invade!" class="submit-button"/\> (You currently have \$(count) martial tokens)
+    \<action\>
+      \$[\$az = \$\{Chatters:AE:az:azrael\};
+        \$location = Get(\$\{Ironclaw:AAs:Map:Locations\}, "location:"+\$location_name);
+        \$number_martial_tokens = Int(\$number_martial_tokens);
+        if(\$number_martial_tokens \< 1) \{
+          \$msg = "Uh, what? That's not going to be enough tokens...";
+          return nil;
+        \}
+
+        if(Int(\$char."tokens:martial") \< \$number_martial_tokens) \{
+          \$msg = "Sorry, you don't have that many tokens.";
+          return nil;
+        \}
+        /* Subtract the spent tokens */
+        \$char."tokens:martial" -= \$number_martial_tokens;
+
+        EmitTo(\$az, "Invasion from "+\$charname+" attacking "+\$location["title"]+" using "+\$number_martial_tokens+" tokens.");
+
+        if(!\$location["tokens"]) \$location["tokens"] = ([ ]);
+        if(!\$location["tokens"]["defence"]) \$location["tokens"]["defence"] = 0;
+
+        EmitTo(\$az, "Defence: "+\$location["tokens"]["defence"]);
+        \$number_martial_tokens = \$number_martial_tokens * (random(3)+1) / (random(5)+1);
+        EmitTo(\$az, "Attack value: "+\$number_martial_tokens);
+
+        if(\$number_martial_tokens \> \$location["tokens"]["defence"]) \{
+          \$msg = "Your invasion was successful!\<br/\>After a little looting, your troops took control of the city.";
+
+          /* Do we have default values for the capturable parts? */
+          if(!\$location["default:governor"]) \$location["default:governor"] = \$location["governor"];
+          if(!\$location["default:governor_name"]) \$location["default:governor_name"] = \$location["governor_name"];
+          if(!\$location["default:ruler"]) \$location["default:ruler"] = \$location["ruler"];
+          if(!\$location["default:ruler_name"]) \$location["default:ruler_name"] = \$location["ruler_name"];
+
+  
+          \$location["tokens"]["defence"] = (\$number_martial_tokens - \$location["tokens"]["defence"]) / 2;
+          \$location["governor"] = \$char;
+          \$location["governor_name"] = capitalize(\$charname);
+          \$location["ruler"] = \$char."loyalty:group";
+          \$location["ruler_name"] = \$char."loyalty:name";
+  
+          if(\$char.guild) \{
+            \$location["tribute"] = \$char.guild;
+            \$location["tribute_name"] = \$char.guild.fullname;
+          \}
+        \} else \{
+          /* Unsuccessful. But reduce the defence */
+          \$location["tokens"]["defence"] -= \$number_martial_tokens;
+          EmitTo(\$az, "Defence: "+\$location["tokens"]["defence"]);
+
+          \$msg = "I'm afraid your invasion was unsuccessful!\<br/\>Your troops were sent running from the city walls.";
+        \}]
+      \<redirect base="/SAM/Prop/Ironclaw:AAs:Map:Conquest:map/location" char="\$(char)" location="\$(location_name)" action="invade" msg="\$(msg)"/\>
+    \</action\>
+  \</zform\>
+\}
+\$[/* This is location info for \$(charname) about \$(location.title)!\<br/\> */
+if(\$location_text) return UnSAM(\$location_text);
+return nil;]
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:map">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */                         
+::popup_initialize();
+\$tile_location = "http://www.googledrive.com/host/0B_Gza2g0cdfSdnJSSEIyc3BQY0E/calabria_map/";
+\$icon_location = "http://www.googledrive.com/host/0B_Gza2g0cdfSdnJSSEIyc3BQY0E/calabria_map/icons/";
+return nil;]
+\</z\>
+\<head\>
+ \<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1.0,user-scalable=no"/\>
+ \<meta charset="utf-8"/\>
+ \<title\>Map of Calabria\</title\>
+ \$(this.header:extra)
+\</head\>
+\<body onload="initialize()"\>
+ \<p\>This is a map for \$(charname)!\</p\>
+ \<div id="map_canvas" style="width:1020px;height:743px;"\>\</div\>
+ \<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"\>\</script\>
+ \<script type="text/javascript"\>
+  var customMapTypeOptions = \\\{
+   getTileUrl: function(coord, zoom) \\\{
+    var normalizedCoord = getNormalizedCoord(coord, zoom);
+    if (!normalizedCoord) \\\{
+     return null;
+    \\\}
+    var bound = Math.pow(2, zoom);
+    /*Edit this URL to where you upload your tiles...*/
+    //return "http://unitseven.com.au/maptiles/uploads/Calabria/tile_" + zoom + "_" + normalizedCoord.x + "-" + normalizedCoord.y + ".png";
+    //return "http://web.science.mq.edu.au/~ademet/ironclaw/images/maps/Calabria/tile_" + zoom + "_" + normalizedCoord.x + "-" + normalizedCoord.y + ".png";
+    return "\$[\$tile_location]tile_" + zoom + "_" + normalizedCoord.x + "-" + normalizedCoord.y + ".png";
+   \\\},
+   tileSize: new google.maps.Size(256, 256),
+   isPng: true,
+   maxZoom: 4,
+   minZoom: 2,
+   name: "Calabria"
+  \\\};
+  var customMapType = new google.maps.ImageMapType(customMapTypeOptions);
+  // Normalizes the coords that tiles repeat across the x axis (horizontally)
+  // like the standard Google map tiles.
+  function getNormalizedCoord(coord, zoom) \\\{
+   var y = coord.y;
+   var x = coord.x;
+   // tile range in one direction range is dependent on zoom level
+   // 0 = 1 tile, 1 = 2 tiles, 2 = 4 tiles, 3 = 8 tiles, etc
+   var tileRange = 1 \\\<\\\< zoom;
+   // don't repeat across y-axis (vertically)
+   if (y \\\< 0 \\\|\\\| y \\\>= tileRange) \\\{
+    return null;
+   \\\}
+   // don't repeat across x-axis (horizontally)
+   if (x \\\< 0 \\\|\\\| x \\\>= tileRange) \\\{
+    return null;
+   \\\}
+   // repeat across x-axis
+   //if (x \\\< 0 \\\|\\\| x \\\>= tileRange) \\\{
+   //  x = (x % tileRange + tileRange) % tileRange;
+   //\\\}
+   // repeat across y-axis
+   //if (y \\\< 0 \\\|\\\| y \\\>= tileRange) \\\{
+   //  y = (y % tileRange + tileRange) % tileRange;
+   //\\\}
+   return \\\{
+    x: x,
+    y: y
+   \\\};
+  \\\}
+  function initialize() \\\{
+   var myLatlng = new google.maps.LatLng(0, 0);
+   var myOptions = \\\{
+    zoom: 2,
+    center: myLatlng,
+    mapTypeControlOptions: \\\{
+     mapTypeIds: ["Calabria"]
+    \\\}
+   \\\}
+   map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+   map.mapTypes.set('Calabria', customMapType);
+   map.setMapTypeId('Calabria');
+   // Set bounds
+   var strictBounds = new google.maps.LatLngBounds( ico_latlng(0,0), ico_latlng(100,100) );
+   // Add the dragend listener to the map
+   google.maps.event.addListener(map, 'dragend', function() \\\{
+     // The map is still inside the bounds
+     // Don't do anything
+     if (strictBounds.contains(map.getCenter())) return;
+     // The map is out of bounds
+     // Move the map back within the bounds
+     var c = map.getCenter(),
+     x = c.lng(),
+     y = c.lat(),
+     maxX = strictBounds.getNorthEast().lng(),
+     maxY = strictBounds.getNorthEast().lat(),
+     minX = strictBounds.getSouthWest().lng(),
+     minY = strictBounds.getSouthWest().lat();
+     if (x \\\< minX) x = minX;
+     if (x \\\> maxX) x = maxX;
+     if (y \\\< minY) y = minY;
+     if (y \\\> maxY) y = maxY;
+     map.setCenter(new google.maps.LatLng(y, x));
+     // map.panTo(new google.maps.LatLng(y, x));
+     // map.panToBounds(strictBounds);
+   \\\});
+   var zoomLevel = 2;
+   google.maps.event.addListener(map, 'zoom_changed', function() \\\{
+     var i, prevZoomLevel;
+     prevZoomLevel = zoomLevel;
+     zoomLevel = map.getZoom();
+     if (zoomLevel == 3 \\\&\\\& prevZoomLevel == 2) \\\{
+       // Dots to icons
+       console.log("Dots to icons");
+       markers.forEach(function(this_marker) \\\{
+         if (this_marker.icon_zoomed) \\\{
+           this_marker.icon_unzoomed = this_marker.icon;
+           this_marker.setIcon(this_marker.icon_zoomed);
+         \\\}
+       \\\});
+     \\\} else if (zoomLevel == 2 \\\&\\\& prevZoomLevel == 3) \\\{
+       // Icons to dots
+       markers.forEach(function(this_marker) \\\{
+         if (this_marker.icon_unzoomed)
+           this_marker.setIcon(this_marker.icon_unzoomed);
+       \\\});
+     \\\}
+   \\\});
+   var infowindow = new google.maps.InfoWindow(\\\{
+    disableAutoPan : true,
+    position: ico_latlng(50,0),
+    maxWidth: 1200,
+    content:
+    '\<div id="content"\>'+
+    '\<iframe id="popup_iframe" src="about:blank;" style="border:none; width:600px; height:650px;"\>\</iframe\>'+
+    '\</div\>'
+   \\\});
+   var markers = [];
+   \$[int i;
+   \$output = "";
+   \$locations = \$\{Ironclaw:AAs:Map:Locations\};
+   \$locations = prefixed_map( \$\{Ironclaw:AAs:Map:Locations\}."*", "location:");
+   /*\$output += dump_value(\$locations)+"\\n\\n";*/
+   
+   for(i=0;i\<sizeof(map_indices(\$locations));i++) \{
+     \$location = \$locations[map_indices(\$locations)[i]];
+     if(\$location["minimize"])
+       \$minimize = "dot.png";
+     else
+       \$minimize = \$location["icon"];
+     \$output += "createMarker(markers, "+\$location["position_x"]+", "+\$location["position_y"]+", '"+\$minimize+"', '"+\$location["color"]+"', '"+\$location["icon"]+"', \\""+\$location["title"]+"\\", '"+\$charname+"', '"+map_indices(\$locations)[i][9..]+"', infowindow);\\n";
+
+
+   \}
+   return \$output;]
+  \\\}
+  function createMarker(markers, x, y, minimize, color, icon, title, charname, location, infowindow) \\\{
+    var marker = new google.maps.Marker(\\\{
+      position: ico_latlng(x, y),
+      map: map,
+      //icon: 'http://web.science.mq.edu.au/~ademet/ironclaw/images/maps/Calabria/icons/'+color+'/'+minimize,
+      //icon_zoomed: 'http://web.science.mq.edu.au/~ademet/ironclaw/images/maps/Calabria/icons/'+color+'/'+icon,
+      icon: '\$[\$icon_location]'+color+'/'+minimize,
+      icon_zoomed: '\$[\$icon_location]'+color+'/'+icon,
+      title: title,
+    \\\});
+    marker.addListener('click', function() \\\{
+      \\\$("#popup_iframe").contents().find("body").html(''); // Clear it, to avoid the last page showing
+      document.getElementById("popup_iframe").src = "http://ironclaw.skotos.net/SAM/Prop/Ironclaw:AAs:Map:Conquest:map/location?actor="+charname+"\\\&location="+location;
+      document.getElementById("lightbox").style.display="block";
+    \\\});
+    markers.push(marker);
+  \\\}
+  function ico_latlng(x, y) \\\{
+   x *= 3.2;
+   x -= 160;
+   y *= 1.52;
+   y -= 76;
+   return new google.maps.LatLng(y, x);
+  \\\}
+ \</script\>
+ \<div id="lightbox"\>
+    \<p\>Click to close\</p\>
+    \<div id="content"\>
+        \<iframe id="popup_iframe" src=""\>\</iframe\>
+    \</div\>
+ \</div\>
+\</body\>
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] /* checks the player isn't trying anything funny, and that we have all the information we need */
+/* returns the page we should look up */
+object *bodies;
+int i, sz;
+
+/* first basic sanity checks -- these should never happen */
+if (\$dat == nil) \{
+    error("page reached without a udat");
+\}
+if (\$name == nil) \{
+    error("page reached without a name");
+\}
+
+/* what is the character? */
+if(\$actor \&\& typeof(\$actor) == 3) \{
+    /* \$actor is a string. make it an object */
+    if(Obj(\$actor)) \{
+        \$actor = Obj(\$actor);
+    \} else \{
+        \$actor = Obj("Chatters:IC:"+\$actor[0..1]+":"+\$actor);
+    \}
+\}
+
+if(\$char \&\& typeof(\$char) == 3) \{
+    /* \$char is a string. make it an object */
+    if(Obj(\$char)) \{
+        \$char = Obj(\$char);
+    \} else \{
+        \$char = Obj("Chatters:IC:"+\$char[0..1]+":"+\$char);
+    \}
+\}
+
+if(!\$char \&\& \$actor) \$char = \$actor;
+if(!\$actor \&\& \$char) \$actor = \$char;
+if (!\$char) error("No character specified");
+
+\$charname = name(\$char)[15..strlen(name(\$char))-1];
+
+
+/* what is the guild? */
+if(\$guild \&\& typeof(\$guild) == 3 \&\& Obj("Ironclaw:Guilds:"+\$guild)) \{
+  \$guildob = Obj("Ironclaw:Guilds:"+\$guild);
+\} else if(Get(\$char, "guild")) \{
+  \$guildob = \$char.guild;
+\} else \{
+  \$guildob = nil;
+\}
+
+if(\$guildob) \{
+  \$guildname = name(\$guildob)[16..strlen(name(\$guildob))-1];
+  \$guildpages = Obj("Ironclaw:Guilds:Pages:new:"+\$guildname);
+  if(!\$guildpages) \{
+    \$guildpages = Duplicate(\$\{Allegory:Guilds:Pages:new:default_page\});
+    \$guildpages."core:objectname" = "Ironclaw:Guilds:Pages:new:"+\$guildname;
+  \}
+\}
+
+
+/* Check the player isn't trying to access someone elses body */
+/* Check if the players roster of characters */
+bodies = Udat::query_bodies_in_roster(\$user: \$name);
+
+for(i = 0; i \< sizeof(bodies);) \{
+    if(bodies[i]."theatre:id" != "IC") \{
+        bodies -= (\{ \$bodies[i] \});
+    \} else \{
+        i++;
+    \}
+\}
+
+bodies \&= (\{ \$char \});
+
+if(sizeof(bodies) \< 1 \&\& (\$name != "tonyd" \&\& \$name != "rastalabor")) \{
+  error("Body not found in character roster");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1443245453, "tonyd", "P", 1443245855, "tonyd", "P", 1443245951, "tonyd", "P", 1443246002, "tonyd", "P", 1443246077, "tonyd", "P", 1443246368, "tonyd", "P", 1443246626, "tonyd", "P", 1443246893, "tonyd", "P", 1443247842, "tonyd", "P", 1443247889, "tonyd", "P", 1443247900, "tonyd", "P", 1443248590, "tonyd", "P", 1443248743, "tonyd", "P", 1443248797, "tonyd", "P", 1443248834, "tonyd", "P", 1443248930, "tonyd", "P", 1443248972, "tonyd", "P", 1443248982, "tonyd", "P", 1443249020, "tonyd", "P", 1443249047, "tonyd", "P", 1443249073, "tonyd", "P", 1443249089, "tonyd", "P", 1443249103, "tonyd", "P", 1443249116, "tonyd", "P", 1443249155, "tonyd", "P", 1443249314, "tonyd", "P", 1443249457, "tonyd", "P", 1443249487, "tonyd", "P", 1443249502, "tonyd", "P", 1443249510, "tonyd", "P", 1443249541, "tonyd", "P", 1443249563, "tonyd", "P", 1443250525, "tonyd", "P", 1443250878, "tonyd", "P", 1443250913, "tonyd", "P", 1443251025, "tonyd", "P", 1443251041, "tonyd", "P", 1443251060, "tonyd", "P", 1443251136, "tonyd", "P", 1443251164, "tonyd", "P", 1443251173, "tonyd", "P", 1443251193, "tonyd", "P", 1443251202, "tonyd", "P", 1443251314, "tonyd", "P", 1443251350, "tonyd", "P", 1443251438, "tonyd", "P", 1443251483, "tonyd", "P", 1443251504, "tonyd", "P", 1443251533, "tonyd", "P", 1443251615, "tonyd", "P", 1443251664, "tonyd", "P", 1443251678, "tonyd", "P", 1443251746, "tonyd", "P", 1443252415, "tonyd", "P", 1443252491, "tonyd", "P", 1443252928, "tonyd", "P", 1443252953, "tonyd", "P", 1443253230, "tonyd", "P", 1443253258, "tonyd", "P", 1443253360, "tonyd", "P", 1443253406, "tonyd", "P", 1443253430, "tonyd", "P", 1443253454, "tonyd", "P", 1443253493, "tonyd", "P", 1443253499, "tonyd", "P", 1443253515, "tonyd", "P", 1443254133, "tonyd", "P", 1443254145, "tonyd", "P", 1443254155, "tonyd", "P", 1443254169, "tonyd", "P", 1443254417, "tonyd", "P", 1443254444, "tonyd", "P", 1443254459, "tonyd", "P", 1443254481, "tonyd", "P", 1443254495, "tonyd", "P", 1443254546, "tonyd", "P", 1443254577, "tonyd", "P", 1443257810, "tonyd", "P", 1443257848, "tonyd", "P", 1443257887, "tonyd", "P", 1443257910, "tonyd", "P", 1443258105, "tonyd", "P", 1443258421, "tonyd", "P", 1443258499, "tonyd", "P", 1443258568, "tonyd", "P", 1443258689, "tonyd", "P", 1443258771, "tonyd", "P", 1443258778, "tonyd", "P", 1443258848, "tonyd", "P", 1443258891, "tonyd", "P", 1443258921, "tonyd", "P", 1443258989, "tonyd", "P", 1443259017, "tonyd", "P", 1443259094, "tonyd", "P", 1443259134, "tonyd", "P", 1443259179, "tonyd", "P", 1443259195, "tonyd", "P", 1443259238, "tonyd", "P", 1443259278, "tonyd", "P", 1443259337, "tonyd", "P", 1443259406, "tonyd", "P", 1443259561, "tonyd", "P", 1443259678, "tonyd", "P", 1443259750, "tonyd", "P", 1443259825, "tonyd", "P", 1443259845, "tonyd", "P", 1443260039, "tonyd", "P", 1443260139, "tonyd", "P", 1443260245, "tonyd", "P", 1443260323, "tonyd", "P", 1443260355, "tonyd", "P", 1443260398, "tonyd", "P", 1443260443, "tonyd", "P", 1443260464, "tonyd", "P", 1443260724, "tonyd", "P", 1443260810, "tonyd", "P", 1443268704, "tonyd", "P", 1443268748, "tonyd", "P", 1443268789, "tonyd", "P", 1443268824, "tonyd", "P", 1443268840, "tonyd", "P", 1443268987, "tonyd", "P", 1443269098, "tonyd", "P", 1443269168, "tonyd", "P", 1443269226, "tonyd", "P", 1443269254, "tonyd", "P", 1443269329, "tonyd", "P", 1443269347, "tonyd", "P", 1443269475, "tonyd", "P", 1443269883, "tonyd", "P", 1443269960, "tonyd", "P", 1443270216, "tonyd", "P", 1443270318, "tonyd", "P", 1443275606, "tonyd", "P", 1443275619, "tonyd", "P", 1443275647, "tonyd", "P", 1443275670, "tonyd", "P", 1443275693, "tonyd", "P", 1443275703, "tonyd", "P", 1443275729, "tonyd", "P", 1443276069, "tonyd", "P", 1443276104, "tonyd", "P", 1443276141, "tonyd", "P", 1443276359, "tonyd", "P", 1443276578, "tonyd", "P", 1443330917, "tonyd", "P", 1443331422, "tonyd", "P", 1443331453, "tonyd", "P", 1443340115, "tonyd", "P", 1443340142, "tonyd", "P", 1443340188, "tonyd", "P", 1443340225, "tonyd", "P", 1444441701, "tonyd", "P", 1444441811, "tonyd", "P", 1444441849, "tonyd", "P", 1444441888, "tonyd", "P", 1444441943, "tonyd", "P", 1444445523, "tonyd", "P", 1444445570, "tonyd", "P", 1444451019, "tonyd", "P", 1444451070, "tonyd", "P", 1444451109, "tonyd", "P", 1444451158, "tonyd", "P", 1444451183, "tonyd", "P", 1444451283, "tonyd", "P", 1444451381, "tonyd", "P", 1444451824, "tonyd", "P", 1444451888, "tonyd", "P", 1444451917, "tonyd", "P", 1444451921, "tonyd", "P", 1444451962, "tonyd", "P", 1444453693, "tonyd", "P", 1444453785, "tonyd", "P", 1444453848, "tonyd", "P", 1444453857, "tonyd", "P", 1444453866, "tonyd", "P", 1444454026, "tonyd", "P", 1444454035, "tonyd", "P", 1444454068, "tonyd", "P", 1444454102, "tonyd", "P", 1444454115, "tonyd", "P", 1444454173, "tonyd", "P", 1444454184, "tonyd", "P", 1444454207, "tonyd", "P", 1444454234, "tonyd", "P", 1444454281, "tonyd", "P", 1444454289, "tonyd", "P", 1444454307, "tonyd", "P", 1444454316, "tonyd", "P", 1444454324, "tonyd", "P", 1444454348, "tonyd", "P", 1444454372, "tonyd", "P", 1444454393, "tonyd", "P", 1444454407, "tonyd", "P", 1444454429, "tonyd", "P", 1444454498, "tonyd", "P", 1444454534, "tonyd", "P", 1444454583, "tonyd", "P", 1444473269, "tonyd", "P", 1444473308, "tonyd", "P", 1444473362, "tonyd", "P", 1444473383, "tonyd", "P", 1444473399, "tonyd", "P", 1444473416, "tonyd", "P", 1444473498, "tonyd", "P", 1444473527, "tonyd", "P", 1444473697, "tonyd", "P", 1444473784, "tonyd", "P", 1444473886, "tonyd", "P", 1444474009, "tonyd", "P", 1444474070, "tonyd", "P", 1444474160, "tonyd", "P", 1444474235, "tonyd", "P", 1444474272, "tonyd", "P", 1444474339, "tonyd", "P", 1444474422, "tonyd", "P", 1444474498, "tonyd", "P", 1444474512, "tonyd", "P", 1444474555, "tonyd", "P", 1444474600, "tonyd", "P", 1444474691, "tonyd", "P", 1444474702, "tonyd", "P", 1444474736, "tonyd", "P", 1444474987, "tonyd", "P", 1444475044, "tonyd", "P", 1444475058, "tonyd", "P", 1444475104, "tonyd", "P", 1444475122, "tonyd", "P", 1444475133, "tonyd", "P", 1444475152, "tonyd", "P", 1444475243, "tonyd", "P", 1444475261, "tonyd", "P", 1444475274, "tonyd", "P", 1444475286, "tonyd", "P", 1462073627, "tonyd", "P", 1462073653, "tonyd", "P", 1462073698, "tonyd", "P", 1462073753, "tonyd", "P", 1462073977, "tonyd", "P", 1462075117, "tonyd", "P", 1462075283, "tonyd", "P", 1462075341, "tonyd", "P", 1462075366, "tonyd", "P", 1462076064, "tonyd", "P", 1462076595, "tonyd", "P", 1462077913, "tonyd", "P", 1462077954, "tonyd", "P", 1462078076, "tonyd", "P", 1462078391, "tonyd", "P", 1462078396, "tonyd", "P", 1462078401, "tonyd", "P", 1462078685, "tonyd", "P", 1462078797, "tonyd", "P", 1462078866, "tonyd", "P", 1462078991, "tonyd", "P", 1462079012, "tonyd", "P", 1462079136, "tonyd", "P", 1462079153, "tonyd", "P", 1462079174, "tonyd", "P", 1462079196, "tonyd", "P", 1462079213, "tonyd", "P", 1462079281, "tonyd", "P", 1462079323, "tonyd", "P", 1464065230, "tonyd", "P", 1464065280, "tonyd", "P", 1464065311, "tonyd", "P", 1464065346, "tonyd", "P", 1464066566, "tonyd", "P", 1464066995, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

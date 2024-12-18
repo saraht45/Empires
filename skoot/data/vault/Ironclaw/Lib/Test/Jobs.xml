@@ -1,0 +1,474 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:index">
+         X[S] \<html\>
+\<head\>
+  \<title\>Staff job tracker for \$(Udat.name)\</title\>
+  \$(this.html:javascript)
+\</head\>
+\<body\>
+\<zsession zid="\$(zid)" udat="\$(UDat.dat)" uname="\$(UDat.name)"\>
+\<p\>
+Please choose a category:
+  \<select NAME="joblist" id="joblist" onchange="list_jobs(this.value);"\>
+    \<option VALUE="" SELECTED="1"\>\</option\>
+    \<option VALUE="items"\>Building - items\</option\>
+    \<option VALUE="rooms"\>Building - rooms \\\& areas\</option\>
+    \<option VALUE="item_code"\>Coding - items\</option\>
+    \<option VALUE="room_code"\>Coding - areas\</option\>
+    \<option VALUE="systems"\>Coding - systems\</option\>
+    \<option VALUE="plotting"\>Plotting\</option\>
+    \<option VALUE="guiding"\>Guiding\</option\>
+  \</select\>
+  \<script\>
+    //Reload the category information if the page is refreshed (or started)
+    list_jobs(document.getElementById("joblist").value);
+  \</script\>
+\</p\>
+\<p\>
+  \<table border="0"\>
+  \<tr\>
+  \<td valign="top"\>
+  \<select multiple="1" NAME="itemlist" id="itemlist" onchange="item_info(this.value);"\>
+  \</select\>
+  \</td\>
+  \<td valign="top" width="100%"\>
+  \<input type="button" value="Add a new job" onclick="new_item();"/\>\<br/\>
+  \<div id="status"\>\</div\>
+  \<div id="approval"\>\</div\>
+  \<div id="description"\>\</div\>
+  \<div id="notes"\>\</div\>
+  \</td\>
+  \</tr\>
+  \</table\>
+\</p\>
+\<form name="myForm"\>
+  Debug box\<br/\>
+  \<textarea name="time" rows="10" cols="80"\>\</textarea\>
+\</form\>
+\</zsession\>
+\</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:item_info">
+         X[S] \$[/* add a new item holder to the database */
+string output;
+output = "";
+if(!\$db \|\| !(\$db = Obj(\$db)))
+  return "Please select a category from the list at the top.";
+if(!\$itemname \|\| \$itemname == "")
+  return "Error: No item name specified.";
+if(!\$info \|\| \$info == "")
+  return "Error: No information query specified.";
+
+/* get item information */
+\$item = Get(\$db, "open:"+\$itemname);
+if(!\$item)
+  return "Error: No item found.";
+
+/* what information are we after? */
+if(\$info == "status") \{
+  if(\$item["status"]) \{
+    return \$item["status"];
+  \}
+  return "Open Job";
+\} else if(\$info == "approval") \{
+  output = "";
+  if(!\$item["approval"]) \{
+    /* do we need approval? */
+    output = "Does this job require approval from a game lead?\<br//\>\<input type=\\"radio\\" name=\\"approval\\" value=\\"yes\\" onchange=\\"requires_approval(this.value);\\"//\>Yes \<input type=\\"radio\\" name=\\"approval\\" value=\\"no\\" onchange=\\"requires_approval(this.value);\\"//\> No";
+  \} else if(\$item["approval"]=="unneeded") \{
+    output = "";
+  \}
+  return output;
+\} else if(\$info == "description") \{
+  return "Description goes here.";
+\} else if(\$info == "notes") \{
+  return "Notes go here.";
+\}
+
+return dump_value(\$info);
+
+return "Info goes here";
+/* check that a job with this name doesn't already exist */
+/* first check the open job lists */
+if(Get(\$db, "open:"+\$itemname))
+  return "There is already a job named "+\$itemname+" listed in open jobs.";
+/* then check the closed job lists */
+if(Get(\$db, "closed:"+\$itemname))
+  return "There is already a job named "+\$itemname+" listed in closed jobs.";
+/* add the item to the job lists */
+Set(\$db, "open:"+\$itemname, ([ "priority":time() ]));
+return output;]
+      </Core:Property>
+      <Core:Property property="html:javascript">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+var xmlHttp;
+function GetXmlHttpObject() \\\{
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+var jobdb;
+var str_category;
+function list_jobs(jobs) \\\{
+  if(!jobs) return;
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  //remove the blank option if it exists
+  if(!document.getElementById("joblist").options[0].value)
+    document.getElementById("joblist").remove(0);
+  //save the name and woe name of the jobs database we're currently using
+  if(jobs != str_category) \\\{
+    var url="joblist?dbrequest="+jobs;
+    xmlHttp.onreadystatechange=function() \\\{
+      if(xmlHttp.readyState==4) \\\{
+        jobdb = xmlHttp.responseText;
+        str_category = jobs;
+        list_jobs(jobs);
+      \\\}
+    \\\}
+  \\\} else \\\{
+    //repopulate the itemlist with open job items
+    var url="joblist?dbname="+jobdb;
+    xmlHttp.onreadystatechange=function() \\\{
+      if(xmlHttp.readyState==4) \\\{
+        if(xmlHttp.responseText == "Unknown database") \\\{
+          alert("Unknown database");
+        \\\} else \\\{
+          document.myForm.time.value=xmlHttp.responseText;
+          var list=xmlHttp.responseText.split("\\\|");
+          var select=document.getElementById("itemlist");
+          //clear the list
+          while(select.length)
+            select.remove(0);
+          for(x in list) \\\{
+            if(list[0]) \\\{
+              var my_option = document.createElement('option');
+              my_option.text = list[x];
+              my_option.value = list[x];
+              select.add(my_option, null);
+            \\\}
+          \\\}
+        \\\}
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function clear_display() \\\{
+  document.getElementById("status").innerHTML="";
+  document.getElementById("approval").innerHTML="";
+  document.getElementById("description").innerHTML="";
+  document.getElementById("notes").innerHTML="";
+\\\}
+var current_item;
+function new_item(item) \\\{
+  //Check that there is a category to add the new job to
+  if(!jobdb \\\|\\\| !str_category) \\\{
+    alert("Please choose a category first.");
+    return;
+  \\\}
+  //clear the display
+  clear_display();
+  //ask for a name
+  var output = 'Please enter a name for this job: \<input name="newjob" id="newjob" onchange="create_item(this.value);"/\>\<br/\>(This is the name that will appear in the list on the left, so keep it short. Something like "overalls" or "axe damage" is fine.)';
+  document.getElementById("description").innerHTML=output;
+\\\}
+function create_item(new_item) \\\{
+  //Check that there is an item to add
+  if(!new_item) \\\{
+    return;
+  \\\}
+  //Add the item to the database
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="new_item?itemname="+new_item+"\\\&db="+jobdb;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      document.myForm.time.value=xmlHttp.responseText;
+      //If we got an error message, display it
+      if(xmlHttp.responseText) \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      //No error message, so the item was added
+      //Add the item to the itemlist
+      var select=document.getElementById("itemlist");
+      var my_option = document.createElement('option');
+      my_option.text = new_item;
+      my_option.value = new_item;
+      select.add(my_option, null);
+      //and select it
+      select.selectedIndex=select.length-1;
+      item_info(new_item);
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function item_info(item) \\\{
+  current_item = item;
+  clear_display();
+  get_status();
+//  get_approval();
+//  get_description();
+//  get_notes();
+\\\}
+function get_status() \\\{
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="item_info?itemname="+current_item+"\\\&db="+jobdb+"\\\&info=status";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      document.getElementById("status").innerHTML=xmlHttp.responseText;
+      get_approval();
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function get_approval() \\\{
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="item_info?itemname="+current_item+"\\\&db="+jobdb+"\\\&info=approval";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      document.getElementById("approval").innerHTML=xmlHttp.responseText;
+      get_description();
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function get_description() \\\{
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="item_info?itemname="+current_item+"\\\&db="+jobdb+"\\\&info=description";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      document.getElementById("description").innerHTML=xmlHttp.responseText;
+      get_notes();
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function get_notes() \\\{
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="item_info?itemname="+current_item+"\\\&db="+jobdb+"\\\&info=notes";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      document.getElementById("notes").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function requires_approval(value) \\\{
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="set_info?itemname="+current_item+"\\\&db="+jobdb+"\\\&info=requires_approval\\\&value="+value;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      document.getElementById("approval").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+//UNNEEDED
+function display_items(msg) \\\{
+  if(msg == "clear") \\\{
+    document.itemlist.remove(0);
+    document.getElementById("itemlist").remove(0);
+  \\\} else if (msg == "one") \\\{
+    var my_option = document.createElement('option');
+    my_option.text = "one";
+    my_option.value = "one";
+    try \\\{
+      document.getElementById("itemlist").add(my_option, null);
+    \\\} catch(exception) \\\{
+      document.getElementById("itemlist").add(my_option);
+    \\\}
+  \\\} else if (msg == "two") \\\{
+    var my_option = document.createElement('option');
+    my_option.text = "two";
+    my_option.value = "two";
+    try \\\{
+      document.getElementById("itemlist").add(my_option, null);
+    \\\} catch(exception) \\\{
+      document.getElementById("itemlist").add(my_option);
+    \\\}
+  \\\} else \\\{
+    alert("Unknown command given to display_items!");
+  \\\}
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:joblist">
+         X[S] \$[/* find which file keeps a list of the jobs */
+if(!\$dbname \&\& !\$dbrequest) return "";
+
+/* is it asking for the database? */
+if(\$dbrequest) \{
+  if(!this.jobdb)
+    this.jobdb = ([ ]);
+  if(!(\$db = this.jobdb[\$dbrequest])) \{
+    \$name = "";
+    \$tmp = "";
+    for(\$i=0;\$i\<strlen(name(this));\$i++) \{
+      if(name(this)[\$i] != ':') \{
+        \$tmp += char_to_string(name(this)[\$i]);
+      \} else \{
+        \$name += \$tmp + ":";
+        \$tmp = "";
+      \}
+    \}
+    \$name += \$dbrequest;
+    catch(Call(\$\{Lib:objects\}, "create_of_type", \$type: "propcontainer"));
+    \$db = Obj(\$name);
+    this.jobdb[\$dbrequest] = \$db;
+  \}
+  return name(\$db);
+\} else if (\$dbname) \{
+  /* ok, we're querying a database */
+  if(!(\$db = Obj(\$dbname)))
+    return "Unknown database";
+  \$list = map_indices(prefixed_map(Get(\$db, "*"), "open:"));
+  \$output = "";
+  \{
+    int i, sz;
+    sz = sizeof(\$list);
+    for(i=0;i\<sz;i++) \{
+      if(i!=0) \$output += "\|";
+      \$output += replace_strings(\$list[i], "\|", "?")[5..];
+    \}
+  \}
+  return \$output;
+\}
+return "";]
+      </Core:Property>
+      <Core:Property property="html:new_item">
+         X[S] \$[/* add a new item holder to the database */
+string output;
+output = "";
+if(!\$db \|\| !(\$db = Obj(\$db))) \{
+  return "Please select a category from the list at the top.";
+\}
+if(!\$itemname \|\| \$itemname == "") return "Error: No item name specified.";
+/* check that a job with this name doesn't already exist */
+/* first check the open job lists */
+if(Get(\$db, "open:"+\$itemname))
+  return "There is already a job named "+\$itemname+" listed in open jobs.";
+/* then check the closed job lists */
+if(Get(\$db, "closed:"+\$itemname))
+  return "There is already a job named "+\$itemname+" listed in closed jobs.";
+/* add the item to the job lists */
+Set(\$db, "open:"+\$itemname, ([ "priority":time() ]));
+return output;]
+      </Core:Property>
+      <Core:Property property="html:set_info">
+         X[S] \$[/* add a new item holder to the database */
+string output;
+output = "";
+if(!\$db \|\| !(\$db = Obj(\$db)))
+  return "Please select a category from the list at the top.";
+if(!\$itemname \|\| \$itemname == "")
+  return "Error: No item name specified.";
+if(!\$info \|\| \$info == "")
+  return "Error: No information query specified.";
+
+/* get item information */
+\$item = Get(\$db, "open:"+\$itemname);
+if(!\$item)
+  return "Error: No item found.";
+
+/* what information are we after? */
+if(\$info == "requires_approval") \{
+  if(!\$value) return "Error: No value specified.";
+  if(\$value == "no") \{
+    \$item["approval"] = "unneeded";
+    return "";
+  \} else if (\$value == "yes") \{
+    /* prompt for information about the approval that is needed */
+    output = "Why does the job require approval? \<input type=\\"text\\" size=50 name=\\"approval_reason\\" value=\\"Should this item be added in-game?\\"/\>\<br/\>";
+    output += "Who should give approval? \<input type=\\"text\\" size=50 name=\\"approval_people\\" value=\\"Building leads\\"/\>";
+    return output;
+  \}
+  return "Error: Unexpected response.";
+\}
+
+return output;]
+      </Core:Property>
+      <Core:Property property="html:time">
+         X[S] \$[int i, sz;
+object *wholist;
+string output;
+
+wholist = common::wholist();
+sz = sizeof(wholist);
+output = "";
+for(i=0;i\<sz;i++)\{
+  if(i\>0) output += ", ";
+  output += Describe(wholist[i]);
+\}
+return output;]
+      </Core:Property>
+      <Core:Property property="jobdb">
+         ([ nil:\<Ironclaw:Lib:Test:Ironclaw:Lib:Test:items\>, "guiding":\<Ironclaw:Lib:Test:guiding\>, "item_code":\<Ironclaw:Lib:Test:item_code\>, "items":\<Ironclaw:Lib:Test:items\>, "legwarmer":\<Ironclaw:Lib:Test:legwarmer\>, "plotting":\<Ironclaw:Lib:Test:plotting\>, "room_code":\<Ironclaw:Lib:Test:room_code\>, "rooms":\<Ironclaw:Lib:Test:rooms\>, "systems":\<Ironclaw:Lib:Test:systems\>, "tailwarmer":\<Ironclaw:Lib:Test:tailwarmer\> ])
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1196848094, "tonyd", "P", 1196848114, "tonyd", "P", 1196848128, "tonyd", "P", 1196848307, "tonyd", "P", 1196848388, "tonyd", "P", 1196848408, "tonyd", "P", 1196848416, "tonyd", "P", 1196848481, "tonyd", "P", 1196848763, "tonyd", "P", 1196848786, "tonyd", "P", 1196848802, "tonyd", "P", 1196848815, "tonyd", "P", 1196848857, "tonyd", "P", 1196848869, "tonyd", "P", 1196848890, "tonyd", "P", 1196848910, "tonyd", "P", 1196848919, "tonyd", "P", 1196848936, "tonyd", "P", 1196848949, "tonyd", "P", 1196848967, "tonyd", "P", 1196848982, "tonyd", "P", 1196849014, "tonyd", "P", 1196849158, "tonyd", "P", 1196849175, "tonyd", "P", 1196849186, "tonyd", "P", 1196849194, "tonyd", "P", 1196849219, "tonyd", "P", 1196849242, "tonyd", "P", 1196849310, "tonyd", "P", 1196849332, "tonyd", "P", 1196849373, "tonyd", "P", 1196849395, "tonyd", "P", 1196849479, "tonyd", "P", 1196849590, "tonyd", "P", 1196849656, "tonyd", "P", 1196849711, "tonyd", "P", 1196849752, "tonyd", "P", 1196849794, "tonyd", "P", 1196849841, "tonyd", "P", 1196849854, "tonyd", "P", 1196849874, "tonyd", "P", 1196849887, "tonyd", "P", 1196849931, "tonyd", "P", 1196850049, "tonyd", "P", 1196850063, "tonyd", "P", 1196850107, "tonyd", "P", 1196850127, "tonyd", "P", 1196850158, "tonyd", "P", 1196850187, "tonyd", "P", 1196850513, "tonyd", "P", 1196850724, "tonyd", "P", 1196850735, "tonyd", "P", 1196850878, "tonyd", "P", 1196850882, "tonyd", "P", 1196850899, "tonyd", "P", 1196850916, "tonyd", "P", 1196850946, "tonyd", "P", 1196850966, "tonyd", "P", 1196850992, "tonyd", "P", 1196851009, "tonyd", "P", 1196851028, "tonyd", "P", 1196851040, "tonyd", "P", 1196851047, "tonyd", "P", 1196851055, "tonyd", "P", 1196851099, "tonyd", "P", 1196851296, "tonyd", "P", 1196900710, "tonyd", "E", 1196900824, "tonyd", "P", 1196900853, "tonyd", "P", 1196902234, "tonyd", "P", 1196902301, "tonyd", "P", 1196902311, "tonyd", "P", 1196902327, "tonyd", "P", 1196902337, "tonyd", "P", 1196902370, "tonyd", "P", 1196902375, "tonyd", "P", 1196902401, "tonyd", "P", 1196902506, "tonyd", "P", 1196902520, "tonyd", "P", 1196902528, "tonyd", "P", 1196902557, "tonyd", "P", 1196902574, "tonyd", "P", 1196914846, "tonyd", "P", 1196914868, "tonyd", "P", 1196914892, "tonyd", "P", 1196915064, "tonyd", "P", 1196916737, "tonyd", "P", 1196916759, "tonyd", "P", 1196916769, "tonyd", "P", 1196916817, "tonyd", "P", 1196916929, "tonyd", "P", 1196917028, "tonyd", "P", 1196917085, "tonyd", "P", 1196917112, "tonyd", "P", 1196917228, "tonyd", "P", 1196917238, "tonyd", "P", 1196917246, "tonyd", "P", 1196917258, "tonyd", "P", 1196917294, "tonyd", "P", 1196917536, "tonyd", "P", 1196917571, "tonyd", "P", 1196917737, "tonyd", "P", 1196917767, "tonyd", "P", 1196918004, "tonyd", "P", 1196918035, "tonyd", "P", 1196918066, "tonyd", "P", 1196918467, "tonyd", "P", 1196918594, "tonyd", "P", 1196918604, "tonyd", "P", 1196919311, "tonyd", "P", 1196919562, "tonyd", "P", 1196919792, "tonyd", "P", 1196919845, "tonyd", "P", 1196919862, "tonyd", "P", 1196919878, "tonyd", "P", 1196919977, "tonyd", "P", 1196920085, "tonyd", "P", 1196920100, "tonyd", "P", 1196920381, "tonyd", "P", 1196920411, "tonyd", "P", 1196920456, "tonyd", "P", 1196920594, "tonyd", "P", 1196920622, "tonyd", "P", 1196920698, "tonyd", "P", 1196921017, "tonyd", "P", 1196921034, "tonyd", "P", 1196921053, "tonyd", "P", 1196921065, "tonyd", "P", 1196921095, "tonyd", "P", 1196921105, "tonyd", "P", 1196921116, "tonyd", "P", 1196921128, "tonyd", "P", 1196921194, "tonyd", "P", 1196921293, "tonyd", "P", 1196921318, "tonyd", "P", 1196921375, "tonyd", "P", 1196921563, "tonyd", "P", 1196928171, "tonyd", "P", 1196928284, "tonyd", "P", 1196928335, "tonyd", "P", 1196928510, "tonyd", "P", 1196928636, "tonyd", "P", 1196930126, "tonyd", "P", 1196930157, "tonyd", "P", 1196930163, "tonyd", "P", 1196930516, "tonyd", "P", 1196930920, "tonyd", "P", 1196930949, "tonyd", "P", 1196930989, "tonyd", "P", 1196933279, "tonyd", "P", 1196933329, "tonyd", "P", 1196933540, "tonyd", "P", 1196933591, "tonyd", "P", 1196933666, "tonyd", "P", 1196934082, "tonyd", "P", 1196938278, "tonyd", "P", 1196938415, "tonyd", "P", 1196939107, "tonyd", "P", 1196939171, "tonyd", "P", 1196939191, "tonyd", "P", 1196939210, "tonyd", "P", 1196939346, "tonyd", "P", 1196939753, "tonyd", "P", 1196940290, "tonyd", "P", 1196940452, "tonyd", "P", 1196940472, "tonyd", "P", 1196940494, "tonyd", "P", 1196940511, "tonyd", "P", 1196940535, "tonyd", "P", 1196940564, "tonyd", "P", 1196940580, "tonyd", "P", 1196940836, "tonyd", "P", 1196940905, "tonyd", "P", 1196941161, "tonyd", "P", 1196941939, "tonyd", "P", 1196943362, "tonyd", "P", 1196943560, "tonyd", "P", 1196943584, "tonyd", "P", 1196943612, "tonyd", "P", 1196943627, "tonyd", "P", 1196943655, "tonyd", "P", 1196944255, "tonyd", "P", 1196944278, "tonyd", "P", 1196944332, "tonyd", "P", 1196944332, "tonyd", "P", 1196945068, "tonyd", "P", 1196945083, "tonyd", "P", 1196945125, "tonyd", "P", 1196945175, "tonyd", "P", 1196945236, "tonyd", "P", 1196945253, "tonyd", "P", 1196945268, "tonyd", "P", 1196945282, "tonyd", "P", 1196945349, "tonyd", "P", 1196945532, "tonyd", "P", 1196945948, "tonyd", "P", 1196945983, "tonyd", "P", 1196946019, "tonyd", "P", 1196946044, "tonyd", "P", 1196946224, "tonyd", "P", 1196946250, "tonyd", "P", 1196946282, "tonyd", "P", 1196946332, "tonyd", "P", 1196946454, "tonyd", "P", 1196946478, "tonyd", "P", 1196946685, "tonyd", "P", 1196946695, "tonyd", "P", 1196946704, "tonyd", "P", 1196946761, "tonyd", "P", 1196946937, "tonyd", "P", 1196947026, "tonyd", "P", 1196947061, "tonyd", "P", 1196997439, "tonyd", "P", 1196997480, "tonyd", "P", 1196997535, "tonyd", "P", 1196997643, "tonyd", "P", 1196997654, "tonyd", "P", 1196997677, "tonyd", "P", 1196998361, "tonyd", "P", 1196998506, "tonyd", "P", 1196998618, "tonyd", "P", 1196998621, "tonyd", "P", 1196998694, "tonyd", "P", 1196998752, "tonyd", "P", 1196999001, "tonyd", "P", 1196999113, "tonyd", "P", 1196999122, "tonyd", "P", 1196999177, "tonyd", "P", 1196999326, "tonyd", "P", 1196999430, "tonyd", "P", 1196999552, "tonyd", "P", 1196999611, "tonyd", "P", 1196999633, "tonyd", "P", 1197000278, "tonyd", "P", 1197000468, "tonyd", "P", 1197000472, "tonyd", "P", 1197000639, "tonyd", "P", 1197000699, "tonyd", "P", 1197000980, "tonyd", "P", 1197001024, "tonyd", "P", 1197001043, "tonyd", "P", 1197001075, "tonyd", "P", 1197001102, "tonyd", "P", 1197001137, "tonyd", "P", 1197001160, "tonyd", "P", 1197001180, "tonyd", "P", 1197001198, "tonyd", "P", 1197001224, "tonyd", "P", 1197001263, "tonyd", "P", 1197001311, "tonyd", "P", 1197001329, "tonyd", "P", 1197001462, "tonyd", "P", 1197001467, "tonyd", "P", 1197001595, "tonyd", "P", 1197001619, "tonyd", "P", 1197001639, "tonyd", "P", 1197001652, "tonyd", "P", 1197001728, "tonyd", "P", 1197001749, "tonyd", "P", 1197001770, "tonyd", "P", 1197001908, "tonyd", "P", 1197001935, "tonyd", "P", 1197002008, "tonyd", "P", 1197002039, "tonyd", "P", 1197002115, "tonyd", "P", 1197002338, "tonyd", "P", 1197002360, "tonyd", "P", 1197002397, "tonyd", "P", 1197002411, "tonyd", "P", 1197003378, "tonyd", "P", 1197003444, "tonyd", "P", 1197003902, "tonyd", "P", 1197105776, "tonyd", "P", 1197105913, "tonyd", "P", 1197106036, "tonyd", "P", 1197106058, "tonyd", "P", 1197106132, "tonyd", "P", 1197106147, "tonyd", "P", 1197106153, "tonyd", "P", 1197106176, "tonyd", "P", 1197106196, "tonyd", "P", 1197106226, "tonyd", "P", 1197106270, "tonyd", "P", 1197106296, "tonyd", "P", 1197106397, "tonyd", "P", 1197106414, "tonyd", "P", 1197106774, "tonyd", "P", 1197106817, "tonyd", "P", 1197106857, "tonyd", "P", 1197106875, "tonyd", "P", 1197106891, "tonyd", "P", 1197106946, "tonyd", "P", 1197106958, "tonyd", "P", 1197106986, "tonyd", "P", 1197107006, "tonyd", "P", 1197107195, "tonyd", "P", 1197107208, "tonyd", "P", 1197107225, "tonyd", "P", 1197107243, "tonyd", "P", 1197107256, "tonyd", "P", 1197107263, "tonyd", "P", 1197107314, "tonyd", "P", 1197107367, "tonyd", "P", 1197107496, "tonyd", "P", 1197107533, "tonyd", "P", 1197107547, "tonyd", "P", 1197107568, "tonyd", "P", 1197107581, "tonyd", "P", 1197107594, "tonyd", "P", 1197107603, "tonyd", "P", 1197107655, "tonyd", "P", 1197107974, "tonyd", "P", 1197108145, "tonyd", "P", 1197108155, "tonyd", "P", 1197108181, "tonyd", "P", 1197108323, "tonyd", "P", 1197108353, "tonyd", "P", 1197108372, "tonyd", "P", 1197108411, "tonyd", "P", 1197108437, "tonyd", "P", 1197108443, "tonyd", "P", 1197108482, "tonyd", "P", 1197108493, "tonyd", "P", 1197108507, "tonyd", "P", 1197108518, "tonyd", "P", 1197109145, "tonyd", "P", 1197109167, "tonyd", "P", 1197109182, "tonyd", "P", 1197109261, "tonyd", "P", 1197109511, "tonyd", "P", 1197109788, "tonyd", "P", 1197109796, "tonyd", "P", 1197109914, "tonyd", "P", 1197109950, "tonyd", "P", 1197109990, "tonyd", "P", 1197110005, "tonyd", "P", 1197110021, "tonyd", "P", 1197110033, "tonyd", "P", 1197110057, "tonyd", "P", 1197110076, "tonyd", "P", 1197110086, "tonyd", "P", 1197110105, "tonyd", "P", 1197110175, "tonyd", "P", 1197110194, "tonyd", "P", 1197110225, "tonyd", "P", 1197110301, "tonyd", "P", 1197110480, "tonyd", "P", 1197110494, "tonyd", "P", 1197110521, "tonyd", "P", 1197110542, "tonyd", "P", 1197110558, "tonyd", "P", 1197110572, "tonyd", "P", 1197110586, "tonyd", "P", 1197110595, "tonyd", "P", 1197111051, "tonyd", "P", 1197111196, "tonyd", "P", 1197111349, "tonyd", "P", 1197111361, "tonyd", "P", 1197111401, "tonyd", "P", 1197111450, "tonyd", "P", 1197111467, "tonyd", "P", 1197111490, "tonyd", "P", 1197112025, "tonyd", "P", 1197112039, "tonyd", "P", 1197112067, "tonyd", "P", 1197112084, "tonyd", "P", 1197112973, "tonyd", "P", 1197112988, "tonyd", "P", 1197113006, "tonyd", "P", 1197113018, "tonyd", "P", 1197113030, "tonyd", "P", 1197113042, "tonyd", "P", 1197113052, "tonyd", "P", 1197113097, "tonyd", "P", 1197113159, "tonyd", "P", 1197113174, "tonyd", "P", 1197113260, "tonyd", "P", 1197113280, "tonyd", "P", 1197113354, "tonyd", "P", 1197113366, "tonyd", "P", 1197113377, "tonyd", "P", 1197113524, "tonyd", "P", 1197113549, "tonyd", "P", 1197113565, "tonyd", "P", 1197113734, "tonyd", "P", 1197113761, "tonyd", "P", 1197115539, "tonyd", "P", 1197115635, "tonyd", "P", 1197117432, "tonyd", "P", 1197117559, "tonyd", "P", 1197117668, "tonyd", "P", 1197117675, "tonyd", "P", 1197117783, "tonyd", "P", 1197117814, "tonyd", "P", 1197117900, "tonyd", "P", 1197117920, "tonyd", "P", 1197117964, "tonyd", "P", 1197117988, "tonyd", "P", 1197118014, "tonyd", "P", 1197118042, "tonyd", "P", 1197118066, "tonyd", "P", 1197118128, "tonyd", "P", 1197118149, "tonyd", "P", 1197118174, "tonyd", "P", 1197118187, "tonyd", "P", 1197118256, "tonyd", "P", 1197118494, "tonyd", "P", 1197118683, "tonyd", "P", 1197118771, "tonyd", "P", 1197118966, "tonyd", "P", 1197119080, "tonyd", "P", 1197119105, "tonyd", "P", 1197119288, "tonyd", "P", 1197119304, "tonyd", "P", 1197119346, "tonyd", "P", 1197119361, "tonyd", "P", 1197119409, "tonyd", "P", 1197120206, "tonyd", "P", 1197120222, "tonyd", "P", 1197120297, "tonyd", "P", 1197120342, "tonyd", "P", 1197120511, "tonyd", "P", 1197120596, "tonyd", "P", 1197120636, "tonyd", "P", 1197120651, "tonyd", "P", 1197120679, "tonyd", "P", 1197276141, "tonyd", "P", 1197276534, "tonyd", "P", 1197276915, "tonyd", "P", 1197276921, "tonyd", "P", 1197277093, "tonyd", "P", 1197277129, "tonyd", "P", 1197277373, "tonyd", "P", 1197277409, "tonyd", "P", 1197277585, "tonyd", "P", 1197277671, "tonyd", "P", 1197277700, "tonyd", "P", 1197277717, "tonyd", "P", 1197277755, "tonyd", "P", 1197277780, "tonyd", "P", 1197277796, "tonyd", "P", 1197277959, "tonyd", "P", 1197278027, "tonyd", "P", 1197278053, "tonyd", "P", 1197278072, "tonyd", "P", 1197278092, "tonyd", "P", 1197278374, "tonyd", "P", 1197278411, "tonyd", "P", 1197278452, "tonyd", "P", 1197278481, "tonyd", "P", 1197278518, "tonyd", "P", 1197278551, "tonyd", "P", 1197278894, "tonyd", "P", 1197279006, "tonyd", "P", 1197279030, "tonyd", "P", 1197279063, "tonyd", "P", 1197279559, "tonyd", "P", 1197279581, "tonyd", "P", 1197279597, "tonyd", "P", 1197279609, "tonyd", "P", 1197279643, "tonyd", "P", 1197279676, "tonyd", "P", 1197279718, "tonyd", "P", 1197279756, "tonyd", "P", 1197279810, "tonyd", "P", 1197279840, "tonyd", "P", 1197279991, "tonyd", "P", 1197280001, "tonyd", "P", 1197280030, "tonyd", "P", 1197280163, "tonyd", "P", 1197280208, "tonyd", "P", 1197280216, "tonyd", "P", 1197280280, "tonyd", "P", 1197280282, "tonyd", "P", 1197280645, "tonyd", "P", 1197280907, "tonyd", "P", 1197281047, "tonyd", "P", 1197281112, "tonyd", "P", 1197281167, "tonyd", "P", 1197281224, "tonyd", "P", 1197281272, "tonyd", "P", 1197281307, "tonyd", "P", 1197281328, "tonyd", "P", 1197281360, "tonyd", "P", 1197281434, "tonyd", "P", 1197281458, "tonyd", "P", 1197281509, "tonyd", "P", 1197281526, "tonyd", "P", 1197281549, "tonyd", "P", 1197281579, "tonyd", "P", 1197281785, "tonyd", "P", 1197281815, "tonyd", "P", 1197281835, "tonyd", "P", 1197281947, "tonyd", "P", 1197282983, "tonyd", "P", 1197283035, "tonyd", "P", 1197283108, "tonyd", "P", 1197283130, "tonyd", "P", 1197283311, "tonyd", "P", 1197283354, "tonyd", "P", 1197283377, "tonyd", "P", 1197283389, "tonyd", "P", 1197283410, "tonyd", "P", 1197283652, "tonyd", "P", 1197283675, "tonyd", "P", 1197283690, "tonyd", "P", 1197283773, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

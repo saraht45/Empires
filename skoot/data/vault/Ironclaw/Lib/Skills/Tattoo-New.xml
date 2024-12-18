@@ -1,0 +1,182 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:add_tattoo">
+         X[M] \$db = Get(this, "tattoo:db");
+\$desc = "It has been tattooed with " + Get(\$db, \$symbol)["symbol"] + ".";
+
+Set(\$victim, "appearance:symbol:" + \$detail, \$desc);
+Set(\$victim, "appearance:symbol:" + \$detail + ":adjective", "tattooed");
+Set(\$victim, "details:" + \$detail + ":sname:tattoo", TRUE);
+Set(\$victim, "details:" + \$detail + ":pname:tattoos", TRUE);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:expired_question">
+         X[M] /* player didn't answer in time */ 
+EmitTo(\$actor, Describe(\$par["tattooist"])+"'s offer of a tattoo has expired."); 
+EmitTo(\$par["tattooist"], "Your offer to tattoo "+Describe(\$actor)+" has expired."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_consent">
+         X[M] \$tattooist = \$actor;
+
+/* Check we're only tattooing one thing */   
+if(!\$target \&\& \$dob) \{   
+  if(sizeof(\$dob) \> 1) \{   
+    EmitTo(\$tattooist, "Despite having two hands to work with, you may only tattoo one body part at a time.");  
+    return FALSE;   
+  \}   
+  /* set the target */   
+  \$target = \$dob[0];
+  \$victim = NRefOb(\$target);   
+\}   
+   
+if(!\$target) \{   
+  EmitTo(\$tattooist, "While playing the drums is cool, that isn't the intention of this command.");   
+  EmitTo(\$actor, "What do you want to tattoo?");   
+  return FALSE;   
+\}   
+   
+/* check we are tattooing a person */   
+if(!NRefOb(\$target)."base:volition") \{   
+  EmitTo(\$actor, "Dude, you might try tattooing a person, instead.");   
+  return FALSE;   
+\}   
+   
+/* check we aren't tattooing ourselves */   
+if(FALSE \&\& NRefOb(\$target) == \$actor) \{   
+  EmitTo(\$actor, "Although it's possible to tattoo yourself, it really really hurts. I mean, seriously, it does. And you've got to hold that needle while, like, yowling in pain.");   
+  EmitTo(\$actor, "Besides, this is a social game. It's more fun to get someone else to tattoo you.");   
+  return FALSE;   
+\}   
+
+/* check we have a detail */   
+if(NRefDetail(\$target) == "default") \{   
+  EmitTo(\$tattooist, "Where on " +Describe(\$target, nil, \$actor)+ " would you like to add this tattoo?");   
+  return FALSE;   
+\}   
+
+\$detail = NRefDetail(\$target);
+\$badDetails = (\{ \});
+
+if(\$this.notallowed) \{
+    \$badDetails = \$this.notallowed;
+\}
+
+if(member(\$detail, \$badDetails)) \{
+    EmitTo(\$actor, "You can't tattoo that body part.");
+    return FALSE;
+\}
+
+if(Get(\$target, "appearance:symbol:" + \$detail)) \{
+    EmitTo(\$actor, Describe(\$target) + " has already been tattooed there.");
+    return FALSE;
+\}
+
+if(!\$evoke) \{
+    return ::show_options();
+\}
+
+\$evoke = replace_strings(\$evoke, "\\"", "");
+
+if(!::valid_tattoo(\$symbol: \$evoke)) \{
+    return ::show_options();
+\}
+
+\$symbol = \$evoke;
+    
+/* check we have a symbol */   
+if(!\$symbol) \{   
+  EmitTo(\$actor, "What are you trying to tattoo onto " + Describe(\$target, nil, \$actor) + "?");   
+  return FALSE;   
+\}    
+
+/* check we have a target object */  
+if(\$target \&\& !\$target_ob)  
+  \$target_ob = NRefOb(\$target);  
+  
+if(\$using \&\& sizeof(\$using) == 1) \{  
+    /* EmitTo(\$actor, Describe(\$using));   */  
+    if(NRefOb(\$using[0])."trait:objecttype" != "tattooneedle") \{  
+        EmitTo(\$actor, "That is an inappropriate tool for the job at hand.");  
+        return FALSE;  
+    \}else if(NRefOb(\$using[0])."trait:ink") \{  
+        \$ink = NRefOb(\$using[0])."trait:ink";  
+        /* EmitTo(\$actor, "Ink is " +\$ink+ "."); */  
+    \} else \{  
+        \$ink = nil;  
+        /* EmitTo(\$actor, "No ink found.");  */  
+    \}  
+\}
+
+/* ask if the player wants a tattoo */   
+interaction::question(\$actor: \$victim, \$question: "Do you want to allow " +Describe(\$actor)+ " to tattoo "+\$symbol+" on "+Describe(\$target, nil, \$victim)+"?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "tattoo_consent", \$no_fun: "no_mod", \$expire_fun: "expired_question", \$par: ([ "victim": \$victim, "detail": \$detail, "tattooist":\$actor, "symbol":\$symbol, "evoke": \$evoke, "ink": \$ink ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:no_mod">
+         X[M] /* player didn't answer in time */ 
+EmitTo(\$actor, "You reject "+Describe(\$par["tattooist"])+"'s offer of a tattoo."); 
+EmitTo(\$par["tattooist"], Describe(\$actor)+" rejects your offer of a tattoo."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_options">
+         X[M] \$db = Get(this, "tattoo:db");
+\$temp = copy(Get(\$db, "*"));
+\$allTattoos = map_indices(\$temp) - (\{ "revisions" \});
+
+\$skill = Int(\$actor."skill:social:tattoo");
+
+\$valid = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$allTattoos); \$i++) \{
+    \$level = Int(Get(\$db, \$allTattoos[\$i])["skill"]);
+    if(\$skill \>= \$level) \$valid += (\{ \$allTattoos[\$i] \});
+\}
+
+if(sizeof(\$valid)) \{
+    EmitTo(\$actor, "Valid options are: \\"" + implode(\$valid, "\\" \\"") + "\\"");
+\} else \{
+    EmitTo(\$actor, "No valid options available.");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:tattoo_consent">
+         X[M] \$victim = \$par["victim"];
+\$detail = \$par["detail"];
+\$tattooist = \$par["tattooist"];
+\$symbol = \$par["symbol"];
+\$ink = \$par["ink"];
+
+EmitTo(\$tattooist, "You tattoo " + Describe(NewNRef(\$victim, \$detail)) + ".");
+EmitTo(\$victim, Describe(\$tattooist) + " tattoos " + Describe(NewNRef(\$victim, \$detail), nil, \$victim) + ".");
+EmitIn(\$tattooist."base:environment", Describe(\$tattooist) + " tattoos " + Describe(NewNRef(\$victim, \$detail)) + ".", \$tattooist, \$victim);
+
+::add_tattoo(\$victim: \$victim, \$detail: \$detail, \$symbol: \$symbol, \$ink: \$ink);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:valid_tattoo">
+         X[M] \$db = Get(this, "tattoo:db");
+\$skill = Int(\$actor."skill:social:tattoo");
+
+if(Get(\$db, \$symbol)) \{
+    \$level = Get(\$db, \$symbol)["skill"];
+    if(\$skill \>= \$level) return TRUE;
+\}
+
+EmitTo(\$actor, "Invalid Input.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1402085113, "jominey", "E", 1402085130, "jominey", "E", 1402085477, "jominey", "E", 1402085536, "jominey", "E", 1402085555, "jominey", "E", 1402085702, "jominey", "E", 1402085759, "jominey", "E", 1402085785, "jominey", "E", 1402085807, "jominey", "E", 1402085819, "jominey", "E", 1402085841, "jominey", "E", 1402085877, "jominey", "E", 1402085895, "jominey", "E", 1402086034, "jominey", "E", 1402086117, "jominey", "E", 1402086157, "jominey", "E", 1402086210, "jominey", "E", 1402086267, "jominey", "E", 1402086276, "jominey", "E", 1402086324, "jominey", "E", 1402086338, "jominey", "E", 1402086571, "jominey", "E", 1402086596, "jominey", "E", 1402086611, "jominey", "E", 1404347789, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="tattoo:db">
+         \<Ironclaw:Lib:Crafting:Tattooist:TattooDB\>
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

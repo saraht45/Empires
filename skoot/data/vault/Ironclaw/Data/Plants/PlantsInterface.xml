@@ -1,0 +1,138 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" host="\$(UDat.Host)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<body\>
+\{? \| \$[if(\$host) return FALSE; if(member(\$name, Arr(this.access) )) return FALSE; return TRUE;] \|
+\<h2\>Error\</h2\>
+\<p\>You are not authorized to view this page. If you feel this is in error, please contact the game host.\</p\>
+\|
+\{? \| \$(found) \| \<font color="red"\>\<b\>\$(found) already exists!\</b\>\</font\> \|\}
+\<h1\>Plant Interface\</h1\>
+\<zform\>
+    \<input type="text" name="newplant"/\>\<input type="submit" value="Add New Plant"/\>
+    \<action\>
+    \$["";    
+      \$db = \$\{Ironclaw:Data:Plants:PlantDB\};    
+          
+      if(Get(\$db, \$newplant)) \{    
+          \$found = 1;    
+      \} else \{    
+          Set(\$db, \$newplant, ([ ]));    
+      \}]
+     \{? \| \$(found) \| \<redirect propob="\$(this)" prop="index" found="\$(newplant)"/\> \|
+                     \<redirect propob="\$(this)" prop="viewplant" plant="\$(newplant)"/\> \}
+    \</action\>
+\</zform\>
+\<br/\>
+\<zform\>
+\$["";     
+  \$db = \$\{Ironclaw:Data:Plants:PlantDB\};     
+  \$temp = copy(\$db."*");     
+  \$allPlants = map_indices(\$temp) - (\{ "revisions", "/*to do*/" \});     
+       
+  \$output = "\<table border='1' width='100%'\>";     
+  \$output += "\<tr\>";     
+  \$output += "\<td width='150px' rowspan='2'\>\<center\>\<b\>\<u\>Plant Name\</u\>\</b\>\</center\>\</td\>";     
+  \$output += "\<td width='50px' rowspan='2'\>\<center\>\<b\>\<u\>Level\</u\>\</b\>\</center\>\</td\>";     
+  \$output += "\<td colspan='3'\>\<center\>\<b\>\<u\>Plant Properties\</u\>\</b\>\</center\>\</td\>";     
+  \$output += "\<td rowspan='2'\>\<center\>\<b\>\<u\>Notes\</u\>\</b\>\</center\>\</td\>";     
+  \$output += "\<td rowspan='2'\>\<center\>\</center\>\</td\>";     
+  \$output += "\</tr\>";     
+  \$output += "\<tr\>";     
+  \$output += "\<td width='50px'\>\<center\>\<b\>H(E)\</b\>\</center\>\</td\>";     
+  \$output += "\<td width='50px'\>\<center\>\<b\>H(I)\</b\>\</center\>\</td\>";     
+  \$output += "\<td width='50px'\>\<center\>\<b\>P\</b\>\</center\>\</td\>";     
+  \$output += "\</tr\>";     
+  for(\$i = 0; \$i \< sizeof(\$allPlants); \$i++) \{     
+      \$name = Str(\$allPlants[\$i]);     
+ 
+      if(\$temp[\$allPlants[\$i]]["level"])     
+          \$level = Str(\$temp[\$allPlants[\$i]]["level"]);     
+      else     
+          \$level = "";     
+  
+      if(\$temp[\$allPlants[\$i]]["notes"])     
+          \$notes = \$temp[\$allPlants[\$i]]["notes"];     
+      else     
+          \$notes = "";     
+  
+      \$output += "\<tr\>";     
+      \$output += "\<td\>\<zact\>" + \$name + "\<action\>\<redirect propob='\$(this)' prop='viewplant' plant='" + \$name + "'/\>\</action\>\</zact\>\</td\>";     
+      \$output += "\<td\>\<center\>" + \$level + "\</center\>\</td\>";     
+      \$output += "\<td\>\<center\>" + "\</center\>\</td\>";     
+      \$output += "\<td\>\<center\>" + "\</center\>\</td\>";     
+      \$output += "\<td\>\<center\>" + "\</center\>\</td\>";     
+      \$output += "\<td\>" + \$notes + "\</td\>";    
+      \$output += "\<td\>\<zact\>D\<action\>\$[\\"\\"; Set(Obj(\\"Ironclaw:Data:Plants:PlantDB\\"), \\"" + \$name + "\\", nil);]\<redirect propob='\$(this)' prop='index'/\>\</action\>\</zact\>\</td\>";    
+      \$output += "\</tr\>";     
+  \}     
+       
+  \$output += "\</table\>";     
+  return ParseXML(\$output);]
+\</zform\>
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:viewplant">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" host="\$(UDat.Host)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<body\>
+\{? \| \$[if(\$host) return FALSE; if(member(\$name, Arr(this.access) )) return FALSE; return TRUE;] \|
+\<h2\>Error\</h2\>
+\<p\>You are not authorized to view this page. If you feel this is in error, please contact the game host.\</p\>
+\|
+\<zact\>\\\<==Go Back\<action\>\<redirect propob="\$(this)" prop="index"/\>\</action\>\</zact\>
+\<h1\>Viewing \$(plant)\</h1\>
+\$["";   
+  \$db = \$\{Ironclaw:Data:Plants:PlantDB\};   
+  \$plantMap = Get(\$db, \$plant);   
+   
+  if(\$plantMap["level"]) \$level = \$plantMap["level"]; else \$level = 1;   
+  if(\$plantMap["notes"]) \$notes = \$plantMap["notes"]; else \$notes = "";]
+\<center\>
+\<zform\>
+    \<table\>
+        \<input type="hidden" name="plant" value="\$(plant)"/\>
+        \<input type="hidden" name="level" value="\$(level)"/\>
+        \<input type="hidden" name="notes" value="\$(notes)"/\>
+        \<tr\>
+            \<td valign="top"\>\<b\>Level: \</b\>\</td\>\<td\>\<input type="text" value="\$(level)" name="level"/\>\</td\>
+        \</tr\>
+        \<tr\>
+            \<td valign="top"\>\<b\>Notes: \</b\>\</td\>\<td\>\<textarea cols="75" rows="10" name="notes"\>\$(notes)\</textarea\>\</td\>
+        \</tr\>
+        \<tr\>
+            \<td colspan="2" align="right"\>\<input type="submit"/\>\</td\>
+        \</tr\>
+    \</table\>
+        \<action\>
+            \$[""; 
+              \$db = \$\{Ironclaw:Data:Plants:PlantDB\}; 
+              \$temp = ([ ]); 
+              \$temp["level"] = Int(\$level); 
+              \$temp["notes"] = \$notes; 
+              Set(\$db, \$plant, \$temp);]
+            \<redirect propob="\$(this)" prop="viewplant" plant="\$(plant)"/\>
+        \</action\>
+\</zform\>
+\</center\>
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1354243710, "jominey", "E", 1354243761, "jominey", "E", 1354244492, "jominey", "E", 1354244555, "jominey", "E", 1354244583, "jominey", "E", 1354244777, "jominey", "E", 1354244927, "jominey", "E", 1354244997, "jominey", "E", 1354245037, "jominey", "E", 1354245080, "jominey", "E", 1354245091, "jominey", "E", 1354245185, "jominey", "E", 1354245235, "jominey", "E", 1354245273, "jominey", "E", 1354245551, "jominey", "E", 1354245674, "jominey", "E", 1354245731, "jominey", "E", 1354245792, "jominey", "E", 1354321144, "jominey", "E", 1354321210, "jominey", "E", 1354321236, "jominey", "E", 1354321262, "jominey", "E", 1354321551, "jominey", "E", 1354321580, "jominey", "E", 1354321641, "jominey", "E", 1354322223, "jominey", "E", 1354322284, "jominey", "E", 1354323011, "jominey", "E", 1354323066, "jominey", "E", 1354323114, "jominey", "E", 1354323209, "jominey", "E", 1354323226, "jominey", "E", 1354323310, "jominey", "E", 1354323367, "jominey", "E", 1354323657, "jominey", "E", 1354323743, "jominey", "E", 1354323806, "jominey", "E", 1354323896, "jominey", "E", 1354324810, "jominey", "E", 1354324835, "jominey", "E", 1354324924, "jominey", "E", 1354324998, "jominey", "E", 1354325083, "jominey", "E", 1354325304, "jominey", "E", 1354325729, "jominey", "E", 1354325811, "jominey", "E", 1354326171, "jominey", "E", 1354326199, "jominey", "E", 1354326242, "jominey", "E", 1354326258, "jominey", "E", 1354326292, "jominey", "E", 1354326356, "jominey", "E", 1567566621, "jominey", "E", 1567566650, "jominey", "E", 1567566690, "jominey", "E", 1567566827, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

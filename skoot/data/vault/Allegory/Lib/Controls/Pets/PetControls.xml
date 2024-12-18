@@ -1,0 +1,418 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Allegory:Lib:Controls:General)"/>
+    <Core:PCProperties>
+      <Core:Property property="init:merry">
+         (\{ "lib:access", "lib:allow", "lib:deny", "react-pre:take", "react:control-dob", "react:name-dob", "lib:follow", "lib:stay", "lib:dress", "lib:undress", "react:feed-iob", "lib:readyfortending", "lib:readyforharvest" \})
+      </Core:Property>
+      <Core:Property property="merry:lib:attack">
+         X[M] int x;
+mapping replaceMap;
+mixed* replace;
+string targ;
+mixed* targ2;
+object targ3;
+
+targ = replace_strings(\$(raw-evoke), "attack ", "", "\\"", "");
+
+if(!targ \|\| targ == "") \{
+    EmitTo(\$actor, "Not a valid target.");
+    EmitTo(\$actor, "Syntax: control dog 'attack mouse'");
+    return FALSE;
+\}
+
+targ2 = explode(targ, " ");
+
+replaceMap = ([ "first":"1st", "second":"2nd", "third":"3rd", "fourth":"4th", "fifth":"5th", "sixth":"6th", "seventh":"7th", "eighth":"8th", "ninth":"9th", "tenth":"10th" ]);
+replace = map_indices(replaceMap);
+
+for(x = 0; x \< sizeof(targ2); x++) \{
+    if(member(targ2[x], replace)) \{
+        targ2[x] = replaceMap[targ2[x]];
+    \}
+\}
+
+\$prey = combat::find_target(\$point: implode(targ2, " "));
+
+if(!\$prey \|\| !sizeof(\$prey)) \{
+    EmitTo(\$actor, "Not a valid target.");
+    EmitTo(\$actor, "Syntax: control dog 'attack mouse'");
+    return FALSE;
+\}
+
+if(sizeof(\$prey) \> 1) \{
+    EmitTo(\$actor, "You must choose one of " + Describe(\$prey) + "."); 
+    return FALSE;
+\}
+
+\$prey = NRefOb(\$prey[0]);
+
+if(\$prey."combat:dead") \{ 
+    EmitTo(\$actor, Describe(\$prey) + " is already dead.");
+    return FALSE;
+\}
+
+if(\$prey."base:environment" != \$this."base:environment") \{
+    EmitTo(\$actor, Describe(\$this) + " cannot reach " + Describe(\$prey) + "."); 
+    return FALSE;
+\}
+
+if(Str(\$prey."trait:size") != "tiny" \&\& Str(\$prey."trait:size") != "small") \{
+    \$friends = \$this."trait:friends";
+    if(!\$friends) \$friends = (\{ \});
+    if(Str(\$this."trait.ownerone") == Str(\$prey) \|\| Str(\$this."trait:ownertwo") == Str(\$prey) \|\| member(\$prey, \$friends)) \{
+        Social(\$this, "lick", "harmlessly", nil, nil, NewNRef(\$prey, "fingers"));
+    \} else \{
+        Social(\$this, "lunge", "murderously", nil, "at", \$prey);
+    \}
+    return FALSE;
+\}
+ 
+if(\$prey."trait:size" == "tiny") \{
+    \$chance = 50;
+\} else \{
+    \$chance = 90;
+\}
+
+\$skill = Int(\$this."skill:hidden:murderdog");
+
+\$chance -= random(\$skill+1);
+
+\$roll = random(101);
+
+if(\$roll \> \$chance) \{
+    EmitIn(\$this."base:environment", Describe(\$this) + " lunges viciously at " + Describe(\$prey) + ".");
+    Call(\$prey, "die");
+    Call(\$\{Allegory:Lib:Controls:Pets:PetControls\}, "increase_skill", \$skill: "murderdog", \$what: \$this);
+    \$delay(0.01, FALSE, "3c44");
+    EmitIn(\$this."base:environment", Describe(\$prey) + " dies.");
+    return FALSE;
+\}
+
+EmitIn(\$this."base:environment", Describe(\$this) + " lunges viciously at " + Describe(\$prey) + " but misses.");
+\$delay(0.01, FALSE, "a3e6");
+EmitIn(\$this."base:environment", Describe(\$prey) + " runs away!");
+
+if(!\$prey."udat:possessed" \&\& \$prey."base:urparent" != \$\{Allegory:Bodies:Mainbody\}) \{
+    Slay(\$prey);
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:follow">
+         X[M] EmitTo(\$actor, Describe(this)+" will now follow you.");                   
+this.follow = \$actor;                
+Social(this, "trot", "obediently", nil, "to", \$actor );
+      </Core:Property>
+      <Core:Property property="merry:lib:footprint">
+         X[M] \$env = NRefOb(\$exit);
+\$exitDetail = NRefDetail(\$exit);
+
+if(Get(\$env, "footprints:" + \$exitDetail)) \{
+    \$footprints = Get(\$env, "footprints:" + \$exitDetail);
+\} else \{
+    \$footprints = (\{ \});
+\}
+
+\$footprints \|= (\{ \$animal \});
+
+Set(\$env, "footprints:" + \$exitDetail, \$footprints);
+
+\$delay(60*10, TRUE, "894f");
+
+if(Get(\$env, "footprints:" + \$exitDetail)) \{
+    \$footprints = Get(\$env, "footprints:" + \$exitDetail);
+    \$footprints -= (\{ \$animal \});
+    \$footprints -= (\{ nil \});
+
+    if(!sizeof(\$footprints)) Set(\$env, "footprints:" + \$exitDetail, nil);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:increase_skill">
+         X[M] \$lastcap = Int(Get(\$what, "skill:hidden:" + \$skill + ":lastcap"));
+
+if(\$lastcap != 0) \{
+    if((time() - \$lastcap) \>= 60*60*24) \{
+        Set(\$what, "skill:hidden:" + \$skill + ":lastcap", nil);
+        \$lastcap = 0;
+    \}
+\}
+
+\$dailygain = Flt(Get(\$what, "skill:hidden:" + \$skill + ":dailygain"));
+
+if(\$dailygain \>= 0.25) \{
+    if(\$lastcap == 0) \{
+        Set(\$what, "skill:hidden:" + \$skill + ":dailygain", nil);
+        \$dailygain = 0.0;
+    \} else \{
+        return TRUE;
+    \}
+\}
+
+\$skillLevel = Flt(Get(\$what, "skill:hidden:" + \$skill));
+
+if(\$skillLevel \>= 48.0) return TRUE;
+
+\$skillLevel += 0.05;
+Set(\$what, "skill:hidden:" + \$skill, \$skillLevel);
+
+\$dailygain += 0.05;
+Set(\$what, "skill:hidden:" + \$skill + ":dailygain", \$dailygain);
+
+if(\$dailygain \>= 0.25) \{
+    Set(\$what, "skill:hidden:" + \$skill + ":lastcap", time());
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:init">
+         X[M] Set(\$this, "export:trait:commands:default", (\{ "access", "allow", "deny", "follow", "stay", "dress", "undress" \}));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:readyforharvest">
+         X[M] \$frequency = Int(\$this."harvest:frequency");
+
+if(\$frequency == 0) \$frequency = 1;
+
+if(!\$this.lastharvested \&\& Int(\$this.tended) \>= \$frequency) return TRUE;
+
+if(!\$this.lastharvested) return FALSE;
+
+if(((time()+120) - \$this.lastharvested)/(60*60*24) \< \$frequency \|\| \$this.tended \< \$frequency) \{
+    return FALSE;
+\} 
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:readyfortending">
+         X[M] if(!\$this.lasttended) return TRUE;
+
+if((time() - \$this.lasttended)/(60*60*20) \< 1) \{
+    return FALSE;
+\} 
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:stay">
+         X[M] EmitTo(\$actor, Describe(this)+" will no longer follow you.");
+     EmitIn(\$actor."base:environment", Describe(\$this)+" lowers " + \$this."base:possessive" + " head and obediently waits.");                   
+this.follow = nil;
+      </Core:Property>
+      <Core:Property property="merry:react-post:show-iob%tracking">
+         X[M] if(\$this.busy) return TRUE;
+
+/* Record what room the actor is in */                      
+\$room = \$actor."Base:environment";    
+
+\$friends = \$this."trait:friends";   
+if(!\$friends) \$friends = (\{ \});               
+                      
+/* Check if the actor is allowed to pick up the pet */                      
+  /* check if \$actor is the pet's owner */                      
+if(\$actor != \$this."trait:ownerone" \&\& \$actor != \$this."trait:ownertwo" \&\& member(\$actor, \$friends)) return TRUE;
+
+if(!\$dob) return TRUE;
+
+if(sizeof(\$dob) \> 1) \{
+    EmitTo(\$actor, "What did you want to show to " + Describe(\$iob) + "?");
+    return FALSE;
+\}
+
+\$thing = NRefOb(\$dob[0]);
+
+if(\$thing."base:urparent" != \$\{Allegory:Props:Animals:AnimalParts:UrPelt\} \&\& \$thing."base:urparent" != \$\{Allegory:Props:Crafting:Parts:Feather\}) return TRUE;
+
+if(\$thing."trait:animaltype") \$type = \$thing."trait:animaltype";
+if(!\$type \&\& \$thing."trait:type") \$type = \$thing."trait:type";
+
+if(!\$type) return TRUE;
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " sniffs " + Describe(\$thing, nil, nil, STYLE_NONPOSS) + " and begins searching the area for the scent.", "social:third"));
+
+\$this.busy = 1;
+
+/* Distance based on tracking skill */
+
+\$skillLevel = Int(Get(\$this, "skill:hidden:tracking"));
+
+if(\$skillLevel \<= 6) \{
+    \$distance = 3;
+\} else if(\$skillLevel \<= 12) \{
+    \$distance = 4;
+\} else if(\$skillLevel \<= 18) \{
+    \$distance = 5;
+\} else if(\$skillLevel \<= 24) \{
+    \$distance = 6;
+\} else if(\$skillLevel \<= 30) \{
+    \$distance = 7;
+\} else if(\$skillLevel \<= 36) \{
+    \$distance = 8;
+\} else if(\$skillLevel \<= 42) \{
+    \$distance = 9;
+\} else \{
+    \$distance = 10;
+\}
+
+for(\$i = 0; \$i \< \$distance;  \$i++) \{
+    \$footprintsMap = prefixed_map(copy(\$this."base:environment"."*"), "footprints");
+    \$footprintExits = map_indices(\$footprintsMap);
+
+    if(!sizeof(\$footprintExits)) \{
+        EmitIn(\$this."base:environment", TAG("After an extended searched, " + Describe(\$this) + " fails to come up with a scent.", "social:third"));
+        \$this.busy = nil;
+        return FALSE;
+    \}
+
+    \$match = nil;
+    for(\$j = 0; !\$match \&\& \$j \< sizeof(\$footprintExits); \$j++) \{
+        \$footprints = Get(\$this."base:environment", \$footprintExits[\$j]);
+     
+        for(\$k = 0; !\$match \&\& \$k \< sizeof(\$footprints); \$k++) \{
+            if(\$footprints[\$k] != nil \&\& \$footprints[\$k]."trait:animaltype" == \$type) \{
+                \$match = replace_strings(\$footprintExits[\$j], "footprints:", "");
+            \}
+        \}
+    \}
+
+    if(!\$match) \{
+        EmitIn(\$this."base:environment", TAG("After an extended searched, " + Describe(\$this) + " fails to come up with a scent.", "social:third"));
+        \$this.busy = nil;
+        return FALSE;
+    \}
+
+    /* We found a scent! Check the exit to see if the animal is there. If so, bark at the exit, otherwise, move in that direction. */
+    \$exit = NewNRef(\$this."base:environment", \$match);
+
+    \$dest = Get(\$this."base:environment", "details:" + \$match + ":exit:dest");
+
+    \$inv = NRefOb(\$dest)."base:inventory";
+
+    \$nextdoor = 0;
+    for(\$l = 0; !\$nextdoor \&\& \$l \< sizeof(\$inv); \$l++) \{
+        if(\$inv[\$l]."trait:animaltype" == \$type) \{
+            \$nextdoor = 1;
+        \}
+    \}
+
+    if(\$nextdoor) \{
+        EmitIn(\$this."base:environment", TAG(capitalize(Describe(\$this)) + " barks excitedly at " + Describe(\$exit) + ".", "social:third"));
+        Call(\$\{Allegory:Lib:Controls:Pets:PetControls\}, "increase_skill", \$skill: "tracking", \$what: \$this);
+        \$this.busy = nil;
+        return TRUE;
+    \}
+
+
+    Social(\$this, "run", nil, nil, "through", \$exit);
+    \$delay(10, TRUE, "6235");
+\}
+
+EmitIn(\$this."base:environment", TAG("After an extended searched, " + Describe(\$this) + " sits down and whines in frustration.", "social:third"));
+\$this.busy = nil;
+return FALSE;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:feed-iob">
+         X[M] if(!\$this."feeding:accepts") \{
+    EmitTo(\$actor, Describe(\$this) + " doesn't want that.");
+    return FALSE;
+\}
+
+if(\$this."feeding:restrictions") \{
+    \$env = \$this."base:environment";
+    \$env2 = \$actor."base:environment";
+    \$restrictions = \$this."feeding:restrictions";
+
+    if(Get(\$env, \$restrictions[0]) != \$restrictions[1] \&\& Get(\$env2, \$restrictions[0]) != \$restrictions[1]) \{
+        EmitTo(\$actor, "This is not a suitable location to feed " + Describe(\$this, nil, nil, STYLE_NONPOSS) + ".");
+        return FALSE;
+    \}
+\}
+
+if(!\$dob \|\| !sizeof(\$dob)) \{
+    EmitTo(\$actor, "What did you want to feed to " + Describe(\$this, nil, nil, STYLE_NONPOSS) + ".");
+    return FALSE;
+\}
+
+if(sizeof(\$dob) \> 1) \{
+    EmitTo(\$actor, "You can only feed " + Describe(\$this, nil, nil, STYLE_NONPOSS) + " one thing at a time.");
+    return FALSE;
+\}
+
+\$food = NRefOb(\$dob[0]);
+
+if(\$food."base:environment" != \$actor."base:environment" \&\& \$food."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You need to be holding " + Describe(\$food, nil, nil, STYLE_NONPOSS) + " or put it in your environment.");
+    return FALSE;
+\}
+
+\$accepts = \$this."feeding:accepts";
+
+/*
+if(Int(\$food."base:edible") == 0) \{
+    EmitTo(\$actor, Describe(\$food, nil, nil, STYLE_NONPOSS) + " is not edible food.");
+    return FALSE;
+\}
+*/
+
+for(\$i = 0; \$i \< sizeof(\$accepts); \$i++) \{
+    if(Get(\$food, \$accepts[\$i][0]) != \$accepts[\$i][1]) \{
+        EmitTo(\$actor, Describe(\$this) + " is not interested in " + Describe(\$food, nil, nil, STYLE_NONPOSS) + ".");
+        return FALSE;
+    \}
+\}
+
+if(!::readyfortending()) \{
+    EmitTo(\$actor, Describe(\$this) + " does not appear to be hungry.");
+    return FALSE;
+\}
+
+if(Call(\$this, "eat", \$food: \$food, \$actor: \$actor)) \$delay(0.01, TRUE, "dd5c");
+
+\$this.lasttended = time();
+\$this.lasttendedby = \$actor;
+\$this.tended = Int(\$this.tended) + 1;
+      </Core:Property>
+      <Core:Property property="merry:react:name-dob">
+         X[M] int i;                   
+int found;       
+
+if(!\$this.isapet) return TRUE;            
+                  
+if(\$this."trait:name") \{                
+    EmitTo(\$actor, Describe(this) + " has already been named.");                
+    return FALSE;                
+\}                
+                
+if(!\$evoke) return TRUE;                   
+\$words = explode(\$evoke[1..strlen(\$evoke)-2], " ");                   
+                   
+/* check if we're allowed to command the child */                
+\$ownerone = Str(\$this."trait:ownerone");                
+\$ownertwo = Str(\$this."trait:ownertwo");                
+                
+if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor)) \{                   
+  EmitTo(\$actor, "You are not my owner, so you can't name me.");                   
+  return FALSE;                   
+\}                   
+                
+\$name = proper(replace_strings(\$evoke, "\\"", ""));                
+                
+this."trait:name" = \$name;                
+                
+for(\$i = 0; \$i \< sizeof(\$words); \$i++) \{                
+    Set(this, "details:default:sname:" + \$words[\$i], TRUE);                
+\}                
+                
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1593828457, "jominey", "E", 1593828464, "jominey", "E", 1593828510, "jominey", "E", 1593828515, "jominey", "E", 1593829263, "jominey", "R", 1593879721, "jominey", "E", 1593879737, "jominey", "E", 1596160800, "jominey", "E", 1703835547, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

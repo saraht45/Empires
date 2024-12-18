@@ -1,0 +1,147 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="amulet"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="amulets"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="engraved"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:state) $(this.trait:shape) $(this.trait:material) amulet
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.trait:shape) amulet made of $(this.trait:material), with <a_or_an> $(this.trait:engraving_quality)</a_or_an> engraving of $(this.trait:engraving).
+{? | $(this.trait:state) | The amulet is $(this.trait:state). |}
+<propcheck skill="academics:magic"><br/>You wonder if this amulet is magical, and if you could invoke the magic within.</propcheck>
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="neck"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:magic:increase:attribute">
+         (\{ "trait:body", "trait:mind", "trait:speed", "trait:agility" \})
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] \$this."trait:shape" = oneof("round", "oval", "square", "rectangular", "triangular", "star shaped");
+
+\$this."trait:material" = oneof("clay", "silver", "gold", "pewter", "bronze", "steel", "brass", "copper"); 
+
+\$this."trait:engraving_quality" = oneof("delicate", "elegant", "intricate", "coarse", "clumsy", "stylized", "angular"); 
+ 
+\$this."trait:engraving" = oneof("a round full moon, with wafts of clouds", "a spattering of five pointed stars", "several trees with outstretched limbs", "a small boat on rocky waters", "two silhouettes, a man and a woman, dancing", "celtic knots"); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:invoke-dob%increase_attributes">
+         X[M] /* increase a PCs attributes */ 
+ 
+if(!\$this."base:worn-by" \|\| \$this."base:worn-by" != \$actor) \{ 
+  EmitTo(\$actor, "You may only invoke "+Describe(\$this, nil, \$actor)+" after wearing it."); 
+  return FALSE; 
+\} 
+ 
+if(\$this.used) \{
+  if(\$this."trait:state" == "glowing") \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor)+" continues to glow.");
+  \} else \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor)+" briefly begins to glow, then immediately fades."); 
+    EmitIn(\$actor."base:environment", Describe(\$this)+" briefly begins to glow, then immediately fades.", \$actor); 
+  \}
+  return TRUE; 
+\} 
+ 
+/* First, check what attribute we're going to increase */ 
+\$attribute = Arr(\$this."magic:increase:attribute"); 
+\$attribute = \$attribute[random(sizeof(\$attribute))]; 
+ 
+/*EmitTo(\$actor, "Increasing "+dump_value(\$attribute)); */
+ 
+\$roll = ironclaw::roll(\$roller: \$actor, \$skills: (\{"academics:magic"\})); 
+/*EmitTo(\$actor, "\$roll is "+dump_value(\$roll)); */
+
+\$duration = 60*60*12; 
+ 
+if(Get(\$actor, "amulet:bonus:"+\$attribute)) \{ 
+  /*EmitTo(\$actor, "Bonus is already: "+dump_value(Get(\$actor, "amulet:bonus:"+\$attribute))); */
+  if(\$roll \> Get(\$actor, "amulet:bonus:"+\$attribute)) \{ 
+    \$difference = \$roll - Get(\$actor, "amulet:bonus:"+\$attribute); 
+    ironclaw::set_prop(\$obj: \$actor, \$prop: "amulet:bonus:"+\$attribute, \$value: \$roll, \$timer: \$duration); 
+    ironclaw::set_prop(\$obj: \$actor, \$prop: \$attribute, \$value: Get(\$actor, \$attribute)+\$difference, \$timer: \$duration); 
+  \} 
+\} else \{ 
+  ironclaw::set_prop(\$obj: \$actor, \$prop: "amulet:bonus:"+\$attribute, \$value: \$roll, \$timer: \$duration); 
+  ironclaw::set_prop(\$obj: \$actor, \$prop: \$attribute, \$value: Get(\$actor, \$attribute)+\$roll, \$timer: \$duration); 
+\} 
+ 
+\$this.used = TRUE; 
+EmitTo(\$actor, Describe(\$this, nil, \$actor)+" begins to glow."); 
+EmitIn(\$actor."base:environment", Describe(\$this)+" begins to glow.", \$actor); 
+
+\$this."trait:state" = "dull";
+ironclaw::set_prop(\$obj: \$this, \$prop: "trait:state", \$value: "glowing", \$timer: \$duration);
+ 
+\$delay(\$duration+5, TRUE, "dfca");
+ 
+EmitTo(\$actor, Describe(\$this, nil, \$actor)+" fades, until it is no longer glowing."); 
+EmitIn(\$actor."base:environment", Describe(\$this)+" fades, until it is no longer glowing.", \$actor); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:shape">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:state">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1307602654, "tonyd", "E", 1307602667, "tonyd", "E", 1307602672, "tonyd", "E", 1307602687, "tonyd", "E", 1307602704, "tonyd", "E", 1307602713, "tonyd", "E", 1307602721, "tonyd", "X", 1307602783, "tonyd", "E", 1307602802, "tonyd", "E", 1307603436, "tonyd", "P", 1307603454, "tonyd", "P", 1307603463, "tonyd", "P", 1307603483, "tonyd", "P", 1307603584, "tonyd", "P", 1307603613, "tonyd", "P", 1307603653, "tonyd", "P", 1307603741, "tonyd", "E", 1307603887, "tonyd", "P", 1307604398, "tonyd", "P", 1307604417, "tonyd", "P", 1307604545, "tonyd", "P", 1307604890, "tonyd", "P", 1307605046, "tonyd", "P", 1307605176, "tonyd", "P", 1307605190, "tonyd", "P", 1307605490, "tonyd", "P", 1307605630, "tonyd", "P", 1307608579, "delfina", "K", 1307608663, "delfina", "E", 1307609193, "delfina", "E", 1307610341, "delfina", "E", 1307610632, "delfina", "K", 1307610755, "delfina", "K", 1307610869, "delfina", "X", 1308884758, "tonyd", "E", 1308884904, "tonyd", "E", 1308885121, "tonyd", "E", 1308885259, "tonyd", "E", 1308885465, "tonyd", "E", 1308885509, "tonyd", "E", 1308885760, "tonyd", "E", 1308885803, "tonyd", "E", 1308885851, "tonyd", "E", 1308885895, "tonyd", "E", 1308885938, "tonyd", "E", 1308886142, "tonyd", "E", 1308886184, "tonyd", "E", 1308886343, "tonyd", "E", 1308886435, "tonyd", "E", 1308886488, "tonyd", "E", 1308886579, "tonyd", "E", 1308886607, "tonyd", "E", 1308886703, "tonyd", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

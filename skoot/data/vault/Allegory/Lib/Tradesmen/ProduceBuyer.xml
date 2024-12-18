@@ -1,0 +1,192 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="db">
+         ([ "black truffles":([ "object":\<Allegory:Props:Food:Cooking:Mushrooms:Edible:Truffle\>, "sellprice":600 ]), "farm fresh eggs":([ "object":\<Allegory:Props:Food:Cooking:Meat:Eggs:RawEgg\>, "sellprice":17 ]), "full pails of goat milk":([ "contents":(\{ \<Allegory:Props:Drinks:NonAlcoholic:Liquids:MilkGoat\>, 1 \}), "object":\<Ironclaw:Props:Food/Drink:Containers:Bucket\>, "sellprice":1000 ]), "full pails of milk":([ "contents":(\{ \<Allegory:Props:Drinks:NonAlcoholic:Liquids:CowMilk\>, 1 \}), "object":\<Ironclaw:Props:Food/Drink:Containers:Bucket\>, "sellprice":200 ]) ])
+      </Core:Property>
+      <Core:Property property="merry:lib:do_nothing">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$produce = \$par["produce"];
+
+Act(\$npc, "refuse", \$what: \$materials, \$who: \$actor);
+Social(\$npc, "smile", "amiably", "You know where I'll be if you want to sell!", "at", \$actor);
+
+\$npc.busy = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:sell_produce">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$produce = \$par["produce"];
+\$sellprice = \$par["sellprice"];
+\$returnables = \$par["returnables"];
+
+Act(\$npc, "accept", \$what: \$produce, \$who: \$actor);
+
+/* Do a haggling roll, to see how much more the PC gets */
+\$original_price = \$sellprice;
+
+\$sellprice = allegory::do_haggle(\$price: \$sellprice, \$act: "selling");
+
+if(\$sellprice \> \$original_price) \{
+    EmitTo(\$actor, TAG("You manage to haggle " + Describe(\$npc) + " from " + Str(allegory::get_cost(\$cost: Flt(\$original_price)/100.0)) + " to " + Str(allegory::get_cost(\$cost: Flt(\$sellprice)/100.0)) + ".", "imp"));
+\} else \{
+    EmitTo(\$actor, TAG(capitalize(Describe(\$npc)) + " pays you " + allegory::get_cost(\$cost: Flt(\$sellprice)/100.0) + ".", "imp"));
+\}
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$npc)) + " hands " + Describe(\$actor) + " some coins.", "social:third"), \$actor);
+
+\$actor."trait:money" = Int(\$actor."trait:money") + Int(\$sellprice);
+
+/* Call(\$\{Allegory:Lib:Tradesmen:ProduceBuyer\}, "regenerate_stock", \$produce: \$produce); */
+
+for(\$i = 0; \$i \< sizeof(\$produce); \$i++) \{
+
+    if(sizeof(\$returnables)) \{
+        if(member(\$produce[\$i], \$returnables)) \{
+            \$inv = \$produce[\$i]."base:inventory";
+
+            for(\$k = 0; sizeof(\$inv) \&\& \$k \< sizeof(\$inv); \$k++) \{
+                Slay(\$inv[\$k]);
+            \}
+
+            \$produce[\$i]."base:environment" = \$actor;
+        \} else \{
+            Slay(NRefOb(\$produce[\$i]));
+        \}
+    \} else \{
+        Slay(NRefOb(\$produce[\$i]));
+    \}
+\}
+\$delay(0.01, FALSE, "2a41");
+if(sizeof(\$returnables)) \{
+    EmitTo(\$actor, TAG(capitalize(Describe(\$npc)) + " returns " + Describe(\$returnables, nil, nil, STYLE_NONPOSS) + " to you.", "social:first"));
+    EmitIn(\$npc."base:environment", TAG(capitalize(Describe(\$npc)) + " returns " + Describe(\$returnables, nil, nil, STYLE_NONPOSS) + " to " + Describe(\$actor) + ".", "social:third"), \$actor);
+\}
+
+\$npc.busy = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:offer-who%produce">
+         X[M] if(!\$what) \{
+    EmitTo(\$actor, "What did you want to offer to " + Describe(\$this) + "?");
+    return FALSE;
+\}
+
+if(!sizeof(\$what)) \{ 
+    EmitTo(\$actor, "What did you want to offer to " + Describe(\$this) + "?");
+    return FALSE;
+\}
+
+if(\$this.busy) \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "smile", "distractedly", "Hi! It's good to see you! I'll be with you shortly.", "at", \$actor);
+    return FALSE;
+\}
+
+\$buyableMap = Get(\$\{Allegory:Lib:Tradesmen:ProduceBuyer\}, "db");
+
+\$buyableList = map_indices(\$buyableMap);
+
+\$buyables = (\{ \});
+\$notbuyable = (\{ \});
+\$returnables = (\{ \});
+\$totalSellprice = 0.0;
+
+for(\$i = 0; \$i \< sizeof(\$what); \$i++) \{
+    if(NRefOb(\$what[\$i])."details:objskin:description:delivery-to") return TRUE;
+    \$matched = nil;
+    \$container = nil;
+    for(\$j = 0; !\$matched \&\& \$j \< sizeof(\$buyableList); \$j++) \{
+        \$ob = \$buyableMap[\$buyableList[\$j]]["object"];
+
+        if(NRefOb(\$what[\$i])."base:urparent" == \$ob) \{
+            if(\$buyableMap[\$buyableList[\$j]]["sellprice"]) \{
+                \$sellprice = \$buyableMap[\$buyableList[\$j]]["sellprice"];
+            \} else \{
+                \$sellprice = Int(NRefOb(\$what[\$i])."trait:sellprice");
+            \}
+
+            if(\$sellprice == 0) \$sellprice = 100;
+
+            if(\$buyableMap[\$buyableList[\$j]]["contents"]) \{
+                \$requiredContents = \$buyableMap[\$buyableList[\$j]]["contents"][0];
+                \$requiredQuantity = \$buyableMap[\$buyableList[\$j]]["contents"][1];
+ 
+                \$qty = 0;
+                \$inv = NRefOb(\$what[\$i])."base:inventory";
+
+                for(\$k = 0; sizeof(\$inv) \&\& \$k \< sizeof(\$inv); \$k++) \{
+                    if(\$inv[\$k]."base:urparent" == \$requiredContents) \$qty++;
+                \}
+
+                if(\$qty == \$requiredQuantity) \{
+                    \$matched = 1;
+                    \$returnables += (\{ \$what[\$i] \});
+                    \$container = 1;
+                \}
+            \} else \{
+                \$matched = 1;
+            \}
+        \}
+    \}
+
+    if(\$matched) \{
+        if(FindMerry(NRefOb(\$what[\$i]), "lib", "is_full")) \{
+            if(!Call(NRefOb(\$what[\$i]), "is_full")) \{
+                Act(this, "refuse", \$what: \$what, \$who: \$actor);
+                Social(\$this, "smile", "apologetically", "I'm sorry! " + capitalize(Describe(\$what[\$i], nil, nil, STYLE_NONPOSS)) + " is partially filled and we only accept full containers. Come back when you have more.", "at", \$actor);
+                return FALSE;
+            \}
+        \}
+
+        \$buyables += (\{ \$what[\$i] \});
+
+        if(!\$container \&\& NRefOb(\$what[\$i])."trait:quality") \$sellprice = Flt(\$sellprice) * allegory::get_quality_modifier(\$quality: Int(NRefOb(\$what[\$i])."trait:quality"));
+
+        \$totalSellprice += Flt(\$sellprice);
+    \} else \{
+        \$notbuyable += (\{ \$what[\$i] \});
+    \}
+\}
+
+if(sizeof(\$notbuyable)) \{
+    Act(this, "refuse", \$what: \$notbuyable, \$who: \$actor);
+\}
+
+if(!sizeof(\$buyables)) \{
+    Social(\$this, "apologize", "sheepishly", "Sorry! I only buy " + common::string_list(\$list: \$buyableList) + ".", "to", \$actor);
+    return FALSE;
+\}
+
+\$par = ([ ]);
+\$par["actor"] = \$actor;
+\$par["npc"] = \$this;
+\$par["produce"] = \$buyables;
+\$par["returnables"] = \$returnables;
+
+\$a = "Sell it (" + Str(allegory::get_cost(\$cost: Flt(\$totalSellprice)/100.0))+ ")";
+\$a_ob = \$\{Allegory:Lib:Tradesmen:ProduceBuyer\};
+\$a_fun = "sell_produce";
+\$par["sellprice"] = \$totalSellprice;
+
+\$b = "I need more time to think about it.";
+\$b_ob = \$\{Allegory:Lib:Tradesmen:ProduceBuyer\};
+\$b_fun = "do_nothing";
+
+Social(\$this, "hum", "thoughtfully", "I will buy " + Describe(\$buyables, nil, nil, STYLE_NONPOSS) + " from you for " + Str(allegory::get_cost(\$cost: Flt(\$totalSellprice)/100.0)) +".", "at", \$actor);
+
+interaction::question(\$question: "", \$expires: 30, \$expire_ob: \$\{Allegory:Lib:Tradesmen:ProduceBuyer\}, \$expire_fun: "do_nothing", \$par: \$par);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1589156532, "jominey", "E", 1589156629, "jominey", "E", 1589156948, "jominey", "E", 1589157038, "jominey", "E", 1589157072, "jominey", "E", 1589157147, "jominey", "E", 1589157933, "jominey", "E", 1591658454, "jominey", "E", 1593966755, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

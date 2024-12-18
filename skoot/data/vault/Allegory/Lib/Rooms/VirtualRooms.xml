@@ -1,0 +1,593 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="gimli:lib:concierge:question:rent_room">
+         "E[G]\\n// Ask which room they want to rent\\nint i;\\n\\n\$concierge = \$par[\\"concierge\\"];\\n\\n// What rooms are available?\\n\$roomlist = \$concierge.\\"concierge:rooms\\";\\nif(!\$roomlist \|\| !sizeof(map_indices(\$roomlist))) \{\\n  EmitTo(\$actor, Describe(\$concierge)+\\" has no rooms available.\\");\\n  return FALSE;\\n\}\\n\\n// Has the player already selected an option?\\n\\nif(!\$par[\\"room_selections\\"])\\n    \$par[\\"room_selections\\"] = (\{ \});\\n\\nif(\$par[\\"room_selection_options\\"]) \{\\n  // This is the second time this has been run, at least one option was selected\\n  if(\$imperative == \\"@a\\" \&\& sizeof(\$par[\\"room_selection_options\\"]) \>= 1)\\n    \$par[\\"room_selections\\"] += (\{ \$par[\\"room_selection_options\\"][0] \});\\n  else if(\$imperative == \\"@b\\" \&\& sizeof(\$par[\\"room_selection_options\\"]) \>= 2)\\n    \$par[\\"room_selections\\"] += (\{ \$par[\\"room_selection_options\\"][1] \});\\n  else if(\$imperative == \\"@c\\" \&\& sizeof(\$par[\\"room_selection_options\\"]) \>= 3)\\n    \$par[\\"room_selections\\"] += (\{ \$par[\\"room_selection_options\\"][2] \});\\n  else if(\$imperative == \\"@d\\" \&\& sizeof(\$par[\\"room_selection_options\\"]) \>= 4)\\n    \$par[\\"room_selections\\"] += (\{ \$par[\\"room_selection_options\\"][3] \});\\n  else if(\$imperative == \\"@e\\" \&\& sizeof(\$par[\\"room_selection_options\\"]) \>= 5)\\n    \$par[\\"room_selections\\"] += (\{ \$par[\\"room_selection_options\\"][4] \});\\n\}\\n\\nfor(i=0;i\<sizeof(Arr(\$par[\\"room_selections\\"]));i++) \{\\n  \$roomlist = \$roomlist[\$par[\\"room_selections\\"][i]];\\n\}\\n\\nif(typeof(\$roomlist) == T_OBJECT) \{\\n    // They've selected this room\\n    ::create_room(\$room:\$roomlist, \$actor:\$actor, \$concierge:\$concierge, \$ask_returnroom:TRUE, \$ask_home:TRUE, \$ask_movestuff:TRUE);\\n    return TRUE;\\n\}\\n\\n\$display_options = (\{ \});\\n\$selection_options = (\{ \});\\nfor(i=0;i\<sizeof(map_indices(\$roomlist));i++) \{\\n    \$room = \$roomlist[map_indices(\$roomlist)[i]]; // Either a room or another list\\n    if(typeof(\$room) == T_OBJECT) \{\\n        // Just one room. Advertise this room\\n        \$text = map_indices(\$roomlist)[i];\\n        if(\$room.\\"cost\\")\\n          \$text += \\" - \\"+ ironclaw::describe_money(\$amount:Int(\$room.\\"cost\\")) +\\"/day\\";\\n        \$display_options += (\{ \$text \});\\n    \} else \{\\n        // A list....\\n        \$display_options += (\{ map_indices(\$roomlist)[i] \});\\n    \}\\n    \$selection_options += (\{ map_indices(\$roomlist)[i] \});\\n\}\\n\\nif(sizeof(\$display_options) \>= 1) \{\\n  \$a = \$display_options[0];\\n\}\\nif(sizeof(\$display_options) \>= 2) \{\\n  \$b = \$display_options[1];\\n\}\\nif(sizeof(\$display_options) \>= 3) \{\\n  \$c = \$display_options[2];\\n\}\\nif(sizeof(\$display_options) \>= 4) \{\\n  \$d = \$display_options[3];\\n\}\\nif(sizeof(\$display_options) \>= 5) \{\\n  \$e = \$display_options[4];\\n\}\\n\\n\$a_ob = \$\{Ironclaw:Lib:Rooms:VirtualRooms\};\\n\$b_ob = \$a_ob;\\n\$c_ob = \$a_ob;\\n\$d_ob = \$a_ob;\\n\$e_ob = \$a_ob;\\n\$a_fun = \\"concierge:question:rent_room\\";\\n\$b_fun = \$a_fun;\\n\$c_fun = \$a_fun;\\n\$d_fun = \$a_fun;\\n\$e_fun = \$a_fun;\\n\\n\$delay(0.01, TRUE);\\n\\ninteraction::question(\$question: capitalize(Describe(\$concierge))+\\" asks, \\\\\\"Which room would you like?\\\\\\"\\", \$expires: 30, \$env: \\"TRUE\\", \$expire: Describe(\$concierge)+\\" says, \\\\\\"Nothing? OK, just let me know if there's anything I can do for you.\\\\\\"\\", \$par: ([ \\"concierge\\":\$concierge, \\"room_selections\\":\$par[\\"room_selections\\"], \\"room_selection_options\\":\$selection_options ]));\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:concierge:question:return_room">
+         "E[G]\\n// Ask which room they want to rent\\nint i;\\n\\n\$homeroom = \$\{Ironclaw:World:NewTown:South:Buildings:GildedBalance:FirstFloor:ClosetOne\};\\n\$homelocation = \\"renting:GildedBalance\\";\\n\\n// EXTENSION: If they are restricted to docktown, should give them a free room there instead\\n\\n\$concierge = \$par[\\"concierge\\"];\\n\\n// Which room are they returning?\\n\$oldroom = \$par[\\"rented_room\\"];\\n\$newroom = Get(\$actor, \$homelocation);\\n\\nif(\$oldroom == \$newroom) \{\\n  // They are returning a room from the home location\\n  // Instead of using the room from this location as the newroom, if we return this room we can use the free homeroom\\n  \$newroom = Get(\$actor, \\"virtualhome:\\"+\$homeroom.\\"isvirtual\\");\\n  // Is this the free room itself?\\n  if(\$oldroom == \$newroom) \{\\n    EmitTo(\$actor, Describe(\$concierge)+\\" says, \\\\\\"Oh, you've already got a free room. No need to return it or pay rent.\\\\\\"\\");\\n    return TRUE;\\n  \}\\n\}\\n\\nif(!\$newroom) \{\\n  // We don't have a new room to put them into\\n  // Create one\\n  \$newroom = Spawn(\$homeroom);\\n  \$newroom.\\"homeowner\\" = \$actor;\\n  Set(\$actor, \\"virtualhome:\\"+\$homeroom.\\"isvirtual\\", \$newroom);\\n  \\n  // Run a merry script in the newly created room\\n  if(FindMerry(\$newroom, \\"lib\\", \\"create_room\\"))\\n    Call(\$newroom, \\"create_room\\");\\n\}\\n\\n// Move stuff from the old room to the new one\\n::move_room_contents(\$oldroom:\$oldroom, \$newroom:\$newroom);\\n// Was the old room the PCs home room?\\nif(\$actor.\\"virtualhome:home\\" == \$oldroom) \{\\n  \$actor.\\"virtualhome:home\\" = \$newroom;\\n\}\\n\\n\\n\\n// Destroy the old room's inner rooms\\n// the move_room_contents() will have already moved items from the inner rooms\\nfor(\$i=0;\$i\<sizeof(Arr(\$oldroom.\\"virtual:linkedrooms\\"));\$i++) \{\\n  if(!Arr(\$oldroom.\\"virtual:linkedrooms\\")[\$i]) continue;\\n  if(!Arr(\$oldroom.\\"virtual:linkedrooms\\")[\$i].\\"isvirtual\\") continue;\\n  \$inner_room = Get(\$actor, \\"virtualhome:\\"+Arr(\$oldroom.\\"virtual:linkedrooms\\")[\$i].\\"isvirtual\\");\\n  if(!\$inner_room) continue;\\n  if(FindMerry(\$inner_room, \\"lib\\", \\"destroy_room\\"))\\n    Call(\$inner_room, \\"destroy_room\\");\\n  ironclaw::safedelete(\$what:\$inner_room);  \\n\}\\n\\n\\n// Destroy the old room\\nif(FindMerry(\$oldroom, \\"lib\\", \\"destroy_room\\"))\\n  Call(\$oldroom, \\"destroy_room\\");\\nironclaw::safedelete(\$what:\$oldroom);\\n\\n// Set the room the PC has rented for this new location\\nSet(\$actor, \$homelocation, \$newroom);\\n\\nEmitTo(\$actor, Describe(\$concierge)+\\" informs you, \\\\\\"Thank you, your room has been returned.\\\\\\"\\");\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:concierge:question:set_homeroom">
+         "E[G]\\n// Set this as their home room\\n\\n\$actor.\\"virtualhome:home\\" = \$par[\\"rented_room\\"];\\n\\nEmitTo(\$actor, \\"[OOC: Your home room has been set]\\");\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:create_room">
+         "E[G]\\n// Ask questions and create room\\n\\n//    ::create_room(\$room:\$roomlist, \$actor:\$actor, \$concierge:\$concierge, \$ask_home:TRUE, \$ask_movestuff:TRUE);\\n\\n// In case this script was called from interaction::question\\nif(\$par \&\& \$par[\\"create_room_question\\"]) \{\\n  // Use the passed-in parameters\\n  \$room = \$par[\\"create_room\\"];\\n  \$concierge = \$par[\\"concierge\\"];\\n  \$ask_returnroom = \$par[\\"ask_returnroom\\"];\\n  \$ask_movestuff = \$par[\\"ask_movestuff\\"];\\n  \$ask_home = \$par[\\"ask_home\\"];\\n  \$returnroom = \$par[\\"returnroom\\"];\\n  \$movestuff = \$par[\\"movestuff\\"];\\n  \$move_home = \$par[\\"move_home\\"];\\n\}\\n\\n\\n\\nif(!\$room.\\"isvirtual\\") \{\\n  EmitTo(\$actor, \\"That room is not available. [OOC: Please @bug report this]\\");\\n  return FALSE;\\n\}\\n\\n// Is there a cost?\\nif(\$room.\\"cost\\" \&\& Int(\$actor.\\"trait:money\\") \< Int(\$room.\\"cost\\")) \{\\n  if(\$concierge) \{\\n    EmitTo(\$actor, Describe(\$concierge)+\\" regretfully tells you that you can't afford that room.\\");\\n    return FALSE;\\n  \} else \{\\n    return FALSE;\\n  \}\\n\}\\n\\n/* Do they already have this room? */\\nif(Get(\$actor, \\"virtualhome:\\"+\$room.\\"isvirtual\\")) \{\\n  if(\$concierge)\\n    EmitTo(\$actor, Describe(\$concierge)+\\" reminds you, \\\\\\"You're already renting that room!\\\\\\"\\");\\n  return FALSE;\\n\}\\n\\n// Do they already have a room at this location?\\nif(\$ask_returnroom\\n\&\& \$concierge \&\& \$concierge.\\"concierge:for\\"\\n\&\& Get(\$actor, \\"renting:\\"+\$concierge.\\"concierge:for\\")\\n) \{\\n  // They already have a room. Do they want to return it?  \\n  \$delay(0.01, TRUE);\\n  interaction::question(\\n    \$question: \\"You are already renting \\"+Describe(Get(\$actor, \\"renting:\\"+\$concierge.\\"concierge:for\\"))+\\" - do you want to return your current room?\\",\\n    \$expires: 30,\\n    \$env: \\"TRUE\\",\\n    \$expire: Describe(\$concierge)+\\" says, \\\\\\"Nothing? OK, just let me know if you still want to rent a room.\\\\\\"\\",\\n    \$yes_fun:\\"create_room\\",\\n    \$no:\\"OK - We'll leave you with your current room.\\",\\n    \$yes_ob:this,\\n    \$par: ([\\n        \\"create_room_question\\":TRUE,\\n        \\"question\\":\\"returnroom\\",\\n        \\"concierge\\":\$concierge,\\n        \\"create_room\\":\$room,\\n        \\"ask_returnroom\\":FALSE,\\n        \\"ask_movestuff\\":\$ask_movestuff,\\n        \\"ask_home\\":\$ask_home,\\n        \\"returnroom\\":\$returnroom,\\n        \\"movestuff\\":\$movestuff,\\n        \\"move_home\\":\$move_home\\n    ])\\n  );\\n  return TRUE;\\n\} else if(\$par \&\& \$par[\\"question\\"] == \\"returnroom\\") \{\\n  if(\$imperative == \\"@yes\\") \{\\n    \$returnroom = TRUE;\\n    // Are we returning their home room?\\n    if(\$actor.\\"virtualhome:home\\" \&\& Get(\$actor, \\"renting:\\"+\$concierge.\\"concierge:for\\") == \$actor.\\"virtualhome:home\\") \{\\n      // Yep, returning their home room. So move their items and their home location (no need to ask the player)\\n      \$ask_movestuff = FALSE;\\n      \$movestuff = TRUE;\\n      \$ask_home = FALSE;\\n      \$move_home = TRUE;\\n    \}\\n  \}\\n\}\\n\\nif(\$ask_movestuff \&\& \$actor.\\"virtualhome:home\\") \{\\n  \$delay(0.01, TRUE);\\n  interaction::question(\\n    \$question: \\"Should we move your belongings into this new room?\\",\\n    \$expires: 30,\\n    \$env: \\"TRUE\\",\\n    \$expire: Describe(\$concierge)+\\" says, \\\\\\"Nothing? OK, just let me know if you still want to rent a room.\\\\\\"\\",\\n    \$yes_fun:\\"create_room\\",\\n    \$no_fun:\\"create_room\\",\\n    \$yes_ob:this,\\n    \$no_ob:this,\\n    \$par: ([\\n        \\"create_room_question\\":TRUE,\\n        \\"question\\":\\"movestuff\\",\\n        \\"concierge\\":\$concierge,\\n        \\"create_room\\":\$room,\\n        \\"ask_returnroom\\":\$ask_returnroom,\\n        \\"ask_movestuff\\":FALSE,\\n        \\"ask_home\\":\$ask_home,\\n        \\"returnroom\\":\$returnroom,\\n        \\"movestuff\\":\$movestuff,\\n        \\"move_home\\":\$move_home\\n    ])\\n  );\\n  return TRUE;\\n\} else if(\$par \&\& \$par[\\"question\\"] == \\"movestuff\\") \{\\n  if(\$imperative == \\"@yes\\") \{\\n    \$movestuff = TRUE;\\n  \} else if(\$imperative == \\"@no\\") \{\\n    \$movestuff = FALSE;\\n  \}\\n\}\\n\\nif(\$ask_home \&\& \$actor.\\"virtualhome:home\\") \{\\n  \$delay(0.01, TRUE);\\n  interaction::question(\\n    \$question: \\"Should we set this room as your new home room?\\",\\n    \$expires: 30,\\n    \$env: \\"TRUE\\",\\n    \$expire: Describe(\$concierge)+\\" says, \\\\\\"Nothing? OK, just let me know if you still want to rent a room.\\\\\\"\\",\\n    \$yes_fun:\\"create_room\\",\\n    \$no_fun:\\"create_room\\",\\n    \$yes_ob:this,\\n    \$no_ob:this,\\n    \$par: ([\\n        \\"create_room_question\\":TRUE,\\n        \\"question\\":\\"ask_home\\",\\n        \\"concierge\\":\$concierge,\\n        \\"create_room\\":\$room,\\n        \\"ask_returnroom\\":\$ask_returnroom,\\n        \\"ask_movestuff\\":\$ask_movestuff,\\n        \\"ask_home\\":FALSE,\\n        \\"returnroom\\":\$returnroom,\\n        \\"movestuff\\":\$movestuff,\\n        \\"move_home\\":\$move_home\\n    ])\\n  );\\n  return TRUE;\\n\} else if(\$par \&\& \$par[\\"question\\"] == \\"ask_home\\") \{\\n  if(\$imperative == \\"@yes\\") \{\\n    \$move_home = TRUE;\\n  \} else if(\$imperative == \\"@no\\") \{\\n    \$move_home = FALSE;\\n  \}\\n\}\\n\\n// Create the room\\n\$newroom = Spawn(\$room);\\n\$newroom.\\"homeowner\\" = \$actor;\\nSet(\$actor, \\"virtualhome:\\"+\$room.\\"isvirtual\\", \$newroom);\\n\\n// Run a merry script in the newly created room\\nif(FindMerry(\$newroom, \\"lib\\", \\"create_room\\"))\\n  Call(\$newroom, \\"create_room\\", \$creating_virtual_room:TRUE);\\n\\n// If the room has other rooms, create those too\\nfor(\$i=0;\$i\<sizeof(Arr(\$newroom.\\"virtual:linkedrooms\\"));\$i++) \{\\n  // First check if the inner room already exists\\n  if(Get(\$actor, \\"virtualhome:\\"+Arr(\$newroom.\\"virtual:linkedrooms\\")[\$i].\\"isvirtual\\"))\\n    continue;\\n  \$inner_room = Spawn(Arr(\$newroom.\\"virtual:linkedrooms\\")[\$i]);\\n  \$inner_room.\\"homeowner\\" = \$actor;\\n  Set(\$actor, \\"virtualhome:\\"+Arr(\$newroom.\\"virtual:linkedrooms\\")[\$i].\\"isvirtual\\", \$inner_room);\\n  if(FindMerry(\$inner_room, \\"lib\\", \\"create_room\\"))\\n    Call(\$inner_room, \\"create_room\\", \$creating_virtual_room:TRUE);\\n\}\\n\\n\\n// If the room has a cost, \$actor pays up front!\\nif(\$room.\\"cost\\") \$actor.\\"trait:money\\" = Int(\$actor.\\"trait:money\\") - Int(\$room.\\"cost\\");\\n\\n// Deal with the old room, and any item moving\\nif(\$concierge \&\& \$concierge.\\"concierge:for\\") \{\\n  if(\$returnroom) \{\\n    \$oldroom = Get(\$actor, \\"renting:\\"+\$concierge.\\"concierge:for\\");\\n\\n    // Move stuff from oldroom to newroom\\n    ::move_room_contents(\$oldroom:\$oldroom, \$newroom:\$newroom);\\n\\n    // Destroy the inner rooms, too\\n    // the move_room_contents() will have already moved items from the inner rooms\\n    for(\$i=0;\$i\<sizeof(Arr(\$oldroom.\\"virtual:linkedrooms\\"));\$i++) \{\\n      if(!Arr(\$oldroom.\\"virtual:linkedrooms\\")[\$i]) continue;\\n      if(!Arr(\$oldroom.\\"virtual:linkedrooms\\")[\$i].\\"isvirtual\\") continue;\\n      \$inner_room = Get(\$actor, \\"virtualhome:\\"+Arr(\$oldroom.\\"virtual:linkedrooms\\")[\$i].\\"isvirtual\\");\\n      if(!\$inner_room) continue;\\n      if(FindMerry(\$inner_room, \\"lib\\", \\"destroy_room\\"))\\n        Call(\$inner_room, \\"destroy_room\\");\\n      ironclaw::safedelete(\$what:\$inner_room);  \\n    \}\\n\\n    // Destroy the old room\\n    if(FindMerry(\$oldroom, \\"lib\\", \\"destroy_room\\"))\\n      Call(\$oldroom, \\"destroy_room\\");\\n    ironclaw::safedelete(\$what:\$oldroom);\\n  \}\\n  // Set the room the PC has rented for this location\\n  Set(\$actor, \\"renting:\\"+\$concierge.\\"concierge:for\\", \$newroom);\\n\}\\nif(\$movestuff \&\& \$actor.\\"virtualhome:home\\")\\n  ::move_room_contents(\$oldroom:\$actor.\\"virtualhome:home\\", \$newroom:\$newroom);\\nif(\$move_home \|\| !\$actor.\\"virtualhome:home\\") \{\\n  \$actor.\\"virtualhome:home\\" = \$newroom;\\n  \$move_home = TRUE;\\n\}\\n\\nif(\$concierge) \{\\n  EmitTo(\$actor, Describe(\$concierge)+\\" smiles, \\\\\\"Thank you, \\"+Describe(\$newroom)+\\" is now ready for you.\\\\\\"\\");\\n  if(\$room.\\"cost\\") EmitTo(\$actor, Describe(\$concierge)+\\" informs you that you will be charged \\"+ironclaw::describe_money(\$amount:Int(\$room.\\"cost\\"))+\\" per day.\\");\\n  if(\$move_home) EmitTo(\$actor, \\"[OOC: This room is set as your home - you'll start here when you log into the game]\\");\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:move_room_contents">
+         "E[G]\\n// Moves items from \$oldroom into \$newroom\\nint i;\\nobject owner;\\n\\nif(!\$oldroom) return FALSE;\\nif(!\$newroom) return FALSE;\\n\\n\$inventory = copy(\$oldroom.\\"base:inventory\\");\\nfor(i=0;i\<sizeof(\$inventory);i++) \{\\n  \$item = \$inventory[i];\\n\\n  if(\$item.\\"room:startitem\\") \{\\n    // If it was a room startitem, slay it instead of moving (i.e. don't move fixed furniture etc.)\\n    // Before slaying the item, move any contents from it\\n    ::move_room_contents(\$oldroom:\$item, \$newroom:\$newroom);\\n    Slay(\$item);\\n  \} else \{\\n    if(\$item.\\"base:immobile\\") \$item.\\"base:immobile\\" = 0;\\n    if(\$item.\\"virtualhome:home\\")\\n      \$item.\\"base:environment\\" = \$item.\\"virtualhome:home\\";\\n    else\\n      \$item.\\"base:environment\\" = \$newroom;\\n  \}\\n\}\\n\\n// If there are other inner rooms, move their contents too\\nowner = \$oldroom.\\"homeowner\\";\\nif(!owner) return TRUE;\\nfor(i=0;i\<sizeof(Arr(\$oldroom.\\"virtual:linkedrooms\\"));i++) \{\\n  if(!Arr(\$oldroom.\\"virtual:linkedrooms\\")[i]) continue;\\n  if(!Arr(\$oldroom.\\"virtual:linkedrooms\\")[i].\\"isvirtual\\") continue;\\n  \$inner_room = Get(owner, \\"virtualhome:\\"+Arr(\$oldroom.\\"virtual:linkedrooms\\")[i].\\"isvirtual\\");\\n  if(!\$inner_room) continue;  \\n  \\n  ::move_room_contents(\$oldroom:\$inner_room, \$newroom:\$newroom);\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:react-pre:lock-what%virtual_rented_room">
+         "E[G]\\n// If they are trying to lock a virtual room, tell them they can't\\nif(\$target) \{\\n  \$exit = Get(\$this, \\"details:\\"+NRefDetail(\$target)+\\":exit:dest\\");\\n  if(\$exit \&\& NRefOb(\$exit).isvirtual) \{\\n    EmitTo(\$actor, \\"You need a key to lock this door.\\"); // If they have the key it emits locking, but won't set the virtual door to actually be locked\\n    return FALSE;\\n  \}\\n\}\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:react-pre:unlock-what%virtual_rented_room">
+         "E[G]\\n// If they are trying to unlock a virtual room, tell them they can't\\n// (If they were allowed to unlock the room, there's code in the key that already handled things!)\\nif(\$target) \{\\n  \$exit = Get(\$this, \\"details:\\"+NRefDetail(\$target)+\\":exit:dest\\");\\n  if(\$exit \&\& NRefOb(\$exit).isvirtual) \{\\n    EmitTo(\$actor, \\"You need the right key to unlock this door.\\");\\n    return FALSE;\\n  \}\\n\}\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:react:ask-dob%concierge">
+         "E[G]\\n// Allows renting of rooms...\\n\\n// Sanity check\\nif(!this.\\"concierge:for\\") \{\\n  return TRUE; /* So we don't break the existing concierges */\\n  EmitTo(\$actor, \\"Sorry, I'm confused. I don't know what area I'm a concierge for!\\");\\n  EmitTo(\$actor, \\"[OOC: This is a bug. Please file a @bug report for staff]\\");\\n  return FALSE;\\n\}\\n\\n// Some variables to use...\\n\$rented_room = Get(\$actor, \\"renting:\\"+this.\\"concierge:for\\"); // The room that the PC has rented from this concierge - might be nil\\n\$questions = (\{ \});\\n\\nif(!\$rented_room) \{\\n  /* Do they want to rent a room? */\\n  \$questions += (\{ \\"I'd like to rent a room\\", \\"concierge:question:rent_room\\" \});\\n\}\\nif(\$rented_room) \{\\n  // They already have a room here\\n  // Do they want to return it?\\n  \$questions += (\{ \\"I'd like to stop renting \\"+Describe(\$rented_room), \\"concierge:question:return_room\\" \});\\n\}\\nif(\$rented_room \&\& \$actor.\\"virtualhome:home\\" != \$rented_room) \{\\n  // They already have a room here, but it's not their home room\\n  \$questions += (\{ \\"Set this to be my home room\\", \\"concierge:question:set_homeroom\\" \});\\n\}\\nif(\$rented_room) \{\\n  // Do they want to rent a room?\\n  \$questions += (\{ \\"I'd like to rent a different room\\", \\"concierge:question:rent_room\\" \});\\n\}\\nif(FALSE) \{\\n  /* They already have a room here */\\n  \$questions += (\{ \\"Move into my partner's room\\", nil \});\\n\}\\n\\nif(sizeof(\$questions) \>= 2) \{\\n  \$a = \$questions[0];\\n  \$a_fun = \$questions[1];\\n\}\\nif(sizeof(\$questions) \>= 4) \{\\n  \$b = \$questions[2];\\n  \$b_fun = \$questions[3];\\n\}\\nif(sizeof(\$questions) \>= 6) \{\\n  \$c = \$questions[4];\\n  \$c_fun = \$questions[5];\\n\}\\nif(sizeof(\$questions) \>= 8) \{\\n  \$d = \$questions[6];\\n  \$d_fun = \$questions[7];\\n\}\\nif(sizeof(\$questions) \>= 10) \{\\n  \$e = \$questions[8];\\n  \$e_fun = \$questions[9];\\n\}\\n\\n\$a_ob = \$\{Ironclaw:Lib:Rooms:VirtualRooms\};\\n\$b_ob = \$a_ob;\\n\$c_ob = \$a_ob;\\n\$d_ob = \$a_ob;\\n\$e_ob = \$a_ob;\\n\\ninteraction::question(\$question: capitalize(Describe(this))+\\" asks, \\\\\\"How can I help you?\\\\\\"\\", \$expires: 30, \$env: \\"TRUE\\", \$expire: Describe(this)+\\" says, \\\\\\"Nothing? OK, just let me know if there's anything I can do for you.\\\\\\"\\", \$par: ([ \\"concierge\\":this, \\"rented_room\\":\$rented_room ]));\\n\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="gimli:react:open-what%virtual_rented_room">
+         "E[G]\\n/* Cannot open the door to a private room if the PC doesn't own that room */\\n\\n/* Sanity check */\\nif(!\$target) return TRUE;\\n\\n\$room = Obj(Get(this, \\"details:\\"+NRefDetail(\$target)+\\":exit:dest\\"));\\nif(!\$room) return TRUE;\\n\$room = NRefOb(\$room);\\n\\n/* If room isn't virtual, proceed as normal */\\nif(!\$room.isvirtual) return TRUE;\\n\\n/* Room is virtual. Does the actor already have this room in their list? */\\nif(!Get(\$actor, \\"virtualhome:\\"+\$room.isvirtual)) \{\\n  EmitTo(\$actor, \\"You don't have a key for \\"+Describe(\$target)+\\".\\");\\n  return FALSE;\\n\}\\n\\n/* OK, they are opening the door to their own virtual room */\\n\\nif(\$target \&\& (NRefDetail(\$target)==\\"exit-east\\"))\\n  \$this.\\"details:exit-east:opener\\" = \$actor;\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="merry:lib:concierge:question:rent_room">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:concierge:question:rent_room instead! */
+/* Ask which room they want to rent */
+int i;
+
+\$concierge = \$par["concierge"];
+
+/* What rooms are available? */
+\$roomlist = \$concierge."concierge:rooms";
+if(!\$roomlist \|\| !sizeof(map_indices(\$roomlist))) \{
+  EmitTo(\$actor, Describe(\$concierge)+" has no rooms available.");
+  return FALSE;
+\}
+
+/* Has the player already selected an option? */
+
+if(!\$par["room_selections"])
+    \$par["room_selections"] = (\{ \});
+
+if(\$par["room_selection_options"]) \{
+  /* This is the second time this has been run, at least one option was selected */
+  if(\$imperative == "@a" \&\& sizeof(\$par["room_selection_options"]) \>= 1)
+    \$par["room_selections"] += (\{ \$par["room_selection_options"][0] \});
+  else if(\$imperative == "@b" \&\& sizeof(\$par["room_selection_options"]) \>= 2)
+    \$par["room_selections"] += (\{ \$par["room_selection_options"][1] \});
+  else if(\$imperative == "@c" \&\& sizeof(\$par["room_selection_options"]) \>= 3)
+    \$par["room_selections"] += (\{ \$par["room_selection_options"][2] \});
+  else if(\$imperative == "@d" \&\& sizeof(\$par["room_selection_options"]) \>= 4)
+    \$par["room_selections"] += (\{ \$par["room_selection_options"][3] \});
+  else if(\$imperative == "@e" \&\& sizeof(\$par["room_selection_options"]) \>= 5)
+    \$par["room_selections"] += (\{ \$par["room_selection_options"][4] \});
+\}
+
+for(i=0;i\<sizeof(Arr(\$par["room_selections"]));i++) \{
+  \$roomlist = \$roomlist[\$par["room_selections"][i]];
+\}
+
+if(typeof(\$roomlist) == T_OBJECT) \{
+    /* They've selected this room */
+    ::create_room(\$room: \$roomlist, \$actor: \$actor, \$concierge: \$concierge, \$ask_returnroom: TRUE, \$ask_home: TRUE, \$ask_movestuff: FALSE);
+    return TRUE;
+\}
+
+\$display_options = (\{ \});
+\$selection_options = (\{ \});
+for(i=0;i\<sizeof(map_indices(\$roomlist));i++) \{
+    \$room = \$roomlist[map_indices(\$roomlist)[i]]; /* Either a room or another list */
+    if(typeof(\$room) == T_OBJECT) \{
+        /* Just one room. Advertise this room */
+        \$text = map_indices(\$roomlist)[i];
+        if(\$room.cost)
+          \$text += " - "+ ironclaw::describe_money(\$amount: Int(\$room.cost)) +"/day";
+        \$display_options += (\{ \$text \});
+    \} else \{
+        /* A list.... */
+        \$display_options += (\{ map_indices(\$roomlist)[i] \});
+    \}
+    \$selection_options += (\{ map_indices(\$roomlist)[i] \});
+\}
+
+if(sizeof(\$display_options) \>= 1) \{
+  \$a = \$display_options[0];
+\}
+if(sizeof(\$display_options) \>= 2) \{
+  \$b = \$display_options[1];
+\}
+if(sizeof(\$display_options) \>= 3) \{
+  \$c = \$display_options[2];
+\}
+if(sizeof(\$display_options) \>= 4) \{
+  \$d = \$display_options[3];
+\}
+if(sizeof(\$display_options) \>= 5) \{
+  \$e = \$display_options[4];
+\}
+
+\$a_ob = \$\{Allegory:Lib:Rooms:VirtualRooms\};
+\$b_ob = \$a_ob;
+\$c_ob = \$a_ob;
+\$d_ob = \$a_ob;
+\$e_ob = \$a_ob;
+\$a_fun = "concierge:question:rent_room";
+\$b_fun = \$a_fun;
+\$c_fun = \$a_fun;
+\$d_fun = \$a_fun;
+\$e_fun = \$a_fun;
+
+\$delay(0.01, TRUE, "ae2e");
+
+interaction::question(\$question: capitalize(Describe(\$concierge))+" asks, \\"Which room would you like?\\"", \$expires: 30, \$env: "TRUE", \$expire: Describe(\$concierge)+" says, \\"Nothing? OK, just let me know if there's anything I can do for you.\\"", \$par: ([ "concierge":\$concierge, "room_selections":\$par["room_selections"], "room_selection_options":\$selection_options ]));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:concierge:question:return_room">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:concierge:question:return_room instead! */
+/* Ask which room they want to rent */
+int i;
+
+\$homeroom = \$\{Allegory:Setting:Rinascita:Buildings:Southwest:AnasetteApartments:FirstFloor:Virtual:ClosetOne\};
+\$homelocation = "renting:GildedBalance";
+
+/* EXTENSION: If they are restricted to docktown, should give them a free room there instead */
+
+\$concierge = \$par["concierge"];
+
+/* Which room are they returning? */
+\$oldroom = \$par["rented_room"];
+\$newroom = Get(\$actor, \$homelocation);
+
+if(\$oldroom == \$newroom) \{
+  /* They are returning a room from the home location */
+  /* Instead of using the room from this location as the newroom, if we return this room we can use the free homeroom */
+  \$newroom = Get(\$actor, "virtualhome:"+\$homeroom.isvirtual);
+  /* Is this the free room itself? */
+  if(\$oldroom == \$newroom) \{
+    EmitTo(\$actor, Describe(\$concierge)+" says, \\"Oh, you've already got a free room. No need to return it or pay rent.\\"");
+    return TRUE;
+  \}
+\}
+
+if(!\$newroom) \{
+  /* We don't have a new room to put them into */
+  /* Create one */
+  \$newroom = Spawn(\$homeroom);
+  \$newroom.homeowner = \$actor;
+  Set(\$actor, "virtualhome:"+\$homeroom.isvirtual, \$newroom);
+  
+  /* Run a merry script in the newly created room */
+  if(FindMerry(\$newroom, "lib", "create_room"))
+    Call(\$newroom, "create_room");
+\}
+
+/* Move stuff from the old room to the new one */
+::move_room_contents(\$oldroom: \$oldroom, \$newroom: \$newroom);
+/* Was the old room the PCs home room? */
+if(\$actor."virtualhome:home" == \$oldroom) \{
+  \$actor."virtualhome:home" = \$newroom;
+\}
+
+
+
+/* Destroy the old room's inner rooms */
+/* the move_room_contents() will have already moved items from the inner rooms */
+for(\$i=0;\$i\<sizeof(Arr(\$oldroom."virtual:linkedrooms"));\$i++) \{
+  if(!Arr(\$oldroom."virtual:linkedrooms")[\$i]) continue;
+  if(!Arr(\$oldroom."virtual:linkedrooms")[\$i].isvirtual) continue;
+  \$inner_room = Get(\$actor, "virtualhome:"+Arr(\$oldroom."virtual:linkedrooms")[\$i].isvirtual);
+  if(!\$inner_room) continue;
+  if(FindMerry(\$inner_room, "lib", "destroy_room"))
+    Call(\$inner_room, "destroy_room");
+  ironclaw::safedelete(\$what: \$inner_room);  
+\}
+
+
+/* Destroy the old room */
+if(FindMerry(\$oldroom, "lib", "destroy_room"))
+  Call(\$oldroom, "destroy_room");
+ironclaw::safedelete(\$what: \$oldroom);
+
+/* Set the room the PC has rented for this new location */
+Set(\$actor, \$homelocation, \$newroom);
+
+EmitTo(\$actor, Describe(\$concierge)+" informs you, \\"Thank you, your room has been returned.\\"");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:concierge:question:set_homeroom">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:concierge:question:set_homeroom instead! */
+/* Set this as their home room */
+
+\$actor."virtualhome:home" = \$par["rented_room"];
+
+EmitTo(\$actor, "[OOC: Your home room has been set]");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:create_room">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:create_room instead! */
+/* Ask questions and create room */
+
+/*    ::create_room(\$room:\$roomlist, \$actor:\$actor, \$concierge:\$concierge, \$ask_home:TRUE, \$ask_movestuff:TRUE); */
+
+/* In case this script was called from interaction::question */
+if(\$par \&\& \$par["create_room_question"]) \{
+  /* Use the passed-in parameters */
+  \$room = \$par["create_room"];
+  \$concierge = \$par["concierge"];
+  \$ask_returnroom = \$par["ask_returnroom"];
+  \$ask_movestuff = \$par["ask_movestuff"];
+  \$ask_home = \$par["ask_home"];
+  \$returnroom = \$par["returnroom"];
+  \$movestuff = \$par["movestuff"];
+  \$move_home = \$par["move_home"];
+\}
+
+
+
+if(!\$room.isvirtual) \{
+  EmitTo(\$actor, "That room is not available. [OOC: Please @bug report this]");
+  return FALSE;
+\}
+
+/* Is there a cost? */
+if(\$room.cost \&\& Int(\$actor."trait:money") \< Int(\$room.cost)) \{
+  if(\$concierge) \{
+    EmitTo(\$actor, Describe(\$concierge)+" regretfully tells you that you can't afford that room.");
+    return FALSE;
+  \} else \{
+    return FALSE;
+  \}
+\}
+
+/* Do they already have this room? */
+if(Get(\$actor, "virtualhome:"+\$room.isvirtual)) \{
+  if(\$concierge)
+    EmitTo(\$actor, Describe(\$concierge)+" reminds you, \\"You're already renting that room!\\"");
+  return FALSE;
+\}
+
+/* Do they already have a room at this location? */
+if(\$ask_returnroom
+\&\& \$concierge \&\& \$concierge."concierge:for"
+\&\& Get(\$actor, "renting:"+\$concierge."concierge:for")
+) \{
+  /* They already have a room. Do they want to return it?   */
+  \$delay(0.01, TRUE, "a459");
+  interaction::question(\$question: "You are already renting "+Describe(Get(\$actor, "renting:"+\$concierge."concierge:for"))+" - do you want to return your current room?", \$expires: 30, \$env: "TRUE", \$expire: Describe(\$concierge)+" says, \\"Nothing? OK, just let me know if you still want to rent a room.\\"", \$yes_fun: "create_room", \$no: "OK - We'll leave you with your current room.", \$yes_ob: this, \$par: ([
+        "create_room_question":TRUE,
+        "question":"returnroom",
+        "concierge":\$concierge,
+        "create_room":\$room,
+        "ask_returnroom":FALSE,
+        "ask_movestuff":\$ask_movestuff,
+        "ask_home":\$ask_home,
+        "returnroom":\$returnroom,
+        "movestuff":\$movestuff,
+        "move_home":\$move_home
+    ]));
+  return TRUE;
+\} else if(\$par \&\& \$par["question"] == "returnroom") \{
+  if(\$imperative == "@yes") \{
+    \$returnroom = TRUE;
+    /* Are we returning their home room? */
+    if(\$actor."virtualhome:home" \&\& Get(\$actor, "renting:"+\$concierge."concierge:for") == \$actor."virtualhome:home") \{
+      /* Yep, returning their home room. So move their items and their home location (no need to ask the player) */
+      \$ask_movestuff = FALSE;
+      \$movestuff = TRUE;
+      \$ask_home = FALSE;
+      \$move_home = TRUE;
+    \}
+  \}
+\}
+
+if(\$ask_movestuff \&\& \$actor."virtualhome:home") \{
+  \$delay(0.01, TRUE, "f962");
+  interaction::question(\$question: "Should we move your belongings into this new room?", \$expires: 30, \$env: "TRUE", \$expire: Describe(\$concierge)+" says, \\"Nothing? OK, just let me know if you still want to rent a room.\\"", \$yes_fun: "create_room", \$no_fun: "create_room", \$yes_ob: this, \$no_ob: this, \$par: ([
+        "create_room_question":TRUE,
+        "question":"movestuff",
+        "concierge":\$concierge,
+        "create_room":\$room,
+        "ask_returnroom":\$ask_returnroom,
+        "ask_movestuff":FALSE,
+        "ask_home":\$ask_home,
+        "returnroom":\$returnroom,
+        "movestuff":\$movestuff,
+        "move_home":\$move_home
+    ]));
+  return TRUE;
+\} else if(\$par \&\& \$par["question"] == "movestuff") \{
+  if(\$imperative == "@yes") \{
+    \$movestuff = TRUE;
+  \} else if(\$imperative == "@no") \{
+    \$movestuff = FALSE;
+  \}
+\}
+
+if(\$ask_home \&\& \$actor."virtualhome:home") \{
+  \$delay(0.01, TRUE, "3629");
+  interaction::question(\$question: "Should we set this room as your new home room?", \$expires: 30, \$env: "TRUE", \$expire: Describe(\$concierge)+" says, \\"Nothing? OK, just let me know if you still want to rent a room.\\"", \$yes_fun: "create_room", \$no_fun: "create_room", \$yes_ob: this, \$no_ob: this, \$par: ([
+        "create_room_question":TRUE,
+        "question":"ask_home",
+        "concierge":\$concierge,
+        "create_room":\$room,
+        "ask_returnroom":\$ask_returnroom,
+        "ask_movestuff":\$ask_movestuff,
+        "ask_home":FALSE,
+        "returnroom":\$returnroom,
+        "movestuff":\$movestuff,
+        "move_home":\$move_home
+    ]));
+  return TRUE;
+\} else if(\$par \&\& \$par["question"] == "ask_home") \{
+  if(\$imperative == "@yes") \{
+    \$move_home = TRUE;
+  \} else if(\$imperative == "@no") \{
+    \$move_home = FALSE;
+  \}
+\}
+
+/* Create the room */
+\$newroom = Spawn(\$room);
+\$newroom.homeowner = \$actor;
+Set(\$actor, "virtualhome:"+\$room.isvirtual, \$newroom);
+
+/* Run a merry script in the newly created room */
+if(FindMerry(\$newroom, "lib", "create_room"))
+  Call(\$newroom, "create_room", \$creating_virtual_room: TRUE);
+
+/* If the room has other rooms, create those too */
+for(\$i=0;\$i\<sizeof(Arr(\$newroom."virtual:linkedrooms"));\$i++) \{
+  /* First check if the inner room already exists */
+  if(Get(\$actor, "virtualhome:"+Arr(\$newroom."virtual:linkedrooms")[\$i].isvirtual))
+    continue;
+  \$inner_room = Spawn(Arr(\$newroom."virtual:linkedrooms")[\$i]);
+  \$inner_room.homeowner = \$actor;
+  Set(\$actor, "virtualhome:"+Arr(\$newroom."virtual:linkedrooms")[\$i].isvirtual, \$inner_room);
+  if(FindMerry(\$inner_room, "lib", "create_room"))
+    Call(\$inner_room, "create_room", \$creating_virtual_room: TRUE);
+\}
+
+
+/* If the room has a cost, \$actor pays up front! */
+if(\$room.cost) \$actor."trait:money" = Int(\$actor."trait:money") - Int(\$room.cost);
+
+/* Deal with the old room, and any item moving */
+if(\$concierge \&\& \$concierge."concierge:for") \{
+  if(\$returnroom) \{
+    \$oldroom = Get(\$actor, "renting:"+\$concierge."concierge:for");
+
+    /* Move stuff from oldroom to newroom */
+    ::move_room_contents(\$oldroom: \$oldroom, \$newroom: \$newroom);
+
+    /* Destroy the inner rooms, too */
+    /* the move_room_contents() will have already moved items from the inner rooms */
+    for(\$i=0;\$i\<sizeof(Arr(\$oldroom."virtual:linkedrooms"));\$i++) \{
+      if(!Arr(\$oldroom."virtual:linkedrooms")[\$i]) continue;
+      if(!Arr(\$oldroom."virtual:linkedrooms")[\$i].isvirtual) continue;
+      \$inner_room = Get(\$actor, "virtualhome:"+Arr(\$oldroom."virtual:linkedrooms")[\$i].isvirtual);
+      if(!\$inner_room) continue;
+      if(FindMerry(\$inner_room, "lib", "destroy_room"))
+        Call(\$inner_room, "destroy_room");
+      ironclaw::safedelete(\$what: \$inner_room);  
+    \}
+
+    /* Destroy the old room */
+    if(FindMerry(\$oldroom, "lib", "destroy_room"))
+      Call(\$oldroom, "destroy_room");
+    ironclaw::safedelete(\$what: \$oldroom);
+  \}
+  /* Set the room the PC has rented for this location */
+  Set(\$actor, "renting:"+\$concierge."concierge:for", \$newroom);
+\}
+if(\$movestuff \&\& \$actor."virtualhome:home")
+  ::move_room_contents(\$oldroom: \$actor."virtualhome:home", \$newroom: \$newroom);
+if(\$move_home \|\| !\$actor."virtualhome:home") \{
+  \$actor."virtualhome:home" = \$newroom;
+  \$move_home = TRUE;
+\}
+
+if(\$concierge) \{
+  EmitTo(\$actor, Describe(\$concierge)+" smiles, \\"Thank you, "+Describe(\$newroom)+" is now ready for you.\\"");
+  if(\$room.cost) EmitTo(\$actor, Describe(\$concierge)+" informs you that you will be charged "+ironclaw::describe_money(\$amount: Int(\$room.cost))+" per day.");
+  if(\$move_home) EmitTo(\$actor, "[OOC: This room is set as your home - you'll start here when you log into the game]");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:move_room_contents">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:move_room_contents instead! */
+/* Moves items from \$oldroom into \$newroom */
+int i;
+object owner;
+
+if(!\$oldroom) return FALSE;
+if(!\$newroom) return FALSE;
+
+\$inventory = copy(\$oldroom."base:inventory");
+for(i=0;i\<sizeof(\$inventory);i++) \{
+  \$item = \$inventory[i];
+
+  if(\$item."room:startitem") \{
+    /* If it was a room startitem, slay it instead of moving (i.e. don't move fixed furniture etc.) */
+    /* Before slaying the item, move any contents from it */
+    ::move_room_contents(\$oldroom: \$item, \$newroom: \$newroom);
+    Slay(\$item);
+  \} else \{
+    if(\$item."base:immobile") \$item."base:immobile" = 0;
+    if(\$item."virtualhome:home")
+      \$item."base:environment" = \$item."virtualhome:home";
+    else
+      \$item."base:environment" = \$newroom;
+  \}
+\}
+
+/* If there are other inner rooms, move their contents too */
+owner = \$oldroom.homeowner;
+if(!owner) return TRUE;
+for(i=0;i\<sizeof(Arr(\$oldroom."virtual:linkedrooms"));i++) \{
+  if(!Arr(\$oldroom."virtual:linkedrooms")[i]) continue;
+  if(!Arr(\$oldroom."virtual:linkedrooms")[i].isvirtual) continue;
+  \$inner_room = Get(owner, "virtualhome:"+Arr(\$oldroom."virtual:linkedrooms")[i].isvirtual);
+  if(!\$inner_room) continue;  
+  
+  ::move_room_contents(\$oldroom: \$inner_room, \$newroom: \$newroom);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:enter-into%virtual_rented_room">
+         X[M] /* Since this is a virtual room, close the door after the opener goes through */
+
+if(\$target) \{
+  \$detail = NRefDetail(\$target);
+  if(\$actor == Get(NRefOb(\$target), "details:"+\$detail+":opener")) \{
+    Set(NRefOb(\$target), "details:" + \$detail + ":exit:closed:local", 1);
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:lock-what%virtual_rented_room">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:react-pre:lock-what%virtual_rented_room instead! */
+/* If they are trying to lock a virtual room, tell them they can't */
+if(\$target) \{
+  \$exit = Get(\$this, "details:"+NRefDetail(\$target)+":exit:dest");
+  if(\$exit \&\& NRefOb(\$exit).isvirtual) \{
+    EmitTo(\$actor, "You need a key to lock this door."); /* If they have the key it emits locking, but won't set the virtual door to actually be locked */
+    return FALSE;
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unlock-what%virtual_rented_room">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:react-pre:unlock-what%virtual_rented_room instead! */
+/* If they are trying to unlock a virtual room, tell them they can't */
+/* (If they were allowed to unlock the room, there's code in the key that already handled things!) */
+
+if(\$target) \{
+  if(\$using \&\& sizeof(\$using) \&\& NRefOb(\$using[0])."trait:objecttype" == "keyring") return TRUE;
+  \$exit = Get(\$this, "details:"+NRefDetail(\$target)+":exit:dest");
+  if(\$exit \&\& NRefOb(\$exit).isvirtual) \{
+    EmitTo(\$actor, "You need the right key to unlock this door.");
+    return FALSE;
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:ask-dob%concierge">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:react:ask-dob%concierge instead! */
+/* Allows renting of rooms... */
+
+/* Sanity check */
+if(!this."concierge:for") \{
+  return TRUE; /* So we don't break the existing concierges */
+  EmitTo(\$actor, "Sorry, I'm confused. I don't know what area I'm a concierge for!");
+  EmitTo(\$actor, "[OOC: This is a bug. Please file a @bug report for staff]");
+  return FALSE;
+\}
+
+/* Some variables to use... */
+\$rented_room = Get(\$actor, "renting:"+this."concierge:for"); /* The room that the PC has rented from this concierge - might be nil */
+\$questions = (\{ \});
+
+if(!\$rented_room) \{
+  /* Do they want to rent a room? */
+  \$questions += (\{ "I'd like to rent a room", "concierge:question:rent_room" \});
+\}
+if(\$rented_room) \{
+  /* They already have a room here */
+  /* Do they want to return it? */
+  \$questions += (\{ "I'd like to stop renting "+Describe(\$rented_room), "concierge:question:return_room" \});
+\}
+if(\$rented_room \&\& \$actor."virtualhome:home" != \$rented_room) \{
+  /* They already have a room here, but it's not their home room */
+  \$questions += (\{ "Set this to be my home room", "concierge:question:set_homeroom" \});
+\}
+if(\$rented_room) \{
+  /* Do they want to rent a room? */
+  \$questions += (\{ "I'd like to rent a different room", "concierge:question:rent_room" \});
+\}
+if(FALSE) \{
+  /* They already have a room here */
+  \$questions += (\{ "Move into my partner's room", nil \});
+\}
+
+if(sizeof(\$questions) \>= 2) \{
+  \$a = \$questions[0];
+  \$a_fun = \$questions[1];
+\}
+if(sizeof(\$questions) \>= 4) \{
+  \$b = \$questions[2];
+  \$b_fun = \$questions[3];
+\}
+if(sizeof(\$questions) \>= 6) \{
+  \$c = \$questions[4];
+  \$c_fun = \$questions[5];
+\}
+if(sizeof(\$questions) \>= 8) \{
+  \$d = \$questions[6];
+  \$d_fun = \$questions[7];
+\}
+if(sizeof(\$questions) \>= 10) \{
+  \$e = \$questions[8];
+  \$e_fun = \$questions[9];
+\}
+
+\$a_ob = \$\{Allegory:Lib:Rooms:VirtualRooms\};
+\$b_ob = \$a_ob;
+\$c_ob = \$a_ob;
+\$d_ob = \$a_ob;
+\$e_ob = \$a_ob;
+
+interaction::question(\$question: capitalize(Describe(this))+" asks, \\"How can I help you?\\"", \$expires: 30, \$env: "TRUE", \$expire: Describe(this)+" says, \\"Nothing? OK, just let me know if there's anything I can do for you.\\"", \$par: ([ "concierge":this, "rented_room":\$rented_room ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:open-what%virtual_rented_room">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:react:open-what%virtual_rented_room instead! */
+/* Cannot open the door to a private room if the PC doesn't own that room */
+
+/* Sanity check */
+if(!\$target) return TRUE;
+
+\$room = Obj(Get(this, "details:"+NRefDetail(\$target)+":exit:dest"));
+if(!\$room) return TRUE;
+\$room = NRefOb(\$room);
+
+/* If room isn't virtual, proceed as normal */
+if(!\$room.isvirtual) return TRUE;
+
+/* Room is virtual. Does the actor already have this room in their list? */
+if(!Get(\$actor, "virtualhome:"+\$room.isvirtual)) \{
+  EmitTo(\$actor, "You don't have a key for "+Describe(\$target)+".");
+  return FALSE;
+\}
+
+/* OK, they are opening the door to their own virtual room */
+
+if(\$target \&\& (NRefDetail(\$target)=="exit-east"))
+  \$this."details:exit-east:opener" = \$actor;
+
+if(\$target \&\& (NRefDetail(\$target)=="exit-west"))
+  \$this."details:exit-west:opener" = \$actor;
+
+if(\$target \&\& (NRefDetail(\$target)=="exit-north"))
+  \$this."details:exit-north:opener" = \$actor;
+
+if(\$target \&\& (NRefDetail(\$target)=="exit-southeast"))
+  \$this."details:exit-southeast:opener" = \$actor;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1565057269, "jominey", "E", 1565057820, "jominey", "E", 1579722452, "jominey", "E", 1579722519, "jominey", "E", 1579722549, "jominey", "E", 1579722561, "jominey", "E", 1579722623, "jominey", "E", 1585232261, "jominey", "E", 1585232316, "jominey", "E", 1585232352, "jominey", "E", 1585232393, "jominey", "E", 1585232466, "jominey", "E", 1585232505, "jominey", "E", 1585232557, "jominey", "E", 1585232584, "jominey", "E", 1585232600, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

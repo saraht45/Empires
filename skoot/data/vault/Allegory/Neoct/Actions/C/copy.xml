@@ -1,0 +1,127 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="SkotOS">
+  <SkotOS:MerAcHa action_id="copy">
+    <Core:PCProperties>
+      <Core:Property property="merry:global:action">
+         X[M] if(!\$target) return TRUE;
+if(!\$dob) return TRUE;
+if(!sizeof(\$dob)) return TRUE;
+
+if(NRefOb(\$dob[0])."trait:objecttype" == "scroll" \|\| NRefOb(\$dob[0])."trait:objecttype" == "invitation" \|\| NRefOb(\$dob[0])."trait:objecttype" == "broadsheet") \{
+    if(NRefOb(\$dob[0])."base:environment" != \$actor) \{
+        EmitTo(\$actor, "You must be holding " + Describe(NRefOb(\$dob[0])) + " to make a copy of it.");
+        return FALSE;
+    \}
+
+    \$detail = NRefDetail(\$dob[0]);
+    if(!Get(NRefOb(\$dob[0]), "details:objskin:description:writing")) \{
+        EmitTo(\$actor, Describe(NRefOb(\$dob[0]), nil, \$actor) + " has no writing to copy.");
+        return FALSE;
+    \}
+
+    if(!\$iob2 \|\| !sizeof(\$iob2)) \{
+        EmitTo(\$actor, "You need to specify something for which to copy " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " to.");
+        return FALSE;
+    \}
+
+    if(sizeof(\$iob2) \> 1) \{
+        EmitTo(\$actor, "You can only copy " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " to one thing at a time.");
+        return FALSE;
+    \}
+
+    if(NRefOb(\$iob2[0])."base:environment" != \$actor) \{
+        EmitTo(\$actor, "You must be holding " + Describe(NRefOb(\$iob2[0])) + " to make a copy of it.");
+        return FALSE;
+    \}
+
+    \$copy = NRefOb(\$iob2[0]);
+    \$copyDetail = NRefDetail(\$iob2[0]);
+
+    if(\$copy."trait:objecttype" == "scroll" \|\| NRefOb(\$dob[0])."trait:objecttype" == "invitation" \|\| NRefOb(\$dob[0])."trait:objecttype" == "broadsheet") \{
+        Set(\$copy, "details:objskin:description:writing", Get(NRefOb(\$dob[0]), "details:objskin:description:writing"));
+        return TRUE;
+    \}
+
+    if(\$copy."trait:objecttype" == "book") \{
+        Set(\$copy, "trait:" + \$copyDetail, Get(NRefOb(\$dob[0]), "details:objskin:description:writing"));
+        return TRUE;
+    \}
+\}
+
+if(NRefOb(\$dob[0])."trait:objecttype" == "book") \{
+    if(NRefOb(\$dob[0])."base:environment" != \$actor) \{
+        EmitTo(\$actor, "You must be holding " + Describe(NRefOb(\$dob[0])) + " to make a copy of it.");
+        return FALSE;
+    \}
+
+    \$detail = NRefDetail(\$dob[0]);
+
+    if(\$detail == "default") \{
+        \$pagecount = Int(Get(NRefOb(\$dob[0]), "trait:pagecnt"));
+        \$copy = NRefOb(\$iob2[0]);
+        \$copyDetail = NRefDetail(\$iob2[0]);
+
+        if(\$copy."trait:objecttype" == "scroll" \|\| NRefOb(\$dob[0])."trait:objecttype" == "invitation" \|\| NRefOb(\$dob[0])."trait:objecttype" == "broadsheet") \{
+            EmitTo(\$actor, "You cannot copy the entire contents of a book to a scroll. You can specify individual pages (ie. copy my first page to my scroll).");
+            return FALSE;
+        \}
+
+        if(\$copy."trait:objecttype" != "book") \{
+            EmitTo(\$actor, "You cannot copy " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " to that.");
+            return FALSE;
+        \}
+
+        if(\$copyDetail != "default") \{
+            EmitTo(\$actor, "You cannot copy the entire contents of a book to a single page. You can specify the entire book to copy to (ie. copy my first book to my second book).");
+            return FALSE;
+        \}
+
+        for(\$i = 0; \$i \< \$pagecount; \$i++) \{
+            \$bookdetail = "trait:page" + replace_strings(pad_left(Str(\$i), 2), " ", "0");
+            Set(\$copy, \$bookdetail, Get(NRefOb(\$dob[0]), \$bookdetail));
+        \}
+        return TRUE;
+    \} else \{
+        if(!Get(NRefOb(\$dob[0]), "trait:" + \$detail)) \{
+            EmitTo(\$actor, Describe(NRefOb(\$dob[0]), nil, \$actor) + " has no writing to copy.");
+            return FALSE;
+        \}
+
+        if(!\$iob2 \|\| !sizeof(\$iob2)) \{
+            EmitTo(\$actor, "You need to specify something for which to copy " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " to.");
+            return FALSE;
+        \}
+
+        if(sizeof(\$iob2) \> 1) \{
+            EmitTo(\$actor, "You can only copy " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " to one thing at a time.");
+            return FALSE;
+        \}
+
+        if(NRefOb(\$iob2[0])."base:environment" != \$actor) \{
+            EmitTo(\$actor, "You must be holding " + Describe(NRefOb(\$iob2[0])) + " to make a copy of it.");
+            return FALSE;
+        \}
+
+
+        \$copy = NRefOb(\$iob2[0]);
+        \$copyDetail = NRefDetail(\$iob2[0]);
+
+        if(\$copy."trait:objecttype" == "scroll" \|\| NRefOb(\$dob[0])."trait:objecttype" == "invitation" \|\| NRefOb(\$dob[0])."trait:objecttype" == "broadsheet") \{
+            Set(\$copy, "details:objskin:description:writing", Get(NRefOb(\$dob[0]), "trait:" + \$detail));
+            return TRUE;
+        \}
+
+        if(\$copy."trait:objecttype" == "book") \{
+            Set(\$copy, "trait:" + \$copyDetail, Get(NRefOb(\$dob[0]), "trait:" + \$detail));
+            return TRUE;
+        \}
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1574816594, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

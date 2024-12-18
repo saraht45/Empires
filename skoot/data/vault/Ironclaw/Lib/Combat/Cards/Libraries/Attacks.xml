@@ -1,0 +1,330 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Combat:Cards:Libraries:UrActions)"/>
+    <Core:PCProperties>
+      <Core:Property property="gimli:lib:aim">
+         "E[G]\\nif(!\$char \&\& \$par[\\"char\\"]) \$char = \$par[\\"char\\"];\\nif(\$check_valid) \{\\n  if(\$char.combat[\\"status\\"] \&\& \$char.combat[\\"status\\"][\\"aiming\\"]) return FALSE; // Can't be aiming twice\\n  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);\\n\}\\nif(\$description) \{\\n  return \\"Aim at \\"+Describe(\$char.combat[\\"target\\"]);\\n\}\\nif(\$par[\\"taking_action\\"]) \{\\n  if(\$char.combat \&\& \$char.combat[\\"status\\"] \&\& \$char.combat[\\"status\\"][\\"aiming\\"]) \{\\n    EmitTo(\$actor, \\"You are already aiming!\\");\\n    ccombat::list_actions(\$char: \$actor);\\n    return FALSE;\\n  \}\\n  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;\\n  EmitTo(\$char, \\"You carefully line up an attack on \\"+Describe(\$char.combat[\\"target\\"])+\\", and wait for an opportunity to attack.\\");\\n  EmitTo(\$char.combat[\\"target\\"], Describe(\$char)+\\" takes aim at you.\\");\\n  EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" takes aim at \\"+Describe(\$char.combat[\\"target\\"])+\\".\\", \$char, \$char.combat[\\"target\\"]);\\n\\n  \$char.combat[\\"status\\"][\\"aiming\\"] = -1;\\n  ::remove_card_to_deck(\$char: \$char, \$action: \\"aim\\", \$object: this);\\n  ::charge_action(\$char: \$char);\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:attack">
+         "E[G]\\nif(!\$char \&\& \$par[\\"char\\"]) \$char = \$par[\\"char\\"];\\nif(\$check_valid) return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);\\nif(\$description) \{\\n  return \\"Attack \\"+Describe(\$char.combat[\\"target\\"]);\\n\}\\nif(\$par[\\"taking_action\\"]) \{\\n  \$az = \$\{Chatters:IC:az:azrael\};\\n  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;\\n  \\n  return ::make_attack(\$attack_options: ([ \\"attack_bonus\\":\$char.\\"combat\\"[\\"bonus:attack:endgame\\"], \\"damage_bonus\\":\$char.\\"combat\\"[\\"bonus:attack:endgame\\"] ]));\\n\}\\n\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:barstool smash">
+         "E[G]\\nif(!\$char \&\& \$par[\\"char\\"]) \$char = \$par[\\"char\\"];\\nif(\$check_valid) \{\\n  if(!\$char.\\"base:environment\\".\\"combat:options:barstool_brawl:name\\") return FALSE;\\n  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);\\n\}\\nif(\$description) \{\\n  return \\"Smash a \\"+\$char.\\"base:environment\\".\\"combat:options:barstool_brawl:name\\"+\\" over \\"+Describe(\$char.combat[\\"target\\"]);\\n\}\\nif(\$par[\\"taking_action\\"]) \{\\n  \$az = \$\{Chatters:IC:az:azrael\};\\n  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;\\n\\n  EmitTo(\$char, \\"You smash a \\"+\$char.\\"base:environment\\".\\"combat:options:barstool_brawl:name\\"+\\" over \\"+Describe(\$char.combat[\\"target\\"])+\\"'s head.\\");\\n  EmitTo(\$char.combat[\\"target\\"], Describe(\$actor)+\\" smashes a \\"+\$char.\\"base:environment\\".\\"combat:options:barstool_brawl:name\\"+\\" over your head.\\");\\n  EmitIn(\$char.\\"base:environment\\", Describe(\$actor)+\\" smashes a \\"+\$char.\\"base:environment\\".\\"combat:options:barstool_brawl:name\\"+\\" over \\"+Describe(\$char.combat[\\"target\\"])+\\"'s head.\\", \$char, \$char.combat[\\"target\\"]);\\n  ccombat::set_reeling(\$char: \$char.combat[\\"target\\"], \$notify: \$char);\\n  ::remove_card(\$char: \$char, \$action: \\"barstool smash\\", \$object: this);\\n  ::charge_action(\$char: \$char);\\n  return TRUE;\\n\\n  \\n  return ::make_attack(\$attack_options: ([ \\"attack_bonus\\":\$char.\\"combat\\"[\\"bonus:attack:endgame\\"], \\"damage_bonus\\":\$char.\\"combat\\"[\\"bonus:attack:endgame\\"] ]));\\n\}\\n\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:description_slash">
+         "E[G]\\n// Describe slashing with the weapon\\n\\n// EmitTo(\$az, \\"Args: \\"+dump_value(args));\\n// EmitTo(\$az, \\"wound_info: \\"+dump_value(\$wound_info));\\n\\nif(!\$attack_adj) \$attack_adj = \\"\\";\\n\\n\$verbs = (\{ (\{\\"cut\\", \\"cuts\\", \\"cutting\\"\}), (\{\\"slice\\", \\"slices\\", \\"slicing\\"\}), (\{\\"strike\\", \\"strikes\\", \\"striking\\"\}), (\{\\"slash\\", \\"slashes\\", \\"slashing\\"\}) \});\\n\$verb = \$verbs[random(sizeof(\$verbs))];\\n\$actor_msg = \\"You\\"+\$attack_adj+\\" \\"+\$verb[0]+\\" \\";\\n\$target_msg = Describe(\$char)+\$attack_adj+\\" \\"+\$verb[1]+\\" \\";\\n\$witness_msg = Describe(\$char)+\$attack_adj+\\" \\"+\$verb[1]+\\" \\";\\nswitch(random(5)) \{\\n    case 4:\\n        \$actor_msg = \\"You feign right, then\\"+\$attack_adj+\\" slash left, \\"+\$verb[2]+\\" \\";\\n        \$target_msg = Describe(\$char)+\\" feigns right, then\\"+\$attack_adj+\\" slashes left, \\"+\$verb[2]+\\" \\";\\n        \$witness_msg = Describe(\$char)+\\" feigns right, then \\"+\$attack_adj+\\" slashes left, \\"+\$verb[2]+\\" \\";\\n        break;\\n    default:\\n        break;\\n\}\\n\\n\\nswitch(random(4)) \{\\n    case 3:\\n        \$actor_msg += Describe(\$target_detail)+\\", leaving \\"+\$wound_info[\\"name\\"]+\\".\\";\\n        \$target_msg += Describe(\$target_detail, nil, \$target)+\\", leaving \\"+\$wound_info[\\"name\\"]+\\".\\";\\n        \$witness_msg += Describe(\$target_detail)+\\", leaving \\"+\$wound_info[\\"name\\"]+\\".\\";\\n        break;\\n    case 2:\\n        \$actor_msg += \\"at \\"+Describe(\$target)+\\", cutting \\"+\$target.\\"base:objective\\"+\\" on \\"+Describe(\$target_detail, \$target)+\\", leaving \\"+\$wound_info[\\"name\\"]+\\".\\";\\n        \$target_msg += \\"at you, cutting you on \\"+Describe(\$target_detail, \$target, \$target)+\\", leaving \\"+\$wound_info[\\"name\\"]+\\".\\";\\n        \$witness_msg += \\"at \\"+Describe(\$target)+\\", cutting \\"+\$target.\\"base:objective\\"+\\" on \\"+Describe(\$target_detail, \$target)+\\", leaving \\"+\$wound_info[\\"name\\"]+\\".\\";\\n        break;\\n    case 1:\\n        \$actor_msg += Describe(\$target_detail)+\\".\\";\\n        \$target_msg += Describe(\$target_detail, nil, \$target)+\\".\\";\\n        \$witness_msg += Describe(\$target_detail)+\\".\\";\\n        break;\\n    case 0:\\n        \$actor_msg += \\"at \\"+Describe(\$target)+\\", cutting \\"+\$target.\\"base:objective\\"+\\" on \\"+Describe(\$target_detail, \$target)+\\".\\";\\n        \$target_msg += \\"at you, cutting you on \\"+Describe(\$target_detail, \$target, \$target)+\\".\\";\\n        \$witness_msg += \\"at \\"+Describe(\$target)+\\", cutting \\"+\$target.\\"base:objective\\"+\\" on \\"+Describe(\$target_detail, \$target)+\\".\\";\\n        break;\\n\}\\n\\nreturn (\{ \$actor_msg, \$target_msg, \$witness_msg \});"
+      </Core:Property>
+      <Core:Property property="gimli:lib:description_strike">
+         "E[G]\\n// Describe striking with the weapon\\n\$actor_msg = \\"You \\";\\n\$target_msg = Describe(\$char)+\\" \\";\\n\$witness_msg = Describe(\$char)+\\" \\";\\n\\nif(!\$damage) \{\\n  \$actor_msg += \\"land a glancing blow on \\";\\n  \$target_msg += \\"lands a glancing blow on \\";\\n  \$witness_msg += \\"lands a glancing blow on \\";\\n\} else \{\\n  if(!random(2)) \{\\n    \$adverb = \$adverb[random(sizeof(\$adverb))];\\n    \$actor_msg += \$adverb+\\" \\";\\n    \$target_msg += \$adverb+\\" \\";\\n    \$witness_msg += \$adverb+\\" \\";\\n  \}\\n  \$verb = \$verb[random(sizeof(\$verb))];\\n  \$actor_msg += \$verb+\\" \\";\\n  \$target_msg += \$verb+\\"s \\";\\n  \$witness_msg += \$verb+\\"s \\";\\n\}\\n\\nif(!random(2)) \{\\n  \$actor_msg += Describe(\$target_detail);\\n  \$target_msg += Describe(\$target_detail, nil, \$target);\\n  \$witness_msg += Describe(\$target_detail);\\n\} else \{\\n  \$actor_msg += Describe(\$target)+\\" on \\"+Describe(\$target_detail, \$target);\\n  \$target_msg += Describe(\$target, nil, \$target)+\\" on \\"+Describe(\$target_detail, \$target, \$target);\\n  \$witness_msg += Describe(\$target)+\\" on \\"+Describe(\$target_detail, \$target);\\n\}\\n\\n\$actor_msg += \\".\\";\\n\$target_msg += \\".\\";\\n\$witness_msg += \\".\\";\\n\\nreturn (\{ \$actor_msg, \$target_msg, \$witness_msg \});"
+      </Core:Property>
+      <Core:Property property="gimli:lib:guard">
+         "E[G]\\nif(!\$char \&\& \$par[\\"char\\"]) \$char = \$par[\\"char\\"];\\nif(\$check_valid) return ::sanity_check(\$char: \$char, \$needs_target: FALSE, \$needs_action: TRUE, \$emotes: FALSE);\\nif(\$description) return \\"Guard yourself\\";\\nif(\$par[\\"taking_action\\"]) \{\\n  if(!::sanity_check(\$char: \$char, \$needs_target: FALSE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;\\n  EmitTo(\$char, \\"You shift into a defensive stance.\\");\\n  EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" shifts into a defensive stance.\\", \$char);\\n  \$char.combat[\\"status\\"][\\"guarding\\"] = 1;\\n  ::remove_card_to_deck(\$char: \$char, \$action: \\"guard\\", \$object: this);\\n  ::charge_action(\$char: \$char);\\n\}\\n\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="log:creator">
+         "Combat Attacks"
+      </Core:Property>
+      <Core:Property property="merry:lib:aim">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:aim instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) \{
+  if(\$char.combat["status"] \&\& \$char.combat["status"]["aiming"]) return FALSE; /* Can't be aiming twice */
+  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+\}
+if(\$description) \{
+  return "Aim at "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  if(\$char.combat \&\& \$char.combat["status"] \&\& \$char.combat["status"]["aiming"]) \{
+    EmitTo(\$actor, "You are already aiming!");
+    ccombat::list_actions(\$char: \$actor);
+    return FALSE;
+  \}
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  EmitTo(\$char, "You carefully line up an attack on "+Describe(\$char.combat["target"])+", and wait for an opportunity to attack.");
+  EmitTo(\$char.combat["target"], Describe(\$char)+" takes aim at you.");
+  EmitIn(\$char."base:environment", Describe(\$char)+" takes aim at "+Describe(\$char.combat["target"])+".", \$char, \$char.combat["target"]);
+
+  \$char.combat["status"]["aiming"] = -1;
+  ::remove_card_to_deck(\$char: \$char, \$action: "aim", \$object: this);
+  ::charge_action(\$char: \$char);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:attack">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:attack instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+if(\$description) \{
+  return "Attack "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  \$az = \$\{Chatters:AE:az:azrael\};
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  
+  return ::make_attack(\$attack_options: ([ "attack_bonus":\$char.combat["bonus:attack:endgame"], "damage_bonus":\$char.combat["bonus:attack:endgame"] ]));
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:barstool smash">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:barstool smash instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) \{
+  if(!\$char."base:environment"."combat:options:barstool_brawl:name") return FALSE;
+  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+\}
+if(\$description) \{
+  return "Smash a "+\$char."base:environment"."combat:options:barstool_brawl:name"+" over "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  \$az = \$\{Chatters:AE:az:azrael\};
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+
+  EmitTo(\$char, "You smash a "+\$char."base:environment"."combat:options:barstool_brawl:name"+" over "+Describe(\$char.combat["target"])+"'s head.");
+  EmitTo(\$char.combat["target"], Describe(\$actor)+" smashes a "+\$char."base:environment"."combat:options:barstool_brawl:name"+" over your head.");
+  EmitIn(\$char."base:environment", Describe(\$actor)+" smashes a "+\$char."base:environment"."combat:options:barstool_brawl:name"+" over "+Describe(\$char.combat["target"])+"'s head.", \$char, \$char.combat["target"]);
+  ccombat::set_reeling(\$char: \$char.combat["target"], \$notify: \$char);
+  ::remove_card(\$char: \$char, \$action: "barstool smash", \$object: this);
+  ::charge_action(\$char: \$char);
+  return TRUE;
+
+  
+  return ::make_attack(\$attack_options: ([ "attack_bonus":\$char.combat["bonus:attack:endgame"], "damage_bonus":\$char.combat["bonus:attack:endgame"] ]));
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:bribe">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:aim instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(!\$char.combat \|\| !\$char.combat["target"]) return FALSE;
+\$target = \$char.combat["target"];
+if(!\$target."combat:can_be_bribed") return FALSE;
+\$bribe = Int(\$target."combat:can_be_bribed");
+
+if(\$check_valid) \{
+  if(Int(\$char."trait:money") \< \$bribe) return FALSE; /* Not enough for a bribe */
+  if(\$target.combat["target"] != \$char) return FALSE; /* Only offer bribe if we are being targeted */
+  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+\}
+
+if(\$description) \{
+  return "Offer " + Describe(\$char.combat["target"]) + " " + Str(\$bribe) + " denarii to leave you alone.";
+\}
+
+if(\$par["taking_action"]) \{
+  if(Int(\$char."trait:money") \< \$bribe) \{
+    EmitTo(\$actor, "You don't have enough money!");
+    ccombat::list_actions(\$char: \$actor);
+    return FALSE;
+  \}
+
+  if(\$target.combat["target"] != \$char) \{
+    EmitTo(\$actor, Describe(\$target) + " is too focused on " + Describe(\$target.combat["target"]) + " to pay attention to your offer.");
+    ccombat::list_actions(\$char: \$actor);
+    return FALSE;
+  \}
+
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  EmitTo(\$char, "You give " + Describe(\$char.combat["target"]) + " a " + Str(\$amount) + " denarii peace offering.");
+  \$char.combat["status"]["bribing"] = \$bribe;
+
+  ::remove_card_to_deck(\$char: \$char, \$action: "bribe", \$object: this);
+  ::charge_action(\$char: \$char);
+
+  return Call(\$\{Ironclaw:Lib:Combat:Cards:Combat\}, "end_turn", \$char: \$char);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:description_slash">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:description_slash instead! */
+/* Describe slashing with the weapon */
+
+/* EmitTo(\$az, "Args: "+dump_value(args)); */
+/* EmitTo(\$az, "wound_info: "+dump_value(\$wound_info)); */
+
+if(!\$attack_adj) \$attack_adj = "";
+
+\$verbs = (\{ (\{"cut", "cuts", "cutting"\}), (\{"slice", "slices", "slicing"\}), (\{"strike", "strikes", "striking"\}), (\{"slash", "slashes", "slashing"\}) \});
+\$verb = \$verbs[random(sizeof(\$verbs))];
+\$actor_msg = "You"+\$attack_adj+" "+\$verb[0]+" ";
+\$target_msg = Describe(\$char)+\$attack_adj+" "+\$verb[1]+" ";
+\$witness_msg = Describe(\$char)+\$attack_adj+" "+\$verb[1]+" ";
+switch(random(5)) \{
+    case 4:
+        \$actor_msg = "You feign right, then"+\$attack_adj+" slash left, "+\$verb[2]+" ";
+        \$target_msg = Describe(\$char)+" feigns right, then"+\$attack_adj+" slashes left, "+\$verb[2]+" ";
+        \$witness_msg = Describe(\$char)+" feigns right, then "+\$attack_adj+" slashes left, "+\$verb[2]+" ";
+        break;
+    default:
+        break;
+\}
+
+
+switch(random(4)) \{
+    case 3:
+        \$actor_msg += Describe(\$target_detail)+", leaving "+\$wound_info["name"]+".";
+        \$target_msg += Describe(\$target_detail, nil, \$target)+", leaving "+\$wound_info["name"]+".";
+        \$witness_msg += Describe(\$target_detail)+", leaving "+\$wound_info["name"]+".";
+        break;
+    case 2:
+        \$actor_msg += "at "+Describe(\$target)+", cutting "+\$target."base:objective"+" on "+Describe(\$target_detail, \$target)+", leaving "+\$wound_info["name"]+".";
+        \$target_msg += "at you, cutting you on "+Describe(\$target_detail, \$target, \$target)+", leaving "+\$wound_info["name"]+".";
+        \$witness_msg += "at "+Describe(\$target)+", cutting "+\$target."base:objective"+" on "+Describe(\$target_detail, \$target)+", leaving "+\$wound_info["name"]+".";
+        break;
+    case 1:
+        \$actor_msg += Describe(\$target_detail)+".";
+        \$target_msg += Describe(\$target_detail, nil, \$target)+".";
+        \$witness_msg += Describe(\$target_detail)+".";
+        break;
+    case 0:
+        \$actor_msg += "at "+Describe(\$target)+", cutting "+\$target."base:objective"+" on "+Describe(\$target_detail, \$target)+".";
+        \$target_msg += "at you, cutting you on "+Describe(\$target_detail, \$target, \$target)+".";
+        \$witness_msg += "at "+Describe(\$target)+", cutting "+\$target."base:objective"+" on "+Describe(\$target_detail, \$target)+".";
+        break;
+\}
+
+return (\{ \$actor_msg, \$target_msg, \$witness_msg \});
+      </Core:Property>
+      <Core:Property property="merry:lib:description_strike">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:description_strike instead! */
+/* Describe striking with the weapon */
+\$actor_msg = "You ";
+\$target_msg = Describe(\$char)+" ";
+\$witness_msg = Describe(\$char)+" ";
+
+if(!\$damage) \{
+  \$actor_msg += "land a glancing blow on ";
+  \$target_msg += "lands a glancing blow on ";
+  \$witness_msg += "lands a glancing blow on ";
+\} else \{
+  if(!random(2)) \{
+    \$adverb = \$adverb[random(sizeof(\$adverb))];
+    \$actor_msg += \$adverb+" ";
+    \$target_msg += \$adverb+" ";
+    \$witness_msg += \$adverb+" ";
+  \}
+  \$verb = \$verb[random(sizeof(\$verb))];
+  \$actor_msg += \$verb+" ";
+  \$target_msg += \$verb+"s ";
+  \$witness_msg += \$verb+"s ";
+\}
+
+if(!random(2)) \{
+  \$actor_msg += Describe(\$target_detail);
+  \$target_msg += Describe(\$target_detail, nil, \$target);
+  \$witness_msg += Describe(\$target_detail);
+\} else \{
+  \$actor_msg += Describe(\$target)+" on "+Describe(\$target_detail, \$target);
+  \$target_msg += Describe(\$target, nil, \$target)+" on "+Describe(\$target_detail, \$target, \$target);
+  \$witness_msg += Describe(\$target)+" on "+Describe(\$target_detail, \$target);
+\}
+
+\$actor_msg += ".";
+\$target_msg += ".";
+\$witness_msg += ".";
+
+return (\{ \$actor_msg, \$target_msg, \$witness_msg \});
+      </Core:Property>
+      <Core:Property property="merry:lib:guard">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:guard instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) return ::sanity_check(\$char: \$char, \$needs_target: FALSE, \$needs_action: TRUE, \$emotes: FALSE);
+if(\$description) return "Guard yourself";
+if(\$par["taking_action"]) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: FALSE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  EmitTo(\$char, "You shift into a defensive stance.");
+  EmitIn(\$char."base:environment", Describe(\$char)+" shifts into a defensive stance.", \$char);
+  \$char.combat["status"]["guarding"] = 1;
+  ::remove_card_to_deck(\$char: \$char, \$action: "guard", \$object: this);
+  ::charge_action(\$char: \$char);
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:shield bash">
+         X[M] if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid)  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+if(\$description) \{
+  return "Bash "+Describe(\$char.combat["target"])+" with your shield";
+\}
+if(\$par["taking_action"]) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  EmitIn(\$char."base:environment", Describe(\$actor)+" waves his shield around, attempting to bash something.");
+  ::remove_card(\$char: \$char, \$action: "shield bash", \$object: this);
+  ::charge_action(\$char: \$char);
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:sneak attack">
+         X[M] if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE)) return FALSE;
+  \$tmp_target = \$char.combat["target"];
+  if(!\$tmp_target
+  \|\| !\$tmp_target.combat
+  \|\| !\$tmp_target.combat["target"]
+  \|\| \$tmp_target.combat["target"] == \$char)
+    return FALSE;
+  return TRUE;
+\}
+if(\$description) \{
+  return "Sneak attack "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+
+  \$target = \$char.combat["target"];
+  if(\$target.combat["target"]
+  \&\& \$target.combat["target"] == \$char) \{  
+      EmitTo(\$char, "You cannot sneak attack someone while they are targeting you.");
+      ccombat::list_actions(\$char: \$char);
+      return FALSE;
+  \}
+  
+  EmitIn(\$char."base:environment", Describe(\$actor)+" attacks from behind while "+Describe(\$target)+" is fighting "+Describe(\$target.combat["target"])+".");
+  return ::make_attack(\$attack_bonus: Int(\$char."skill:combat:sneakattack")+Int(\$char."career:combat:sneakattack"), \$damage_bonus: (Int(\$char."skill:combat:sneakattack")+Int(\$char."career:combat:sneakattack"))/3);
+\}
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:twohanded strike">
+         X[M] if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) \{
+  return FALSE;
+  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+\}
+if(\$description) \{
+  return "A great big two-handed strike";
+\}
+if(\$par["taking_action"]) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  if(!Call(this, "twohanded strike", \$check_valid: TRUE, \$emotes: TRUE)) \{
+    \$actor.combat["target"] = nil;
+    EmitTo(\$actor, "Sorry, not available!");
+    ccombat::list_actions(\$char: \$actor);
+    return FALSE;
+  \}
+  EmitIn(\$char."base:environment", Describe(\$actor)+" flails around, trying to do a two-handed strike.");
+  /* ::remove_card(\$char: \$char, \$action: "twohanded strike", \$object: this); */
+  ::charge_action(\$char: \$char);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1385013190, "tonyd", "E", 1385279820, "tonyd", "P", 1385279919, "tonyd", "P", 1385280624, "tonyd", "P", 1385281325, "tonyd", "P", 1385281759, "tonyd", "P", 1385284148, "tonyd", "P", 1385284259, "tonyd", "P", 1385284314, "tonyd", "P", 1385284322, "tonyd", "P", 1385284335, "tonyd", "P", 1385341322, "tonyd", "P", 1385592734, "tonyd", "P", 1385594193, "tonyd", "P", 1385594215, "tonyd", "P", 1385594231, "tonyd", "P", 1385594238, "tonyd", "P", 1385595952, "tonyd", "P", 1385596990, "tonyd", "P", 1385598089, "tonyd", "P", 1385598116, "tonyd", "P", 1385598412, "tonyd", "P", 1385598450, "tonyd", "P", 1385598550, "tonyd", "P", 1385599019, "tonyd", "P", 1385599111, "tonyd", "P", 1385599235, "tonyd", "P", 1385599375, "tonyd", "P", 1385599614, "tonyd", "P", 1386733072, "tonyd", "P", 1386733186, "tonyd", "P", 1386733344, "tonyd", "P", 1386739726, "tonyd", "P", 1386740852, "tonyd", "P", 1386740855, "tonyd", "P", 1386740898, "tonyd", "P", 1386741063, "tonyd", "P", 1386741077, "tonyd", "P", 1386741082, "tonyd", "P", 1386741210, "tonyd", "P", 1386741443, "tonyd", "P", 1386744521, "tonyd", "P", 1386744576, "tonyd", "P", 1386744581, "tonyd", "P", 1386744662, "tonyd", "P", 1386744683, "tonyd", "P", 1386844300, "tonyd", "P", 1386844340, "tonyd", "P", 1386844451, "tonyd", "P", 1386844743, "tonyd", "P", 1386844788, "tonyd", "P", 1386844803, "tonyd", "P", 1386845026, "tonyd", "P", 1386845037, "tonyd", "P", 1386912361, "tonyd", "P", 1386912395, "tonyd", "P", 1386912420, "tonyd", "P", 1387011655, "tonyd", "P", 1387011707, "tonyd", "P", 1387011731, "tonyd", "P", 1387011848, "tonyd", "P", 1387166576, "tonyd", "P", 1387166621, "tonyd", "P", 1387166846, "tonyd", "P", 1387783716, "tonyd", "P", 1390275785, "tonyd", "P", 1390275864, "tonyd", "P", 1390281834, "tonyd", "P", 1390281849, "tonyd", "P", 1390282735, "tonyd", "P", 1390282805, "tonyd", "P", 1390537791, "tonyd", "P", 1390538146, "tonyd", "P", 1390541011, "tonyd", "P", 1390544767, "tonyd", "P", 1390544775, "tonyd", "P", 1390544788, "tonyd", "P", 1390544845, "tonyd", "P", 1390544959, "tonyd", "P", 1390545053, "tonyd", "P", 1390545083, "tonyd", "P", 1390545120, "tonyd", "P", 1390562900, "tonyd", "P", 1390695542, "tonyd", "P", 1390695596, "tonyd", "P", 1390695615, "tonyd", "P", 1390695750, "tonyd", "P", 1390695785, "tonyd", "P", 1390695800, "tonyd", "P", 1390695810, "tonyd", "P", 1390695848, "tonyd", "P", 1390695965, "tonyd", "P", 1390696181, "tonyd", "P", 1390698943, "tonyd", "P", 1390720048, "tonyd", "P", 1390720948, "tonyd", "P", 1390721171, "tonyd", "P", 1390721197, "tonyd", "P", 1390721211, "tonyd", "P", 1390721291, "tonyd", "P", 1390721323, "tonyd", "P", 1390721352, "tonyd", "P", 1390722028, "tonyd", "P", 1390722066, "tonyd", "P", 1390722097, "tonyd", "P", 1390722104, "tonyd", "P", 1390723514, "tonyd", "P", 1390724150, "tonyd", "P", 1390724480, "tonyd", "P", 1390725098, "tonyd", "P", 1390725111, "tonyd", "P", 1390725128, "tonyd", "P", 1390725153, "tonyd", "P", 1390725181, "tonyd", "P", 1390782437, "tonyd", "P", 1390789870, "tonyd", "P", 1390790556, "tonyd", "P", 1390790599, "tonyd", "P", 1390790620, "tonyd", "P", 1390790804, "tonyd", "P", 1390790832, "tonyd", "P", 1390793496, "tonyd", "P", 1390793560, "tonyd", "P", 1390793816, "tonyd", "P", 1390794014, "tonyd", "P", 1390794168, "tonyd", "P", 1390794205, "tonyd", "P", 1391487573, "tonyd", "P", 1391487588, "tonyd", "P", 1391487606, "tonyd", "P", 1391487639, "tonyd", "P", 1391487645, "tonyd", "P", 1391487746, "tonyd", "P", 1391488038, "tonyd", "P", 1391488259, "tonyd", "P", 1391488322, "tonyd", "P", 1391488820, "tonyd", "P", 1391488941, "tonyd", "P", 1391488980, "tonyd", "P", 1391932949, "tonyd", "P", 1391934425, "tonyd", "P", 1392443647, "tonyd", "P", 1392451006, "tonyd", "P", 1392451021, "tonyd", "P", 1393065935, "tonyd", "P", 1393568391, "tonyd", "P", 1393568466, "tonyd", "P", 1393568497, "tonyd", "P", 1393650927, "tonyd", "P", 1393650999, "tonyd", "P", 1393651678, "tonyd", "P", 1393652795, "tonyd", "P", 1393652837, "tonyd", "P", 1393652847, "tonyd", "P", 1393652854, "tonyd", "P", 1393652873, "tonyd", "P", 1393653029, "tonyd", "P", 1393653070, "tonyd", "P", 1393653129, "tonyd", "P", 1393654237, "tonyd", "P", 1393654484, "tonyd", "P", 1393654543, "tonyd", "P", 1393654589, "tonyd", "P", 1393654604, "tonyd", "P", 1393654761, "tonyd", "P", 1393654795, "tonyd", "P", 1393654811, "tonyd", "P", 1393654825, "tonyd", "P", 1393655030, "tonyd", "P", 1393655102, "tonyd", "P", 1393655126, "tonyd", "P", 1393655134, "tonyd", "P", 1393655189, "tonyd", "P", 1393655220, "tonyd", "P", 1393655255, "tonyd", "P", 1393655301, "tonyd", "P", 1393655356, "tonyd", "P", 1393655390, "tonyd", "P", 1393655427, "tonyd", "P", 1393655472, "tonyd", "P", 1393655481, "tonyd", "P", 1393655554, "tonyd", "P", 1393663261, "tonyd", "P", 1393663699, "tonyd", "P", 1393663735, "tonyd", "P", 1393665106, "tonyd", "P", 1393822342, "tonyd", "P", 1393822918, "tonyd", "P", 1393824741, "tonyd", "P", 1393824781, "tonyd", "P", 1393995215, "tonyd", "P", 1393996251, "tonyd", "P", 1393996306, "tonyd", "P", 1393996328, "tonyd", "P", 1393996375, "tonyd", "P", 1393998441, "tonyd", "P", 1393998883, "tonyd", "P", 1393998895, "tonyd", "P", 1393998940, "tonyd", "P", 1393999044, "tonyd", "P", 1393999064, "tonyd", "P", 1393999688, "tonyd", "P", 1393999750, "tonyd", "P", 1393999798, "tonyd", "P", 1393999839, "tonyd", "P", 1394000149, "tonyd", "P", 1394000209, "tonyd", "P", 1394001836, "tonyd", "P", 1394001855, "tonyd", "P", 1394087509, "tonyd", "P", 1394087611, "tonyd", "P", 1394089105, "tonyd", "P", 1401014045, "tonyd", "P", 1401014090, "tonyd", "P", 1401014410, "tonyd", "P", 1401014468, "tonyd", "P", 1401014497, "tonyd", "P", 1401014504, "tonyd", "P", 1401014522, "tonyd", "P", 1401014541, "tonyd", "P", 1401014549, "tonyd", "P", 1401014566, "tonyd", "P", 1401014596, "tonyd", "P", 1401014709, "tonyd", "P", 1401014748, "tonyd", "P", 1401014871, "tonyd", "P", 1401014902, "tonyd", "P", 1401014909, "tonyd", "P", 1401014931, "tonyd", "P", 1401014945, "tonyd", "P", 1401015046, "tonyd", "P", 1401015240, "tonyd", "P", 1405233255, "tonyd", "P", 1405233283, "tonyd", "P", 1405233749, "tonyd", "P", 1405236770, "tonyd", "P", 1405236835, "tonyd", "P", 1405237092, "tonyd", "P", 1405237154, "tonyd", "P", 1406171080, "tonyd", "P", 1406172015, "tonyd", "P", 1412531289, "jominey", "E", 1412531795, "jominey", "E", 1412533053, "jominey", "E", 1412533282, "jominey", "E", 1412534757, "jominey", "E", 1412534889, "jominey", "E", 1412535047, "jominey", "E", 1412535069, "jominey", "E", 1412535130, "jominey", "E", 1412535157, "jominey", "E", 1412536651, "jominey", "E", 1412537581, "jominey", "E", 1412537646, "jominey", "E", 1412537762, "jominey", "E", 1412537949, "jominey", "E", 1412538080, "jominey", "E", 1412538364, "jominey", "E", 1412542399, "jominey", "E", 1412542480, "jominey", "E", 1412542579, "jominey", "E", 1412542809, "jominey", "E", 1449909733, "tonyd", "P", 1449909744, "tonyd", "P", 1449909807, "tonyd", "P", 1449909885, "tonyd", "P", 1449909919, "tonyd", "P", 1449909926, "tonyd", "P", 1449910474, "tonyd", "P", 1449910498, "tonyd", "P", 1449910678, "tonyd", "P", 1449910987, "tonyd", "P", 1449911082, "tonyd", "P", 1449911097, "tonyd", "P", 1449911249, "tonyd", "P", 1449911642, "tonyd", "P", 1449911809, "tonyd", "P", 1449911814, "tonyd", "P", 1449911844, "tonyd", "P", 1449911897, "tonyd", "P", 1449911932, "tonyd", "P", 1449911971, "tonyd", "P", 1449912114, "tonyd", "P", 1449912591, "tonyd", "P", 1449912602, "tonyd", "P", 1449912692, "tonyd", "P", 1450244015, "tonyd", "P", 1450244040, "tonyd", "P", 1450244133, "tonyd", "P", 1453779463, "jominey", "E", 1453780159, "jominey", "E", 1453780248, "jominey", "E", 1453780277, "jominey", "E", 1453780371, "jominey", "E", 1453780459, "jominey", "E", 1453794904, "tonyd", "P", 1453795921, "tonyd", "P", 1453877830, "tonyd", "P", 1453877889, "tonyd", "P", 1453877987, "tonyd", "P", 1453878061, "tonyd", "P", 1453954228, "tonyd", "P", 1453954484, "tonyd", "P", 1453954678, "tonyd", "P", 1453956234, "tonyd", "P", 1461737014, "tonyd", "P", 1461737040, "tonyd", "P", 1461737327, "tonyd", "P", 1461737404, "tonyd", "P", 1461737527, "tonyd", "P", 1461737717, "tonyd", "P", 1461737739, "tonyd", "P", 1461737970, "tonyd", "P", 1461737980, "tonyd", "P", 1461738017, "tonyd", "P", 1461738037, "tonyd", "P", 1461738047, "tonyd", "P", 1461738062, "tonyd", "P", 1461738100, "tonyd", "P", 1461738163, "tonyd", "P", 1461738236, "tonyd", "P", 1461738355, "tonyd", "P", 1461738483, "tonyd", "P", 1461738593, "tonyd", "P", 1463732450, "tonyd", "P", 1463732516, "tonyd", "P", 1463732683, "tonyd", "P", 1463733352, "tonyd", "P", 1463735913, "tonyd", "P", 1463735931, "tonyd", "P", 1463736061, "tonyd", "P", 1463736076, "tonyd", "P", 1463898390, "tonyd", "P", 1465114731, "tonyd", "P", 1469080190, "tonyd", "P", 1469080234, "tonyd", "P", 1469080506, "tonyd", "P", 1469080637, "tonyd", "P", 1469080982, "tonyd", "P", 1469081009, "tonyd", "P", 1469081567, "tonyd", "P", 1469081597, "tonyd", "P", 1469081653, "tonyd", "P", 1469081960, "tonyd", "P", 1469082045, "tonyd", "P", 1469082244, "tonyd", "P", 1469082338, "tonyd", "P", 1469082345, "tonyd", "P", 1469082473, "tonyd", "P", 1469082634, "tonyd", "P", 1469082980, "tonyd", "P", 1469083127, "tonyd", "P", 1469083146, "tonyd", "P", 1469083299, "tonyd", "P", 1469083666, "tonyd", "P", 1469083706, "tonyd", "P", 1469083715, "tonyd", "P", 1469083738, "tonyd", "P", 1469083818, "tonyd", "P", 1469084193, "tonyd", "P", 1469084211, "tonyd", "P", 1469084221, "tonyd", "P", 1469084233, "tonyd", "P", 1469085784, "tonyd", "P", 1478057982, "tonyd", "P", 1478058024, "tonyd", "P", 1478060719, "tonyd", "P", 1478060765, "tonyd", "P", 1478060804, "tonyd", "P", 1478060831, "tonyd", "P", 1478065251, "tonyd", "P", 1478065267, "tonyd", "P", 1478065280, "tonyd", "P", 1478065284, "tonyd", "P", 1478065293, "tonyd", "P", 1478144105, "tonyd", "P", 1478144125, "tonyd", "P", 1478144194, "tonyd", "P", 1478144203, "tonyd", "P", 1478144258, "tonyd", "P", 1478144282, "tonyd", "P", 1478144757, "tonyd", "P", 1502769789, "tonyd", "P", 1502769823, "tonyd", "P", 1502769849, "tonyd", "P", 1502769870, "tonyd", "P", 1502770030, "tonyd", "P", 1502770064, "tonyd", "P", 1502770070, "tonyd", "P", 1502770183, "tonyd", "P", 1502770312, "tonyd", "P", 1502770340, "tonyd", "P", 1502770604, "tonyd", "P", 1502770790, "tonyd", "P", 1502770820, "tonyd", "P", 1502770829, "tonyd", "P", 1502770866, "tonyd", "P", 1502770883, "tonyd", "P", 1502770921, "tonyd", "P", 1502770954, "tonyd", "P", 1502770993, "tonyd", "P", 1502771045, "tonyd", "P", 1502771073, "tonyd", "P", 1502771349, "tonyd", "P", 1502771533, "tonyd", "P", 1502771649, "tonyd", "P", 1502771861, "tonyd", "P", 1502771916, "tonyd", "P", 1502771956, "tonyd", "P", 1502771992, "tonyd", "P", 1502778139, "tonyd", "P", 1502778269, "tonyd", "P", 1502778327, "tonyd", "P", 1502778369, "tonyd", "P", 1502778440, "tonyd", "P", 1502778864, "tonyd", "P", 1502779001, "tonyd", "P", 1502779036, "tonyd", "P", 1502779109, "tonyd", "P", 1502779125, "tonyd", "P", 1502779175, "tonyd", "P", 1502779260, "tonyd", "P", 1502779321, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

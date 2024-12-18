@@ -1,0 +1,174 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" actor="\$(actor)" statue="\$(statue)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+    \<title\>An Unfinished Bust\</title\>
+    \<meta http-equiv="content-type" content="text/html; charset=UTF-8"/\>
+\</head\>
+   \<body\>
+      \$(this.xtra:header)
+      \<div id="main"\>
+        \<div id="textareafull"\>
+        \$[::popup_initialize();        
+            \$actor = Obj(\$actor);]
+            \$(this.html:statue)
+        \</div\>
+        \<span id="bottombox"\>
+          \<div id="footer"\>\\\&nbsp;\</div\>
+        \</span\>
+      \</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:statue">
+         X[S] \<zform actor="\$(actor)" statue="\$(statue)" using="\$(using)" error="\$(error)" brief1="\$(brief1)" examine1="\$(examine1)"\>
+\$[\$statue = Obj(\$statue);                  
+    \$actor = Obj(\$actor);     
+    \$words = (Int(\$actor."skill:alteration:stonemasonry")+1) * 20;]
+\<input type="hidden" name="words" value="\$(words)"/\>
+\<input type="hidden" name="error" value="\$(error)"/\>
+\<table\>
+\{? \| \$(error) \| \<font color="red"\>\<b\>You have exceeded your allotted word limit by \$(error) words.\</b\>\</font\> \}
+\<tr\>
+        \<td colspan="3"\>\<font size="2"\>\<i\>You have \$[Str(Int(\$actor."skill:alteration:stonemasonry"))] levels in stonemason. You are allowed \$(words) words to describe your statue.\</i\>\</font\>\</td\>
+\</tr\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td\>\<b\>Title:\</b\>\</td\>
+        \<td\>a bust of \<input type="text" name="brief" style="width:350px" value="\$(brief1)"\>\</input\>\</td\>
+        \<td\>("a statue of a tall man")\</td\>
+\</tr\>
+\<tr\>
+        \<td valign="top"\>\<b\>Description:\</b\>\</td\>
+        \<td colspan="2"\>\<textarea name="examine" style="height:350px; width:100%"\>\$(examine1)\</textarea\>\</td\>
+\</tr\>
+\<tr\>
+        \<td colspan="3" align="right"\>(Note: By clicking "Finish" you agree to the rules outlined below.) \<input type="submit" name="update" value="Finish" style="height:30px"/\>\</td\>
+\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>Rules:\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>1. Submissions can have magical/supernatural themes but cannot be magical/supernatural themselves (ie. a statue of a figure that moves around on its own).\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>2. Vulgar/sexually explicit material is forbidden--if the content is not acceptable for a minor, do not submit it! When in doubt, contact staff.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>3. Avoid phrasing that forces the viewer to think or feel a certain way (ie 'this statue is so beautiful you can't help but cry').\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>4. Do not reference details of the statue that do not actually exist, such as gems or inlay.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>5. I understand if I violate these rules, access to this command will be revoked.\</font\>\</td\>\</tr\>
+\</table\>
+    \<action\>
+        \$["";           
+          \$counter = sizeof(explode(\$examine, " "));           
+          if(\$counter \< Int(\$words)) \{           
+              Call(\$this, "statue", \$title: \$brief, \$description: \$examine, \$actor: \$actor, \$statue: \$statue);       
+              \$error = nil;       
+          \} else \{           
+              \$error = \$counter - Int(\$words);           
+          \}]
+        \{? \| \$(error) \| \<redirect propob="\$(this)" prop="index" actor="\$(actor)" statue="\$(statue)" using="\$(using)" error="\$(error)" brief1="\$(brief)" examine1="\$(examine)"/\> \| \<redirect propob="\$(this)" prop="finish" actor="\$(actor)" statue="\$(statue)" using="\$(using)" error="\$(error)" brief1="\$(brief)" examine1="\$(examine)"/\> \}
+    \</action\>
+\</zform\>
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] if(\$dat == nil) \{
+    error("page reached without a udat");
+\}
+if(\$name == nil) \{
+    error("page reached without a name");
+\}
+if(\$actor == nil) \{
+    error("page reached without an actor");
+\}
+if(!Obj(\$actor)) \{
+    error("page reached without a valid actor");
+\}
+\$actor = Obj(\$actor);
+
+if(!Obj(\$statue)) \{
+    error("page reached without a valid statue");
+\}
+\$statue = Obj(\$statue);
+if(\$statue."trait:brief" != "unfinished statue" \&\& \$statue."trait:brief" != "unfinished bust") \{
+    error("statue has already been used");
+\}
+
+if(\$statue."base:environment" != \$actor."base:environment") \{
+    error("the statue must be in your environment");
+\}
+
+/* Check the player isn't trying to access someone elses body */
+/* Check if the players roster of characters */
+\$bodies = Udat::query_bodies_in_roster(\$user: \$name);
+
+/*
+if(!member(\$actor, \$bodies)) \{
+    error(dump_value(\$actor)+" body not found in "+dump_value(\$name)+" character roster");
+\}
+*/
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:statue">
+         X[M] int i;
+
+\$adjectives = (\{ "sculpture", "of", "bust" \});
+\$snames = (\{ "sculpture" \});
+\$pnames = (\{ "sculptures" \});
+
+\$title = explode(\$brief, " ");
+\$description = \$examine;
+
+/* Something was sculpted into the statue */
+if(\$dob \&\& (sizeof(\$dob) == 1)) \{
+  \$target = NRefOb(\$dob[0]);
+  if(\$target."base:volition" \&\& (\$target."base:volition" != 0)) \{
+    \$statue."trait:brief" = "bust of "+Describe(\$target);
+  \} else \{
+    \$statue."trait:brief" = "bust of "+Describe(\$target);
+  \}
+  \$statue."trait:look" = UnSAM(\$"\<describe-view view=\\"\$(target)\\" type=\\"look\\"/\>");
+  \$statue."trait:examine" = UnSAM(\$"\<describe-view view=\\"\$(target)\\" type=\\"examine\\"/\>");
+  \$title = explode(Describe(\$target), " ");
+\} else \{
+  /* Freeform */
+  \$statue."trait:brief" = "bust of " + \$brief;
+  \$statue."trait:look" = \$description;
+  \$statue."trait:examine" = \$description;
+  \$text = "! SCULPTURE ! " + \$statue."trait:brief" + ". " + \$statue."trait:examine" + " (\<" + Str(\$statue) + "\>)";
+  assist::dofileassist(\$data: Obj("Data:DB:assist:AssistGeneralDB"), \$char: Str(\$actor), \$queue: "custom", \$assisttext: \$text, \$log: "[TAS]");
+\}
+
+/* Replace snames and adjectives */
+\$adjectives += \$title;
+\$snames += \$title;
+\$pnames += \$title;
+if(\$target) \$snames -= (\{ \$target."trait:superbrief" \});
+
+for(i = 0; i \< sizeof(\$adjectives); i++) \{
+    Set(\$statue, "details:default:adjective:" + \$adjectives[i], 1);
+\}
+
+for(i = 0; i \< sizeof(\$snames); i++) \{
+    Set(\$statue, "details:default:sname:" + \$snames[i], 1);
+\}
+
+for(i = 0; i \< sizeof(\$pnames); i++) \{
+    Set(\$statue, "details:default:pname:" + \$pnames[i], 1);
+\}
+
+Set(\$statue, "details:default:adjective:unfinished", nil);
+
+/* Set the statue quality */
+\$statue."trait:statue:quality" = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "alteration:stonemasonry" \}), \$bonus: (\{ "trait:mind" \}));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1502934130, "jominey", "E", 1502934270, "jominey", "E", 1502934474, "jominey", "E", 1502935277, "jominey", "E", 1502935379, "jominey", "E", 1502935482, "jominey", "E", 1502936770, "jominey", "E", 1502936785, "jominey", "E", 1503019225, "jominey", "R", 1503100205, "jominey", "E", 1503100373, "jominey", "E", 1504058157, "jominey", "E", 1540566509, "jominey", "E", 1540566518, "jominey", "E", 1540566563, "jominey", "E", 1540567312, "jominey", "E", 1540567319, "jominey", "E", 1540567325, "jominey", "E", 1540567417, "jominey", "E", 1540567452, "jominey", "E", 1540568244, "jominey", "P", 1540568257, "jominey", "P", 1540568582, "jominey", "E", 1540568605, "jominey", "E", 1540568657, "jominey", "E", 1540568684, "jominey", "E", 1540568723, "jominey", "E", 1540568757, "jominey", "E", 1540568790, "jominey", "E", 1540568870, "jominey", "E", 1540569175, "jominey", "E", 1540569189, "jominey", "E", 1540569200, "jominey", "E", 1540569258, "jominey", "E", 1540569287, "jominey", "E", 1540569324, "jominey", "E", 1540569409, "jominey", "E", 1570294671, "jominey", "R", 1572303730, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,567 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Allegory:Lib:Guilds:GuildLib-Trading)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:get_guild_vote_message">
+         X[M] /* run some initial code */  
+string output;  
+int i, sz, j, jx;  
+
+output = "";
+  
+/*\$az = Obj("Chatters:IC:az:azrael");*/  
+  
+/* do we have sensible variables? */  
+if(!\$actor) return nil;  
+if(!\$actor.guild) return nil;  
+\$guild = \$actor.guild;  
+output = "";  
+/* is the guild having a vote? */  
+if(\$guild."vote:voting") \{  
+  /* a vote is in progress */  
+  output += "\\nThere is currently a vote for the leadership of "+Str(\$guild.fullname)+". All members are being approached by servants gathering references for the new administrator.\\n[OOC: type @newguild to open a popup window, where you should be able to nominate yourself, or vote for who you feel should run the guild.]\\n";  
+  if(!\$guild."settings:vote_by_rank") \{  
+    /* normal vote based on priority */  
+    if(\$guild."vote:nominations" == 2) \{  
+      output += "Members with guild priority 2 may nominate themselves.\\n";  
+    \} else if(\$guild."vote:nominations" == 1) \{  
+      output += "Members with guild priority 1 may nominate themselves.\\n";  
+    \} else \{  
+      output += "All guild members may nominate themselves.\\n";  
+    \}  
+  \} else \{  
+    /* vote based on rank */  
+    if(\$guild."vote:nominations" == 2) \{  
+      output += "Gentry, Knights, or Peers may nominate themselves.\\n";  
+    \} else if(\$guild."vote:nominations" == 1) \{  
+      output += "Peers (Baronets and above) may nominate themselves.\\n";  
+    \} else \{  
+      output += "All guild members may nominate themselves.\\n";  
+    \}  
+  \}  
+\}  
+  
+if(output == "" \&\& \$guild."vote:newleader:time" \&\& time() \< \$guild."vote:newleader:time"+ 60*60*24*7 ) \{  
+  /* The vote is recently done. Display the winner */  
+  output += "\\nThe leadership of "+Str(\$guild.fullname)+" has recently been transferred to " + Str(\$guild.leader."trait:title") + " " + Str(capitalize(\$guild.leader."skotos:charname"))+".";  
+\}  
+  
+if(output == "") \{  
+  /* no guild message */  
+  return nil;  
+\}  
+  
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:initialize_guild_vote">
+         X[M] /* start a vote for the guild */  
+int i, sz;  
+if(!\$guild) return FALSE;  
+  
+\$az = \$\{Chatters:AE:az:azrael\};  
+  
+/* initialize the vote */  
+EmitTo(\$az, "Initializing the vote.");  
+  
+/* check the guild isn't already in a vote */  
+if(\$guild."vote:voting") return FALSE;  
+  
+\$guild."vote:voting" = TRUE;  
+  
+/* looking for nominations */  
+  
+/* are there enough nominations at stage 1? */  
+  
+/* count everyone active of priority 1 and 2 */  
+/* (or all the nobles and gentry, for a great house) */  
+\$pri1 = 0; \$pri2 = 0;  
+\$guild.members -= (\{ nil \});  
+if(\$guild."settings:vote_by_rank") \{  
+  /* base nominations on social rank */  
+  for(i=0;i\<sizeof(\$guild.members);i++) \{  
+    if(Int(\$guild.members[i]."rank:rank") \>= 10  
+    \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*21 \> time()) \{  
+      \$pri1++;  
+    \} else if(Int(\$guild.members[i]."rank:rank") \>= 7  
+    \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*21 \> time()) \{  
+      \$pri2++;  
+    \}  
+  \}  
+\} else \{  
+  /* base nominations on guild priority */  
+  for(i=0;i\<sizeof(\$guild.members);i++) \{  
+    if(Int(\$guild.members[i]."guild:rank") == 1  
+    \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*21 \> time()) \{  
+      \$pri1++;  
+    \} else if(Int(\$guild.members[i]."guild:rank") == 2  
+    \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*21 \> time()) \{  
+      \$pri2++;  
+    \}  
+  \}  
+\}  
+  
+/* what nominations are we accepting? */  
+\$guild."vote:nominees" = (\{ \});  
+\$guild."vote:selections" = ([ ]);  
+if(\$pri1 \>= 3) \{  
+  \$guild."vote:nominations" = 1;  
+\} else if(\$pri1 + \$pri2 \>= 3) \{  
+  \$guild."vote:nominations" = 2;  
+\} else \{  
+  \$guild."vote:nominations" = 3;  
+\}  
+/* delay until we have enough nominees, or until everyone can nominate themselves */  
+EmitTo(\$az, "Nominations are at: "+dump_value(\$guild."vote:nominations"));  
+\$delay(60*60*24*3, TRUE, "a278");  
+while(\$guild."vote:nominees" \&\& !\$guild."vote:begin"  
+      \&\& sizeof(\$guild."vote:nominees") \< 3 \&\& \$guild."vote:nominations" \< 3) \{  
+  \$guild."vote:nominations"++;  
+  EmitTo(\$az, "Not enough nominees. Increasing range.");  
+  EmitTo(\$az, "Nominations are at: "+dump_value(\$guild."vote:nominations"));  
+  \$delay(60*60*24*3, TRUE, "dbe3");  
+\}  
+  
+/* ok, we have enough nominees, or we've allowed everyone to nominate themselves */  
+/* check if the vote has already begun */  
+if(!\$guild."vote:begin" \&\& \$guild."vote:nominees") \{  
+  /* vote hasn't begun */  
+  /* do we have any nominees? */  
+  \$guild."vote:nominees" -= (\{ nil \});  
+  if(!sizeof(\$guild."vote:nominees")) \{  
+    /* No nominees! */  
+    /* give them the voting time to add someone */  
+    \$guild."vote:begin" = time();  
+  \} else if(sizeof(\$guild."vote:nominees") == 1) \{  
+    /* one nominee. Give them the guild. */  
+    EmitTo(\$az, "One nominee. Giving them leadership of the guild.");  
+    \$guild."vote:begin" = nil;  
+  \} else \{  
+    /* more than one nominee. Allow the vote to take place. */  
+    EmitTo(\$az, "Starting the vote");  
+    \$guild."vote:begin" = time();  
+  \}  
+\}  
+if(\$guild."vote:begin") \{  
+  /* wait until vote should end (two weeks) */  
+  EmitTo(\$az, "Delaying for end of vote");  
+  \$time = 60*60*24*7-time()+\$guild."vote:begin";  
+  if(\$time \< 0) \$time = 0;  
+  \$delay(\$time, TRUE, "2675");  
+  /* if the vote time ends, and the vote is no longer running, it is because the guild has already been assigned */  
+  if(!\$guild."vote:voting") return TRUE;  
+\}  
+  
+  
+/* vote completed */  
+EmitTo(\$az, "Vote completed.");  
+\$guild."vote:voting" = nil;  
+\$guild."outcome:of:vote" = \$guild."vote:selections";  
+  
+/* clean up the nominations array */  
+\$guild."vote:nominees" -= (\{ nil \});  
+/* make sure the nominees are still in the guild */  
+sz = \$guild."vote:nominees";  
+for(i=0;i\<sz;i++) \{  
+  \$nominee = \$guild."vote:nominees"[i];  
+  if(!\$nominee.guild \|\| \$nominee.guild != \$guild)  
+    \$guild."vote:nominees" -= (\{ \$nominee \});  
+\}  
+  
+if(!sizeof(\$guild."vote:nominees")) \{  
+  /* No nominees! Destroy the guild (or do whatever is appropriate) */  
+  \$guild.destroy = TRUE;  
+\} else if(sizeof(\$guild."vote:nominees") == 1) \{  
+    /* one nominee. Give them the guild. */  
+    \$chosen = \$guild."vote:nominees"[0];  
+\} else \{  
+  /* more than one nominee. Check who got the most votes */  
+  \$selections = map_values(\$guild."vote:selections");  
+  /* loop through the nominees, counting their votes */  
+  \$max = 0;  
+  sz = \$guild."vote:nominees";  
+  for(i=0;i\<sz;i++) \{  
+    \$nominee = name(\$guild."vote:nominees"[0]);  
+    \$count = 0;  
+    for(\$j=0;\$j\<sizeof(\$selections);\$j++) \{  
+      if(\$nominee == \$selections[\$j])  
+        \$count++;  
+    \}  
+    if(!\$chosen \|\| \$count \> \$max) \{  
+      \$chosen = \$nominee;  
+      \$max = \$count;  
+    \} else if(\$count == \$max) \{  
+      if(!random(2))  
+        \$chosen = \$nominee;  
+    \}  
+  \}  
+  if(!\$chosen) \{  
+    /* couldn't pick anyone. Destroy the guild */  
+    \$guild.destroy = TRUE;  
+  \}  
+\}  
+  
+/* assign the guild */  
+if(\$chosen) \{  
+  \$guild.leader = \$chosen;  
+  /* leave a message for the guild members */
+  /*  
+  if(\$chosen."skotos:playercapname") \{
+      \$guild."vote:newleader" = Str(\$chosen."skotos:playercapname");  
+  \} else \{
+      \$guild."vote:newleader" = Str(capitalize(\$chosen."skotos:charname"));
+  \}
+  */
+  \$guild."vote:newleader" = Str(Describe(\$chosen));
+  \$guild."vote:newleader:time" = time();  
+\}  
+  
+/* or destroy it */  
+if(\$guild.destroy) \{  
+  /* destroy this guild */  
+  /* NOT WRITTEN YET */  
+\}  
+  
+\$list = map_indices(prefixed_map(\$guild."*", "vote:"));  
+for(i=0;i\<sizeof(\$list);i++) \{  
+  Set(\$guild, \$list[i], nil);  
+\}  
+  
+if(\$chosen) \{  
+  /* this doesn't seem needed anymore */  
+  \$guild."vote:chosen" = Str(\$chosen."skotos:playercapname");  
+  \$guild."vote:end" = time();  
+\}  
+  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:voting_check_nomination">
+         X[M] int i;
+  /* check they have the right rank, and can nominate themselves * /
+  /* sanity check */
+  if(!\$guildrank) return FALSE;
+  if(!\$guild."vote:voting") return FALSE;
+
+  /* slaves can't be nominated */
+  if(\$actor."rank:rank" == 1) return FALSE;
+
+  /* Can't be leader of more than one VP guild */
+  \$accountname = \$actor."udat:name";
+  \$vpguilds = (\{ \$\{Allegory:Guilds:germany\}, \$\{Allegory:Guilds:italy\}, \$\{Allegory:Guilds:church\}, \$\{Allegory:Guilds:cityguard\}, \$\{Allegory:Guilds:scotland\}, \$\{Allegory:Guilds:france\} \}) - (\{ \$guild \});
+
+  for(i = 0; i \< sizeof(\$vpguilds); i++) \{
+    if(\$vpguilds[i].leader) \{
+        if(\$vpguilds[i].leader."skotos:creator" == \$accountname) \{
+            return FALSE;
+        \}
+    \}
+  \}
+
+  /* if it's at stage three, any member can be nominated */
+  if(\$guild."vote:nominations" \>= 3) return TRUE;
+
+  /* vote based on rank */
+  if(\$guild."vote:nominations" == 2) \{
+    if(\$actor."rank:rank" \&\&
+      \$actor."rank:rank" \>= 7) return TRUE;
+  \} else \{
+      return TRUE;
+  \}
+
+
+
+  return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:voting_display">
+         X[M] int i;
+string output;
+
+output = "";
+
+  /* sanity checking */
+  /* make sure a vote is happening */
+  if(!\$guild."vote:voting") \{
+    /* can they call for a vote? */
+    if(!\$guild.leader) \{
+      output += capitalize(Str(\$guild.fullname))+" has no current leader.\<br/\>\\n";
+      output += "\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here to call a vote for a new guildleader.\</u\>\<br/\>\\n";
+      return output;
+    \}
+    /* Are they a great house or VP guild? In that case, call for a vote if the leader is idle, or if it's been three months. */
+    if(\$guild."vote:vp_guild") \{
+      if(Int(\$guild.leader."cdat:lastlogin")+60*60*24*30 \< time()) \{
+        output += "The current guild leader, "+Str(\$guild.leader."skotos:playercapname")+", has not been seen in over a month.\<br/\>\\n";
+        output += "[\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here if you want to call a vote for a new guildleader.\</u\>]\<br/\>\\n";
+        return output;
+      \}
+      if(Int(\$guild."vote:newleader:time")+60*60*24*30*3 \< time()) \{
+        output += "It has been over three months since there was a vote for the guild leader.\<br/\>\\n";
+        output += "[\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here if you want to call a vote for a new guildleader.\</u\>]\<br/\>\\n";
+        return output;
+      \}
+    \}
+    /* was there a new leader appointed? */
+    if(\$guild."vote:newleader:time" \&\& \$guild."vote:newleader:time"+60*60*24*7 \> time())
+      return capitalize(Str(\$guild."vote:newleader"))+" has been appointed the new leader of "+Str(\$guild.fullname)+".";
+    return "";
+  \}
+  /* remove deleted candidates */
+  \$guild."vote:nominees" -= (\{ nil \});
+
+  output = "There is currently a vote for the leadership of "+\$guild.fullname+".\<br/\>";
+  /* vote based on rank */
+  if(\$guild."vote:nominations" == 2) \{
+    output += "Gentry, Knights, or Peers may nominate themselves.\<br/\>\\n";
+  \} else if(\$guild."vote:nominations" == 1) \{
+    output += "Peers (Barons and above) may nominate themselves.\<br/\>\\n";
+  \} else \{
+    output += "All guild members may nominate themselves.\<br/\>\\n";
+  \}
+
+  output += "[OOC Reminder: Alts are not eligible to lead two VP guilds at the same time.]\<br/\>\\n";
+
+  if(!member(\$actor, Arr(\$guild."vote:nominees"))) \{
+    /* actor isn't nominated for this vote */
+    /* check they have the right rank, and can nominate themselves */
+    if(Call(this, "general_script", \$script: "voting_check_nomination")) \{
+      output += "\<u class=\\"clickable\\" onclick=\\"run_script('voting_nominate'); display_block('vote', 'voting_display');\\"\>Click here to nominate "+Str(\$actor."skotos:playercapname")+" for the position of guildleader.\</u\>\<br/\>\\n";
+    \}
+  \}
+  if(sizeof(\$guild."vote:nominees")) \{
+    if(\$guild."vote:selections" \&\& \$guild."vote:selections"[name(\$actor)]) \{
+      output += "Your vote is for "+capitalize(Str(\$guild."vote:selections"[name(\$actor)]."skotos:charname"))+"\<br/\>\\n";
+      output += "Vote for \\n";
+    \} else \{
+      output += "Vote for one of the nominees \\n";
+    \}
+    output += "\<select NAME=\\"vote_preference\\" id=\\"vote_preference\\" onchange=\\"voting_select(this.value); display_block('vote', 'voting_display');\\"\>\\n";
+    if(\$guild."vote:selections" \&\& \$guild."vote:selections"[name(\$actor)]) \{
+      output += "Your vote is for \<br/\>\\n";
+      output += "\<option value=\\""+name(\$guild."vote:selections"[name(\$actor)])+"\\"\>"+capitalize(Str(\$guild."vote:selections"[name(\$actor)]."skotos:charname"))+"\</option\>\\n";
+    \} else \{
+      output += "\<option value=\\"nil\\"\>\&nbsp;\</option\>\\n";
+    \}
+    for(i=0;i\<sizeof(\$guild."vote:nominees");i++) \{
+      output += "\<option value=\\""+name(\$guild."vote:nominees"[i])+"\\"\>"+capitalize(Str(\$guild."vote:nominees"[i]."skotos:charname"))+"\</option\>\\n";
+    \}
+    output += "\</select\>\<br/\>\\n";
+  \} else \{
+    output += "There have not yet been any nominees for the position of guild leader.\<br/\>\\n";
+  \}
+  return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:voting_nominate">
+         X[M] int i;
+string output;
+
+output = "";
+
+  /* nominate a PC for guild leader */
+  /* sanity check */
+  if(!\$guild."vote:voting") return FALSE;
+
+  if(!\$guild."vote:nominees") return "Error: The guild is not accepting nominations at this time.";
+
+  /* check their priority or rank vs what is being accepted */
+  if(!Call(this, "general_script", \$script: "voting_check_nomination")) return FALSE;
+
+  /* add them to the list */
+  \$guild."vote:nominees" \|= (\{ \$actor \});
+
+  /* set them to be voting for themselves */
+  \$guild."vote:selections"[name(\$actor)] = \$actor;
+
+  /* should we begin the vote? */
+  if(!\$guild."vote:begin" \&\& sizeof(\$guild."vote:nominees") == 3)
+    \$guild."vote:begin" = time();
+
+  return "Nomination accepted.";
+      </Core:Property>
+      <Core:Property property="merry:lib:voting_nomination">
+         X[M] int i;
+string output;
+
+output = "";
+
+  /* check they have the right rank, and can nominate themselves * /
+  /* sanity check */
+  if(!\$guildrank) return FALSE;
+  if(!\$guild."vote:voting") return FALSE;
+
+  /* slaves can't be nominated */
+  if(\$actor."rank:rank" == 1) return FALSE;
+
+  /* if it's at stage three, any member can be nominated */
+  if(\$guild."vote:nominations" \>= 3) return TRUE;
+
+  /* vote based on rank */
+  if(\$guild."vote:nominations" == 2) \{
+    if(\$actor."rank:rank" \&\&
+      \$actor."rank:rank" \>= 7) return TRUE;
+  \} else \{
+    if(\$actor."rank:rank" \>= 11) return TRUE;
+  \}
+  return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:voting_select">
+         X[M] int i;
+
+  /* vote for someone */
+  /* sanity check */
+  if(!\$guildrank) return "You are not a member of this guild.";
+  if(!\$guild."vote:voting") return "No vote currently in progress";
+
+  \$nominee = Obj(\$vars[0]);
+  if(\$nominee) \{
+    /* set them to be voting for whoever they selected */
+    \$guild."vote:selections"[name(\$actor)] = \$nominee;
+    /* check if this wins the vote */
+    /* count active members of the guild */
+    \$count = 2;
+    for(i=0;i\<sizeof(\$guild.members);i++) \{
+      if(\$guild.members[i] \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time())
+        \$count++;
+    \}
+    /* we only need half the votes (1 more than half, hence starting \$count at 2) to win the vote */
+    \$count = \$count / 2;
+    /* now count how many people voted for this nominee */
+    \$newcount = 0;
+    for(i=0;i\<sizeof(map_indices(\$guild."vote:selections"));i++) \{
+      if(\$guild."vote:selections"[map_indices(\$guild."vote:selections")[i]] == \$nominee)
+        \$newcount++;
+    \}
+    if(\$newcount \>= \$count) \{
+      /* they have more than half the vote */
+      /* assign the new guild leader */
+      \$guild."vote:voting" = nil;
+      \$guild.leader = \$nominee;
+      /* leave a message for the guild members */
+      \$guild."vote:newleader" = Str(\$nominee."skotos:playercapname");
+      \$guild."vote:newleader:time" = time();
+    \}
+  \} else \{
+    return "Error: Could not find the member that you're voting for";
+  \}
+
+  return "Vote cast";
+      </Core:Property>
+      <Core:Property property="merry:lib:voting_start">
+         X[M] int i;
+
+  /* is it valid to start a new vote? */
+  if(\$guild."vote:voting") return ::general_script(\$script: "voting_display");
+  \$valid = nil;
+  if(!\$guild.leader) \{
+    \$valid = TRUE;
+  \} else if(\$guild."vote:vp_guild") \{
+    if(Int(\$guild.leader."cdat:lastlogin")+60*60*24*30 \< time()) \$valid = TRUE;
+    if(Int(\$guild."vote:newleader:time")+60*60*24*30*3 \< time()) \$valid = TRUE;
+  \}
+  if(!\$valid) return ::general_script(\$script: "voting_display");
+  \$valid = nil;
+
+  /* Ok, so we can start a vote. Remove the old properties. */
+  \$guild."vote:begin" = nil;
+  \$guild."vote:nominations" = nil;
+  \$guild."vote:nominees" = (\{ \});
+  \$guild."vote:selections" = ([ ]);
+
+  /* what level should the nominations start at? */
+  /* count how many peers there are */
+  \$count = 0;
+  for(i=0;i\<sizeof(\$guild.members);i++) \{
+    if(\$guild.members[i] \&\& \$guild.members[i]."rank:rank" \>= 11 \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time())
+      \$count++;
+  \}
+  if(\$count \>= 3)
+    \$guild."vote:nominations" = 1;
+  if(!\$guild."vote:nominations") \{
+    /* count how many peers and gentry there are */
+    \$count = 0;
+    for(i=0;i\<sizeof(\$guild.members);i++) \{
+      if(\$guild.members[i] \&\& \$guild.members[i]."rank:rank" \>= 7 \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time())
+        \$count++;
+    \}
+    if(\$count \>= 3)
+      \$guild."vote:nominations" = 2;
+  \}
+  if(!\$guild."vote:nominations")
+    \$guild."vote:nominations" = 3;
+
+  /* start the vote */
+  \$id = time();
+  \$guild."vote:voting" = \$id;
+  \$delay(1, ::general_script(\$script: "voting_display"), "ab9d");
+  /* give a week for nominations */
+  \$delay(60*60*24*7, TRUE, "5f6a");
+  if(\$guild."vote:voting" != \$id) return FALSE;
+  if(!\$guild."vote:begin" \&\& \$guild."vote:nominations" == 1) \{
+    \$guild."vote:nominations"++;
+    \$delay(60*60*24*7, TRUE, "be18");
+    if(\$guild."vote:voting" != \$id) return FALSE;
+  \}
+  if(!\$guild."vote:begin" \&\& \$guild."vote:nominations" == 2) \{
+    \$guild."vote:nominations"++;
+  \}
+  if(!\$guild."vote:begin")
+    \$guild."vote:begin" = time();
+
+  /* Start final countdown */
+  /* give two weeks more */
+  \$time = \$guild."vote:begin"+60*60*24*7*2-time();
+  if(\$time \< 0) \$time = 0;
+  \$delay(\$time, TRUE, "f7f5");
+  if(\$guild."vote:voting" != \$id) return FALSE;
+
+  /* vote is over. Calculate winner. */
+  \$guild."vote:voting" = nil;
+  \$tmp = ([ ]);
+  for(i=0;i\<sizeof(map_indices(\$guild."vote:selections"));i++) \{
+    \$nominee = \$guild."vote:selections"[map_indices(\$guild."vote:selections")[i]];
+    if(\$tmp[\$nominee]) \{
+      \$tmp[\$nominee]++;
+    \} else \{
+      \$tmp[\$nominee] = 1;
+    \}
+  \}
+  if(!sizeof(map_indices(\$tmp))) \{
+    /* no winner. Should we destroy this guild? */
+    if(!\$guild."vote:vp_guild") \{
+      /* destroy the guild */
+      /* NOT WRITTEN YET */
+      /* would be nice to put the guild kitty and inventory up on the auction house, too */
+      EmitTo(\$az, "Should destroy "+dump_value(\$guild));
+      return TRUE;
+    \}
+    EmitTo(\$az, "Would destroy "+dump_value(\$guild)+", but it's a VP guild. Flag it for new membership, maybe using the quest system?");
+    return TRUE;
+  \}
+  /* find the winner */
+  \$max = 0;
+  \$winner = (\{ \});
+  for(i=0;i\<sizeof(map_indices(\$tmp));i++) \{
+    if(\$tmp[map_indices(\$tmp)[i]] \> \$max) \{
+      \$max = \$tmp[map_indices(\$tmp)[i]];
+      \$winner = (\{ map_indices(\$tmp)[i] \});
+    \} else if(\$tmp[map_indices(\$tmp)[i]] == \$max) \{
+      \$winner \|= (\{ map_indices(\$tmp)[i] \});
+    \}
+  \}
+  /* is there a tie? */
+  if(sizeof(\$winner) \> 1) \{
+    \$winner = (\{ \$winner[random(sizeof(\$winner))] \});
+  \}
+  /* set the new leader */
+  \$guild.leader = \$winner[0];
+  /* leave a message for the guild members */
+  \$guild."vote:newleader" = Str(\$winner[0]."skotos:playercapname");
+  \$guild."vote:newleader:time" = time();
+  return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1346704927, "jominey", "E", 1346704993, "jominey", "E", 1346705038, "jominey", "E", 1346705074, "jominey", "E", 1346705107, "jominey", "E", 1346706410, "jominey", "R", 1346706667, "jominey", "E", 1346706821, "jominey", "E", 1346706890, "jominey", "E", 1346708868, "jominey", "E", 1347092943, "jominey", "E", 1467075359, "jominey", "E", 1528334384, "jominey", "E", 1562551975, "jominey", "E", 1562552183, "jominey", "E", 1562552246, "jominey", "E", 1562552287, "jominey", "E", 1562552306, "jominey", "E", 1562552337, "jominey", "E", 1562552483, "jominey", "E", 1562552503, "jominey", "E", 1562552534, "jominey", "E", 1564101778, "jominey", "E", 1571338430, "jominey", "R", 1571338801, "jominey", "E", 1593279740, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

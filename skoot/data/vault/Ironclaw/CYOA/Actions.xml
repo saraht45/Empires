@@ -1,0 +1,234 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:cyoa_decrement">
+         X[M] string woename, property;
+int value;
+object ob;
+
+if(sscanf(\$what, "%s %s", woename, property) == 2) \{
+    if(!Obj(replace_strings(woename, "OBJ(", "", ")", ""))) \{
+        error(dump_value(woename) + " is not a valid object name.");
+        return FALSE;
+    \} else \{
+        ob = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+    \}
+
+    value = Int(Get(ob, property));
+
+\} else \{
+    error("Wrong number of arguments in " + dump_value(\$what) + ".");
+    return FALSE;
+\}
+
+value = value - 1;
+
+Set(ob, property, value);
+      </Core:Property>
+      <Core:Property property="merry:lib:cyoa_increment">
+         X[M] string woename, property;
+int value;
+object ob;
+
+if(sscanf(\$what, "%s %s", woename, property) == 2) \{
+    if(!Obj(replace_strings(woename, "OBJ(", "", ")", ""))) \{
+        error(dump_value(woename) + " is not a valid object name.");
+        return FALSE;
+    \} else \{
+        ob = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+    \}
+
+    value = Int(Get(ob, property));
+
+\} else \{
+    error("Wrong number of arguments in " + dump_value(\$what) + ".");
+    return FALSE;
+\}
+
+value = value + 1;
+
+Set(ob, property, value);
+      </Core:Property>
+      <Core:Property property="merry:lib:cyoa_math-op">
+         X[M] float num1, num2, fnum; 
+string woename, lhs, equal, nstr1, op, nstr2; 
+object prop;
+
+/*operation between two numbers*/ 
+if (sscanf(\$what, "%s %s %s %f %s %f", woename, lhs, equal, num1, op, num2 ) == 6) 
+\{ 
+  /*Do nothing*/ 
+\} 
+/*operation between a property and a number*/ 
+else if (sscanf(\$what, "%s %s %s %s %s %f", woename, lhs, equal, nstr1, op, num2 ) == 6) 
+\{ 
+  prop = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+  /*get the value of the property*/ 
+  num1 = Flt(Get(prop, nstr1)); 
+\} 
+/*operation between a number and a property*/ 
+else if (sscanf(\$what, "%s %s %s %f %s %s", woename, lhs, equal, num1, op, nstr2 ) == 6) 
+\{ 
+  prop = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+  /*get the value of the property*/ 
+  num2 = Flt(Get(prop, nstr2)); 
+\} 
+/*operation between two properties*/ 
+else if (sscanf(\$what, "%s %s %s %s %s %s", woename, lhs, equal, nstr1, op, nstr2 ) == 6) 
+\{ 
+  prop = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+  /*get the values of the properties*/ 
+  num1 = Flt(Get(prop, nstr1)); 
+  num2 = Flt(Get(prop, nstr2)); 
+\} 
+else if (sscanf(\$what, "%s %s %s %s %s", woename, lhs, equal, op, nstr1) == 5) 
+\{ 
+    prop = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+    num1 = Flt(Get(prop, nstr1)); 
+\} 
+else if (sscanf(\$what, "%s %s %s %s %f", woename, lhs,equal, op, num1) == 5) 
+\{ 
+    /*Do nothing*/ 
+\} 
+else 
+\{ 
+  error("Wrong number of arguments in " + dump_value(\$what)); 
+  return FALSE; 
+\} 
+ 
+prop = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+
+if(op == "+") \{ fnum = num1+num2; \}   /*Addition*/ 
+else if(op == "-") \{ fnum = num1-num2; \}  /*Subtraction*/ 
+else if(op == "/") \{ fnum = num1/num2; \}  /*Division*/ 
+else if(op == "*") \{ fnum = num1*num2; \}  /*Multiplication*/ 
+else if(op == "abs") \{ fnum = fabs(num1); \} /*Absolute Value*/ 
+else \{ error("Invalid operation."); return FALSE; \} 
+
+if(lhs == "return") \{ EmitTo(\$actor, Str(fnum)); \} /*Print answer on screen*/ 
+else \{ Set(prop, lhs, fnum); \}  /*Store answer in property*/
+      </Core:Property>
+      <Core:Property property="merry:lib:cyoa_roll">
+         X[M] string woename, property, property2, flag, incr, decr;
+object ob;
+object* env;
+int value, mainskill, maincareer, mainroll, mainroll1, mainroll2, audienceskill, audiencecareer, audienceroll, audienceroll1, audienceroll2, i, skill, career, roll, roll1, roll2;
+
+if(sscanf(\$what, "%s %d %s %s", property, value, woename, flag) == 4) \{
+    if(Obj(replace_strings(woename, "OBJ(", "", ")", ""))) \{
+        ob = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+    \} else \{
+        error(dump_value(woename) + " is not a valid object.");
+        return FALSE;
+    \}
+
+    if(flag == "whitetoblack") \{
+        incr = "trait:count:black";
+        decr = "trait:count:white";
+    \} else \{
+        incr = "trait:count:white";
+        decr = "trait:count:black";
+    \}
+
+    if(Int(Get(ob, decr)) == 0) \{
+        EmitTo(\$actor, "You realize there are no marbles of that color to switch out.");
+        \$temp = "noflag";
+    \}
+
+    skill = Int(Get(\$actor, "skill:" + property));
+    career = Int(Get(\$actor, "career:" + property));
+
+    roll1 = random(skill);
+    roll2 = random(skill);
+   
+    if(roll1 \> roll2) \{
+        roll = roll1;
+    \} else \{
+        roll = roll2;
+    \}
+
+    if(roll \>= value) \{
+        /* success */
+    \} else \{
+        EmitIn(\$actor."base:environment", "You notice " + Describe(\$actor) + "'s hand moving inside of the box.", \$actor);
+    \}
+
+    if(!\$temp) \{
+        \$tempvalue = Int(Get(ob, incr)) + 1;
+        Set(ob, incr, \$tempvalue);
+        \$tempvalue = Int(Get(ob, decr)) - 1;
+        Set(ob, decr, \$tempvalue);
+    \}
+\} else if(sscanf(\$what, "%s %s %s %s", property, property2, woename, flag) == 4) \{
+    if(Obj(replace_strings(woename, "OBJ(", "", ")", ""))) \{
+        ob = Obj(replace_strings(woename, "OBJ(", "", ")", ""));
+    \} else \{
+        error(dump_value(woename) + " is not a valid object.");
+        return FALSE;
+    \}
+
+    if(flag == "whitetoblack") \{
+        incr = "trait:count:black";
+        decr = "trait:count:white";
+    \} else \{
+        incr = "trait:count:white";
+        decr = "trait:count:black";
+    \}
+
+    if(Int(Get(ob, decr)) == 0) \{
+        EmitTo(\$actor, "You realize there are no marbles of that color to switch out.");
+        \$temp = "noflag";
+    \}
+
+    mainskill = Int(Get(\$actor, "skill:" + property));
+    maincareer = Int(Get(\$actor, "career:" + property));
+
+    mainroll1 = random(mainskill);
+    mainroll2 = random(maincareer);
+   
+    if(mainroll1 \> mainroll2) \{
+        mainroll = mainroll1;
+    \} else \{
+        mainroll = mainroll2;
+    \}
+
+    env = \$actor."base:environment"."base:inventory";
+
+    for(i = 0; i \< sizeof(env); i++) \{
+        if(env[i]."base:possessed") \{
+            audienceskill = Int(Get(env[i], "skill:" + property2));
+            audiencecareer = Int(Get(env[i], "career:" + property2));
+
+            audienceroll1 = random(audienceskill);
+            audienceroll2 = random(audiencecareer);
+
+            if(audienceroll1 \> audienceroll2) \{
+                audienceroll = audienceroll1;
+            \} else \{
+                audienceroll = audienceroll2;
+            \}
+
+            if(mainroll \< audienceroll) \{
+                EmitTo(env[i], "You notice " + Describe(\$actor) + "'s hand moving inside of the box.");
+            \}
+        \}
+    \}
+
+    if(!\$temp) \{
+        \$tempvalue = Int(Get(ob, incr)) + 1;
+        Set(ob, incr, \$tempvalue);
+        \$tempvalue = Int(Get(ob, decr)) - 1;
+        Set(ob, decr, \$tempvalue);
+    \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1280616431, "jominey", "E", 1280617420, "jominey", "E", 1280617537, "jominey", "E", 1280617601, "jominey", "E", 1280617693, "jominey", "E", 1280617768, "jominey", "E", 1280617886, "jominey", "E", 1280617959, "jominey", "E", 1280618305, "jominey", "E", 1280618957, "jominey", "E", 1280619030, "jominey", "E", 1280619105, "jominey", "E", 1280619269, "jominey", "E", 1280688436, "jominey", "E", 1280688463, "jominey", "E", 1280688761, "jominey", "E", 1280688776, "jominey", "E", 1280688833, "jominey", "E", 1280689354, "jominey", "E", 1280689535, "jominey", "E", 1280690760, "jominey", "E", 1280691055, "jominey", "E", 1280691148, "jominey", "E", 1280691506, "jominey", "E", 1280691528, "jominey", "E", 1280691546, "jominey", "E", 1280691695, "jominey", "E", 1280691723, "jominey", "E", 1280691779, "jominey", "E", 1280691853, "jominey", "E", 1280692803, "jominey", "E", 1280693004, "jominey", "E", 1280693812, "jominey", "E", 1280693900, "jominey", "E", 1280693958, "jominey", "E", 1280694005, "jominey", "E", 1280694051, "jominey", "E", 1280694147, "jominey", "E", 1280695354, "jominey", "E", 1280695387, "jominey", "E", 1280695605, "jominey", "E", 1280696025, "jominey", "E", 1280696217, "jominey", "E", 1280696341, "jominey", "E", 1280696461, "jominey", "E", 1280696537, "jominey", "E", 1280696654, "jominey", "E", 1280698022, "balkaar", "E", 1280698181, "balkaar", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

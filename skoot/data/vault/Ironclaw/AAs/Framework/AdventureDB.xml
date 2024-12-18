@@ -1,0 +1,730 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="caves:db">
+         \<Ironclaw:AAs:Adventures:Caves:AdventureDB\>
+      </Core:Property>
+      <Core:Property property="export:maze:exitprobability">
+         4
+      </Core:Property>
+      <Core:Property property="export:maze:height">
+         20
+      </Core:Property>
+      <Core:Property property="export:maze:maxroomcount">
+         60
+      </Core:Property>
+      <Core:Property property="export:maze:minroomcount">
+         15
+      </Core:Property>
+      <Core:Property property="export:maze:primeprobability">
+         6
+      </Core:Property>
+      <Core:Property property="export:maze:width">20</Core:Property>
+      <Core:Property property="export:random_objectsprobability">
+         4
+      </Core:Property>
+      <Core:Property property="export:settingsfile">
+         \<Ironclaw:AAs:Framework:AdventureDefaultSettings\>
+      </Core:Property>
+      <Core:Property property="forest:db">
+         \<Ironclaw:AAs:Adventures:Forest:AdventureDB\>
+      </Core:Property>
+      <Core:Property property="marsh:db">
+         \<Ironclaw:AAs:Adventures:Marsh:AdventureDB\>
+      </Core:Property>
+      <Core:Property property="merry:lib:buildmaze">
+         X[M] /* creates an adventure area */
+/* builds and links all the rooms for the adventure */
+int i, j;
+int x,y;
+int sz_x,sz_y, new_x, new_y;
+object room, new_room;
+string *details, detail;
+
+
+/* delay true so the starting room can be returned */
+\$delay(0.01, TRUE, "c47f");
+
+/* build the maze */
+/* allocate the maze */
+\$maze = allocate(\$db."maze:width");
+for(i=0;i\<sizeof(\$maze);i++) \{
+  \$maze[i] = allocate(\$db."maze:height");
+\}
+
+/* how many rooms in the adventure? */
+\$probability = \$db."maze:exitprobability";
+
+/* place the first room into the adventure */
+sz_x = Int(Flt(\$db."maze:width")/2.0)-1;
+sz_y = Int(Flt(\$db."maze:height")/2.0)-1;
+\$maze[sz_x][sz_y] = \$room;
+\$list = (\{ (\{sz_x,sz_y\}) \});
+
+EmitTo(\$debugger, "Creating rest of the maze");
+
+/* create the rest of the maze */
+while(sizeof(\$list)\>0 \&\& sizeof(\$aasettings.roomlist) \<= \$db."maze:maxroomcount") \{
+
+/*EmitTo(\$debugger, "sizeof list "+dump_value(sizeof(\$list))+" - sizeof roomlist "+dump_value(sizeof(\$aasettings.roomlist))+" - roomcount "+dump_value(\$db."maze:maxroomcount"));*/
+
+
+  /* delay so we don't freeze the game with a big maze */
+  \$delay(0.001, TRUE, "b07e");
+  /* pick a room to check (so the first room doesn't have all the exits) */
+  i = random(sizeof(\$list));
+  /* check if there should be any rooms near the current room */
+  if(typeof(\$list[i]) == T_ARRAY) \{
+    sz_x = \$list[i][0];
+    sz_y = \$list[i][1];
+    room = \$maze[sz_x][sz_y];
+  \} else \{
+    sz_x = -1;
+    sz_y = -1;
+    room = \$list[i];
+  \}
+/*EmitTo(\$debugger, "coord: "+dump_value(sz_x)+","+dump_value(sz_y));*/
+  /* check if we know the exit destinations for this room */
+  if(!room.exits) \{
+    /* we don't know, so get a list */
+    room.exits = (\{ \});
+    details = room."base:details";
+    for(j=0;j\<sizeof(details);j++) \{
+      /* check if this detail leads to a room */
+      /* make sure that room isn't already part of the adventure */
+      if((new_room = Get(room, "details:"+details[j]+":exit:dest")) \&\& (!member(NRefOb(new_room), \$aasettings.roomlist) \|\| NRefOb(new_room)."aa:settings" != \$aasettings)) \{
+        room.exits \|= (\{ details[j] \});
+      \}
+    \}
+    /* allow exit-escape to leave the adventure area */
+    room.exits -= (\{ "exit-escape" \});
+  \}
+  /* should we remove the current room from the list? */
+  /* or should we create another room? */
+  if(sizeof(room.exits) == 0) \{
+    \$list -= (\{ \$list[i] \});
+  \} else \{
+    /* pick a detail */
+    detail = room.exits[random(sizeof(room.exits))];
+    /* make sure that room isn't already part of the adventure */
+    if((new_room = Get(room, "details:"+detail+":exit:dest")) \&\& (!NRefOb(new_room)."base:environment" \|\| NRefOb(new_room)."aa:settings" != \$aasettings)) \{
+      /* check if this room exists on the grid */
+      if(sz_x \>= 0 \&\& (detail == "exit-north" \|\| detail == "exit-south" \|\| detail == "exit-east" \|\| detail == "exit-west")) \{
+        /* get coordinates for the new room */
+        if(detail == "exit-north") \{
+          new_x = sz_x;
+          new_y = sz_y + 1;
+        \} else if(detail == "exit-south") \{
+          new_x = sz_x;
+          new_y = sz_y - 1;
+        \} else if(detail == "exit-east") \{
+          new_x = sz_x + 1;
+          new_y = sz_y;
+        \} else if(detail == "exit-west") \{
+          new_x = sz_x - 1;
+          new_y = sz_y;
+        \}
+        /* check that room isn't already taken */
+        if(new_x \< 0 \|\| new_y \< 0 \|\| new_x+1 \> \$db."maze:width" \|\| new_y+1 \> \$db."maze:height" \|\| \$maze[new_x][new_y]) \{
+          /* if it's taken, don't create the room, and hide the exit */
+          /* Check if we can link to the existing room */
+          /* NOT WRITTEN YET */
+          Set(room, "details:"+detail+":hidden", 1);
+        \} else \{
+          /* create the room */
+          \$maze[new_x][new_y] = Call(\$this, "create_room", \$room: new_room, \$original: room, \$aasettings: \$aasettings, \$exit_detail: detail);
+          if(\$maze[new_x][new_y])
+            \$list += (\{ (\{new_x,new_y\}) \});
+        \}
+      \} else \{
+/*EmitTo(\$debugger, "Off the grid.");*/
+        /* not on the grid, so just create it */
+        new_room = Call(\$this, "create_room", \$room: new_room, \$original: room, \$aasettings: \$aasettings, \$exit_detail: detail);
+        if(new_room)
+          \$list += (\{ new_room \});
+/*        \$list += (\{ Call(\$this, "create_room", \$room: new_room, \$original: room, \$aasettings: \$aasettings, \$exit_detail: detail) \});*/
+      \}
+    \}
+    room.exits -= (\{ detail \});
+  \}
+\}
+
+EmitTo(\$debugger, "Rest of maze created. Blocking off remaining rooms.");
+
+/* if we have any remaining exits, block them off */
+/* or do something else interesting (like linking to another adventure area) */
+while(sizeof(\$list)) \{
+  \$delay(0.001, TRUE, "27d1");
+  /* block off any exits in this room */
+  /* get the room */
+  if(typeof(\$list[0]) == T_ARRAY) \{
+    sz_x = \$list[0][0];
+    sz_y = \$list[0][1];
+    room = \$maze[sz_x][sz_y];
+  \} else \{
+    sz_x = -1;
+    sz_y = -1;
+    room = \$list[0];
+  \}
+  /* remove the room from the list */
+  \$list -= (\{ \$list[0] \});
+
+  /* do we know what exits are in this room? */
+  if(!room.exits) \{
+    /* we don't know, so get a list */
+    room.exits = (\{ \});
+    details = room."base:details";
+    for(j=0;j\<sizeof(details);j++) \{
+      /* check if this detail leads to a room */
+      /* make sure that room isn't already part of the adventure */
+      if((new_room = Get(room, "details:"+details[j]+":exit:dest")) \&\& (!NRefOb(new_room)."base:environment" \|\| NRefOb(new_room)."aa:settings" != \$aasettings)) \{
+        room.exits \|= (\{ details[j] \});
+      \}
+    \}
+    /* allow exit-escape to leave the adventure area */
+    room.exits -= (\{ "exit-escape" \});
+  \}
+
+  /* block off any remaining exits */
+  /* POTENTIAL UPDATE - should do something cleverer, like check if we can link to the next rooms */
+  for(i=0;i\<sizeof(room.exits);i++)\{
+    Set(room, "details:"+room.exits[i]+":hidden", 1);
+  \}
+  room.exits = (\{ \});
+\}
+
+/* display the maze - for debugging */
+if(\$debugger) \{
+  EmitTo(\$debugger, "Maze:");
+  for(i=\$db."maze:height"-1;i\>=0;i--) \{
+    \$message = "";
+    for(j=0;j\<\$db."maze:width";j++) \{
+      if(\$maze[j][i]) \{
+        \$message += "1";
+      \} else \{
+        \$message += "0";
+      \}
+    \}
+    EmitTo(\$debugger, \$message);
+  \}
+\}
+
+/* check if the players have finished the adventure */
+/* if they are out of the adventure, destroy the rooms */
+Call(\$this, "destroy_adventure");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:create_object">
+         X[M] /* create a random object in this room */ 
+/* expects \$room */ 
+int i; 
+ 
+/* return to the room creation code */ 
+\$delay(0.01, TRUE, "35f4"); 
+/* make sure we have objects to choose from */ 
+\$objectlist = (\{ \}); 
+if(\$room."maze:type" \&\& Get(\$db, "random_objects:"+\$room."maze:type")) 
+  \$objectlist += Get(\$db, "random_objects:"+\$room."maze:type"); 
+if(\$db.random_objects) 
+  \$objectlist += \$db.random_objects; 
+ 
+/* make sure we have an object to spawn */ 
+if(!\$objectlist \|\| sizeof(\$objectlist) == 0) 
+  return FALSE; 
+ 
+/* pick an object */ 
+i = random(sizeof(\$objectlist)); 
+ 
+/* spawn the object */ 
+if(typeof(\$objectlist[i]) == T_OBJECT) \{ 
+  \$new_object = Spawn(\$objectlist[i]); 
+\} else \{ 
+  /* spawn the object and set the properties */ 
+  \$objectlist = \$objectlist[i]; 
+  \$new_object = Spawn(\$objectlist[0]); 
+  /* delay, in case other scripts set the property */ 
+  \$delay(0.01, TRUE, "3b4e"); 
+  for(i=1;i\<sizeof(\$objectlist);i++) \{ 
+    Set(\$new_object, \$objectlist[i][0], \$objectlist[i][1]); 
+  \} 
+\} 
+ 
+/* move the object into the room */ 
+\$new_object."base:environment" = \$room; 
+ 
+/* if the object is a nip, make it live */ 
+if (FindMerry(\$new_object, "lib", "heartbeat")) \{ 
+  Call(\$new_object, "heartbeat"); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:create_room">
+         X[M] /* creates a room for an adventure area */
+/* Call(\$this, "create_room", \$room: new_room, \$original: room, \$exit_detail: details[i]); */
+
+/* were we told to make a random room? */
+/*EmitTo(\$debugger, "Checking: "+dump_value(\$room));*/
+if(NRefOb(\$room) == \$\{Ironclaw:AAs:Framework:RandomRoom\}) \{
+  /* random room. Do a probability calculation to see if we want to create the room or not */
+  if(random(\$probability) \&\& (sizeof(\$aasettings.roomlist) \>= \$db."maze:minroomcount")) \{
+    /* hide this exit */
+    Set(\$original, "details:"+\$exit_detail+":hidden", 1);
+    return nil;
+  \}
+
+  /* choose a random room */
+  /* check what the maze type is */
+  if(NRefOb(\$original)."maze:type") \{
+    \$type = NRefOb(\$original)."maze:type";
+  \} else \{
+    \$type = nil;
+  \}
+  /* what direction are we searching for? */
+  if(\$exit_detail == "exit-north") \{
+    \$direction = "north";
+  \} else if(\$exit_detail == "exit-east") \{
+    \$direction = "east";
+  \} else if(\$exit_detail == "exit-south") \{
+    \$direction = "south";
+  \} else if(\$exit_detail == "exit-west") \{
+    \$direction = "west";
+  \}
+
+  /* pick a room */
+  if(\$type) \{
+    \$type = \$type+":";
+  \} else \{
+    \$type = "";
+  \}
+
+  /* should we make the prime location, or a normal random room? */
+  if(!random(\$db."maze:primeprobability") \&\& !\$aasettings.primearea \&\& (sizeof(\$aasettings.roomlist) \> \$db."maze:minroomcount")) \{
+    if(Get(\$db, "primes:"+\$type+\$direction)) \{
+      \$choice = Get(\$db, "primes:"+\$type+\$direction)[random(sizeof(Get(\$db, "primes:"+\$type+\$direction)))];
+    \} else \{
+      \$choice = Get(\$db, "primes:"+\$direction)[random(sizeof(Get(\$db, "primes:"+\$direction)))];
+    \}
+    \$aasettings.primearea = \$choice;
+    if(\$debugger) EmitTo(\$debugger, "PRIME! Adventure has a prime location.");
+  \} else \{
+    if(Get(\$db, "rooms:"+\$type+\$direction)) \{
+      \$choice = Get(\$db, "rooms:"+\$type+\$direction)[random(sizeof(Get(\$db, "rooms:"+\$type+\$direction)))];
+    \} else \{
+      \$choice = Get(\$db, "rooms:"+\$direction)[random(sizeof(Get(\$db, "rooms:"+\$direction)))];
+    \}
+  \}
+  /* check to see if we can find a room of this type */
+  \$room = NewNRef(\$choice, NRefDetail(\$room));
+\}
+
+/* create the room */
+\$room = NewNRef(Spawn(NRefOb(\$room)), NRefDetail(\$room));
+\$aasettings.roomlist \|= (\{ NRefOb(\$room) \});
+NRefOb(\$room)."aa:settings" = \$aasettings;
+NRefOb(\$room).homeowner = \$original.homeowner;
+/* set teleport react */
+NRefOb(\$room)."merry:inherit:react:teleport" = \$\{Ironclaw:AAs:Framework:AdventureDB\};
+
+/* link the rooms */
+Call(\$this, "link_rooms"); /* expects \$room, \$original, and \$exit_detail */
+
+/* should we create a random object for this room? */
+if(!random(\$db.random_objectsprobability)) \{
+  /* create a random object in this room */
+  Call(\$this, "create_object", \$room: NRefOb(\$room));
+\}
+
+/* do we have any startitems for this room? */
+\$startitems = (\{ \});
+\$obj = NRefOb(\$room);
+while(\$obj) \{
+  \$startitems \|= map_indices(prefixed_map(Get(\$obj, "*"), "startitems:"));
+  \$exportitems = map_indices(prefixed_map(Get(\$obj, "*"), "export:startitems:"));
+  for(\$i=0;\$i\<sizeof(\$exportitems);\$i++) \{
+    \$startitems \|= (\{ \$exportitems[\$i][7..strlen(\$exportitems[\$i])-1] \});
+  \}
+  \$obj = \$obj."core:ur:parent";
+\}
+for(\$i=0;\$i\<sizeof(\$startitems);\$i++) \{
+  \$info = Get(NRefOb(\$room), \$startitems[\$i]);
+  if(\$info \&\& \$info["object"] \&\& sizeof(Arr(\$info["object"]))) \{
+    \$number = 0;
+    \$number += Int(\$info["number"]);
+    \$number += random(Int(\$info["random"]));
+    if(\$number \< 0) \$number = 0;
+    \$arr = Arr(\$info["object"]);
+    \$arr -= (\{ nil \});
+
+    for(\$j=0;\$j\<\$number;\$j++) \{
+      /* create the object and move it into the room */
+      \$spawn = \$arr[random(sizeof(\$arr))];
+      if(typeof(\$spawn) == T_OBJECT) \{
+        /* spawn the object */
+        \$obj = Spawn(\$spawn);
+        \$obj."base:environment" = NRefOb(\$room);
+      \} else if (typeof(\$spawn) == T_ARRAY \&\& sizeof(\$spawn)) \{
+        /* spawn and set properties */
+        if(typeof(\$spawn[0]) == T_OBJECT) \{
+          \$obj = Spawn(\$spawn[0]);
+          \$obj."base:environment" = NRefOb(\$room);
+          for(\$k=1;\$k\<sizeof(\$spawn);\$k++) \{
+            if(typeof(\$spawn[\$k]) == T_ARRAY \&\& sizeof(\$spawn[\$k]) \> 1 \&\& \$spawn[\$k][0])
+              Set(\$obj, \$spawn[\$k][0], \$spawn[\$k][random(sizeof(\$spawn[\$k])-1)+1]);
+          \}
+        \} else \{
+          continue;
+        \}
+      \}
+      /* do we integrate this? */
+      if(\$info["integrated"]) \{
+        if( sscanf( name(\$obj), "%s#%s", \$tmp, \$ID ) != 2 )
+          \$ID = "auto-trait:integration:" + Str(random( 999999 ));
+        \$obj."base:integration" = \$ID;
+        Set( NRefOb(\$room), \$ID, \$obj );
+        \$obj."base:immobile" = TRUE;
+      \}
+      /* do we have any stance or prox information? */
+      \$obj."base:proximity" = NRefOb(\$room);
+      if(\$info["prep"])
+        \$obj."base:preposition" = \$info["prep"];
+      if(\$info["stance"])
+        \$obj."base:stance" = \$info["stance"];
+    \}
+    /* is this object immobile? */
+    if(\$info["immobile"])
+      \$obj."base:immobile" = TRUE;
+  \}
+\}
+return NRefOb(\$room);
+      </Core:Property>
+      <Core:Property property="merry:lib:createadventure">
+         X[M] /* creates an adventure area */
+/* this is for testing, later you will get to adventure areas by travelling */
+int i, j;
+int x,y;
+int sz_x,sz_y, new_x, new_y;
+object **maze;
+object room, new_room;
+string *details;
+
+/* know who asked for the adventure area to be created */
+if(!\$creator)
+  \$creator = \$actor;
+
+if(!\$adventure) \{
+  EmitTo(\$creator, "Adventure not specified. Please @bug this.");
+  return FALSE;
+\}
+
+if(\$debugger)
+  EmitTo(\$debugger, "Creating adventure area.");
+
+/* check if this adventure exists */
+/*\$db = prefixed_map(Get(\$this, "*"), \$adventure+":db");
+\$db = \$db[\$adventure+":db"];*/
+\$db = Get(\$this, \$adventure+":db");
+if(!\$db) \{
+  EmitTo(\$creator, "Uknown adventure. Please @bug this.");
+  return FALSE;
+\}
+
+/* spawn the adventure */
+\$aasettings = Duplicate(\$db.settingsfile);
+
+/* set the adventure id */
+\$aasettings."adventure:id" = time();
+/* if there is an entrance object for this adventure, set it */
+if(\$entrance)
+  \$aasettings.entrance = \$entrance;
+
+/* list the characters on this adventure in \$aasettings."members" */
+/* Must be handled by code when they enter the adventure */
+\$aasettings.members = (\{ \});
+
+/* find the starting room */
+\$room = Arr(\$db.startrooms)[random(sizeof(Arr(\$db.startrooms)))];
+if(sizeof(Arr(\$room)) \> 1) \{
+  \$detail = Arr(\$room)[1];
+\} else \{
+  \$detail = "default";
+\}
+
+\$room = Spawn(Arr(\$room)[0]);
+\$aasettings.roomlist = (\{ \$room \});
+\$room."aa:settings" = \$aasettings;
+\$room.homeowner = NRefOb(\$creator);
+/* set teleport react */
+\$room."merry:inherit:react:teleport" = \$\{Ironclaw:AAs:Framework:AdventureDB\};
+/* do we have any startitems for this room? */
+\$startitems = (\{ \});
+\$obj = \$room;
+while(\$obj) \{
+  \$startitems \|= map_indices(prefixed_map(Get(\$obj, "*"), "startitems:"));
+  \$exportitems = map_indices(prefixed_map(Get(\$obj, "*"), "export:startitems:"));
+  for(\$i=0;\$i\<sizeof(\$exportitems);\$i++) \{
+    \$startitems \|= (\{ \$exportitems[\$i][7..strlen(\$exportitems[\$i])-1] \});
+  \}
+  \$obj = \$obj."core:ur:parent";
+\}
+for(\$i=0;\$i\<sizeof(\$startitems);\$i++) \{
+  \$info = Get(\$room, \$startitems[\$i]);
+  if(\$info \&\& \$info["object"] \&\& sizeof(Arr(\$info["object"]))) \{
+    \$number = 0;
+    \$number += Int(\$info["number"]);
+    \$number += random(Int(\$info["random"]));
+    if(\$number \< 0) \$number = 0;
+    \$arr = Arr(\$info["object"]);
+    \$arr -= (\{ nil \});
+
+    for(\$j=0;\$j\<\$number;\$j++) \{
+      /* create the object and move it into the room */
+      \$spawn = \$arr[random(sizeof(\$arr))];
+      if(typeof(\$spawn) == T_OBJECT) \{
+        /* spawn the object */
+        \$obj = Spawn(\$spawn);
+        \$obj."base:environment" = \$room;
+      \} else if (typeof(\$spawn) == T_ARRAY \&\& sizeof(\$spawn)) \{
+        /* spawn and set properties */
+        if(typeof(\$spawn[0]) == T_OBJECT) \{
+          \$obj = Spawn(\$spawn[0]);
+          \$obj."base:environment" = \$room;
+          for(\$k=1;\$k\<sizeof(\$spawn);\$k++) \{
+            if(typeof(\$spawn[\$k]) == T_ARRAY \&\& sizeof(\$spawn[\$k]) \> 1 \&\& \$spawn[\$k][0])
+              Set(\$obj, \$spawn[\$k][0], \$spawn[\$k][random(sizeof(\$spawn[\$k])-1)+1]);
+          \}
+        \} else \{
+          continue;
+        \}
+      \}
+      /* do we integrate this? */
+      if(\$info["integrated"]) \{
+        if( sscanf( name(\$obj), "%s#%s", \$tmp, \$ID ) != 2 )
+          \$ID = "auto-trait:integration:" + Str(random( 999999 ));
+        \$obj."base:integration" = \$ID;
+        Set( \$room, \$ID, \$obj );
+        \$obj."base:immobile" = TRUE;
+      \}
+      /* do we have any stance or prox information? */
+      \$obj."base:proximity" = \$room;
+      if(\$info["prep"])
+        \$obj."base:preposition" = \$info["prep"];
+      if(\$info["stance"])
+        \$obj."base:stance" = \$info["stance"];
+    \}
+    /* is this object immobile? */
+    if(\$info["immobile"])
+      \$obj."base:immobile" = TRUE;
+  \}
+\}
+
+
+/* build the maze */
+Call(\$this, "buildmaze");
+/* return the entrance */
+return(NewNRef(\$room, \$detail));
+      </Core:Property>
+      <Core:Property property="merry:lib:describe-exits">
+         X[M] /* describe the exits handed to us */
+int i;
+string message;
+
+if(!\$exits \|\| typeof(\$exits) != T_ARRAY) return nil;
+
+/* for each exit, check if it exists */
+for(i=0;i\<sizeof(\$exits);i++) \{
+  /* if the exit is hidden, remove it from our list */
+  if(Get(\$target, "details:"+\$exits[i]+":hidden"))\{
+    \$exits -= (\{ \$exits[i] \});
+    i--;
+  \}
+\}
+
+/* if there are no exits left, return */
+if(sizeof(\$exits) == 0) return nil;
+
+message = "";
+/* describe the exits */
+for(i=0;i\<sizeof(\$exits);i++) \{
+  if(Get(NRefOb(\$target), "details:"+\$exits[i]+":description:room")) \{
+    message += UnSAM(Get(NRefOb(\$target), "details:"+\$exits[i]+":description:room"));
+  \}
+  if(i+2\<sizeof(\$exits)) \{
+    message += ", ";
+  \} else if(i+2 == sizeof(\$exits)) \{
+    message += " and ";
+  \}
+\}
+
+if(strlen(message)) message += ".";
+return capitalize(message);
+
+/*
+\{? \| \$(this.details:exit-north:hidden) \|\| \$(this.details:exit-north:descriptions:room) \}
+\{? \| \$(this.details:exit-south:hidden) \|\| \{? \| \$(this.details:exit-north:hidden) \|\| and
+ \} \$(this.details:exit-south:descriptions:room) \}
+*/
+      </Core:Property>
+      <Core:Property property="merry:lib:destroy_adventure">
+         X[M] int i;
+
+/* check if the players have finished the adventure */
+/* if they are out of the adventure, destroy the rooms */
+/* delay while players are in the adventure */
+\$delay(60, TRUE, "fbcf");
+while(sizeof(\$aasettings.members) \> 0) \{
+  \$delay(60, TRUE, "615d");
+  \$aasettings.members -= (\{ nil \});
+  for(i=0;i\<sizeof(\$aasettings.members);i++) \{
+    /* check if the player is still in a room */
+    if(\$aasettings.members[i] \&\& \$aasettings.members[i]."base:environment") \{
+      /* if this room doesn't have a container */
+      /* or if the rooms adventure id doesn't match */
+      if(!\$aasettings.members[i]."base:environment"."aa:settings" \|\|
+          !\$aasettings.members[i]."base:environment"."aa:settings"."adventure:id" \|\|
+          \$aasettings.members[i]."base:environment"."aa:settings"."adventure:id" != \$aasettings."adventure:id") \{
+        \$aasettings.members -= (\{ \$aasettings.members[i] \});
+        i--;
+      \}
+    \} else \{
+      /* they aren't in a room */
+      /* check when they logged out */
+      if(\$aasettings.members[i] \&\& \$aasettings.members[i]."cdat:lastlogout" + (60*30) \< time()) \{
+        /* they have been logged out for more than half an hour. remove them from the adventure */
+        \$aasettings.members -= (\{ \$aasettings.members[i] \});
+        i--;
+      \}
+    \}
+  \}
+\}
+
+/* destroy the adventure */
+/* destroy the rooms */
+for(i=0;i\<sizeof(\$aasettings.roomlist);i++) \{
+  /* should have checks in here to make sure nothing valuable is destroyed */
+  Slay(\$aasettings.roomlist[i]);
+\}
+
+/* destroy the entrance */
+if(\$aasettings.entrance) \{
+  catch(Call(\$aasettings.entrance, "adventure_destroyed"));
+\}
+Slay(\$aasettings);
+if(\$debugger)
+  EmitTo(\$debugger, "Adventure destroyed.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:link_rooms">
+         X[M] /* links the exits for two rooms in an adventure area together */ 
+/* expects \$room, \$original, and \$exit_detail */ 
+/* \$room is a NRef, \$original is an object, and \$exit_detail is a detail in \$original */ 
+string original_detail, new_detail; 
+object original_room, new_room; 
+string *property_list; 
+int i; 
+ 
+/* 
+EmitTo(\$actor, "Linking"); 
+EmitTo(\$actor, dump_value(\$room)); 
+EmitTo(\$actor, dump_value(\$original)); 
+*/ 
+ 
+/* link the exits to each other */ 
+/* link new room to original */ 
+Set(NRefOb(\$room), "details:"+NRefDetail(\$room)+":exit:dest", NewNRef(\$original, \$exit_detail)); 
+/* link original to new room */ 
+Set(\$original, "details:"+\$exit_detail+":exit:dest", \$room); 
+ 
+/* describe the exits in each room */ 
+/* EXTENSION - add code to allow closed doors */ 
+original_room = \$original; 
+new_room = NRefOb(\$room); 
+ 
+/* list of properties to copy */ 
+property_list = (\{ "abstract", "definite", "description:brief", "description:look", "description:examine", "description:room", "exit:closed", "exit:deadbolt", "exit:door", "exit:locked", "exit:self-locking", "hidden-when-closed", "luminosity", "never-obvious", "obvious-when-open", "plural", "prepositions", "prime", "seperate" \}); 
+ 
+/* copy properties into exit for original room */ 
+sscanf(NRefDetail(\$room), "exit-%s", new_detail); 
+new_detail = "details:destination-"+new_detail+":"; 
+original_detail = "details:"+\$exit_detail+":"; 
+ 
+/* copy snames */ 
+for(i=0;i\<sizeof(Get(new_room."base:urparent", new_detail+"snames:local"));i++) \{ 
+  Set(original_room, original_detail+"sname:"+Get(new_room."base:urparent", new_detail+"snames:local")[i], 1); 
+\} 
+/* copy pnames */ 
+for(i=0;i\<sizeof(Get(new_room."base:urparent", new_detail+"pnames:local"));i++) \{ 
+  Set(original_room, original_detail+"pname:"+Get(new_room."base:urparent", new_detail+"pnames:local")[i], 1); 
+\} 
+/* copy adjectives */ 
+for(i=0;i\<sizeof(Get(new_room."base:urparent", new_detail+"adjectives:local"));i++) \{ 
+  Set(original_room, original_detail+"adjective:"+Get(new_room."base:urparent", new_detail+"adjectives:local")[i], 1); 
+\} 
+/* copy prepositions */ 
+i = Get(new_room."base:urparent", new_detail+"prepositions"); 
+/* CLOSE_TO NEEDS DIFFERENT PROPERTY SET TO MAKE IT TAKE! */ 
+if(i \& PREP_CLOSE_TO) Set(original_room, original_detail+"preposition:close", 1); 
+if(i \& PREP_AGAINST) Set(original_room, original_detail+"preposition:against", 1); 
+if(i \& PREP_UNDER) Set(original_room, original_detail+"preposition:under", 1); 
+if(i \& PREP_ON) Set(original_room, original_detail+"preposition:on", 1); 
+if(i \& PREP_INSIDE) Set(original_room, original_detail+"preposition:inside", 1); 
+if(i \& PREP_NEAR) Set(original_room, original_detail+"preposition:near", 1); 
+if(i \& PREP_OVER) Set(original_room, original_detail+"preposition:over", 1); 
+if(i \& PREP_BEHIND) Set(original_room, original_detail+"preposition:behind", 1); 
+if(i \& PREP_BEFORE) Set(original_room, original_detail+"preposition:before", 1); 
+if(i \& PREP_BESIDE) Set(original_room, original_detail+"preposition:beside", 1); 
+/* copy other properties */ 
+for(i=0;i\<sizeof(property_list);i++) \{ 
+  Set(original_room, original_detail+property_list[i], Get(new_room."base:urparent", new_detail+property_list[i]+":local")); 
+\} 
+ 
+/* copy properties into exit for new room */ 
+sscanf(\$exit_detail, "exit-%s", original_detail); 
+original_detail = "details:destination-"+original_detail+":"; 
+new_detail = "details:"+NRefDetail(\$room)+":"; 
+ 
+/* copy snames */ 
+for(i=0;i\<sizeof(Get(original_room."base:urparent", original_detail+"snames:local"));i++) \{ 
+  Set(new_room, new_detail+"sname:"+Get(original_room."base:urparent", original_detail+"snames:local")[i], 1); 
+\} 
+/* copy pnames */ 
+for(i=0;i\<sizeof(Get(original_room."base:urparent", original_detail+"pnames:local"));i++) \{ 
+  Set(new_room, new_detail+"pname:"+Get(original_room."base:urparent", original_detail+"pnames:local")[i], 1); 
+\} 
+/* copy adjectives */ 
+for(i=0;i\<sizeof(Get(original_room."base:urparent", original_detail+"adjectives:local"));i++) \{ 
+  Set(new_room, new_detail+"adjective:"+Get(original_room."base:urparent", original_detail+"adjectives:local")[i], 1); 
+\} 
+/* copy prepositions */ 
+i = Get(original_room."base:urparent", original_detail+"prepositions"); 
+/* CLOSE_TO NEEDS DIFFERENT PROPERTY SET TO MAKE IT TAKE! */ 
+if(i \& PREP_CLOSE_TO) Set(new_room, new_detail+"preposition:close", 1); 
+if(i \& PREP_AGAINST) Set(new_room, new_detail+"preposition:against", 1); 
+if(i \& PREP_UNDER) Set(new_room, new_detail+"preposition:under", 1); 
+if(i \& PREP_ON) Set(new_room, new_detail+"preposition:on", 1); 
+if(i \& PREP_INSIDE) Set(new_room, new_detail+"preposition:inside", 1); 
+if(i \& PREP_NEAR) Set(new_room, new_detail+"preposition:near", 1); 
+if(i \& PREP_OVER) Set(new_room, new_detail+"preposition:over", 1); 
+if(i \& PREP_BEHIND) Set(new_room, new_detail+"preposition:behind", 1); 
+if(i \& PREP_BEFORE) Set(new_room, new_detail+"preposition:before", 1); 
+if(i \& PREP_BESIDE) Set(new_room, new_detail+"preposition:beside", 1); 
+/* copy other properties */ 
+for(i=0;i\<sizeof(property_list);i++) \{ 
+  Set(new_room, new_detail+property_list[i], Get(original_room."base:urparent", original_detail+property_list[i]+":local")); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:teleport">
+         X[M] /* mark the player as part of this adventure */
+\$this."aa:settings".members \|= (\{ NRefOb(\$actor) \});
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1201764546, "tonyd", "P", 1204711025, "tonyd", "P", 1204711267, "tonyd", "P", 1204870912, "tonyd", "E", 1204873922, "tonyd", "P", 1204873957, "tonyd", "P", 1204874049, "tonyd", "P", 1204874429, "tonyd", "P", 1204874513, "tonyd", "P", 1204874539, "tonyd", "P", 1204874837, "tonyd", "P", 1204874952, "tonyd", "P", 1204874960, "tonyd", "P", 1204875023, "tonyd", "P", 1204875961, "tonyd", "P", 1204876214, "tonyd", "P", 1204876244, "tonyd", "P", 1204876314, "tonyd", "P", 1204876488, "tonyd", "P", 1204876516, "tonyd", "P", 1204876841, "tonyd", "P", 1204876874, "tonyd", "P", 1204877109, "tonyd", "P", 1204878535, "tonyd", "P", 1204878726, "tonyd", "P", 1204878786, "tonyd", "P", 1204878849, "tonyd", "P", 1204878901, "tonyd", "P", 1204878936, "tonyd", "P", 1204879011, "tonyd", "P", 1204879134, "tonyd", "P", 1204879312, "tonyd", "P", 1204895057, "tonyd", "P", 1204939135, "tonyd", "P", 1204939263, "tonyd", "P", 1204939380, "tonyd", "P", 1204939618, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

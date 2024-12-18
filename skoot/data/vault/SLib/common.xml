@@ -1,0 +1,159 @@
+<object clone="/base/obj/thing" owner="zwoc">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="true"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:is_badname">
+         X[M] /*
+ * D=Is \$name bad?
+ *
+ * Author: Zwoc
+ * Since:  Sep 26 14:39, 2005
+ * State:  EXPERIMENTAL
+ */
+error("not implemented (replace SLib:common/is_badname() with game-specific code");
+/*
+ * ChangeLog [
+ *    Change(Sep 26 14:39, 2005; Zwoc)=Added script to codebase.
+ * ]
+ */
+      </Core:Property>
+      <Core:Property property="merry:lib:lastenv">
+         X[M] /* Finds the final base environment, typically a room and returns an object. The supplied parameter must be a valid object or NRef.    
+     
+  Parameter is: \$object: *object*     
+     
+  E.g. \$lastenv = Call( \$\{SLib:common\}, "lastenv", \$object: obj );     
+*/     
+     
+if (!\$object) return nil;     
+    
+\$obj = NRefOb(\$object);     
+\$env = \$obj."base:environment";     
+     
+while (\$env != nil) \{     
+\$obj = \$env;     
+\$env = \$obj."base:environment";     
+\}     
+     
+return \$obj;
+      </Core:Property>
+      <Core:Property property="merry:lib:lookup">
+         X[M] /* Lookup a character with the name as parameter, returning an object.
+
+   Parameter is: \$name: *name*
+
+   E.g. \$charobj = CallArg( \$\{SLib:common\}, "lookup", \$name: "kalle" );
+
+*/
+object INF;
+
+INF = \$\{Data:info\};
+
+if( !\$name \|\| \$name == "" )
+  return nil;
+
+/* check UserAPI for a possible match */
+
+\$ob = Get( \$\{UserAPI:UDatD\}, "bodies:"+\$name );
+if( \$ob ) return \$ob;
+
+EmitTo( nil /* defunct */, dump_value(args) );
+
+\$pname = Str(\$name);
+\$name = lower_case( Str(\$name) );
+
+\$exclusively = FALSE;
+
+if (strlen(\$name) == 1) \{
+  return nil;
+\}
+
+/* check if a specific theatre was specified */
+if( sscanf( \$pname, "%s@%s", \$chatter, \$theatre ) == 2 )\{
+
+  \$tID = INF."theatres:correct"[lower_case(strip(\$theatre))];
+  if( !\$tID ) \$tID = strip(\$theatre);
+  \$name = lower_case(strip(\$chatter));
+  \$exclusively = TRUE;
+
+  \$obj = Get( \$\{UserAPI:UDatD\}, "bodies:"+\$name+":"+\$theatre );
+  if( \$obj ) return \$obj;
+
+\} else \{
+  \$obj = Get( \$\{UserAPI:UDatD\}, "bodies:"+\$pname );
+  if( \$obj ) return \$obj;
+  if( \$actor )
+    \$tID = \$actor."theatre:id";
+\}
+
+/* We presume the target is from our own theatre first, unless a theatre was specified in the name (e.g. "kalle@lazarus") (presuming we have a theatre ID set) */
+
+if( \$tID )\{
+
+  \$z = "Chatters:"+\$tID+":"+\$name[0..1]+":"+\$name;
+
+  \$ob = Obj( \$z );
+
+  if( \$ob ) return \$ob;
+
+\}
+
+/* if we're told not to go further, we won't */
+if( \$exclusively ) return nil;
+
+/* Okay, so not in our theatre; let's step through the other theatres then and fetch potential matches */
+
+\$tList = INF."theatres:list";
+
+\$tIDs = map_indices( \$tList );
+
+for( \$i = 0; \$i \< sizeof( \$tIDs ); \$i++ )\{
+
+  \$z = "Chatters:"+\$tIDs[\$i]+":"+\$name[0..1]+":"+\$name;
+
+  \$ob = Obj( \$z );
+  if( \$ob ) return \$ob;
+
+\}
+
+/* okay. we give up. */
+
+return nil;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1048547900, "zwoc", "E", 1053112830, "kargh", "X", 1053113621, "kargh", "X", 1071359531, "kargh", "P", 1071359660, "kargh", "P", 1085666235, "zwoc", "P", 1085666739, "zwoc", "P", 1085666849, "zwoc", "P", 1085666868, "zwoc", "P", 1127760057, "zwoc", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

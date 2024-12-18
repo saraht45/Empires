@@ -1,0 +1,808 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Combat:New:hitdescription)"/>
+    <Core:PCProperties>
+      <Core:Property property="characters">
+         (\{ nil, \<Chatters:IC:ry:ryan\>, \<Chatters:IC:sw:swan\>, \<Chatters:Backup:IC:ma:madalina0\>, \<Chatters:AE:az:azrael\>, \<Chatters:AE:ka:kata\>, nil, \<Chatters:IC:ko:koz\>, nil, nil, nil, \<Chatters:AE:va:valdus\>, \<Chatters:IC:fy:fyros\>, \<Chatters:IC:sh:shmarmy\>, nil, nil, nil, \<Chatters:Backup:IC:ch:chinco0\>, nil, \<Chatters:Backup:IC:di:ditto1\>, \<Chatters:AE:ba:bayard\>, nil, \<Chatters:AE:ma:matteo\>, nil \})
+      </Core:Property>
+      <Core:Property property="log:creator">
+         "Injuries"
+      </Core:Property>
+      <Core:Property property="merry:lib:add_wound">
+         X[M] object victim;
+string detail, tmp;
+/*
+this adds a wound to a target's body part.
+*/
+int i;
+
+if(!\$target) return FALSE;
+if(!\$wound) return FALSE;
+
+victim = NRefOb(\$target);
+detail = NRefDetail(\$target);
+
+/* injuries::add_wound(\$target:\$target, \$wound:\$injury, \$attacker:\$fighter, \$weapon:\$weapon, \$damage: \$damage); */
+  if(!\$wound \|\| typeof(\$wound) != T_STRING) \$wound = "cut";
+  if(detail == "default") detail = "body";
+
+/*  EmitTo(\$attacker, "Test injury code");
+  EmitTo(\$attacker, dump_value(\$wound));
+  EmitTo(\$attacker, dump_value(victim));
+  EmitTo(\$attacker, dump_value(detail));*/
+  /* Make sure there's at least 1 point of damage */
+  /* Extension: (Should revise this assumption soon) */
+  /* \$damage += 1; */
+
+  if(\$damage \< 1) \$damage = 1;
+
+/*EmitTo(\$actor, "Looking for injury info");*/
+\$injury = \$weapon."weapon:injuries";
+if(\$injury) \{
+ \$injury = Arr(\$injury)[random(sizeof(Arr(\$injury)))];
+\} else \{
+ \$injury = ([ ]);
+\}
+/*EmitTo(\$actor, dump_value( \$injury ));*/
+
+if(\$injury["severity"]) \{
+ \$adverb = "SOMETHING";
+ \$tmp = 0;
+ for(i=0;i\<sizeof(\$injury["severity"]);i++) \{
+  if(\$injury["severity"][i][0] \<= \$damage \&\& \$injury["severity"][i][0] \> \$tmp) \{
+   \$tmp = \$injury["severity"][i][0];
+   \$adverb = \$injury["severity"][i][1];
+  \}
+ \}
+\} else \{
+ switch(\$damage) \{
+  case 1:
+   \$adverb = "slightly";
+   break;
+  case 2:
+   \$adverb = "";
+   break;
+  case 3:
+   \$adverb = "shallowly";
+   break;
+  case 4:
+   \$adverb = "deeply";
+   break;
+  default:
+   \$adverb = "seriously";
+ \}
+\}
+if(\$injury["verb"]) \{
+ \$verb = \$injury["verb"];
+\} else \{
+ \$verb = "hurt";
+\}
+\$extras = ([ "weapon":\$weapon ]);
+\$extras["injury"] = \$injury["injury"];
+if(\$injury["with"])
+ \$extras["with"] = \$injury["with"];
+if(\$injury["overwrite:message"])
+ \$extras["overwrite:message"] = \$injury["overwrite:message"];
+
+/*
+EmitTo(\$attacker, dump_value(\$injury));
+EmitTo(\$attacker, dump_value(\$verb));
+EmitTo(\$attacker, dump_value(\$adverb));
+EmitTo(\$attacker, dump_value(\$extras));
+*/
+
+/*
+new_actions += (\{ (\{ "attack", \$verb, \$adverb, damage, \$extras \}) \});
+*/
+
+/* give an injury */
+if(victim."combat:type" == "spar") \{
+    if(Int(victim."combat:fatigue") \<= 36) \{
+        victim."combat:fatigue" = Int(victim."combat:fatigue") + Int(\$damage);
+       /* if(Int(victim."combat:fatigue") \> 36) victim."combat:fatigue" = 36; */
+        /* Add them to the list of people to be healed */
+        \$\{Ironclaw:Lib:Combat:Cards:Injuries\}.characters \|= (\{ victim \});
+    \}
+\} else \{
+    if(Int(victim."combat:damage") \<= 36) \{
+        victim."combat:damage" = Int(victim."combat:damage") + Int(\$damage);
+        /* if(Int(victim."combat:damage") \> 36) victim."combat:damage" = 36; */
+        /* Add them to the list of people to be healed */
+        \$\{Ironclaw:Lib:Combat:Cards:Injuries\}.characters \|= (\{ victim \});
+    \}
+\}
+
+/* give an injury description */
+\$inj_mapping = Get(victim, "combat:injury:"+detail);
+if(!\$inj_mapping)
+ \$inj_mapping = ([ ]);
+/* increase the total damage done to this bodypart */
+if(\$inj_mapping["total"]) \{
+ \$inj_mapping["total"] += Int(\$damage);
+\} else \{
+ \$inj_mapping["total"] = Int(\$damage);
+\}
+/* add this injury to the listing */
+if(!\$inj_mapping["injuries"])
+ \$inj_mapping["injuries"] = ([ ]);
+/* do we have a type? */
+/* NOT WRITTEN YET */
+\$type = "hurt";
+if(!\$inj_mapping["injuries"][\$type])
+ \$inj_mapping["injuries"][\$type] = (\{\});
+
+\$inj_mapping["injuries"][\$type] += (\{ (\{ \$damage, \$extras, ([]) \}) \});
+Set(victim, "combat:injury:"+detail, \$inj_mapping);
+
+return replace_strings(\$adverb, "ly", "") + " wound.";
+      </Core:Property>
+      <Core:Property property="merry:lib:check_coverage">
+         X[M] if(\$targ."base:clothes-worn" \&\& map_sizeof(\$targ."base:clothes-worn")) \{
+    \$coveredParts = map_indices(\$targ."base:clothes-worn");
+\} else \{
+    \$coveredParts = (\{ \});
+\}
+
+if(\$targ.detailtocoverage) \{
+    \$detail = \$targ.detailtocoverage[\$detail];
+\}
+
+if(!member(\$detail, \$coveredParts) \|\| \$looker == \$targ \|\| Int(\$looker."skill:career:healer") \>= 20) \{
+    return \$string;
+\} else \{
+    return "";
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:describe-wound">
+         X[M] /* sets a description for any wounds on the characters \$detail */
+object body;
+string detail, *injuries, adjective, *adjectives, *snames, *pnames, currentInjury, *progression, bandagename;
+int injuryCount, index, index2, bandaged, used_bandage;
+
+injuries = (\{\});
+adjectives = (\{\});
+snames = (\{\});
+pnames = (\{\});
+bandaged = FALSE;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "IS THIS OLD CODE? I THINK IT IS.");
+EmitTo(\$az, "COMING FROM Ironclaw:Lib:Characters:Injuries - merry:lib:describe-wound");
+
+
+/* if we weren't passed \$detail */
+if(!\$detail)
+  return FALSE;
+
+detail = NRefDetail(\$detail);
+body = NRefOb(\$detail);
+
+/* is there a bandage on? */
+if(typeof(Get(body, "combat:injury:"+detail+":bandaged")) != T_NIL) \{
+  bandaged = TRUE;
+  if(Get(body, "combat:injury:"+detail+":bandaged") \< 1) \{
+    used_bandage = TRUE;
+  \} else \{
+    used_bandage = FALSE;
+  \}
+  if(Get(body, "combat:injury:"+detail+":bandagename")) \{
+    bandagename = Get(body, "combat:injury:"+detail+":bandagename");
+  \} else \{
+    bandagename = "a strip of cloth";
+  \}
+\}
+return FALSE;
+
+/* get a list of the injuries for this body part */
+
+/* if no injuries */
+if(!body."combat:injuries" \|\| !body."combat:injuries"[detail] \|\| !sizeof(body."combat:injuries"[detail])) \{
+  if(bandaged) \{
+    /* but still show the bandage */
+    Set(body, "combat:injury:" + detail, "been bandaged with "+bandagename);
+    if(used_bandage) \{
+      Set(body, "combat:injury:" + detail + ":adjectives", "grubbily bandaged");
+    \} else \{
+      Set(body, "combat:injury:" + detail + ":adjectives", "bandaged");
+    \}
+  \} else \{
+    /* no bandage - clear any visible injuries */
+    Set(body, "combat:injury:" + detail, nil);
+    Set(body, "combat:injury:" + detail + ":adjectives", nil);
+  \}
+  return TRUE;
+\}
+
+\$injuryArray = copy(body."combat:injuries"[detail]);
+/* if there are no injuries in the mapping, remove the mapping */
+if(sizeof(\$injuryArray) == 0)
+\{
+  /* we have no injuries */
+  if(bandaged) \{
+    /* but still show the bandage */
+    Set(body, "combat:injury:" + detail, "been bandaged with "+bandagename);
+    if(used_bandage) \{
+      Set(body, "combat:injury:" + detail + ":adjectives", "grubbily bandaged");
+    \} else \{
+      Set(body, "combat:injury:" + detail + ":adjectives", "bandaged");
+    \}
+  \} else \{
+    /* no bandage - clear any visible injuries */
+    Set(body, "combat:injury:" + detail, nil);
+    Set(body, "combat:injury:" + detail + ":adjectives", nil);
+  \}
+  /* remove this mapping */
+  body."combat:injuries"[detail] = nil;
+  return TRUE;
+\}
+
+/* don't describe any injuries covered by a bandage */
+for(index=0;index\<sizeof(\$injuryarray);index++) \{
+  if(\$injuryarray[index]["bandaged"])
+    \$injuryarray[index] = nil;
+\}
+\$injuryarray -= (\{ nil \});
+
+/* start stripping injuries from the list, and adding to the array */
+while(sizeof(\$injuryArray) \> 0)
+\{
+  injuryCount = 1;
+
+  /* strip away any injury that matches the one at index, and increment the injury counter accordingly */
+  for(index = 1; index \< sizeof(\$injuryArray);)
+  \{
+    /* check that the injuries match */
+    if(\$injuryArray[index]["type"][0] == \$injuryArray[0]["type"][0])\{
+      /* check the level to make sure that the adjectives match */
+      if(Call(this, "get_adjective", \$details: \$injuryArray[0]) == Call(this, "get_adjective", \$details: \$injuryArray[index])) \{
+        /* this element seems to match, so increment the injury count, and remove it from the list */
+        injuryCount++;
+        \$injuryArray -= (\{ \$injuryArray[index] \});
+      \} else \{
+        /* the adjective was different. check next injury in the array */
+        index++;
+      \}
+    \} else \{
+      /* the injury type was different. check next injury in the array */
+      index++;
+    \}
+  \}
+
+  /* add the injury at index to the injuries list, along with the appropriate number */
+  currentInjury = "";
+
+  /* add the number of this type of injuries - a cut vs three cuts */
+  if(injuryCount == 1)
+  \{
+    currentInjury = currentInjury + Call(this, "get_adjective", \$details: \$injuryArray[0]) + \$injuryArray[0]["type"][0];
+      /* EXTENSION: include adjective in here */
+    switch(currentInjury[0]) \{
+      case 'a':
+      case 'e':
+      case 'i':
+      case 'o':
+      case 'u':
+        currentInjury = "an "+currentInjury;
+      break;
+      default:
+        currentInjury = "a "+currentInjury;
+      break;
+    \}
+  \} else \{
+    currentInjury = desc_cardinal(injuryCount) + " " + currentInjury + Call(this, "get_adjective", \$details: \$injuryArray[0]) + \$injuryArray[0]["type"][1];
+  \}
+
+  injuries += (\{ currentInjury \});
+  if(\$injuryArray[0]["adj"])
+    adjectives \|= Arr(\$injuryArray[0]["adj"]);
+  if(\$injuryArray[0]["type"]) \{
+    snames \|= Arr(\$injuryArray[0]["type"][0]);
+    pnames \|= Arr(\$injuryArray[0]["type"][1]);
+  \}
+  if(\$injuryArray[0]["injury"]) \{
+    adjectives \|= (\{"injured"\});
+    snames \|= (\{"injury"\});
+    pnames \|= (\{"injuries"\});
+  \}
+  \$injuryArray -= (\{ \$injuryArray[0] \});
+\}
+
+/* now write out a description of the injuries */
+\$description = "";
+for(index = 0; index \< sizeof(injuries); index++)
+\{
+  \$description += injuries[index];
+  if(sizeof(injuries)-index \> 2)
+  \{
+    \$description += ", ";
+  \} else if(sizeof(injuries)-index == 2)
+  \{
+    \$description += " and ";
+  \}
+\}
+
+/* add the description of the bandage */
+if(bandaged)
+  \$description += ", and has been bandaged with "+bandagename;
+
+/*EmitTo(\$actor, "description of: It has " + \$description + ".");*/
+Set(body, "combat:injury:" + detail, \$description);
+
+/* Set the adjectives for this detail and write a description of them*/
+for(index = 0; index \< sizeof(adjectives); index++) \{
+  Set(body, "details:"+detail+":adjective:"+adjectives[index], TRUE);
+\}
+for(index = 0; index \< sizeof(snames); index++) \{
+  Set(body, "details:"+detail+":sname:"+snames[index], TRUE);
+\}
+for(index = 0; index \< sizeof(pnames); index++) \{
+  Set(body, "details:"+detail+":pname:"+pnames[index], TRUE);
+\}
+
+adjectives = map_indices(arr_to_set(adjectives));
+adjectives -= (\{ "tattooed" \});
+adjectives -= (\{ "injured" \});
+if(bandaged) \{
+  if(used_bandage) \{
+    adjectives \|= (\{ "grubbily bandaged" \});
+  \} else \{
+    adjectives \|= (\{ "bandaged" \});
+  \}
+\}
+
+
+if(sizeof(adjectives) == 1) \{
+  Set(body, "combat:injury:"+detail+":adjectives", adjectives[0]);
+\} else if(sizeof(adjectives) == 2)
+\{
+  Set(body, "combat:injury:"+detail+":adjectives", adjectives[0]+" and "+adjectives[1]);
+\} else if(sizeof(adjectives) \> 2) \{
+  if(member("injured", adjectives)) \{
+    Set(body, "combat:injury:"+detail+":adjectives", "injured");
+  \} else if(member("bandaged", adjectives)) \{
+    Set(body, "combat:injury:"+detail+":adjectives", "bandaged");
+  \} else if (member("tattooed", adjectives)) \{
+    Set(body, "combat:injury:"+detail+":adjectives", "tattooed");
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_adjective">
+         X[M] /* return an adjective based on the progression of damage */
+string *progression;
+int sz, damage;
+
+if(\$details \&\& \$details["progression"])  \{
+  progression = \$details["progression"];
+\} else \{
+  progression = \$this.progression;
+\}
+sz = sizeof(progression);
+
+if(\$details["level"]) \$damage = \$details["level"] - 4;
+
+/* if the damage is larger than the progression, just return the highest value */
+if(\$damage \> sz) \{
+  if(progression[sz-1]) \{
+    return progression[sz-1]+" ";
+  \} else \{
+    return "";
+  \}
+\}
+
+\$damage--;
+if(\$damage \< 0) \$damage = 0;
+
+if(progression[\$damage]) \{
+  return progression[\$damage]+" ";
+\} else \{
+  return "";
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:heal_all">
+         X[M] /* heal all injuries */  
+/* Should always return TRUE */  
+  
+\$doom = \$\{Chatters:IC:de:death\};  
+/* EmitTo(\$doom, "STARTING Ironclaw:Lib:Characters:Injuries - merry:lib:heal_all"); */ 
+  
+/* sanity checking */  
+if(!\$character) error("No body object passed via the \$character variable");  
+if(typeof(\$detail_name) != T_STRING) error("No detail name passed via the \$detail_name variable");  
+if(typeof(\$injuries) != T_MAPPING) error("No injuries mapping passed via the \$injuries variable");  
+if(typeof(\$injury_type) != T_STRING) error("No injuries type passed via the \$injury_type variable");  
+if(typeof(\$index) != T_INT) error("No injuries index passed via the \$index variable");  
+  
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Injuries - merry:lib:heal_all - PASSED SANITY"); */ 
+  
+\$injury = \$injuries["injuries"][\$injury_type][\$index];  
+  
+/* reduce the value of the injury completely*/  
+if(\$injury[0] \> 0) \{  
+ \$injury[0] = 0;  
+ /* and since we're reducing this injury, also reduce the total */  
+ if(\$injuries["total"] \&\& \$injuries["total"] \> 0)  
+  \$injuries["total"] = 0;  
+ /* and don't forget to reduce the combat:damage property */  
+ if(\$character."combat:damage" \&\& \$character."combat:damage" \> 0)  
+  \$character."combat:damage" = 0;  
+\}  
+  
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Injuries - merry:lib:heal_all - STAGE ONE"); */ 
+  
+/* has this injury been healed?  It should have been*/  
+if(\$injury[0] \<= 0) \{  
+ /* remove the healed injury */  
+ \$injuries["injuries"][\$injury_type] -= (\{ \$injuries["injuries"][\$injury_type][\$index] \});  
+ return TRUE;  
+\}  
+  
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Injuries - merry:lib:heal_all - STAGE TWO"); */ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:heal_injury">
+         X[M] /* heal a point of this injury */
+/* if the injury is completely healed, return TRUE */
+/* if the injury is not yet completely healed, return FALSE */
+
+/* sanity checking */
+if(!\$character) error("No body object passed via the \$character variable");
+if(typeof(\$detail_name) != T_STRING) error("No detail name passed via the \$detail_name variable");
+if(typeof(\$injuries) != T_MAPPING) error("No injuries mapping passed via the \$injuries variable");
+if(typeof(\$injury_type) != T_STRING) error("No injuries type passed via the \$injury_type variable");
+if(typeof(\$index) != T_INT) error("No injuries index passed via the \$index variable");
+
+\$injury = \$injuries["injuries"][\$injury_type][\$index];
+
+/* reduce the value of the injury */
+if(\$injury[0] \> 0) \{
+ \$injury[0]--;
+ /* and since we're reducing this injury, also reduce the total */
+ if(\$injuries["total"] \&\& \$injuries["total"] \> 0)
+  \$injuries["total"]--;
+ /* and don't forget to reduce the combat:damage property */
+ if(\$character."combat:damage" \&\& \$character."combat:damage" \> 0)
+  \$character."combat:damage"--;
+\}
+
+/* has this injury been healed? */
+if(\$injury[0] \<= 0) \{
+ /* remove the healed injury */
+ \$injuries["injuries"][\$injury_type] -= (\{ \$injuries["injuries"][\$injury_type][\$index] \});
+ return TRUE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:healing-cycle">
+         X[M] /* heals characters */
+/* this script should be called by cron every hour */
+
+object character, *characters;
+int index, i, j, k, is_injured;
+string *injured_parts, *injury_types, detail_name;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "Starting healing.");
+
+/* remove nil characters from the list */
+this.characters -= (\{ nil \});
+characters = this.characters;
+
+for(index=0;index\<sizeof(characters);index++) \{
+    character = characters[index];
+    is_injured = FALSE;
+    k = FALSE;
+
+    /*EmitTo(\$az, Describe(character)+" is injured.");*/
+    /* if they have fatigue, heal it */
+    if(character."combat:fatigue" \&\& character."combat:fatigue" \>= 1) \{
+        /* drop up to two points of fatigue */
+        character."combat:fatigue"--;
+
+        if(character."combat:fatigue" \&\& character."combat:fatigue" \>= 1)
+            character."combat:fatigue"--;
+            /* mark them as injured so we don't remove them from the list while healing fatigue */
+            is_injured = TRUE;
+        \} else if(sizeof(map_indices(prefixed_map(Get(character, "*"), "combat:injury:"))))\{
+            /* heal the injuries in a random order */
+            injured_parts = map_indices(prefixed_map(Get(character, "*"), "combat:injury:"));
+
+            while(sizeof(injured_parts)) \{
+                detail_name = injured_parts[random(sizeof(injured_parts))];
+                /*EmitTo(\$az, "Checking "+detail_name);*/
+                /* is this a proper injury detail or an adjective for an injury? */
+                if(sizeof(explode(detail_name, ":")) == 3) \{
+                    /* get the injuries for this detail */
+                    \$injuries = Get(character, detail_name);
+                    injured_parts -= (\{ detail_name \});
+
+                    if(!\$injuries) continue;
+
+                    /* code to correct old-style properties */
+                    if(typeof(\$injuries) == T_STRING) \{
+                        Set(character, detail_name, nil);
+                        continue;
+                    \}
+                \} else \{
+                    /* not a proper injury detail. Probably an adjective for the detail */
+                    /* continue looping */
+                    injured_parts -= (\{ detail_name \});
+                    continue;
+                \}
+
+                /* run any complications for this body part */
+                if(\$injuries["complications"]) \{
+                    /* NOT WRITTEN YET */
+                    /* mark them as injured. Characters with complications shouldn't leave the list */
+                    is_injured = TRUE;
+                \}
+
+                /* try to heal the specific injuries */
+                if(\$injuries["injuries"]) \{
+                    /* we found some injuries, so record that they were injured */
+                    is_injured = TRUE;
+                    /* loop through their injuries on this body part */
+                    injury_types = map_indices(\$injuries["injuries"]);
+
+                    for(i=0;i\<sizeof(injury_types);i++) \{
+                        for(j=0;\$injuries["injuries"] \&\& j\<sizeof( \$injuries["injuries"][injury_types[i]] );j++) \{
+                            /* check if we should heal this injury, and if so, how much */
+                            /* check for complications specific to this injury */
+                             /* NOT WRITTEN YET */
+                            if(TRUE) \{ /* THIS IS WHERE WE'D CALL A SCRIPT FOR ANY COMPLICATIONS */
+                                /* complications don't stop us healing */
+                                /* have we already healed a point this hour? */
+                                if(!k) \{
+                                    /* do we heal it? */
+                                    if(FALSE) \{
+                                        /* if they have a balm */
+                                        /* NOT WRITTEN YET */
+                                    \} else if(\$injuries["bandaged"] \&\& \$injuries["bandaged"][0] \> 0) \{
+                                        /* if they have a bandage */
+                                        /* reduce the number of "heals" left */
+                                        /* reduce the number of "heals" left */
+                                        \$injuries["bandaged"][0]--;
+
+                                        /* even using a bandage, they only have a 1 in 4 chance of healing */
+                                        if(!random(4))
+                                            k = TRUE;
+                                        \} else if (!random(36)) \{
+                                            /* give a chance to heal on its own */
+                                            k = TRUE;
+                                        \}
+
+                                        if(k) \{ /* Was k set to TRUE? Should they heal? */
+                                            /* heal this */
+                                            if(::heal_injury(\$character: character, \$detail_name: detail_name, \$injuries: \$injuries, \$injury_type: injury_types[i], \$index: j)) \{
+                                                /* injury healed. Reduce j */
+                                                j--;
+
+                                                /* check if we should remove the injuries type mapping */
+                                                if(!sizeof(\$injuries["injuries"][injury_types[i]])) \{
+                                                    \$injuries["injuries"][injury_types[i]] = nil;
+                                                    i--;
+
+                                                    /* should we remove the injuries mapping altogether? */
+                                                    if(!sizeof(map_indices(\$injuries["injuries"]))) \{
+                                                        \$injuries["injuries"] = nil;
+                                                        /* and for good measure, let's get rid of "total" too */
+                                                        if(\$injuries["total"] \<= 0) \$injuries["total"] = nil;
+                                                    \}
+                                                \}
+                                            \}
+                                        \}
+                                    \} /* are we clear to heal another injury? */
+                                \}
+                            \}
+                        \}
+                    \}
+
+                    if(!sizeof(map_indices(\$injuries))) \{
+                        /* remove this mapping if it's empty */
+                        Set(character, detail_name, nil);
+                    \}
+                \} /* loop per injured body part */
+            \}
+
+            /* are they still injured, or should they be removed from the list? */
+            if(!is_injured) \{
+                /* not injured. Check if they have combat damage */
+                if(character."combat:damage") \{
+                    character."combat:damage"--;
+                    if(character."combat:damage" \<= 0) \{
+                        character."combat:damage" = nil;
+                        this.characters -= (\{ character \});
+                    \}
+                \} else \{
+                    /* not even any combat damage. Remove from the list */
+                    this.characters -= (\{ character \});
+                \}
+           \}
+       \} /* loop per character */
+
+EmitTo(\$az, "Finished healing");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:healing_death">
+         X[M] /* this script should be called upon resurrection */   
+   
+object character, *characters;   
+int index, i, j, k, is_injured;   
+string *injured_parts, *injury_types, detail_name;   
+   
+\$doom = \$\{Chatters:IC:de:death\};   
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Injuries - merry:lib:healing_death - STARTUP"); */ 
+   
+   
+ character = \$victim;   
+ is_injured = FALSE;   
+ k = TRUE;   
+   
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Injuries - merry:lib:healing_death - STAGE ONE"); */ 
+ /* if they have fatigue, heal it  completely*/   
+ if(character."combat:fatigue" \&\& character."combat:fatigue" \> 0) \{   
+  /* remove fatigue */   
+  character."combat:fatigue" = 0;   
+   
+  /* mark them as injured so we dont remove them from the list while healing fatigue */   
+  is_injured = TRUE;   
+ \} else if(sizeof(map_indices(prefixed_map(Get(character, "*"), "combat:injury:")))) \{   
+  /* heal the injuries in a random order */   
+  injured_parts = map_indices(prefixed_map(Get(character, "*"), "combat:injury:"));   
+  while(sizeof(injured_parts)) \{   
+   detail_name = injured_parts[random(sizeof(injured_parts))];   
+   /*EmitTo(\\\$az, "Checking "+detail_name);*/   
+   /* is this a proper injury detail or an adjective for an injury? */   
+   if(sizeof(explode(detail_name, ":")) == 3) \{   
+    /* get the injuries for this detail */   
+    \$injuries = Get(character, detail_name);   
+    injured_parts -= (\{ detail_name \});   
+    if(!\$injuries) continue;   
+   
+    /* code to correct old-style properties */   
+    if(typeof(\$injuries) == T_STRING) \{   
+     Set(character, detail_name, nil);   
+     continue;   
+    \}   
+   
+   \} else \{   
+    /* not a proper injury detail. Probably an adjective for the detail */   
+    /* continue looping */   
+    injured_parts -= (\{ detail_name \});   
+    continue;   
+   \}   
+   /* run any complications for this body part */   
+   if(\$injuries["complications"]) \{   
+    /* NOT WRITTEN YET */   
+    /* mark them as injured. Characters with complications shouldnt leave the list */   
+    is_injured = TRUE;   
+   \}   
+   /* try to heal the specific injuries */   
+   if(\$injuries["injuries"]) \{   
+    /* we found some injuries, so record that they were injured */   
+    is_injured = TRUE;   
+    /* loop through their injuries on this body part */   
+    injury_types = map_indices(\$injuries["injuries"]);   
+    for(i=0;i\<sizeof(injury_types);i++) \{   
+     for(j=0;\$injuries["injuries"] \&\& j\<sizeof( \$injuries["injuries"][injury_types[i]] );j++) \{   
+      /* check if we should heal this injury, and if so, how much */   
+      /* check for complications specific to this injury */   
+       /* NOT WRITTEN YET */   
+        if(k) \{ /* Was k set to TRUE? Should they heal? */   
+         /* heal this */   
+         if(::heal_all(\$character: character, \$detail_name: detail_name, \$injuries: \$injuries, \$injury_type: injury_types[i], \$index: j)) \{   
+          /* injury healed. Reduce j */   
+          j--;   
+          /* check if we should remove the injuries type mapping */   
+          if(!sizeof(\$injuries["injuries"][injury_types[i]])) \{   
+           \$injuries["injuries"][injury_types[i]] = nil;   
+           i--;   
+           /* should we remove the injuries mapping altogether? */   
+           if(!sizeof(map_indices(\$injuries["injuries"]))) \{   
+            \$injuries["injuries"] = nil;   
+            /* and for good measure, lets get rid of "total" too */   
+            if(\$injuries["total"] \<= 0) \$injuries["total"] = nil;   
+           \}   
+          \}   
+       \} /* are we clear to heal another injury? */   
+      \}   
+     \}   
+    \}   
+   \}   
+   if(!sizeof(map_indices(\$injuries))) \{   
+    /* remove this mapping if its empty */   
+    Set(character, detail_name, nil);   
+   \}   
+  \} /* loop per injured body part */   
+ \}   
+ /* are they still injured, or should they be removed from the list? */   
+ if(!is_injured) \{   
+  /* not injured. Check if they have combat damage */   
+  if(character."combat:damage") \{   
+   character."combat:damage" = 0;   
+   if(character."combat:damage" \<= 0) \{   
+    character."combat:damage" = nil;   
+    this.characters -= (\{ character \});   
+   \}   
+  \} else \{   
+   /* not even any combat damage. Remove from the list */   
+   this.characters -= (\{ character \});   
+  \}   
+ \}   
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Injuries - merry:lib:healing_death - WRAPUP"); */ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_all_injuries">
+         X[M] mixed *injured_parts, *injuries;
+object character;
+string detail;
+int i;
+
+character = \$character;
+injuries = (\{ \});
+
+if(sizeof(map_indices(prefixed_map(Get(character, "*"), "combat:injury:")))) \{
+    injured_parts = map_indices(prefixed_map(Get(character, "*"), "combat:injury:"));
+    for(i = 0; i \< sizeof(injured_parts); i++) \{
+        if(typeof(Get(character, injured_parts[i])) == 6 \&\& map_sizeof(Get(character, injured_parts[i]))) \{
+            detail = replace_strings(injured_parts[i], "combat:injury:", "");
+
+            if(character == \$looker) \{
+                injuries += (\{ NewNRef(character, detail) \});
+            \} else \{
+                injuries += (\{ Call(\$\{Ironclaw:Lib:Combat:Cards:Injuries\}, "check_coverage", \$targ: character, \$detail: detail, \$string: NewNRef(character, detail)) \});
+            \}
+        \}
+    \}
+\}
+
+injuries -= (\{ "" \});
+
+if(sizeof(injuries)) \{
+
+    \$isare = "is";
+    if(sizeof(injuries) \> 1) \$isare = "are";
+
+    if(character == \$looker) \{
+        return "You notice " + Describe(injuries, nil, character) + " " + \$isare + " injured.";
+    \} else \{
+        return "You notice " + Describe(injuries, character) + " " + \$isare + " injured.";
+    \}
+\} else \{
+    return FALSE;
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:takendamage">
+         X[M] \$endur = Int(\$char."career:combat:endurance") + Int(\$char."skill:combat:endurance");
+
+/* are they too injured to keep going? */
+if(Int(\$char."trait:body")+3+\$endur \< Int(\$char."combat:damage")) \{
+
+  /* are they fighting? */
+  if(\$char."combat:fighting") \{
+    EmitTo(\$char, "You are too injured to continue fighting.");
+    Social(\$char, "breakcombat");
+  \}
+
+  /* is there a script to run when they are this injured? */
+  if(FindMerry(\$char, "lib", "die"))
+    Call(\$char, "die");
+\} else if(Int(\$char."trait:body")+3+\$endur \< Int(\$char."combat:damage") + Int(\$char."combat:fatigue")) \{
+  /* if they are too injured + tired to fight */
+  EmitTo(\$char, "You are too tired to continue fighting right now.");
+  Social(\$char, "breakcombat");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="progression">
+         (\{ "slight", "slight", "small", "small", nil, nil, "significant", "significant", "severe", "severe", "serious", "serious", "dire", "dire" \})
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1206075651, "tonyd", "E", 1206075954, "tonyd", "E", 1229487259, "jominey", "E", 1229487387, "jominey", "E", 1252124740, "tonyd", "E", 1253137849, "jominey", "E", 1253143670, "jominey", "E", 1253858619, "jominey", "E", 1263372304, "jominey", "E", 1263373605, "jominey", "E", 1263373848, "jominey", "E", 1263380893, "jominey", "E", 1263688811, "jominey", "E", 1264110217, "jominey", "E", 1264123259, "jominey", "E", 1265761627, "jominey", "E", 1267227702, "tonyd", "E", 1267323212, "tonyd", "P", 1267323255, "tonyd", "P", 1267323394, "tonyd", "P", 1270590730, "jominey", "E", 1270590804, "jominey", "E", 1270591004, "jominey", "E", 1270595829, "jominey", "E", 1276688745, "tonyd", "P", 1276688835, "tonyd", "P", 1276689083, "tonyd", "P", 1278385882, "tonyd", "P", 1278387236, "tonyd", "P", 1278387258, "tonyd", "P", 1278387259, "tonyd", "P", 1278387261, "tonyd", "P", 1278390138, "tonyd", "P", 1278390488, "tonyd", "P", 1278393611, "tonyd", "P", 1278393761, "tonyd", "P", 1278393875, "tonyd", "P", 1278393943, "tonyd", "P", 1278394189, "tonyd", "P", 1278394465, "tonyd", "P", 1278394488, "tonyd", "P", 1278394672, "tonyd", "P", 1278394919, "tonyd", "P", 1278394955, "tonyd", "P", 1278394979, "tonyd", "P", 1278395414, "tonyd", "P", 1278395719, "tonyd", "P", 1278395954, "tonyd", "P", 1278395978, "tonyd", "P", 1278396002, "tonyd", "P", 1278396021, "tonyd", "P", 1278396044, "tonyd", "P", 1278396191, "tonyd", "P", 1278396397, "tonyd", "P", 1278396525, "tonyd", "P", 1278396565, "tonyd", "P", 1278396631, "tonyd", "P", 1278396797, "tonyd", "P", 1278396880, "tonyd", "P", 1278398542, "tonyd", "P", 1278398582, "tonyd", "P", 1278398674, "tonyd", "P", 1278398680, "tonyd", "P", 1278399530, "tonyd", "P", 1278399707, "tonyd", "P", 1278399809, "tonyd", "P", 1278399832, "tonyd", "P", 1278399857, "tonyd", "P", 1278399927, "tonyd", "P", 1278399952, "tonyd", "P", 1278400064, "tonyd", "P", 1278400092, "tonyd", "P", 1278400114, "tonyd", "P", 1278400255, "tonyd", "P", 1278400289, "tonyd", "P", 1278400344, "tonyd", "P", 1278401018, "tonyd", "P", 1278401103, "tonyd", "P", 1278401220, "tonyd", "P", 1278401460, "tonyd", "P", 1278401531, "tonyd", "P", 1278401551, "tonyd", "P", 1278401567, "tonyd", "P", 1278401617, "tonyd", "P", 1278401650, "tonyd", "P", 1278401897, "tonyd", "P", 1278402064, "tonyd", "P", 1278402109, "tonyd", "P", 1278402213, "tonyd", "P", 1278402238, "tonyd", "P", 1278402280, "tonyd", "P", 1278402310, "tonyd", "P", 1278491713, "tonyd", "P", 1278491783, "tonyd", "P", 1278491823, "tonyd", "P", 1278491904, "tonyd", "P", 1278491936, "tonyd", "P", 1278492023, "tonyd", "P", 1278492081, "tonyd", "P", 1278492123, "tonyd", "P", 1278492161, "tonyd", "P", 1278492181, "tonyd", "P", 1278492254, "tonyd", "P", 1278492325, "tonyd", "P", 1278492366, "tonyd", "P", 1278492420, "tonyd", "P", 1278492708, "tonyd", "P", 1278492777, "tonyd", "P", 1278492789, "tonyd", "P", 1278493422, "tonyd", "P", 1278493846, "tonyd", "P", 1278493979, "tonyd", "P", 1278494016, "tonyd", "P", 1278560456, "tonyd", "P", 1278560512, "tonyd", "P", 1278560531, "tonyd", "P", 1278560868, "tonyd", "P", 1278561005, "tonyd", "P", 1278561010, "tonyd", "P", 1278561035, "tonyd", "P", 1278561114, "tonyd", "P", 1278566400, "tonyd", "P", 1278566698, "tonyd", "P", 1278566855, "tonyd", "P", 1278567213, "tonyd", "P", 1278567352, "tonyd", "P", 1278572657, "tonyd", "P", 1278572747, "tonyd", "P", 1278572779, "tonyd", "P", 1278572822, "tonyd", "P", 1278572948, "tonyd", "P", 1278572972, "tonyd", "P", 1278572986, "tonyd", "P", 1278573296, "tonyd", "P", 1278573367, "tonyd", "P", 1278573458, "tonyd", "P", 1278573514, "tonyd", "P", 1278573541, "tonyd", "P", 1278573621, "tonyd", "P", 1278573638, "tonyd", "P", 1278573678, "tonyd", "P", 1278573739, "tonyd", "P", 1278573782, "tonyd", "P", 1278573800, "tonyd", "P", 1278573839, "tonyd", "P", 1278573865, "tonyd", "P", 1278574013, "tonyd", "P", 1278574042, "tonyd", "P", 1278574081, "tonyd", "P", 1278574248, "tonyd", "P", 1278574382, "tonyd", "P", 1278574557, "tonyd", "P", 1278574868, "tonyd", "P", 1278574893, "tonyd", "P", 1278575011, "tonyd", "P", 1278575133, "tonyd", "P", 1278577417, "tonyd", "P", 1278577524, "tonyd", "P", 1278578116, "tonyd", "P", 1278578249, "tonyd", "P", 1278578490, "tonyd", "P", 1278578500, "tonyd", "P", 1278578515, "tonyd", "P", 1278578620, "tonyd", "P", 1278578642, "tonyd", "P", 1278578960, "tonyd", "P", 1278578964, "tonyd", "P", 1278579032, "tonyd", "P", 1278579055, "tonyd", "P", 1278579126, "tonyd", "P", 1278579141, "tonyd", "P", 1278579170, "tonyd", "P", 1278579233, "tonyd", "P", 1278579298, "tonyd", "P", 1278579365, "tonyd", "P", 1278579395, "tonyd", "P", 1278579549, "tonyd", "P", 1278579642, "tonyd", "P", 1278579734, "tonyd", "P", 1278580094, "tonyd", "P", 1278580129, "tonyd", "P", 1278580194, "tonyd", "P", 1278580476, "tonyd", "P", 1278580887, "tonyd", "P", 1278580936, "tonyd", "P", 1278581958, "tonyd", "P", 1278582179, "tonyd", "P", 1278582314, "tonyd", "P", 1278582394, "tonyd", "P", 1278582440, "tonyd", "P", 1278582543, "tonyd", "P", 1278582633, "tonyd", "P", 1278582887, "tonyd", "P", 1278582949, "tonyd", "P", 1278583095, "tonyd", "P", 1278583232, "tonyd", "P", 1278583272, "tonyd", "P", 1278584190, "tonyd", "P", 1278584321, "tonyd", "P", 1278584331, "tonyd", "P", 1278584612, "tonyd", "P", 1278584801, "tonyd", "P", 1278585281, "tonyd", "P", 1278831686, "tonyd", "P", 1278831803, "tonyd", "P", 1278832086, "tonyd", "P", 1278832151, "tonyd", "P", 1278832193, "tonyd", "P", 1278832207, "tonyd", "P", 1278832312, "tonyd", "P", 1284919890, "jominey", "E", 1284920416, "jominey", "E", 1284920543, "jominey", "E", 1284920576, "jominey", "E", 1284920619, "jominey", "E", 1284920638, "jominey", "E", 1284920678, "jominey", "E", 1284920695, "jominey", "E", 1284920720, "jominey", "E", 1284920741, "jominey", "E", 1284920817, "jominey", "E", 1284920964, "jominey", "E", 1284920973, "jominey", "E", 1284921168, "jominey", "E", 1284921193, "jominey", "E", 1284921302, "jominey", "E", 1284921312, "jominey", "E", 1284921368, "jominey", "E", 1284921543, "jominey", "E", 1284921618, "jominey", "E", 1284921637, "jominey", "E", 1284921664, "jominey", "E", 1284921682, "jominey", "E", 1284921699, "jominey", "E", 1284922490, "jominey", "E", 1285013075, "jominey", "E", 1285025526, "jominey", "E", 1285025594, "jominey", "E", 1285025672, "jominey", "E", 1287002681, "jominey", "E", 1287003057, "jominey", "E", 1287597587, "tunk_bodin", "P", 1287597597, "tunk_bodin", "P", 1287597725, "tunk_bodin", "X", 1287598198, "tunk_bodin", "P", 1287602392, "tunk_bodin", "X", 1287602521, "tunk_bodin", "X", 1287606778, "tunk_bodin", "X", 1287606942, "tunk_bodin", "X", 1288713822, "tunk_bodin", "X", 1291431458, "tunk_bodin", "X", 1299629274, "tunk_bodin", "X", 1307988503, "jominey", "E", 1309729786, "tunk_bodin", "X", 1329961399, "tonyd", "P", 1329961413, "tonyd", "P", 1330047755, "tonyd", "P", 1330047782, "tonyd", "P", 1330047866, "tonyd", "P", 1330047896, "tonyd", "P", 1330048283, "tonyd", "P", 1330048320, "tonyd", "P", 1330048689, "tonyd", "P", 1330048919, "tonyd", "P", 1330048961, "tonyd", "P", 1330049464, "tonyd", "P", 1330049510, "tonyd", "P", 1330049561, "tonyd", "P", 1330049574, "tonyd", "P", 1330050187, "tonyd", "P", 1330050416, "tonyd", "P", 1330050542, "tonyd", "P", 1330050573, "tonyd", "P", 1330050586, "tonyd", "P", 1330050674, "tonyd", "P", 1330050690, "tonyd", "P", 1330050723, "tonyd", "P", 1330050745, "tonyd", "P", 1330050795, "tonyd", "P", 1330149940, "tonyd", "P", 1330149981, "tonyd", "P", 1330149988, "tonyd", "P", 1330216703, "tonyd", "P", 1330216854, "tonyd", "P", 1330223411, "tonyd", "P", 1330223448, "tonyd", "P", 1330929793, "tonyd", "P", 1342842411, "jominey", "P", 1342842432, "jominey", "P", 1342842609, "jominey", "P", 1342842974, "jominey", "P", 1342843752, "jominey", "P", 1342843785, "jominey", "P", 1343525681, "jominey", "E", 1343525903, "jominey", "E", 1343528822, "jominey", "P", 1343529547, "jominey", "E", 1343602679, "jominey", "P", 1343602773, "jominey", "P", 1343602946, "jominey", "P", 1343602995, "jominey", "P", 1343610156, "jominey", "E", 1343610997, "jominey", "E", 1343691884, "jominey", "E", 1344111404, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

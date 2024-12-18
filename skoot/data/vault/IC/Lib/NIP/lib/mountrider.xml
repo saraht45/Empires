@@ -1,0 +1,126 @@
+<object clone="/obj/properties" owner="idrocket">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-post:enter">
+         X[M] /*
+
+  D=The act-post:enter script for the mounting system (NIP), which handles movement through rooms.
+
+*/
+
+/* The rider has left through the exit. NPC still "on the other side" though. Let's move the NPC as well, but manually. */
+
+\$mount = \$actor."npc:mounting";
+\$mount."base:environment" = \$actor."base:environment";
+\$mount."base:proximity" = \$actor."base:proximity";
+
+/* And put the rider back on the mount. */
+\$actor."base:proximity" = \$mount;
+\$actor."base:stance" = STANCE_SIT;
+\$actor."base:preposition" = PREP_ON;
+      </Core:Property>
+      <Core:Property property="merry:act:approach">
+         X[M] /*
+
+  D=Approach script, inherited whenever someone mounts an NPC, which deals with movement issues within rooms.
+
+*/
+
+
+/* Instantly put the character in proximity to whatever he's attempting to approach, */
+\$actor."base:proximity" = \$what;
+
+/* Force the NPC (which is referred to through 'npc:mounting' in the actor) to perform the approach too. */
+
+Act( \$actor."npc:mounting", "approach", \$what: \$what, \$consent_mapping: nil );
+
+
+/* Quick 100 ms delay, */
+\$delay(3, TRUE, "0c9f");
+
+/* And then put the rider back on the mount */
+\$actor."base:proximity" = \$actor."npc:mounting";
+\$actor."base:stance" = STANCE_SIT;
+\$actor."base:preposition" = PREP_ON;
+      </Core:Property>
+      <Core:Property property="merry:act:leave">
+         X[M] /*
+
+  D=Leave script, inherited whenever someone mounts an NPC, which deals with movement issues within rooms.
+
+*/
+
+
+/* Force the NPC (which is referred to through 'npc:mounting' in the actor) to perform the leave. */
+Act( \$actor."npc:mounting", "leave" );
+
+/* And then put the rider back on the mount */
+\$actor."base:proximity" = \$actor."npc:mounting";
+\$actor."base:stance" = STANCE_SIT;
+\$actor."base:preposition" = PREP_ON;
+      </Core:Property>
+      <Core:Property property="merry:act:lower">
+         X[M] /*
+
+  D=Script for dismounting NPC's.
+
+*/
+
+/* Firstly, make sure the rider typed just "lower". We're going to let everything else pass. */
+
+if( \$dob \|\| \$iob ) return TRUE; /* Roles found, we abort. */
+
+/* Let's emit something cute right away. */
+
+\$mount = \$actor."npc:mounting";
+
+
+/* Let's restore the gait to the old value. */
+\$actor."base:gait" = \$actor."base:oldgait";
+\$actor."base:oldgait" = nil;
+
+/*
+ * Remove adjective "mounted" to the NPC, and add adjective "unmounted".
+ */
+Set( this, "details:"+NRefDetail(this)+":adjective:mounted", FALSE );
+Set( this, "details:"+NRefDetail(this)+":adjective:unmounted", TRUE );
+
+EmitTo( \$actor, "You dismount "+Describe( \$mount )+"." );
+EmitIn( \$actor."base:environment", Describe( \$actor )+" dismounts "+Describe( \$mount )+".", \$actor );
+
+/* Now, let's reverse the things done in the mounting script. */
+
+\$actor."npc:mounting" = nil;
+\$mount."npc:mounted" = 0;
+
+\$inherits = map_indices( \$mount."nip:trait:mounting:rider-inherits" );
+for( \$i = 0; \$i \< sizeof( \$inherits ); \$i++ )
+  Set( \$actor, "merry:inherit:"+\$inherits[\$i], nil );
+
+/* And finally, set the actor's stance to "standing",
+   and preposition to "beside". */
+\$actor."base:stance" = STANCE_STAND;
+\$actor."base:preposition" = PREP_BESIDE;
+\$mount."nip:trait:movement:frequency" = nil;
+      </Core:Property>
+      <Core:Property property="merry:act:stance">
+         X[M] /*
+
+  D=Stance handler for mounted NPC's. This script ensures stances are displayed correctly.
+
+*/
+
+
+/* Here, we simply forward the action to the horse, but we put the
+   stance to "standing". Don't want any kneeling horses here... */
+
+Act( \$actor."npc:mounting", "stance", \$stance: STANCE_STAND );
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1156151904, "idrocket", "E", 1156152177, "idrocket", "E", 1156152184, "idrocket", "E", 1156152187, "idrocket", "E", 1156152193, "idrocket", "E", 1156152208, "idrocket", "E", 1156152212, "idrocket", "E", 1156152215, "idrocket", "E", 1156152220, "idrocket", "E", 1156152224, "idrocket", "E", 1156152226, "idrocket", "E", 1156152566, "idrocket", "E", 1156152596, "idrocket", "E", 1156153002, "idrocket", "E", 1156153067, "idrocket", "E", 1156153114, "idrocket", "E", 1156153136, "idrocket", "E", 1156153170, "idrocket", "E", 1156153922, "idrocket", "E", 1156154091, "idrocket", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

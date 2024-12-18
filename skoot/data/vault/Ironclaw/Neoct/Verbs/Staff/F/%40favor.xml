@@ -1,0 +1,129 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="@favor" evoke="optional" audible="true" private="false" secret="true" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* grants a social rank increase to a character */
+/* note that this in-game requires a promotion token */
+
+if(!\$(dob:words)) \{
+  /* EmitTo(\$actor, "Format: +favor \<name\> \<amount\> 'Gossip to add to NPC rumors'"); */
+  EmitTo(\$actor, "Format: @favor \<name\> 'Gossip to add to NPC rumors'");
+  return FALSE;
+\}
+
+/*\$a_subj = lower_case( \$(dob:words)[0] );*/
+/*sscanf(implode(\$(dob:words), " "), "%s %d", \$a_subj, \$amount );*/
+sscanf(implode(\$(dob:words), " "), "%s", \$a_subj);
+\$char = common::lookup(\$name: \$a_subj);
+
+if(!\$char) \{
+  EmitTo(\$actor, "Unknown character.");
+  return FALSE;
+\}
+
+if(\$actor == \$char) \{
+    EmitTo(\$actor, "As much as you might love yourself, you just can't do that.");
+    return FALSE;
+\}
+
+if(\$actor."base:environment" != \$char."base:environment") \{
+    EmitTo(\$actor, "You must be in the same room as " + Describe(\$char) + " to favor them.");
+    return FALSE;
+\}
+
+if(member(\$char, udat::query_bodies_in_roster(\$user: \$actor."udat:name"))) \{
+  EmitTo(\$actor, "Seriously? Please don't try to patron your alts. And please read the forum thread about alt interactions.");
+  return FALSE;
+\}
+
+if(!\$actor."loyalty:guild") \{
+  EmitTo(\$actor, "You cannot favor or disfavor people until you wear a pin displaying your chosen loyalties.");
+  return FALSE;
+\}
+
+if(Call(\$\{Ironclaw:Lib:Characters:RankScripts\}, "ip_check", \$char1: \$actor, \$char2: \$char)) \{
+    EmitTo(\$actor, "You cannot favor someone who shares your ip address. Contact staff if you are confused by this rule.");
+    return FALSE;
+\}
+
+
+/*
+if(typeof(\$amount) == T_NIL) \{
+  EmitTo(\$actor, "Unknown amount of favor.");
+  return FALSE;
+\}
+*/
+
+if(!\$actor."favor:giving") \$actor."favor:giving" = ([ ]);
+if(!\$actor."favor:giving"[name(\$char)]) \$actor."favor:giving"[name(\$char)] = 0;
+
+\$actor."favor:giving"[name(\$char)] += 1;
+
+EmitTo(\$actor, "Granted favor to "+Describe(\$char)+".");
+
+/* now set the rumors */
+if(\$evoke) \{
+ \$evoke = \$evoke[1..strlen(\$evoke)-2];
+
+ /* add punctuation if there's no completing full stop */
+ if( (\$evoke[strlen(\$evoke)-1] \>= 97 \&\& \$evoke[strlen(\$evoke)-1] \<= 122) \|\|
+     (\$evoke[strlen(\$evoke)-1] \>= 65 \&\& \$evoke[strlen(\$evoke)-1] \<= 90) ) \{
+
+  \$evoke += ".";
+ \}
+
+ EmitTo(\$actor, "You will also spread the word that: "+\$evoke);
+ \$rumordb = \$\{Ironclaw:NIP:Rumor:Rumours\};
+ \$count = Int(\$rumordb."favor:count");
+ \$count++;
+ if(\$count \> 800) \$count = 0;
+ \$rumordb."favor:count" = \$count;
+ Set(\$rumordb, "topic:favor"+Str(\$count), ([ "keywords":(\{ \$a_subj, "favor", "gossip", "rumor" \}), "rumor":\$evoke ]) );
+\}
+
+return FALSE;
+
+
+
+if(!\$char."trait:favor") \$char."trait:favor" = 0;
+\$char."trait:favor" += \$amount*\$amount;
+
+EmitTo(\$actor, "Granted "+Str(\$amount*\$amount)+" points of favor to "+Describe(\$char)+".");
+EmitTo(\$actor, Describe(\$char)+" now has "+Str(\$char."trait:favor")+" points of favor.");
+
+/* now set the rumors */
+if(\$evoke) \{
+ \$evoke = \$evoke[1..strlen(\$evoke)-2];
+
+ /* add punctuation if there's no completing full stop */
+ if( (\$evoke[strlen(\$evoke)-1] \>= 97 \&\& \$evoke[strlen(\$evoke)-1] \<= 122) \|\|
+     (\$evoke[strlen(\$evoke)-1] \>= 65 \&\& \$evoke[strlen(\$evoke)-1] \<= 90) ) \{
+
+  \$evoke += ".";
+ \}
+
+ EmitTo(\$actor, "Setting rumor of: "+\$evoke);
+ \$rumordb = \$\{Ironclaw:NIP:Rumor:Rumours\};
+ \$count = Int(\$rumordb."favor:count");
+ \$count++;
+ if(\$count \> 800) \$count = 0;
+ \$rumordb."favor:count" = \$count;
+ Set(\$rumordb, "topic:favor"+Str(\$count), ([ "keywords":(\{ \$a_subj, "favor", "gossip", "rumor" \}), "rumor":\$evoke ]) );
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1263270043, "necate", "E", 1263710328, "tonyd", "P", 1263710379, "tonyd", "E", 1263710393, "tonyd", "E", 1263710397, "tonyd", "E", 1263710428, "tonyd", "E", 1263710471, "tonyd", "E", 1263710492, "tonyd", "E", 1263710545, "tonyd", "P", 1263710570, "tonyd", "P", 1263710605, "tonyd", "P", 1263710638, "tonyd", "P", 1263710651, "tonyd", "P", 1263710729, "tonyd", "P", 1263710759, "tonyd", "P", 1263710776, "tonyd", "P", 1263711447, "tonyd", "P", 1263711934, "tonyd", "P", 1263712074, "tonyd", "P", 1263712095, "tonyd", "P", 1263712133, "tonyd", "P", 1263712206, "tonyd", "P", 1263712282, "tonyd", "P", 1263712358, "tonyd", "P", 1263712404, "tonyd", "P", 1263712418, "tonyd", "P", 1263712476, "tonyd", "P", 1263712516, "tonyd", "P", 1263712545, "tonyd", "P", 1263712782, "tonyd", "P", 1263712955, "tonyd", "P", 1264898269, "tonyd", "E", 1268139813, "tonyd", "P", 1411022617, "tonyd", "P", 1411022810, "tonyd", "P", 1411022895, "tonyd", "P", 1411022933, "tonyd", "P", 1411022964, "tonyd", "P", 1411023313, "tonyd", "P", 1411023806, "tonyd", "R", 1411023817, "tonyd", "E", 1426593069, "tonyd", "P", 1436632707, "jominey", "E", 1437457666, "tonyd", "E", 1437807063, "tonyd", "P", 1437807074, "tonyd", "P", 1477107099, "jominey", "E", 1477107108, "jominey", "E", 1477107137, "jominey", "E", 1478481898, "jominey", "E", 1624677047, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

@@ -1,0 +1,100 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Food:UrFood)"/>
+    <Base:Bulk immobile="false" mass="0.1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:inherit:react:wrap-dob">
+         \<Ironclaw:Props:Crafting:Plants:Tea\>
+      </Core:Property>
+      <Core:Property property="merry:react-pre:grind-dob">
+         X[M] /* check if there is a mortar */
+
+if(!\$using) \{
+ EmitTo(\$actor, "You need something to grind the plant with.");
+ return FALSE;
+\}
+if(sizeof(\$using) != 1) \{
+ EmitTo(\$actor, "You don't need that many things to grind the plant with.");
+ return FALSE;
+\}
+
+\$mortar = Match(\$actor, "mortar");
+   if(!sizeof(\$mortar)) \{
+      EmitTo(\$actor, "You should use a mortar for grinding the plant.");
+      return FALSE; \}
+
+for(\$i = 0; \$i \< sizeof(\$mortar); \$i++) \{
+    \$mortar[\$i] = NRefOb(\$mortar[\$i]);
+\}
+
+\$tool = NRefOb(\$using[0]);
+    if(!member(\$tool, \$mortar)) \{
+    EmitTo(\$actor, "You need a mortar to properly grind the plant with.");
+    return FALSE; \}
+
+/* check if they have skill */
+\$gardener = Int(\$actor."skill:career:gardener") + Int(\$actor."skill:alteration:gardening")+ Int(\$actor."skill:career:healer")/2;
+
+if(!\$gardener) \{
+   EmitTo(\$actor, "Your awkward attempt to grind the "+Describe(\$this)+" results in some torn pieces of plant which fall from your hand.");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+"'s awkward attempt to grind the "+Describe(\$this)+" results in some torn pieces of plant which fall to the ground.", \$actor);
+   /* slay plant */
+   Slay(this);
+   return FALSE;
+\} else if(\$gardener \<= 8) \{
+   EmitTo(\$actor, "You are not quite accustomed for this type of fine work and you do not manage to properly grind the "+Describe(\$this)+", but you can save the "+Describe(\$this)+" for someone more skilled.");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+" tries to grind the "+Describe(\$this)+" into some paste, but does not manage to. At least the "+Describe(\$this)+" isn't ruined beyond recognition.", \$actor);
+
+/* if they have skill make paste from it */
+\} else if (\$gardener \> 6) \{
+   EmitTo(\$actor, "You toss your "+Describe(\$this)+" into your mortar and grind it with practiced moves until the leaves mash into a uniform paste. You collect the paste into a little clay pot.");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+" puts the "+Describe(\$this)+" into a mortar and grinds the plant into a uniform paste which is then collected into a little clay pot.", \$actor);
+
+   /* exchange plant for paste */
+   Slay(this);
+   \$paste = Spawn(\$\{Ironclaw:Props:Plot:Spider:Paste\});
+   Set(\$paste,"base:environment", \$actor);
+   Set(\$paste,"trait:material", \$this."trait:brief");
+   Set(\$paste,"trait:smell", \$this."trait:smell");
+   Set(\$paste,"trait:taste", \$this."trait:taste");
+   Set(\$paste,"trait:effect", \$this."trait:effect");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1195437989, "rorschakovacs", "R", 1195672528, "rorschakovacs", "R", 1195672840, "rorschakovacs", "R", 1195677690, "rorschakovacs", "R", 1195677831, "rorschakovacs", "R", 1201549535, "jsfox", "X", 1250179024, "balkaar", "E", 1250321650, "slurpeeslurp", "E", 1250391771, "tonyd", "P", 1250798163, "balkaar", "E", 1327975215, "necate", "R", 1347220692, "jominey", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

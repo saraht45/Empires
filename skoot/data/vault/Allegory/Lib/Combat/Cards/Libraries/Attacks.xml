@@ -1,0 +1,392 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Allegory:Lib:Combat:Cards:Libraries:UrActions)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:attack">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:attack instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) \{
+    if(\$char.combat["fighting_style"] == "ranged") \{
+        if(\$char."combat:weapon:mainhand") \{
+            if(\$char."combat:weapon:mainhand"."weapon:ranged" \&\& \$char."combat:weapon:mainhand"."weapon:ammo:accepts") \{
+                if(!\$char."combat:weapon:mainhand"."weapon:loaded") \{
+                    return FALSE;
+                \}
+            \}
+        \}
+    \}
+    return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+\}
+
+if(\$description) \{
+  return "Attack "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  \$az = \$\{Chatters:AE:az:azrael\};
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+
+  if(!\$char.combat["target"].combat) \{
+      EmitTo(\$actor, "Your target has moved.");
+      return Call(\$\{Allegory:Lib:Combat:Cards:Combat\}, "breakcombat", \$char: \$char);
+  \}
+
+  if(\$char."udat:possessed" \&\& Int(\$char."effect:energy:severity") \>= (Int(\$char."status:energy-max") - 2)) \{
+      EmitTo(\$actor, "You are way, WAY too tired to continue fighting.");
+      return FALSE;
+  \}
+
+  if(\$char.combat["fighting_style"] == "ranged") \{
+      if(\$char."combat:weapon:mainhand") \{
+          if(\$char."combat:weapon:mainhand"."weapon:ranged") \{
+              if(!\$char."combat:weapon:mainhand"."weapon:loaded" \&\& \$char."combat:weapon:mainhand"."weapon:ammo:accepts") \{
+                  EmitTo(\$actor, "You must load " + Describe(\$char."combat:weapon:mainhand", nil, nil, STYLE_NONPOSS) + " before you can use it.");
+                  combat::list_actions(\$char: \$actor);
+                  return FALSE;
+              \} else \{
+                  return ::make_attack(\$attack_options: ([ "attack_bonus":\$char.combat["bonus:attack:endgame"], "damage_bonus":\$char.combat["bonus:attack:endgame"], "sparring":\$char.combat["sparring"] ]));
+              \}
+          \} else \{
+              EmitTo(\$actor, "You need to be holding a ranged weapon before you can make an attack.");
+              combat::list_actions(\$char: \$actor);
+              return FALSE;
+          \}
+      \} else \{
+          EmitTo(\$actor, "You need to be holding a ranged weapon before you can make an attack.");
+          combat::list_actions(\$char: \$actor);
+          return FALSE;
+      \}
+  \}
+  
+  return ::make_attack(\$attack_options: ([ "attack_bonus":\$char.combat["bonus:attack:endgame"], "damage_bonus":\$char.combat["bonus:attack:endgame"], "sparring":\$char.combat["sparring"] ]));
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:bribe">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:aim instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(!\$char.combat \|\| !\$char.combat["target"]) return FALSE;
+\$target = \$char.combat["target"];
+if(!\$target."combat:can_be_bribed") return FALSE;
+\$bribe = Int(\$target."combat:can_be_bribed");
+
+if(\$check_valid) \{
+  if(Int(\$char."trait:money") \< \$bribe) return FALSE; /* Not enough for a bribe */
+  if(\$target.combat["target"] != \$char) return FALSE; /* Only offer bribe if we are being targeted */
+  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+\}
+
+if(\$description) \{
+  return "Offer " + Describe(\$char.combat["target"]) + " " + Str(\$bribe) + " denarii to leave you alone.";
+\}
+
+if(\$par["taking_action"]) \{
+  if(Int(\$char."trait:money") \< \$bribe) \{
+    EmitTo(\$actor, "You don't have enough money!");
+    combat::list_actions(\$char: \$actor);
+    return FALSE;
+  \}
+
+  if(\$target.combat["target"] != \$char) \{
+    EmitTo(\$actor, Describe(\$target) + " is too focused on " + Describe(\$target.combat["target"]) + " to pay attention to your offer.");
+    combat::list_actions(\$char: \$actor);
+    return FALSE;
+  \}
+
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  EmitTo(\$char, "You give " + Describe(\$char.combat["target"]) + " a " + Str(\$amount) + " denarii peace offering.");
+  \$char.combat["status"]["bribing"] = \$bribe;
+
+  ::remove_card_to_deck(\$char: \$char, \$action: "bribe", \$object: this);
+  ::charge_action(\$char: \$char);
+
+  return Call(\$\{Allegory:Lib:Combat:Cards:Combat\}, "end_turn", \$char: \$char);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:description_slash">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:description_slash instead! */
+/* Describe slashing with the weapon */
+
+/* EmitTo(\$az, "Args: "+dump_value(args)); */
+/* EmitTo(\$az, "wound_info: "+dump_value(\$wound_info)); */
+
+if(!\$attack_adj) \$attack_adj = "";
+
+\$verbs = (\{ (\{"cut", "cuts", "cutting"\}), (\{"slice", "slices", "slicing"\}), (\{"strike", "strikes", "striking"\}), (\{"slash", "slashes", "slashing"\}) \});
+\$verb = \$verbs[random(sizeof(\$verbs))];
+\$actor_msg = "You"+\$attack_adj+" "+\$verb[0]+" ";
+\$target_msg = Describe(\$char)+\$attack_adj+" "+\$verb[1]+" ";
+\$witness_msg = Describe(\$char)+\$attack_adj+" "+\$verb[1]+" ";
+switch(random(5)) \{
+    case 4:
+        \$actor_msg = "You feign right, then"+\$attack_adj+" slash left, "+\$verb[2]+" ";
+        \$target_msg = Describe(\$char)+" feigns right, then"+\$attack_adj+" slashes left, "+\$verb[2]+" ";
+        \$witness_msg = Describe(\$char)+" feigns right, then "+\$attack_adj+" slashes left, "+\$verb[2]+" ";
+        break;
+    default:
+        break;
+\}
+
+
+switch(random(4)) \{
+    case 3:
+        \$actor_msg += Describe(\$target_detail)+", leaving "+\$wound_info["name"]+".";
+        \$target_msg += Describe(\$target_detail, nil, \$target)+", leaving "+\$wound_info["name"]+".";
+        \$witness_msg += Describe(\$target_detail)+", leaving "+\$wound_info["name"]+".";
+        break;
+    case 2:
+        \$actor_msg += "at "+Describe(\$target)+", cutting "+\$target."base:objective"+" on "+Describe(\$target_detail, \$target)+", leaving "+\$wound_info["name"]+".";
+        \$target_msg += "at you, cutting you on "+Describe(\$target_detail, \$target, \$target)+", leaving "+\$wound_info["name"]+".";
+        \$witness_msg += "at "+Describe(\$target)+", cutting "+\$target."base:objective"+" on "+Describe(\$target_detail, \$target)+", leaving "+\$wound_info["name"]+".";
+        break;
+    case 1:
+        \$actor_msg += Describe(\$target_detail)+".";
+        \$target_msg += Describe(\$target_detail, nil, \$target)+".";
+        \$witness_msg += Describe(\$target_detail)+".";
+        break;
+    case 0:
+        \$actor_msg += "at "+Describe(\$target)+", cutting "+\$target."base:objective"+" on "+Describe(\$target_detail, \$target)+".";
+        \$target_msg += "at you, cutting you on "+Describe(\$target_detail, \$target, \$target)+".";
+        \$witness_msg += "at "+Describe(\$target)+", cutting "+\$target."base:objective"+" on "+Describe(\$target_detail, \$target)+".";
+        break;
+\}
+
+return (\{ \$actor_msg, \$target_msg, \$witness_msg \});
+      </Core:Property>
+      <Core:Property property="merry:lib:description_strike">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:description_strike instead! */
+/* Describe striking with the weapon */
+\$actor_msg = "You ";
+\$target_msg = Describe(\$char)+" ";
+\$witness_msg = Describe(\$char)+" ";
+
+if(!\$damage) \{
+  \$actor_msg += "land a glancing blow on ";
+  \$target_msg += "lands a glancing blow on ";
+  \$witness_msg += "lands a glancing blow on ";
+\} else \{
+  if(!random(2)) \{
+    \$adverb = \$adverb[random(sizeof(\$adverb))];
+    \$actor_msg += \$adverb+" ";
+    \$target_msg += \$adverb+" ";
+    \$witness_msg += \$adverb+" ";
+  \}
+  \$verb = \$verb[random(sizeof(\$verb))];
+  \$actor_msg += \$verb+" ";
+  \$target_msg += \$verb+"s ";
+  \$witness_msg += \$verb+"s ";
+\}
+
+if(!random(2)) \{
+  \$actor_msg += Describe(\$target_detail);
+  \$target_msg += Describe(\$target_detail, nil, \$target);
+  \$witness_msg += Describe(\$target_detail);
+\} else \{
+  \$actor_msg += Describe(\$target)+" on "+Describe(\$target_detail, \$target);
+  \$target_msg += Describe(\$target, nil, \$target)+" on "+Describe(\$target_detail, \$target, \$target);
+  \$witness_msg += Describe(\$target)+" on "+Describe(\$target_detail, \$target);
+\}
+
+\$actor_msg += ".";
+\$target_msg += ".";
+\$witness_msg += ".";
+
+return (\{ \$actor_msg, \$target_msg, \$witness_msg \});
+      </Core:Property>
+      <Core:Property property="merry:lib:focus">
+         X[M] if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) \{
+  if(\$char.combat["status"] \&\& \$char.combat["status"]["focused"]) return FALSE; /* Can't be focusing twice */
+  return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+\}
+if(\$description) \{
+  return "Focus attack at "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  if(\$char.combat \&\& \$char.combat["status"] \&\& \$char.combat["status"]["focused"]) \{
+    EmitTo(\$actor, "You are already focused!");
+    combat::list_actions(\$char: \$actor);
+    return FALSE;
+  \}
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  EmitTo(\$char, "You carefully line up an attack on "+Describe(\$char.combat["target"])+", and wait for an opportunity to attack.");
+  EmitTo(\$char.combat["target"], Describe(\$char)+" focuses an attack on you.");
+  EmitIn(\$char."base:environment", Describe(\$char)+" focuses an attack at "+Describe(\$char.combat["target"])+".", \$char, \$char.combat["target"]);
+
+  \$char.combat["status"]["focused"] = -1;
+  ::remove_card_to_deck(\$char: \$char, \$action: "focus", \$object: this);
+  ::charge_action(\$char: \$char);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:guard">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:guard instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) return ::sanity_check(\$char: \$char, \$needs_target: FALSE, \$needs_action: TRUE, \$emotes: FALSE);
+if(\$description) return "Guard yourself";
+if(\$par["taking_action"]) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: FALSE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  EmitTo(\$char, "You shift into a defensive stance.");
+  EmitIn(\$char."base:environment", Describe(\$char)+" shifts into a defensive stance.", \$char);
+  \$char.combat["status"]["guarding"] = 1;
+  ::remove_card_to_deck(\$char: \$char, \$action: "guard", \$object: this);
+  ::charge_action(\$char: \$char);
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:load">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:attack instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) \{
+    if(\$char."combat:weapon:mainhand"."weapon:loaded") return FALSE;
+    return ::sanity_check(\$char: \$char, \$needs_action: TRUE, \$emotes: FALSE);
+\}
+if(\$description) \{
+  return "Load " + Describe(\$char."combat:weapon:mainhand", nil, nil, STYLE_NONPOSS);
+\}
+if(\$par["taking_action"]) \{
+  int i;
+  \$az = \$\{Chatters:AE:az:azrael\};
+  if(!::sanity_check(\$char: \$char, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+
+  if(!\$char."combat:weapon:mainhand") \{
+      EmitTo(\$char, "You need to be wielding a ranged weapon to do that.");
+      combat::list_actions(\$char: \$actor);
+      return FALSE;
+  \}
+
+  if(!\$char."combat:weapon:mainhand"."weapon:ranged") \{
+      EmitTo(\$char, "You need to be wielding a ranged weapon to do that.");
+      combat::list_actions(\$char: \$actor);
+      return FALSE;
+  \}
+
+  if(\$char."combat:weapon:mainhand"."weapon:loaded") \{
+      EmitTo(\$char, Describe(\$char."combat:weapon:mainhand") + " is already loaded.");
+      combat::list_actions(\$char: \$actor);
+      return FALSE;
+  \}
+
+  if(!\$char."combat:weapon:mainhand" \|\| !\$char."combat:weapon:mainhand"."weapon:ranged") \{
+      EmitTo(\$char, "You need to wield a ranged weapon before you can load it.");
+      combat::list_actions(\$char: \$actor);
+      return FALSE;
+  \}
+  
+  \$inv = \$char."base:inventory";
+  for(i = 0; i \< sizeof(\$inv); i++) \{
+      if(\$inv[i]."weapon:ammo" \&\& (\$inv[i]."weapon:ammo" == \$char."combat:weapon:mainhand"."weapon:ammo:accepts")) \{
+          EmitTo(\$char, "You load " + Describe(\$char."combat:weapon:mainhand", nil, nil, STYLE_NONPOSS) + " with " + Describe(\$inv[i], nil, nil, STYLE_NONPOSS) + ".");
+          EmitIn(\$char."base:environment", Describe(\$char) + " loads " + Describe(\$char."combat:weapon:mainhand", nil, nil, STYLE_NONPOSS) + " with " + Describe(\$inv[i], nil, nil, STYLE_NONPOSS) + ".", \$char);
+          Call(\$char."combat:weapon:mainhand", "load", \$ammo: \$inv[i]);
+          ::remove_card_to_deck(\$char: \$char, \$action: "load", \$object: this);
+          ::charge_action(\$char: \$char);
+          return TRUE;
+      \}
+  \}
+  EmitTo(\$actor, "You need to be holding a " + \$char."combat:weapon:mainhand"."weapon:ammo:accepts" + " to load in " + Describe(\$char."combat:weapon:mainhand") + ".");
+  combat::list_actions(\$char: \$actor);
+  return FALSE;
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:retreat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:guard instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) return ::sanity_check(\$char: \$char, \$needs_target: FALSE, \$needs_action: TRUE, \$emotes: FALSE);
+if(\$description) return "Break from combat";
+if(\$par["taking_action"]) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: FALSE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  EmitTo(\$char, "You break from combat.");
+  EmitIn(\$char."base:environment", Describe(\$char)+" breaks from combat.", \$char);
+  Call(\$\{Allegory:Lib:Combat:Cards:Combat\}, "breakcombat", \$char: \$char);
+  ::charge_action(\$char: \$char);
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:shieldbash">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:attack instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+if(\$description) \{
+  return "Shield bash "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  \$az = \$\{Chatters:AE:az:azrael\};
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  
+  return ::make_attack(\$attack_options: ([ "attack_bonus":\$char.combat["bonus:attack:endgame"], "damage_bonus":\$char.combat["bonus:attack:endgame"], "weapon":"shield" ]));
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:sneak attack">
+         X[M] if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE)) return FALSE;
+  \$tmp_target = \$char.combat["target"];
+  if(!\$tmp_target
+  \|\| !\$tmp_target.combat
+  \|\| !\$tmp_target.combat["target"]
+  \|\| \$tmp_target.combat["target"] == \$char)
+    return FALSE;
+  return TRUE;
+\}
+if(\$description) \{
+  return "Sneak attack "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+
+  \$target = \$char.combat["target"];
+  if(\$target.combat["target"]
+  \&\& \$target.combat["target"] == \$char) \{  
+      EmitTo(\$char, "You cannot sneak attack someone while they are targeting you.");
+      combat::list_actions(\$char: \$char);
+      return FALSE;
+  \}
+  
+  EmitIn(\$char."base:environment", Describe(\$actor)+" attacks from behind while "+Describe(\$target)+" is fighting "+Describe(\$target.combat["target"])+".");
+  return ::make_attack(\$attack_bonus: Int(\$char."skill:combat:sneakattack")+Int(\$char."career:combat:sneakattack"), \$damage_bonus: (Int(\$char."skill:combat:sneakattack")+Int(\$char."career:combat:sneakattack"))/3);
+\}
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:twohandedattack">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:attack instead! */
+if(!\$char \&\& \$par["char"]) \$char = \$par["char"];
+if(\$check_valid) return ::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: FALSE);
+if(\$description) \{
+  return "Attack "+Describe(\$char.combat["target"]);
+\}
+if(\$par["taking_action"]) \{
+  \$az = \$\{Chatters:AE:az:azrael\};
+  if(!::sanity_check(\$char: \$char, \$needs_target: TRUE, \$needs_action: TRUE, \$emotes: TRUE)) return FALSE;
+  
+  return ::make_attack(\$attack_options: ([ "attack_bonus":\$char.combat["bonus:attack:endgame"], "damage_bonus":\$char.combat["bonus:attack:endgame"] ]));
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1592058124, "jominey", "E", 1593977581, "jominey", "E", 1593977648, "jominey", "E", 1593977717, "jominey", "E", 1596937948, "jominey", "E", 1600915374, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

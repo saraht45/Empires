@@ -1,0 +1,138 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="@supereyes" second="turn supereyes on or off" third="turns supereyes on or off" evoke="optional" audible="false" private="true" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:act-post:enter%supereyes">
+         X[M] /* show supereyes info */
+\$delay(0.5, TRUE, "d908");
+return Call(\$\{Ironclaw:Neoct:Verbs:OOC:S:@supereyes\}, "supereyes_description", \$target: \$actor."base:environment");
+      </Core:Property>
+      <Core:Property property="merry:act-post:examine%supereyes">
+         X[M] /* show supereyes info */
+return Call(\$\{Ironclaw:Neoct:Verbs:OOC:S:@supereyes\}, "supereyes_description", \$target: \$what);
+      </Core:Property>
+      <Core:Property property="merry:act-post:look%supereyes">
+         X[M] /* show supereyes info */
+if(!\$what) \$what = Arr(\$actor."base:environment");
+return Call(\$\{Ironclaw:Neoct:Verbs:OOC:S:@supereyes\}, "supereyes_description", \$target: \$what);
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /* turn supereyes on or off */
+if(\$actor."supereyes:off") \{
+ EmitTo(\$actor, "Supereyes turned on.");
+ \$actor."supereyes:off" = nil;
+\} else \{
+ EmitTo(\$actor, "Supereyes turned off.");
+ \$actor."supereyes:off" = TRUE;
+\}
+return FALSE;
+
+if(\$actor."merry:inherit:act-post:look%supereyes") \{
+ /* turn it off */
+ EmitTo(\$actor, "Supereyes turned off.");
+ \$actor."merry:inherit:act-post:look%supereyes" = nil;
+ \$actor."merry:inherit:act-post:examine%supereyes" = nil;
+ \$actor."merry:inherit:act-post:enter%supereyes" = nil;
+\} else \{
+ EmitTo(\$actor, "Supereyes turned on.");
+ \$actor."merry:inherit:act-post:look%supereyes" = \$\{Ironclaw:Neoct:Verbs:OOC:S:@supereyes\};
+ \$actor."merry:inherit:act-post:examine%supereyes" = \$\{Ironclaw:Neoct:Verbs:OOC:S:@supereyes\};
+ \$actor."merry:inherit:act-post:enter%supereyes" = \$\{Ironclaw:Neoct:Verbs:OOC:S:@supereyes\};
+\}
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:supereyes_description">
+         X[M] /* show supereyes info */
+int i, j;
+if(!\$target) return TRUE;
+if(\$actor."supereyes:off") return TRUE;
+
+/* deal with multiple targets */
+if(sizeof(Arr(\$target)) \> 1) \{
+ \$list = ([ ]);
+ for(i=0;i\<sizeof(\$target);i++) \{
+  if(NRefOb(\$target[i]).supereyes)
+   \$list[Str(NRefOb(\$target[i]).supereyes["timestamp"])] = \$target[i];
+ \}
+ \$list = map_values(\$list);
+ for(i=0;i\<sizeof(\$list);i++)
+  ::supereyes_description(\$target: \$list[i]);
+
+ return TRUE;
+\}
+
+\$target = NRefOb(Arr(\$target)[0]);
+
+/* is there any supereyes information on this object? */
+if(!\$target.supereyes) \{
+ /* no supereyes information. Is it maybe a room with supereyes information? */
+ if(!\$target."base:environment" \&\& !\$room_view \&\& \$target."base:inventory" \&\& sizeof(\$target."base:inventory")\>1) \{
+  ::supereyes_description(\$target: \$target."base:inventory"-(\{\$actor\}), \$room_view: TRUE);
+ \}
+ return TRUE;
+\}
+
+/* is their supereyes information too old to show? */
+if(Int(\$target.supereyes["timestamp"])+60*2 \< time()) \{
+ \$target.supereyes = nil;
+ return TRUE;
+\}
+
+
+/*EmitTo(\$actor, dump_value(\$target.supereyes));*/
+
+/* describe their last action */
+\$output = "You see "+Describe(\$target);
+if(\$target.supereyes["adverb:position"] == "pv" \&\& \$target.supereyes["adverb"])
+ \$output += " "+Str(\$target.supereyes["adverb"]);
+\$output += " "+Str(\$target.supereyes["verb"]);
+if(\$target.supereyes["adverb:position"] == "pr" \&\& \$target.supereyes["adverb"])
+ \$output += " "+Str(\$target.supereyes["adverb"]);
+if(\$target.supereyes["roles"]) \{
+ /* strip out any problematic roles */
+ \$roles = \$target.supereyes["roles"];
+ for(i=0;i\<sizeof(\$target.supereyes["roles"]);i++) \{
+  for(j=0;j\<sizeof(\$target.supereyes[\$target.supereyes["roles"][i]]);j++) \{
+   if(!NRefOb(\$target.supereyes[\$target.supereyes["roles"][i]][j])) \{
+    \$roles -= (\{ \$target.supereyes["roles"][i] \});
+    continue;
+   \}
+  \}
+ \}
+ /* now display the remaining roles */
+ for(i=0;i\<sizeof(\$roles);i++) \{
+  if(\$target.supereyes[\$roles[i]+":preposition"]) \{
+   \$output += " "+Str(\$target.supereyes[\$roles[i]+":preposition"]);
+  \}
+  \$output += " "+Describe(\$target.supereyes[\$roles[i]], \$target, \$actor);
+  /*if(catch(\$output += " "+Describe(\$target.supereyes[\$roles[i]], \$target, \$actor) ))
+   return TRUE;*/
+ \}
+\}
+if(\$target.supereyes["adverb:position"] == "pp" \&\& \$target.supereyes["adverb"])
+ \$output += " "+Str(\$target.supereyes["adverb"]);
+if(\$target.supereyes["evoke"]) \{
+ /* is the evoke too old to show? */
+ if(Int(\$target.supereyes["timestamp"])+30 \< time()) \{
+  \$output += ", "+Str(\$target.supereyes["evoke"]);
+ \} else \{
+  \$output += ".";
+ \}
+\} else \{
+ \$output += ".";
+\}
+
+EmitTo(\$actor, \$output);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1248141551, "tonyd", "E", 1248141967, "tonyd", "E", 1248141992, "tonyd", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

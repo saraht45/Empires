@@ -1,0 +1,445 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="description:zombiesickness">
+         "\{? greaterthan \| \$(state.2) \| 8 \|\$(target.base:pronoun) appears to be well and truly dead, indicated by the sloughing \$(target.appearance:furtype), and awful stench. \|\{? greaterthan \| \$(state.2) \| 6 \|\$(target.base:pronoun) appears to close to, or already dead. \|\{? greaterthan \| \$(state.2) \| 4 \|\$(target.base:possessive) chalky grey \$(target.appearance:furtype) is sloughing off in patches. \|\{? greaterthan \| \$(state.2) \| 2 \|\$(target.base:pronoun) has chalky grey \$(target.appearance:furtype).\}\}\}\}"
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiebite">
+         X[M] int i, j;
+
+if(!\$dob) return TRUE;
+
+\$db = \$\{IronClaw:Lib:UrPeople:States:disease\};
+
+/* infect everyone bitten */
+for(i=0;i\<sizeof(\$dob);i++) \{
+  \$target = NRefOb(\$dob[i]);
+  /* check if they are not yet infected */
+  \$infected = Call(this, "zombiesicknesscheck");
+  if(!\$infected \&\& \$target."base:volition") \{
+    /* we've bitten an uninfected target */
+    /* infect them */
+    /* let's not give them a warning. They can spot the symptoms instead */
+    /*EmitTo(\$target, "You feel pain course through your body.");*/
+
+    /* set them to have the state of zombiesickness */
+    if(!\$target."states:list") \$target."states:list" = (\{ \});
+    \$target."states:list" += (\{ (\{ "zombiesickness", "disease", 0 \}) \});
+
+    /* set them to also infect people that they bite */
+    \$target."merry:act-post:bite%zombiesickness" = \$db."merry:lib:zombiesicknessbitescript";
+    /* set script so holy water from a priest will temporarily cure them */
+    \$target."merry:react-pre:apply-iob%zombiesickness" = \$db."merry:lib:zombiesicknessholywaterscript";
+    /* set script so the right herbs from a healer will cure the infection */
+    \$target."merry:act-pre:eat%zombiesickness" = \$db."merry:lib:zombiesicknessherbscript";
+
+    /* start the loop that makes the disease progress */
+    Call(this, "zombiesickness", \$target: \$target);
+  \}
+
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesickness">
+         X[M] int i, j;
+
+if(!\$target) return FALSE;
+
+/* progress the zombiesickness disease */
+\$delay(60*60*8, TRUE, "5a4c");
+while(Call(this, "zombiesicknesscheck")) \{
+
+  /* progress the sickness */
+  \$level = 0;
+  if(\$target."states:list") \{
+    /* they have a states list. Check if zombiesickness is on the list */
+    for(i=0;i\<sizeof(\$target."states:list");i++) \{
+      if(Arr(\$target."states:list"[i])[0] == "zombiesickness") \{
+        /* progress the sickness one level */
+        if(sizeof(Arr(\$target."states:list"[i])) \> 2) \{
+          \$target."states:list"[i][2] = \$target."states:list"[i][2]+1;
+          \$level = \$target."states:list"[i][2];
+          /* cure the disease if it has gone long enough */
+          /* two months is probably long enough */
+          if(\$level \> 60) \{
+            Call(this, "zombiesicknessinfectioncure");
+          \}
+        \}
+        break;
+      \}
+    \}
+  \}
+  /* show symptoms depending on the level of disease */
+  if(!\$target."sickness:zombie:changedprops")
+    \$target."sickness:zombie:changedprops" = (\{ \});
+  switch(\$level) \{
+    case 9:
+      \$prop = "appearance:furcolor";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "sloughing") \}) \});
+      break;
+    case 8:
+      \$prop = "appearance:jawshape";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "slack") \}) \});
+      \$prop = "appearance:extrafeatures";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: (\{ (\{ (\{ "teeth" \}), "teeth" \}), (\{ (\{ "jawshape" \}), "jaw" \}) \})) \}) \});
+
+      break;
+    case 7:
+      \$prop = "appearance:teeth";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "serrated") \}) \});
+      \$prop = "appearance:extrafeatures";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: (\{ (\{ (\{ "teeth" \}), "teeth" \}) \})) \}) \});
+      if(!\$target."zombiesickness:moaning") \{
+        \$prop = "zombiesickness:moaning";
+        \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: 1) \}) \});
+        Call(this, "zombiesicknessmoaning");
+      \}
+      break;
+    case 6:
+      \$prop = "appearance:eyecolor";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "empty") \}) \});
+      \$prop = "base:gait";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "lurches") \}) \});
+      \$prop = "appearance:clawapp";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "long") \}) \});
+      \$prop = "appearance:haircolor";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "faded") \}) \});
+      if(!\$target."zombiesickness:biting") \{
+       \$prop = "zombiesickness:biting";
+       \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: 1) \}) \});
+       Call(this, "zombiesicknessbiting");
+      \}
+      break;
+    case 4:
+      \$prop = "appearance:tongue";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "black") \}) \});
+      \$prop = "trait:smell";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "rotting flesh") \}) \});
+      \$prop = "trait:taste";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "of rancid meat") \}) \});
+      break;
+    case 3:
+      \$prop = "appearance:furcolor";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "chalky grey") \}) \});
+      \$prop = "appearance:hairtype";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "wispy") \}) \});
+      \$prop = "aappearance:clawapp";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "dirty") \}) \});
+      break;
+    case 2:
+      \$prop = "appearance:eyecolor";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "hollow") \}) \});
+      break;
+    case 1:
+      \$prop = "appearance:eyecolor";
+      \$target."sickness:zombie:changedprops" += (\{ (\{ \$prop, ironclaw::set_prop(\$obj: \$target, \$prop: \$prop, \$value: "bloodshot") \}) \});
+      break;
+    default:
+      EmitTo(\$target, "You hunger for the flesh of the living.");
+      break;
+  \}
+  Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$target);
+
+  \$delay(60*60*24, TRUE, "9fbd");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknessbitescript">
+         X[M] /* bite someone, and infect them with zombiesickness */
+return Call(\$\{IronClaw:Lib:UrPeople:States:disease\}, "zombiebite");
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknessbiting">
+         X[M] /* attack people like a zombie */
+while(\$target."zombiesickness:biting") \{
+  if(\$target."base:environment") \{
+    /* pick someone */
+    \$pcs = Match(\$target."base:environment", "pc");
+    if(sizeof(\$pcs) \> 1) \{
+      \$pc = \$pcs[random(sizeof(\$pcs))];
+      if(NRefOb(\$pc) == \$target) \{
+        \$pc = nil;
+      \}
+    \} else \{
+      \$pc = nil;
+    \}
+
+    if(\$pc) \{
+      switch(random(3)) \{
+        case 0:
+          Social(\$target, "bite", nil, nil, nil, \$pc);
+          break;
+        default:
+          Social(\$target, "gaze", "hungrily", nil, "at", \$pc);
+          break;
+      \}
+    \}
+    \$delay(random(1800), TRUE, "be36");
+  \} else \{
+    \$delay(1800, TRUE, "1f7b");
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknesscheck">
+         X[M] int i;
+
+/* check if they have zombiesickness */
+if(\$target."states:list") \{
+  /* they have a states list. Check if zombiesickness is on the list */
+  for(i=0;i\<sizeof(\$target."states:list");i++) \{
+    if(Arr(\$target."states:list"[i])[0] == "zombiesickness")
+      return TRUE;
+  \}
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknesscure">
+         X[M] int i;
+/* cure zombiesickness */
+if(!\$target) return FALSE;
+
+\$target."merry:act-pre:evoke%zombiesickness" = nil;
+
+/* unset all body changes too */
+if(\$target."sickness:zombie:changedprops") \{
+ \$arr = \$target."sickness:zombie:changedprops";
+ for(i=0;i\<sizeof(\$arr);i++) \{
+  ironclaw::unset_prop(\$obj: \$target, \$prop: \$arr[i][0], \$id: \$arr[i][1]);
+ \}
+ \$target."sickness:zombie:changedprops" = (\{ \});
+\}
+
+Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$target);
+
+/* set it so holy water doesn't do anything special */
+\$target."merry:react-pre:apply-iob%zombiesickness" = nil;
+
+
+/* reset the disease counter */
+if(\$target."states:list") \{
+  /* they have a states list. Check if zombiesickness is on the list */
+  for(i=0;i\<sizeof(\$target."states:list");i++) \{
+    if(Arr(\$target."states:list"[i])[0] == "zombiesickness") \{
+      /* reset the sickness */
+      if(sizeof(Arr(\$target."states:list"[i])) \> 2) \{
+        \$target."states:list"[i][2] = 0;
+        /* still infected, so let holy water keep curing */
+        \$target."merry:react-pre:apply-iob%zombiesickness" = \$this."merry:lib:zombiesicknessholywaterscript";
+      \}
+      break;
+    \}
+  \}
+\}
+
+return TRUE;
+
+/* OLD CODE BELOW */
+
+\$target."zombiesickness:moaning" = nil;
+\$target."zombiesickness:biting" = nil;
+\$target."merry:act-pre:evoke%zombiesickness" = nil;
+
+
+\$target."appearance:extrafeatures" = \$target."appearance:extrafeatures:original";
+if(\$target."appearance:extrafeatures:original") \{
+  \$target."appearance:extrafeatures:original" = nil;
+\}
+\$target."appearance:furcolor" = \$target."appearance:furcolor:original";
+if(\$target."appearance:furcolor:original") \{
+  \$target."appearance:furcolor:original" = nil;
+\}
+\$target."appearance:jawshape" = \$target."appearance:jawshape:original";
+if(\$target."appearance:jawshape:original") \{
+  \$target."appearance:jawshape:original" = nil;
+\}
+\$target."appearance:teeth" = \$target."appearance:teeth:original";
+if(\$target."appearance:teeth:original") \{
+  \$target."appearance:teeth:original" = nil;
+\}
+\$target."appearance:eyecolor" = \$target."appearance:eyecolor:original";
+if(\$target."appearance:eyecolor:original") \{
+  \$target."appearance:eyecolor:original" = nil;
+\}
+\$target."appearance:clawlength" = \$target."appearance:clawlength:original";
+if(\$target."appearance:clawlength:original") \{
+  \$target."appearance:clawlength:original" = nil;
+\}
+\$target."appearance:clawapp" = \$target."appearance:clawapp:original";
+if(\$target."appearance:clawapp:original") \{
+  \$target."appearance:clawapp:original" = nil;
+\}
+\$target."appearance:tongue" = \$target."appearance:tongue:original";
+if(\$target."appearance:tongue:original") \{
+  \$target."appearance:tongue:original" = nil;
+\}
+\$target."appearance:hairtype" = \$target."appearance:hairtype:original";
+if(\$target."appearance:hairtype:original") \{
+  \$target."appearance:hairtype:original" = nil;
+\}
+\$target."appearance:haircolor" = \$target."appearance:haircolor:original";
+if(\$target."appearance:haircolor:original") \{
+  \$target."appearance:haircolor:original" = nil;
+\}
+\$target."base:gait" = \$target."base:gait:original";
+if(\$target."base:gait:original") \{
+  \$target."base:gait:original" = nil;
+\}
+\$target."trait:smell" = \$target."trait:smell:original";
+if(\$target."trait:smell:original") \{
+  \$target."trait:smell:original" = nil;
+\}
+\$target."trait:taste" = \$target."trait:taste:original";
+if(\$target."trait:taste:original") \{
+  \$target."trait:taste:original" = nil;
+\}
+
+Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$target);
+
+/* set it so holy water doesn't do anything special */
+\$target."merry:react-pre:apply-iob%zombiesickness" = nil;
+
+
+/* reset the disease counter */
+if(\$target."states:list") \{
+  /* they have a states list. Check if zombiesickness is on the list */
+  for(i=0;i\<sizeof(\$target."states:list");i++) \{
+    if(Arr(\$target."states:list"[i])[0] == "zombiesickness") \{
+      /* reset the sickness */
+      if(sizeof(Arr(\$target."states:list"[i])) \> 2) \{
+        \$target."states:list"[i][2] = 0;
+        /* still infected, so let holy water keep curing */
+        \$target."merry:react-pre:apply-iob%zombiesickness" = \$this."merry:lib:zombiesicknessholywaterscript";
+      \}
+      break;
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknessherbscript">
+         X[M] int i;
+
+/* check if we're eating the cure for the zombie infection */
+if(\$what \&\& sizeof(\$what) == 1 \&\& NRefOb(\$what[0])."trait:objecttype" == "zombiesicknesscure") \{
+  EmitTo(\$actor, "Although the herbs taste awful, you can feel them warming your body, and the gnawing hunger seems to have stopped.");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" chokes down "+Describe(\$what[0], \$actor)+".", \$actor);
+
+  /* stop the infection */
+  Call(\$\{IronClaw:Lib:UrPeople:States:disease\}, "zombiesicknessinfectioncure", \$target: \$actor);
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknessholywaterscript">
+         X[M] /* check if it's a priest applying holy water. If so, cure the symptoms */
+if(\$dob \&\& sizeof(\$dob) == 1 \&\& NRefOb(\$dob[0])."trait:objecttype" == "holywater") \{
+  if(\$actor."skill:career:priest" \&\& \$actor."trait:religion" \&\& \$actor."trait:religion" == "sallumer") \{
+    if(\$actor != \$this)
+      EmitTo(\$actor, "You use "+Describe(\$dob, nil, \$actor)+" to draw the holy symbol of S'allumer on "+Describe(this)+"'s forehead, while saying a cleansing prayer.");
+    EmitTo(\$this, Describe(\$actor)+" draws the holy symbol of S'allumer on your forehead using "+Describe(\$dob, \$actor)+", while saying a prayer that makes your skin burn.");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" draws the holy symbol of S'allumer on "+Describe(this)+"'s forehead using "+Describe(\$dob, \$actor)+", while invoking the cleansing light of S'allumer.", \$actor, \$this);
+    Call(\$\{IronClaw:Lib:UrPeople:States:disease\}, "zombiesicknesscure", \$target: \$this);
+
+    /* destroy the holy water */
+    Slay(NRefOb(\$dob[0]));
+
+    return FALSE;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknessinfectioncure">
+         X[M] int i;
+
+/* stop the infection */
+\$target."merry:act-post:bite%zombiesickness" = nil;
+\$target."merry:act-pre:eat%zombiesickness" = nil;
+\$target."merry:act-pre:evoke%zombiesickness" = nil;
+\$target."zombiesickness:biting" = nil;
+\$target."zombiesickness:moaning" = nil;
+
+/* remove the sickness from the list of states */
+/* reset the disease counter */
+if(\$target."states:list") \{
+  /* they have a states list. Check if zombiesickness is on the list */
+  for(i=0;i\<sizeof(\$target."states:list");i++) \{
+    if(Arr(\$actor."states:list"[i])[0] == "zombiesickness") \{
+      /* remove the sickness */
+      \$target."states:list" -= (\{ \$target."states:list"[i] \});
+      break;
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknessmoaning">
+         X[M] /* moan like a zombie */
+while(\$target."zombiesickness:moaning") \{
+  if(\$target."base:environment") \{
+    switch(random(15)) \{
+      case 10:
+        Social(\$target, "drool");
+        break;
+      case 9:
+        Social(\$target, "gaze", "blankly");
+        break;
+      case 8:
+        Social(\$target, "moan", "angrily");
+        break;
+      case 7:
+        Social(\$target, "moan", "mournfully");
+        break;
+      case 6:
+        Social(\$target, "twitch");
+        break;
+      case 5:
+        Social(\$target, "drag", nil, nil, nil, NewNRef(\$target, "right-foot"));
+        break;
+      case 4:
+        Social(\$target, "groan");
+        break;
+      case 3:
+        Social(\$target, "lurch", nil, nil, "around", \$target."base:environment");
+        break;
+      case 2:
+        Social(\$target, "stagger", "clumsily");
+        break;
+      case 1:
+        Social(\$target, "stumble");
+        break;
+      default:
+        Social(\$target, "moan");
+        break;
+    \}
+    \$delay(random(600), TRUE, "be36");
+  \} else \{
+    \$delay(600, TRUE, "7f9c");
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:zombiesicknessspeakscript">
+         X[M] /* only let zombies moan */
+\$allowed = (\{ "moan", "gargle", "rasp", "groan", "stammer", "spit", "slur", "grumble", "lament", "whimper", "whine", "gripe", "wail", "mutter", "mumble" \});
+/* check that the zombie can do this */
+if(!member(\$verb, \$allowed)) \{
+  Social(\$this, \$allowed[random(sizeof(\$allowed))], \$adverb, \$evoke[1..strlen(\$evoke)-2]);
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1150171976, "tonyd", "E", 1150172070, "tonyd", "E", 1150172197, "tonyd", "E", 1150172244, "tonyd", "E", 1150172292, "tonyd", "E", 1150172315, "tonyd", "E", 1150172337, "tonyd", "E", 1150172350, "tonyd", "E", 1150172530, "tonyd", "E", 1150172555, "tonyd", "E", 1150172574, "tonyd", "E", 1150172676, "tonyd", "E", 1150173270, "tonyd", "E", 1150173466, "tonyd", "E", 1150174729, "tonyd", "E", 1150174852, "tonyd", "P", 1150175083, "tonyd", "P", 1150175130, "tonyd", "P", 1150175178, "tonyd", "P", 1150175555, "tonyd", "P", 1150176223, "tonyd", "P", 1150176807, "tonyd", "P", 1150176924, "tonyd", "P", 1150177175, "tonyd", "P", 1150177215, "tonyd", "P", 1150177324, "tonyd", "P", 1150177362, "tonyd", "P", 1150177413, "tonyd", "P", 1150177873, "tonyd", "P", 1150177910, "tonyd", "P", 1150178062, "tonyd", "P", 1150178202, "tonyd", "P", 1150178258, "tonyd", "P", 1150178486, "tonyd", "P", 1150178602, "tonyd", "P", 1150178713, "tonyd", "P", 1150178897, "tonyd", "P", 1150178985, "tonyd", "P", 1150179091, "tonyd", "P", 1150179437, "tonyd", "E", 1150179630, "tonyd", "P", 1150179650, "tonyd", "P", 1150179971, "tonyd", "P", 1150180177, "tonyd", "P", 1150180542, "tonyd", "P", 1150180918, "tonyd", "P", 1150180951, "tonyd", "P", 1150181456, "tonyd", "P", 1150182085, "tonyd", "P", 1150182375, "tonyd", "E", 1150182534, "tonyd", "E", 1150182830, "tonyd", "P", 1150183328, "tonyd", "P", 1150183775, "tonyd", "P", 1150185782, "tonyd", "P", 1150185873, "tonyd", "P", 1150186776, "tonyd", "P", 1150186797, "tonyd", "P", 1150187092, "tonyd", "P", 1150187902, "tonyd", "P", 1150188037, "tonyd", "P", 1150188212, "tonyd", "P", 1150188251, "tonyd", "P", 1150188317, "tonyd", "P", 1150188367, "tonyd", "P", 1150188404, "tonyd", "P", 1150188481, "tonyd", "P", 1150188675, "tonyd", "P", 1150188789, "tonyd", "P", 1150188832, "tonyd", "P", 1150189092, "tonyd", "P", 1150189127, "tonyd", "P", 1150189206, "tonyd", "P", 1150189311, "tonyd", "P", 1150189435, "tonyd", "P", 1150189572, "tonyd", "P", 1150189779, "tonyd", "P", 1150189786, "tonyd", "P", 1150189873, "tonyd", "P", 1150189892, "tonyd", "P", 1150189902, "tonyd", "P", 1150189981, "tonyd", "P", 1150190043, "tonyd", "P", 1150190075, "tonyd", "P", 1150190117, "tonyd", "P", 1150190247, "tonyd", "P", 1150190938, "tonyd", "P", 1150190954, "tonyd", "P", 1150191295, "tonyd", "P", 1150191325, "tonyd", "P", 1150191375, "tonyd", "P", 1150191423, "tonyd", "P", 1150192140, "tonyd", "P", 1150193512, "tonyd", "P", 1150193548, "tonyd", "P", 1150193635, "tonyd", "P", 1150193721, "tonyd", "P", 1150193766, "tonyd", "P", 1150193824, "tonyd", "P", 1150193866, "tonyd", "P", 1150193943, "tonyd", "P", 1150194098, "tonyd", "P", 1150194403, "tonyd", "P", 1150195657, "tonyd", "P", 1150195743, "tonyd", "P", 1150195788, "tonyd", "P", 1150196032, "tonyd", "P", 1150196427, "tonyd", "P", 1150196493, "tonyd", "P", 1150196657, "tonyd", "P", 1150196798, "tonyd", "P", 1150196901, "tonyd", "P", 1150196968, "tonyd", "P", 1150197062, "tonyd", "P", 1150197101, "tonyd", "P", 1150197447, "tonyd", "P", 1150197475, "tonyd", "P", 1150197717, "tonyd", "P", 1150197730, "tonyd", "P", 1150199252, "tonyd", "P", 1150201590, "tonyd", "P", 1150201811, "tonyd", "P", 1150201959, "tonyd", "P", 1150202054, "tonyd", "P", 1150202176, "tonyd", "P", 1150202523, "tonyd", "P", 1150262198, "tonyd", "P", 1150510919, "tonyd", "P", 1150511567, "tonyd", "P", 1150512805, "tonyd", "P", 1150513282, "tonyd", "P", 1150513699, "tonyd", "P", 1150515473, "tonyd", "P", 1187421380, "tonyd", "E", 1187421551, "tonyd", "E", 1187422513, "tonyd", "E", 1223691518, "tonyd", "P", 1223691851, "tonyd", "P", 1223692937, "tonyd", "P", 1223693456, "tonyd", "P", 1223709504, "tonyd", "P", 1223709794, "tonyd", "P", 1223709859, "tonyd", "P", 1223709910, "tonyd", "P", 1229257212, "jominey", "E", 1229257364, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

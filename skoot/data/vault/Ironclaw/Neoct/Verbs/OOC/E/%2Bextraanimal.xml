@@ -1,0 +1,76 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+extraanimal" second="adds an extra animal" third="adds an extra animal" evoke="forbidden" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* grants a social rank increase to a character */
+/* note that this in-game requires a promotion token */
+
+\$db = \$\{Ironclaw:Theatre:CreateCharacter\};
+
+if(!\$(dob:words) \|\| sizeof(\$(dob:words)) \< 3 \|\| (lower_case( \$(dob:words)[1] ) != "add" \&\& lower_case( \$(dob:words)[1] ) != "sub")) \{
+  EmitTo(\$actor, "Format: +extraanimal \<character\> add \<animal\>");
+  EmitTo(\$actor, "Format: +extraanimal \<character\> sub \<animal\>");
+  return FALSE;
+\}
+
+\$a_subj = lower_case( \$(dob:words)[0] );
+\$char = common::lookup(\$name: \$a_subj);
+
+if(!\$char) \{
+  EmitTo(\$actor, "Unknown character.");
+  return FALSE;
+\}
+
+if(!\$char."udat:object") \{
+  EmitTo(\$actor, "No Udat (maybe that character isn't logged in?)");
+  return FALSE;
+\}
+
+EmitTo(\$actor, "Character is :"+dump_value(\$char));
+EmitTo(\$actor, "Udat is :"+dump_value(\$char."udat:object"));
+
+\$dat = \$char."udat:object";
+
+/* check if this is a valid command */
+\$comm = lower_case( \$(dob:words)[1] );
+\$animal = lower_case( \$(dob:words)[2] );
+
+/*EmitTo(\$actor, "Command is "+Str(\$comm));
+EmitTo(\$actor, "Animal is "+Str(\$animal));*/
+
+if(\$comm == "add") \{
+  /* check if this is an animal that can be played */
+  if(!\$db."choices:animallist:storypoints"[\$animal]) \{
+    EmitTo(\$actor, "It is not possible to purchase the ability to play a "+\$animal+" with storypoints.");
+    return FALSE;
+  \}
+  \$arr = Arr(\$dat."skotos:extra:animals");
+  \$arr \|= (\{ \$animal \});
+  \$dat."skotos:extra:animals" = \$arr;
+  EmitTo(\$actor, Describe(\$char)+" can now create a "+\$animal+" character.");  
+\} else if(\$comm == "sub") \{
+  if(!member(\$animal, Arr(\$dat."skotos:extra:animals"))) \{
+    EmitTo(\$actor, Describe(\$char)+" did not have the ability to play a "+\$animal+".");
+    return FALSE;
+  \}
+  \$dat."skotos:extra:animals" -= (\{ \$animal \});
+  EmitTo(\$actor, Describe(\$char)+" can no longer create a "+\$animal+" character.");  
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1187526884, "tonyd", "E", 1187526928, "tonyd", "E", 1187527042, "tonyd", "E", 1187527161, "tonyd", "E", 1187527190, "tonyd", "E", 1187527489, "tonyd", "P", 1187527779, "tonyd", "P", 1187527799, "tonyd", "P", 1187527847, "tonyd", "P", 1187527905, "tonyd", "P", 1187528184, "tonyd", "P", 1187528220, "tonyd", "P", 1187528494, "tonyd", "P", 1187528524, "tonyd", "P", 1187528582, "tonyd", "P", 1187528606, "tonyd", "P", 1187528651, "tonyd", "P" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

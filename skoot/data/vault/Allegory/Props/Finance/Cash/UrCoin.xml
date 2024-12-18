@@ -1,0 +1,210 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.0001" density="4"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="coin"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="coins"/>
+            <Base:PName pname="money"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             denar coin
+          </Base:Description>
+          <Base:Description type="examine">
+             A denar, as this silver coin is called, is printed with the profile of Don Auvrich I on the front, and the device of the House Rinaldi (three seashells) on the back. It also bears the legend RURU - "res una, rex una" - one people, one rule. The denar is worth a Stevedore's work for half a day. The only other coin used is the aureal; it is gold and is worth 24 denarii.
+          </Base:Description>
+          <Base:Description type="look">
+             A denar, as this silver coin is called, is printed with the profile of Don Auvrich I on the front, and the device of the House Rinaldi (three seashells) on the back.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:cash:value">
+         100
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] /* After a delay, deposit this coin back into a bank account */
+/* Every 4 hours, check if we should deposit this in the bank */
+/* Keep checking for 10 days */
+for(\$i=0;\$i\<60;\$i++) \{
+  \$delay(60*60*24*7, TRUE, "cb2d");
+  \$owner = ironclaw::find_owner(\$object: \$this);
+  if(\$owner) \{
+    \$owner."trait:money" = Int(\$owner."trait:money")+Int(\$this."cash:value");
+    Slay(\$this);
+    return TRUE;
+  \}
+\}
+
+/* Coin seems to be lost. Return to the original owner, if one exists)
+if(\$this."owner:original") \{
+  \$this."owner:original"."trait:money" = Int(\$this."owner:original"."trait:money")+Int(\$this."cash:value");
+  Slay(\$this);
+  return TRUE;
+\}
+
+/* Never found an owner for this coin. Slay it. */
+/* EXTENSION - Track how much money is destroyed through this method */
+Slay(\$this);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:deposit-what">
+         X[M] /* Are we depositing this coin into the bank? */
+/* Set \$value to be the value of the coin */
+\$value = \$this."cash:value";
+
+if(\$this.depositing \&\& !\$this.destroyed) \{
+  \$actor."trait:money" = Int(\$actor."trait:money")+\$value;
+
+  /* Destroy the coin (since it's now in the bank) */
+  Slay(\$this);
+  return TRUE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:deposit-what">
+         X[M] /* We are checking if this coin is being dropped into a money pouch */
+/* Set \$value to be the value of the coin */
+\$value = \$this."cash:value";
+/* Check if the coin is being dropped into a money pouch */
+
+/* we need to test \$where exists */
+if(!\$where \&\& !\$through) \{
+  /* Not specifying where. Assume the bank. */
+  /* Return true, so we can pick this up in post */
+  \$this.depositing = TRUE;
+  return TRUE;
+\}
+
+/* test that there is only one \$where */
+/* and check that \$where is a money pouch */
+/* If not, return true, so the deposit can continue like normal */
+if(!\$where \|\| (sizeof(\$where) != 1) \|\| (NRefOb(\$where[0])."trait:objecttype" != "moneypouch"))
+  return TRUE;
+
+/* to stop lag doing bad things, mark this coin as gone */
+if(\$this.destroyed) return TRUE;
+\$this.destroyed = TRUE;
+
+/* We are depositing into a money pouch, so increase the value of the pouch accordingly */
+/* Actually we increase the value of the bank balance of the owner */
+\$owner = ironclaw::find_owner(\$object: NRefOb(\$where[0]));
+
+if(!\$owner \|\| \$owner != \$actor) \{
+  EmitTo(\$actor, "You'll need to be holding that, before you can deposit money.");
+  return FALSE;
+\}
+
+/* If the owner already has a bank balance, then increase it */
+if(\$owner."trait:money") \{
+  \$owner."trait:money" += \$value;
+\} else \{
+/* otherwise, set it to be the value of this coin */
+  \$owner."trait:money" = \$value;
+\}
+
+/* Destroy the coin (since it's now in the money pouch) */
+Slay(\$this);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:drop-what">
+         X[M] /* We are checking if this coin is being dropped into a money pouch */
+/* Set \$value to be the value of the coin */
+\$value = \$this."cash:value";
+
+/* Check if the coin is being dropped into a money pouch */
+
+/* we need to test \$where exists */
+/* test that there is only one \$where */
+/* and check that \$where is a money pouch */
+/* If not, return true, so the deposit can continue like normal */
+if(!\$where \|\| (sizeof(\$where) != 1) \|\| (NRefOb(\$where[0])."trait:objecttype" != "moneypouch"))
+  return TRUE;
+
+/* to stop lag doing bad things, mark this coin as gone */
+if(\$this.destroyed) return TRUE;
+\$this.destroyed = TRUE;
+
+/* We are depositing into a money pouch, so increase the value of the pouch accordingly */
+/* Actually we increase the value of the bank balance of the owner */
+\$owner = ironclaw::find_owner(\$object: NRefOb(\$where[0]));
+
+if(!\$owner \|\| \$owner != \$actor) \{
+  EmitTo(\$actor, "You'll need to be holding that, before you can deposit money.");
+  return FALSE;
+\}
+
+/* If the owner already has a bank balance, then increase it */
+if(\$owner."trait:money") \{
+  \$owner."trait:money" += \$value;
+\} else \{
+/* otherwise, set it to be the value of this coin */
+  \$owner."trait:money" = \$value;
+\}
+
+/* Destroy the coin (since it's now in the money pouch) */
+Slay(\$this);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:flip-dob">
+         X[M] \$text = \$evoke ? ", "+\$evoke : ".";
+
+if(!random(100)) \{
+  \$result = "on edge (Are you serious?!?)";
+\} else \{
+  \$result = random(2) ? "heads side up" : "tails side up";
+\}
+
+EmitTo(\$actor, "You flip "+Describe(\$this, nil, \$actor)+" gracefully into the air, end over end, before it lands "+\$result+ " in the palm of your hand"+\$text );
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " flips "+Describe(\$this, \$actor)+" gracefully into the air, end over end, before it lands "+\$result+ " in the palm of " + \$actor."base:possessive" + " hand"+\$text, \$actor );
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1107209474, "zwoc", "E", 1119158517, "tonyd", "E", 1119158536, "tonyd", "E", 1119158572, "tonyd", "E", 1119159000, "tonyd", "E", 1119159014, "tonyd", "E", 1119159119, "tonyd", "E", 1131766633, "tunk_bodin", "X", 1136268505, "tunk_bodin", "X", 1136336060, "martens", "K", 1136336138, "martens", "K", 1136336152, "martens", "K", 1136336246, "martens", "K", 1136341442, "martens", "K", 1136342016, "martens", "K", 1137886306, "tunk_bodin", "X", 1139189807, "tunk_bodin", "X", 1139191045, "tunk_bodin", "X", 1139191269, "tunk_bodin", "X", 1168575711, "tonyd", "E", 1168575944, "tonyd", "P", 1168575987, "tonyd", "P", 1168576025, "tonyd", "P", 1169774551, "tonyd", "R", 1169774700, "tonyd", "E", 1172077359, "tunk_bodin", "E", 1172284044, "tunk_bodin", "E", 1360657656, "tonyd", "P", 1360657734, "tonyd", "P", 1360905420, "tonyd", "P", 1360905428, "tonyd", "P", 1360910488, "tonyd", "E", 1360910502, "tonyd", "E", 1360910511, "tonyd", "E", 1360910662, "tonyd", "E", 1360911156, "tonyd", "P", 1360911497, "tonyd", "P", 1360911513, "tonyd", "P", 1360911530, "tonyd", "P", 1360911609, "tonyd", "P", 1360911691, "tonyd", "P", 1360911725, "tonyd", "P", 1360911732, "tonyd", "P", 1360911748, "tonyd", "P", 1360911822, "tonyd", "P", 1360911882, "tonyd", "P", 1360911898, "tonyd", "P", 1360912030, "tonyd", "P", 1360912056, "tonyd", "P", 1360912243, "tonyd", "P", 1360912261, "tonyd", "P", 1360912339, "tonyd", "P", 1360912363, "tonyd", "P", 1360912399, "tonyd", "P", 1360912472, "tonyd", "P", 1360912487, "tonyd", "P", 1360912528, "tonyd", "P", 1360912603, "tonyd", "P", 1572718843, "sendnoodlez", "R", 1572720348, "sendnoodlez", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

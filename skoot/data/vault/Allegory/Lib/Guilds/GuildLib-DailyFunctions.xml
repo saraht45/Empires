@@ -1,0 +1,124 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Allegory:Lib:Guilds:GuildLib)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:run_bluebooked_jobs">
+         X[M] object *members;
+int i, sz;
+
+if(!\$guild) return TRUE;
+if(!\$guild.kitty) \$guild.kitty = 0;
+
+members = Arr(\$guild.members);
+members -= (\{ nil \});
+
+sz = sizeof(members);
+for(i=0;i\<sz;i++)
+ Call(\$\{Ironclaw:Lib:Guilds:BluebookedJobsDB\}, "run_job", \$char: members[i], \$guild: \$guild);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_bluebooked_payments">
+         X[M] object *members;
+int i, sz, j;
+
+if(!\$guild) return TRUE;
+if(!\$guild.kitty) \$guild.kitty = 0;
+
+members = Arr(\$guild.members);
+members -= (\{ nil \});
+
+sz = sizeof(members);
+for(i=0;i\<sz;i++)\{
+ /* pay any daily money to the member from the guild */
+ /* if they were absent more than 5 days, don't give daily payment */
+ if(Int(members[i]."cdat:lastlogin")+60*60*24*5 \> time() \&\& members[i]."guild:daily_payment") \{
+  \$amount = members[i]."guild:daily_payment";
+  \$amount = Int(Flt(\$amount)*Flt(Get(\$\{Ironclaw:Lib:Economy:economy\}, "economy:balance:income_multiplier")));
+  if(\$amount) \{
+   /* can the guild afford to pay it? */
+   if(\$guild.kitty \< \$amount)
+    \$amount = \$guild.kitty;
+   if(\$amount \< 0) \$amount = 0;
+   if(\$amount \> 0) \{
+    /* pay this to the PC */
+    \$guild.kitty -= \$amount;
+    members[i]."trait:money" += \$amount;
+   \} else \{
+    /* inform the PC that they were not paid */
+    /* NOT WRITTEN YET */
+   \}
+  \}
+ \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_daily_functions">
+         X[M] object *members;
+/* Run daily functions for guilds */
+int i;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+/* get a list of guilds */
+EmitTo(\$az, "Getting a list of guilds");
+/* get a list of all guilds */
+\$folder = "Allegory:Guilds";
+\$guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+for(i=0;i\<sizeof(\$guilds);i++) \{
+  \$guilds[i] = Obj("Allegory:Guilds:"+\$guilds[i]);
+\}
+
+/* run todays trading */
+for(\$guild_daily_functions_i=0;\$guild_daily_functions_i\<sizeof(\$guilds);\$guild_daily_functions_i++) \{
+  if(\$guilds[\$guild_daily_functions_i].mothballed) continue;
+
+  \$delay(0.0001, TRUE, "7ed2");
+  EmitTo(\$az, "guild: "+dump_value(\$guilds[\$guild_daily_functions_i]));
+
+  /* Is this guild inactive? */
+  \$members = Arr(\$guilds[\$guild_daily_functions_i].members);
+  \$inactive = TRUE;
+  for(\$i=0;\$i\<sizeof(\$members)\&\&\$inactive;\$i++) \{
+    if(\$members[\$i] \&\& !\$members[\$i].mothballed) \{
+      \$inactive = nil;
+    \}
+  \}
+  /* No active members. We should mothball this guild */
+  if(\$inactive) \{
+    \$guilds[\$guild_daily_functions_i].mothballed = TRUE;
+    continue;
+  \}
+
+
+/*
+  ::run_bluebooked_jobs(\$guild: \$guilds[\$guild_daily_functions_i]);
+  ::run_trading(\$guild: \$guilds[\$guild_daily_functions_i]);
+  ::run_bluebooked_payments(\$guild: \$guilds[\$guild_daily_functions_i]);
+  */
+/*
+  ::run_bluebooked_jobs(\$guild: \$guilds[\$guild_daily_functions_i]);
+*/
+
+  Call(\$\{Allegory:Lib:Guilds:Guild\}, "run_trading", \$guild: \$guilds[\$guild_daily_functions_i]);
+
+/*
+  ::run_bluebooked_payments(\$guild: \$guilds[\$guild_daily_functions_i]);
+*/
+
+\}
+
+/* check that their leader is still active */
+
+/* resolve any votes, and assign new leaders */
+
+EmitTo(\$az, "Guild maintenance done.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1346707234, "jominey", "E", 1346707239, "jominey", "E", 1346707247, "jominey", "E", 1346707275, "jominey", "E", 1346707313, "jominey", "E", 1346707379, "jominey", "E", 1571338768, "jominey", "E", 1571339180, "jominey", "E", 1571340081, "jominey", "E", 1582567832, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

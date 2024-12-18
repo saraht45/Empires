@@ -1,0 +1,508 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-post:disconnect%mounting">
+         X[M] Call(\$\{Ironclaw:Lib:NIP:mount\}, "disconnect", \$who: \$this);
+      </Core:Property>
+      <Core:Property property="merry:act-post:enter%mounting">
+         X[M] /*
+** D=The act-post:enter script for the mounting system (NIP), which handles movement through rooms.
+*/
+
+mount::move_riders(\$actor: \$actor, \$mount: \$actor."npc:mounting");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:linkdie%mounting">
+         X[M] Call(\$\{Ironclaw:Lib:NIP:mount\}, "disconnect", \$who: \$this);
+      </Core:Property>
+      <Core:Property property="merry:act-post:login%mounting">
+         X[M] \$logoutEnv = \$actor."temp:logout:room";
+\$safeZone = \$actor."temp:login:room";
+
+if(\$actor."temp:mount") \$mount = \$actor."temp:mount";
+
+/* We have been moved to a safe place or returned to our room */
+if(!\$actor."base:environment"."trait:safezone") \{
+    \$actor."temp:logout:room" = nil;
+    \$actor."temp:login:room" = nil;
+    \$actor."temp:mount" = nil;
+    Set(\$actor, "merry:inherit:act-post:login%mounting", nil);
+\}
+
+/* The thing we were mounting has since been returned or has moved rooms */
+if(!\$mount \|\| \$mount."base:environment" != \$logoutEnv) \{
+    \$actor."base:environment" = \$safezone;
+    \$actor."temp:logout:room" = nil;
+    \$actor."temp:login:room" = nil;
+    \$actor."temp:mount" = nil;
+    Set(\$actor, "merry:inherit:act-post:login%mounting", nil);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:logout%mounting">
+         X[M] Call(\$\{Ironclaw:Lib:NIP:mount\}, "disconnect", \$who: \$this);
+      </Core:Property>
+      <Core:Property property="merry:act-post:quit%mounting">
+         X[M] Call(\$\{Ironclaw:Lib:NIP:mount\}, "disconnect", \$who: \$this);
+      </Core:Property>
+      <Core:Property property="merry:act-post:teleport%mounting">
+         X[M] /*
+** D=The act-post:enter script for the mounting system (NIP), which handles movement through rooms.
+*/
+
+mount::move_riders(\$actor: \$actor, \$mount: \$actor."npc:mounting");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:approach%mounting">
+         X[M] /*
+** D=Approach script, inherited whenever someone mounts an NPC, which deals with movement issues within rooms.
+** Check for partition restriction. If we are mounted on something that can pass through, temporarily set partition info in chatter to allow approach.
+** Also handle exit restrictions here
+*/
+
+string detail, partition;
+object mount, env;
+
+if(!\$actor."npc:mounting") return TRUE;
+
+mount = \$actor."npc:mounting";
+env = \$actor."base:environment";
+detail = NRefDetail(\$what);
+
+/* If the detail is in a partition, allow access if we are using the correct mount */
+if(Get(\$actor."base:environment", "room:partition:" + detail)) \{
+    partition = Get(\$actor."base:environment", "room:partition:" + detail);
+    if(mount."nip:trait:mounting:mount-type" == partition) \{
+        \$actor."room:partition" = partition;
+        \$actor."tmp:room:partition" = partition;
+        return TRUE;
+    \}
+\}
+
+/* If we are restricted and the detail we are moving to is an exit... */
+if(mount."nip:trait:mounting:mount-restrictions" \&\& Get(env, "details:" + detail + ":exit:dest")) \{
+    /* Block the movement */
+    EmitTo(\$actor, "You cannot reach " + Describe(\$what) + " while you are " + Str(mount."nip:trait:mounting:mount-type") + ".");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:approach%mounting">
+         X[M] /*
+** D=Approach script, inherited whenever someone mounts an NPC, which deals with movement issues within rooms.
+*/
+
+int i;
+
+if(!\$actor."npc:mounting") return TRUE;
+
+\$mount = \$actor."npc:mounting";
+\$riders = \$mount."npc:mounted";
+
+/* Will be used for proxy checks */
+\$proxies = (\{ \});
+for(i = 0; i \< sizeof(\$riders); i++) \{
+    \$proxies += \$riders[i]."base:proximates";
+\}
+
+/* Check if rider is interacting with another rider. If so, allow the action */
+/* Also allow interaction if \$mount is in proximity of the thing we are wanting to approach */
+/* Also allow interaction if the thing we want to approach is within proximity of the \$mount */
+/* Also allow interaction if the thing we want to approach is within proximity of another rider */
+if(!member(NRefOb(\$what), \$riders) \&\& 
+   (\$mount."base:proximity" \&\& NRefDetail(\$mount."base:proximity") != NRefDetail(\$what)) \&\& 
+   !member(NRefOb(\$what), \$mount."base:proximates") \&\&
+   !member(NRefOb(\$what), \$proxies)) \{
+
+    if(\$mount."npc:controlledby" != \$actor) \{
+        EmitTo(\$actor, TAG("You cannot approach that unless you are holding something to control " + Describe(\$mount) + " with.", "social:first"));
+        return FALSE;
+    \}
+
+    /* Instantly put the character in proximity to whatever he's attempting to approach, */
+    \$actor."base:proximity" = \$what;
+
+    /* Force the NPC (which is referred to through 'npc:mounting' in the actor) to perform the approach too. */
+    /* Act(\$mount, "approach", \$what: \$what, \$consent_mapping: nil); */
+    \$lookers = \$mount."base:environment"."base:inventory";
+    for(i = 0; i \< sizeof(\$lookers); i++) \{
+        if(member(\$lookers[i], \$riders)) \{
+            EmitTo(\$lookers[i], TAG(Describe(\$mount) + " carrying " + replace_strings(Describe(\$mount."npc:mounted"), Describe(\$lookers[i]), "you") + " approaches " + Describe(\$what) + ".", "social:first"));
+        \} else \{
+            EmitTo(\$lookers[i], TAG(Describe(\$mount) + " carrying " + Describe(\$mount."npc:mounted") + " approaches " + Describe(\$what) + ".", "social:third"));
+        \}
+    \}
+    \$mount."base:proximity" = \$what;
+\}
+/* Quick 100 ms delay, */
+\$delay(3, TRUE, "0c9f");
+
+/* And then put the rider back on the mount, along with all other riders */
+for(i = 0; i \< sizeof(\$riders); i++) \{
+    \$riders[i]."base:proximity" = \$mount;
+    \$riders[i]."base:stance" = STANCE_SIT;
+    \$riders[i]."base:preposition" = PREP_ON;
+\}
+      </Core:Property>
+      <Core:Property property="merry:act:enter%mounting">
+         X[M] /*
+** D=Approach script, inherited whenever someone mounts an NPC, which deals with movement issues within rooms.
+*/
+
+int i;
+
+if(!\$actor."npc:mounting") return TRUE;
+
+\$mount = \$actor."npc:mounting";
+\$riders = \$mount."npc:mounted";
+
+
+if(\$mount."npc:controlledby" != \$actor) \{
+    EmitTo(\$actor, TAG("You cannot enter that unless you are holding something to control " + Describe(\$mount) + " with.", "social:first"));
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:leave%mounting">
+         X[M] /*
+** D=Approach script, inherited whenever someone mounts an NPC, which deals with movement issues within rooms.
+*/
+
+object mount;
+mixed* riders;
+int i;
+
+mount = \$actor."npc:mounting";
+if(mount."npc:controlledby" != \$actor) \{
+    EmitTo(\$actor, TAG("You cannot move unless you are holding something to control " + Describe(mount) + " with.", "social:first"));
+    return FALSE;
+\}
+
+/* Force the NPC (which is referred to through 'npc:mounting' in the actor) to perform the approach too. */
+Act(mount, "leave");
+
+/* And then put the rider back on the mount, along with all other riders */
+riders = mount."npc:mounted";
+for(i = 0; i \< sizeof(riders); i++) \{
+    riders[i]."base:proximity" = mount;
+    riders[i]."base:stance" = STANCE_SIT;
+    riders[i]."base:preposition" = PREP_ON;
+\}
+      </Core:Property>
+      <Core:Property property="merry:act:stance%mounting">
+         X[M] /*
+** D=Stance handler for mounted NPC's. This script ensures stances are displayed correctly.
+*/
+
+object mount;
+
+/* Here, we simply forward the action to the horse, but we put the
+   stance to "standing". Don't want any kneeling horses here... */
+
+mount = \$actor."npc:mounting";
+
+if(mount."nip:trait:mounting:mount-stance") \{
+    Act(mount, "stance", \$stance: mount."nip:trait:mounting:mount-stance");
+\} else \{
+    Act(mount, "stance", \$stance: STANCE_STAND);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:add_rider">
+         X[M] /* 
+** \$mount = the mount we are adding a rider to
+** \$rider = the chatter we are adding as a rider
+** \$controller = determines whether or not the chatter will be controlling the mount (1 = yes, nil = no)
+*/
+
+mixed* mounted;
+
+Set(\$rider, "base:proximity", \$mount);
+Set(\$rider, "base:stance", STANCE_SIT);
+Set(\$rider, "base:preposition", PREP_ON);
+
+/* Set(\$rider, "follow", nil); */
+
+/* If the rider is the controller, set accordingly */
+if(\$controller) Set(\$mount, "npc:controlledby", \$rider);
+
+/* Add adjective "mounted" to the NPC, and remove adjective "unmounted". */
+Set(\$mount, "details:"+NRefDetail(\$mount)+":adjective:mounted", TRUE );
+Set(\$mount, "details:"+NRefDetail(\$mount)+":adjective:unmounted", FALSE );
+
+/* We inherit, as specified in the inherits mapping */
+mount::set_inherits(\$rider: \$rider, \$flag: TRUE);
+
+/* And we set the 'npc:mounted' property in the NPC to 1 to signal that we're mounted. */
+mounted = (\{ \});
+if(\$mount."npc:mounted" \&\& sizeof(\$mount."npc:mounted")) mounted = \$mount."npc:mounted";
+mounted += (\{ \$rider \});
+\$mount."npc:mounted" = mounted;
+
+/* Let's replace the base:gait in the actor for when we move through rooms. */
+\$rider."base:oldgait" = \$actor."base:gait"; /* store old value, just in case */
+\$rider."base:gait" = \$mount."nip:trait:mounting:rider-gait"; /* and set our own */
+
+/* And finally, let's set a "npc:mounting" property in the actor (the rider, not the horse) to the horse object reference (\$mount) */
+\$rider."npc:mounting" = \$mount;
+\$mount."nip:trait:movement:frequency" = 0;
+      </Core:Property>
+      <Core:Property property="merry:lib:disconnect">
+         X[M] if(\$who."npc:mounting") \{
+    /* If controlling a mount, drop the reins */
+    \$mount = \$who."npc:mounting";
+    if(\$mount.reins) \{
+        \$reins = \$mount.reins;
+        if(\$reins."base:environment" == \$who) \{
+            \$reins."base:environment" = \$mount."base:environment";
+        \}
+    \}
+
+    /* If mounting a water mount, add login script to chatter to handle this scenario */
+    if(\$mount."base:environment"."trait:safezone") \{
+        \$who."temp:mount" = \$mount;
+        \$who."temp:logout:room" = \$mount."base:environment";
+        \$who."temp:login:room" = \$mount."base:environment"."trait:safezone";
+        Set(\$who, "merry:inherit:act-post:login%mounting", \$this);
+    \}
+
+    mount::remove_rider(\$rider: \$who, \$mount: \$who."npc:mounting");
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:login%mounting">
+         X[M] \$logoutEnv = \$actor."temp:logout:room";
+\$safeZone = \$actor."temp:login:room";
+
+if(\$actor."temp:mount") \$mount = \$actor."temp:mount";
+
+/* We have been moved to a safe place or returned to our room */
+if(!\$actor."base:environment"."trait:safezone") \{
+    \$who."temp:logout:room" = nil;
+    \$who."temp:login:room" = nil;
+    \$who."temp:mount" = nil;
+    Set(\$who, "merry:inherit:act-post:login%mounting", nil);
+\}
+
+/* The thing we were mounting has since been returned or has moved rooms */
+if(!\$mount \|\| \$mount."base:environment" != \$logoutEnv) \{
+    \$actor."base:environment" = \$safezone;
+    \$who."temp:logout:room" = nil;
+    \$who."temp:login:room" = nil;
+    \$who."temp:mount" = nil;
+    Set(\$who, "merry:inherit:act-post:login%mounting", nil);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:move_riders">
+         X[M] /*
+** Check if mount has riders and move them too
+** \$mount
+** \$actor
+*/
+
+mixed* riders;
+object mount, env;
+string detail;
+int i;
+
+/* The rider has left through the exit. NPC still "on the other side" though. Let's move the NPC (and other riders) as well, but manually. */
+mount = \$mount;
+mount."base:environment" = \$actor."base:environment";
+
+/* Don't put the mount near a detail if it's a partition */
+env = \$actor."base:environment";
+
+if(\$actor."base:proximity") \{
+    detail = NRefDetail(\$actor."base:proximity");
+    mount."base:proximity" = \$actor."base:proximity";
+\}
+
+/* And put all riders back on the mount. */
+\$riders = mount."npc:mounted";
+for(\$i = 0; \$riders \&\& sizeof(\$riders) \&\& \$i \< sizeof(\$riders); \$i++) \{
+    if(\$riders[\$i] != \$actor) \{
+        /* Move the other riders and show room glance */
+        EmitTo(\$riders[\$i], TAG("\\nYou approach " + Describe(\$what) + ".\\n", "social:first"));
+        \$delay(1, FALSE, "15ad");
+        \$riders[\$i]."base:environment" = \$actor."base:environment";
+        EmitTo(\$riders[\$i], UnSAM(ParseXML("\<describe-view view=\\"\$(" + Str(\$actor."base:environment") + ")\\" type=\\"glance\\" looker=\\"\$(" + Str(\$riders[\$i]) + ")\\"/\>")));
+    \}
+    \$riders[\$i]."base:proximity" = \$mount;
+    \$riders[\$i]."base:stance" = STANCE_SIT;
+    \$riders[\$i]."base:preposition" = PREP_ON;
+\}
+
+\$delay(1, TRUE, "7d73");
+/* if(\$mount."nip:trait:mounting:mount-stable-type" != "stable") \$actor."room:partition" = nil;*/
+
+if(\$actor."tmp:room:partition") \{
+    \$actor."room:partition" = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_rider">
+         X[M] /*
+** \$mount = the mount we are remove the rider from
+** \$rider = the chatter we are removing as a rider
+*/
+
+mixed* mounted;
+
+/* Stand the chatter in the mount's environment */
+if(Str(\$rider."base:environment") == Str(\$mount."base:environment")) \{
+    Set(\$rider, "base:proximity", \$mount."base:environment");
+    Set(\$rider, "base:stance", STANCE_STAND);
+    Set(\$rider, "base:preposition", PREP_NEAR);
+    Set(\$rider, "room:partition", nil);
+\}
+
+/* If the rider is the controller, set accordingly */
+if(\$mount."npc:controlledby" == \$rider) Set(\$mount, "npc:controlledby", nil);
+
+/* Add adjective "unmounted" to the NPC, and remove adjective "mounted". */
+Set(\$mount, "details:"+NRefDetail(\$mount)+":adjective:mounted", FALSE);
+Set(\$mount, "details:"+NRefDetail(\$mount)+":adjective:unmounted", TRUE);
+
+/* Remove inherits */
+mount::set_inherits(\$rider: \$rider, \$flag: FALSE);
+
+/* Remove the rider from the npc:mounted list */
+mounted = (\{ \});
+if(\$mount."npc:mounted" \&\& sizeof(\$mount."npc:mounted")) mounted = \$mount."npc:mounted";
+mounted -= (\{ \$rider \});
+\$mount."npc:mounted" = mounted;
+
+/* Let's replace the base:gait in the actor for when we move through rooms. */
+\$rider."base:gait" = \$actor."base:oldgait"; /* restore old value */
+\$rider."base:oldgait" = nil; /* remove reference to old value */
+
+/* And finally, let's clear "npc:mounting" property in the rider */
+\$rider."npc:mounting" = nil;
+
+/* No one is riding mount. Restore movement. */
+if(!sizeof(mounted)) \$mount."nip:trait:movement:frequency" = nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_inherits">
+         X[M] /* Set/unset all inherited scripts related to mounts */
+/* \$flag - if \$flag is TRUE, add the scripts to the rider; if \$flag is false, remove the scrips from the rider */
+
+if(\$flag) \$lib = \$\{Ironclaw:Lib:NIP:mount\};
+
+Set(\$rider, "merry:inherit:act-post:enter%mounting", \$lib);
+Set(\$rider, "merry:inherit:act:enter%mounting", \$lib);
+Set(\$rider, "merry:inherit:act-pre:approach%mounting", \$lib);
+Set(\$rider, "merry:inherit:act:approach%mounting", \$lib);
+Set(\$rider, "merry:inherit:act:leave%mounting", \$lib);
+Set(\$rider, "merry:inherit:act:stance%mounting", \$lib);
+Set(\$rider, "merry:inherit:act-post:quit%mounting", \$lib);
+Set(\$rider, "merry:inherit:act-post:logout%mounting", \$lib);
+Set(\$rider, "merry:inherit:act-post:linkdie%mounting", \$lib);
+Set(\$rider, "merry:inherit:act-post:disconnect%mounting", \$lib);
+Set(\$rider, "merry:inherit:act-post:teleport%mounting", \$lib);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:dismount-dob">
+         X[M] /*
+** D=This script deals with dismounting an NPC.
+*/
+
+/* Check to see if chatter is actually mounted on this mount */
+if(\$actor."npc:mounting" == \$this) \{
+    EmitTo(\$actor, TAG("You climb down from " + Describe(this) + ".", "social:first"));
+    EmitIn(this."base:environment", TAG(Describe(\$actor) + " climbs down from " + Describe(this) + ".", "social:third"), \$actor);
+
+    mount::remove_rider(\$mount: this, \$rider: \$actor);
+\} else \{
+    EmitTo(\$actor, TAG("You are not currently riding " + Describe(\$this) + ".", "social:first"));
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:mount-dob">
+         X[M] /*
+
+   D=This script deals with mounting an NPC.
+
+*/
+
+int capacity, i, sz, controller;
+mixed* riders;
+mixed control;
+
+/* Get the mount capacity. Default is 1 rider. */
+capacity = 1;
+if(Int(this."nip:trait:mounting:rider-capacity") \> 0) capacity = Int(this."nip:trait:mounting:rider-capacity");
+
+/* Get the number of current riders */
+if(this."npc:mounted" \&\& sizeof(this."npc:mounted")) \{
+    /* We also need to make sure the riders are still in the environment so a slot isn't taken up due to someone logging off while riding */
+    riders = this."npc:mounted";
+
+    sz = 0;
+    for(i = 0; i \< sizeof(riders); i++) \{
+        if(Str(riders[i]."base:environment") != Str(this."base:environment")) \{
+            mount::remove_rider(\$rider: riders[i], \$mount: \$this);
+        \} else \{
+            sz++;
+        \}
+    \}
+\}
+
+if(sz \>= capacity) \{
+    EmitTo(\$actor, TAG("There is no room for you to fit on " + Describe(this) + ".", "social:first"));
+    return FALSE;
+\}
+
+/* Let's also check if the actor is mounting something currently */
+if(\$actor."npc:mounting") \{ /* Actor is already mounting something. */
+  if( \$actor."npc:mounting" == this ) \{ /* Actor is mounting this NPC already! */
+    EmitTo( \$actor, TAG("You are already mounting " + Describe(this) + "!", "social:first"));
+  \} else \{ /* Actor is mounting something else. */
+    EmitTo( \$actor, TAG("You are already mounting " + Describe(\$actor."npc:mounting") + "!", "social:first"));
+  \}
+
+  return FALSE;
+\}
+
+/* If we get here, the NPC isn't mounted. Let's print some pretty message describing what happens */
+/* Also assume that the first mounter will be the controller */
+/* That is, if a control detail exists */
+if(this."nip:trait:mounting:control-detail") \{
+    if(sizeof(Get(this, "details:" + this."nip:trait:mounting:control-detail" + ":snames"))) \{
+        if(sz == 0) \{
+            control = " taking " + Describe(NewNRef(this, this."nip:trait:mounting:control-detail"));
+        \}
+    \} else if(this.reins \&\& this.reins."base:environment" == \$actor) \{
+        control = " with " + Describe(NewNRef(this.reins, "default"));
+    \}
+\}
+
+if(control) \{
+    EmitTo(\$actor, TAG("You climb onto " + Describe(this) + "," + control + " in hand.", "social:first"));
+    EmitIn(this."base:environment", TAG(Describe(\$actor) + " climbs onto " + Describe(this) + "," + control + " in hand.", "social:third"), \$actor );
+    controller = 1;
+\} else \{
+    EmitTo(\$actor, TAG("You climb onto " + Describe(this) + ".", "social:first"));
+    EmitIn(this."base:environment", TAG(Describe(\$actor) + " climbs onto " + Describe(this) + ".", "social:third"), \$actor);
+\}
+
+/* ... and put the rider ON the NPC */
+mount::add_rider(\$mount: this, \$rider: \$actor, \$controller: controller);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1510173369, "jominey", "E", 1510173410, "jominey", "E", 1510173459, "jominey", "E", 1510173476, "jominey", "E", 1510173487, "jominey", "E", 1510173495, "jominey", "E", 1510173540, "jominey", "E", 1510174036, "jominey", "E", 1510174401, "jominey", "E", 1510174446, "jominey", "E", 1510174479, "jominey", "E", 1510175121, "jominey", "E", 1510175217, "jominey", "E", 1510175245, "jominey", "E", 1510175371, "jominey", "E", 1510175426, "jominey", "E", 1510713125, "jominey", "P", 1510714787, "jominey", "P", 1510714929, "jominey", "P", 1510715031, "jominey", "P", 1510757563, "jominey", "E", 1510757633, "jominey", "E", 1510757764, "jominey", "E", 1510758041, "jominey", "E", 1510758233, "jominey", "E", 1510758344, "jominey", "E", 1510758425, "jominey", "E", 1597093355, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

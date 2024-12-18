@@ -1,0 +1,149 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tonyd">
+  <SkotOS:MerAcHa action_id="gobble">
+    <Core:PCProperties>
+      <Core:Property property="desc:finish:ldef">
+         X[S] \$(You) \$(Verb:Gobble) up \$(whatname) entirely.
+      </Core:Property>
+      <Core:Property property="desc:finish:vdef:gobble">
+         (\{ "gobble", "gobbles" \})
+      </Core:Property>
+      <Core:Property property="desc:takebite:ldef">
+         X[S] \$(You) \$(Verb:Take) a bite of \$(whatname).
+      </Core:Property>
+      <Core:Property property="desc:takebite:vdef:take">
+         (\{ "take", "takes" \})
+      </Core:Property>
+      <Core:Property property="merry:global-desc:action">
+         X[M] \$(exarg-propbase) = "desc:finish";
+\$(exarg-object) = this;
+
+\$thing = NRefOb(\$what[0]);
+
+if(NRefOb(\$what[0])."trait:taste") \{
+    \$(food:taste) = UnSAM(NRefOb(\$what[0])."trait:taste");
+    \$emit = Describe(\$what[0], nil, \$actor) + " tastes " + \$(food:taste) + ".";
+    \$delay(0.1, TRUE, "6ab6");
+    EmitTo(\$actor, \$emit);
+\}  
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global-post:action">
+         X[M] consume::consume(\$amount: -1, \$type: "food");
+
+if(NRefOb(\$what[0])."base:possessed") return TRUE;
+
+Slay(NRefOb(\$what[0]));
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global:action">
+         X[M] if(\$(what:words) \&\& \$(what:words) != "") \{
+    int x;
+    mapping replaceMap;
+    mixed* replace;
+
+    replaceMap = ([ "first":"1st", "second":"2nd", "third":"3rd", "fourth":"4th", "fifth":"5th", "sixth":"6th", "seventh":"7th", "eighth":"8th", "ninth":"9th", "tenth":"10th" ]);
+    replace = map_indices(replaceMap);
+    for(x = 0; x \< sizeof(\$(what:words)); x++) \{
+        if(member(\$(what:words)[x], replace)) \{
+            \$(what:words)[x] = replaceMap[\$(what:words)[x]];
+        \}
+    \}
+    \$what = Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "find_food_target", \$point: implode(\$(what:words), " "));
+\}
+
+if(!\$what \|\| !sizeof(\$what)) \{
+    EmitTo(\$actor, "What did you want to eat?");
+    return FALSE;
+\}
+
+if(!\$dob \&\& !\$what) return FALSE;
+
+if(\$dob \&\& !\$what) \$what = \$dob;
+if(\$iob \&\& !\$what) \$what = \$iob;
+
+if (!IsPrime(\$what[0])
+\|\| !NRefOb(\$what[0])."base:edible") \{
+        \$food = NRefOb(\$what[0]); 
+
+        if(!sizeof(\$food."base:inventory")) \{
+             EmitTo(\$actor, "You cannot eat " + Describe(\$what[0], nil, \$actor) + ".");
+            return FALSE;
+        \}
+
+        if(sizeof(\$food."base:inventory") == 1) \{
+            if(\$food."base:inventory"[0]."base:edible") \{
+                \$what2 = (\{ NewNRef(\$food."base:inventory"[0], "default") \});
+            \} else \{
+                EmitTo(\$actor, "You cannot eat " + Describe(\$what[0], nil, \$actor) + ".");
+                return FALSE; 
+            \}
+        \} else \{
+
+            \$what2 = Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "find_food_target", \$point: implode(\$(what:words), " "), \$prime_source: \$food);
+
+            if(!\$what2 \|\| !sizeof(\$what2)) \{
+                /* Choose something randomly */
+                \$what2 = (\{ \$food."base:inventory"[random(sizeof(\$food."base:inventory"))] \});
+            \}
+
+            if(!NRefOb(\$what2[0])."base:edible") \{
+                EmitTo(\$actor, "You cannot eat " + Describe(\$what[0], nil, \$actor) + ".");
+                return FALSE;
+            \}
+        \}
+
+        \$vessel = NRefOb(\$what[0]);
+        \$what = \$what2;
+\}
+
+EmitTo(\$actor, TAG("You gobble up " + Describe(\$what[0], nil, \$actor) + " entirely.", "social:first"));
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " gobbles up " + Describe(\$what[0], \$actor) + " entirely.", "social:third"), \$actor);
+
+
+\$thing = NRefOb(\$what[0]);
+
+if(NRefOb(\$what[0])."trait:taste") \{
+    \$(food:taste) = UnSAM(NRefOb(\$what[0])."trait:taste");
+    \$emit = Describe(\$what[0], nil, \$actor) + " tastes " + \$(food:taste) + ".";
+    \$delay(0.1, FALSE, "056e");
+    EmitTo(\$actor, \$emit);
+\}
+
+consume::consume(\$amount: -1, \$type: "food");
+
+if(!\$what[0]."base:possessed") \{
+    Slay(NRefOb(\$what[0]));
+\}
+
+if(\$vessel) \{
+    if(FindMerry(\$vessel, "react-post", "place-where%foodcontainer")) \{
+        Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "update", \$container: \$vessel);
+    \}
+\}
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="old:merry:global-pre:action">
+         X[M] if(\$dob \&\& !\$what) \$what = \$dob;
+if(\$iob \&\& !\$what) \$what = \$iob;
+/* Sanity check */
+if(typeof(\$what) == T_OBJECT) \$dob = Arr(\$what);
+if(!\$what \|\| !sizeof(\$what)) return TRUE; /* Exit, but still allow the emote */
+
+if (!IsPrime(\$what[0]) \|\|
+    !NRefOb(\$what[0])."base:edible") \{
+  EmitTo(\$actor, "You cannot eat " +
+         Describe(\$what, nil, \$actor) + ".");
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1596668797, "jominey", "E", 1596668912, "jominey", "E", 1596668940, "jominey", "E", 1596668953, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

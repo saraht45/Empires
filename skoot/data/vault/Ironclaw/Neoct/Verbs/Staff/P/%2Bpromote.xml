@@ -1,0 +1,233 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="+promote" evoke="optional" audible="true" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="from" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="from"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:callback:stp_query">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:callback:stp_query instead! */
+if(\$stp_cost \> Int(\$value)) \{
+    EmitTo(\$actor, "This promotion costs "+\$stp_cost+" storypoints. "+capitalize(\$stp_sponsor_account)+" only has "+Int(\$value)+" points.");
+    return FALSE;
+\}
+
+EmitTo(\$actor, Describe(\$char)+" is "+\$status_name+" ("+\$status_level+")");
+EmitTo(\$actor, "This promotion will cost "+Describe(\$stp_sponsor)+" "+TAG(\$stp_cost+" storypoints", "imp")+". "+capitalize(\$stp_sponsor_account)+" has "+Int(\$value)+" points.");
+
+interaction::question(\$question: "Do you want to promote "+Describe(\$char)+" to "+\$new_status_name+" ("+\$new_status_level+") and charge "+Describe(\$stp_sponsor)+" "+TAG(\$stp_cost+" storypoints", "imp")+"?", \$expires: 30, \$env: FALSE, \$expire: "+promote question has expired.", \$yes_ob: \$lib, \$yes_fun: "give_promotion", \$no: "OK, no promotion just yet!", \$par: ([
+"char":\$char,
+"info":\$new_rank_info,
+"stp_cost":\$stp_cost,
+"stp_sponsor":\$stp_sponsor,
+"stp_sponsor_account":\$stp_sponsor_account
+]));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:global:command instead! */
+/* grants a social rank increase to a character */
+int i;
+\$lib = \$\{Allegory:Lib:Characters:Rank\};
+\$paths = map_indices(\$lib."data:paths");
+if(\$(dob:words) \&\& lower_case(\$(dob:words)[0]) == "list") \{
+  EmitTo(\$actor, "Available groups:");
+  for(i=0;i\<sizeof(\$paths);i++)
+    EmitTo(\$actor, \$paths[i][7..]);
+  return FALSE;
+\}
+
+if(!\$(dob:words) \|\| sizeof(\$(dob:words)) \< 2) \{
+  EmitTo(\$actor, "Format: +promote list");
+  EmitTo(\$actor, "Format: +promote \<name\> \<group\>");
+  EmitTo(\$actor, "Format: +promote \<name\> \<group\> from \<PC\> (for STP purchased promotions)");
+  return FALSE;
+\}
+
+\$a_subj = lower_case( \$(dob:words)[0] );
+\$char = common::lookup(\$name: \$a_subj);
+if(!\$char) \{
+  EmitTo(\$actor, "Unknown character.");
+  return FALSE;
+\}
+
+\$group = lower_case( \$(dob:words)[1] );
+if(!\$group \|\| !member("status:"+\$group, \$paths)) \{
+  EmitTo(\$actor, "Unknown group.");
+  return FALSE;
+\}
+
+if(\$(from:words)) \{
+  \$a_subj = lower_case( \$(from:words)[0] );
+  \$stp_sponsor = common::lookup(\$name: \$a_subj);
+  if(!\$stp_sponsor) \{
+    EmitTo(\$actor, "Unknown sponsor.");
+    return FALSE;
+  \}
+\} else \{
+  \$stp_sponsor = nil;
+\}
+
+/* Check their current status */
+\$status_level = Int(Get(\$char, "rank:status:"+\$group));
+\$status_name = Get(\$char, "rankname:status:"+\$group+":"+\$status_level);
+if(!\$status_name)
+  \$status_name = "unranked";
+
+/* Check their new status */
+\$new_rank_info = Call(\$lib, "check_status", \$char: \$char, \$path: \$group, \$give_promotion: TRUE, \$show_promotion_requirements: TRUE);
+\$new_status_name = \$new_rank_info["rankname"];
+\$new_status_level = \$new_rank_info["level"];
+
+if(!\$new_status_name) \$new_status_name = "Unknown";
+if(!\$new_status_level) \$new_status_level = 1;
+
+/* Does the stp sponsor meet all requirements? */
+if(\$stp_sponsor) \{
+  \$groupname = \$new_rank_info["groupname"];
+  \$sponsor_level = Int(Get(\$stp_sponsor, "rank:status:"+\$groupname));
+  if(Int(Get(\$stp_sponsor, "rank:status:"+\$groupname+"_mil")) \> \$sponsor_level)
+    \$sponsor_level = Int(Get(\$stp_sponsor, "rank:status:"+\$groupname+"_mil"));
+  if(\$sponsor_level \<= \$new_status_level) \{
+    EmitTo(\$actor, Describe(\$stp_sponsor)+" is not high enough ranked to promote "+Describe(\$char)+" in "+\$group+".");
+    return FALSE;
+  \}
+
+  /* Has it been less than three months since the patron was created? */
+  if(time() - Int(\$stp_sponsor."skotos:creation_time") \< 60*60*24*30*3) \{
+    EmitTo(\$actor, "PCs may only give storypoint promotions after they are three months old.");
+    EmitTo(\$actor, Describe(\$stp_sponsor)+" must wait "+days( 60*60*24*30*3 + Int(\$stp_sponsor."skotos:creation_time") - time() )+" before giving storypoint promotions.");
+    return FALSE;
+  \}
+
+  /* Has it been less than three months since they were created? */
+  if(time() - Int(\$char."skotos:creation_time") \< 60*60*24*30*3) \{
+    EmitTo(\$actor, "PCs may only be promoted with storypoints after they are three months old.");
+    EmitTo(\$actor, Describe(\$char)+" must wait "+days( 60*60*24*30*3 + Int(\$char."skotos:creation_time") - time() )+" before being storypoint promoted.");
+    return FALSE;
+  \}
+
+  /* Has it been less than six months since they were last stp promoted? */
+  if(\$new_status_level \>= 3 \&\& (time() - Int(\$char."promotion:stp:lastgiven") \< 60*60*24*30*6)) \{
+    EmitTo(\$actor, "PCs may only be promoted to higher ranks with storypoints once every six months.");
+    EmitTo(\$actor, Describe(\$char)+" must wait "+days( 60*60*24*30*6 + Int(\$char."promotion:stp:lastgiven") - time() )+" before being storypoint promoted above rank 7.");
+    return FALSE;
+  \}
+  
+  /* Has it been less than three months since they were last stp promoted? */
+  if(time() - Int(\$char."promotion:stp:lastgiven") \< 60*60*24*30*3) \{
+    EmitTo(\$actor, "PCs may only be promoted with storypoints once every three months.");
+    EmitTo(\$actor, Describe(\$char)+" must wait "+days( 60*60*24*30*3 + Int(\$char."promotion:stp:lastgiven") - time() )+" before being storypoint promoted again.");
+    return FALSE;
+  \}
+
+  /* Has it been less than one month since they were last promoted? */
+  if(time() - Int(\$char."promotion:lastgiven") \< 60*60*24*30) \{
+    EmitTo(\$actor, "PCs must wait a month since their last promotion before they can be promoted again.");
+    EmitTo(\$actor, Describe(\$char)+" must wait "+days( 60*60*24*30 + Int(\$char."promotion:lastgiven") - time() )+" before being promoted again.");
+    return FALSE;
+  \}
+
+  /* Calculate the storypoint cost */
+  \$stp_cost = \$new_status_level*20-30;
+  if(\$stp_cost \< 10) \$stp_cost = 10;
+
+  /* Does the patron have enough stps? */
+  if(\$stp_sponsor."udat:name") \{
+    \$stp_sponsor_account = \$stp_sponsor."udat:name";
+  \} else \{
+    \$stp_sponsor_account = \$stp_sponsor."skotos:creator";
+    if(!\$stp_sponsor_account) \{
+      EmitTo(\$actor, "We don't know what account "+Describe(\$stp_sponsor)+" belongs to!");
+      return FALSE;
+    \}
+    \$roster = udat::query_bodies_in_roster(\$user: \$stp_sponsor_account);
+    if(!member(\$stp_sponsor, \$roster)) \{
+      EmitTo(\$actor, "We don't know what account "+Describe(\$stp_sponsor)+" belongs to!");
+      return FALSE;
+    \}
+  \}
+  
+  Call(\$\{SkotOS:API\}, "query_storypoints", \$name: \$stp_sponsor_account, \$call_obj: this, \$call_func: "stp_query");
+  /* The code continues in the callback function callback:stp_query! */
+  return FALSE;
+\}
+
+EmitTo(\$actor, Describe(\$char)+" is "+\$status_name+" ("+\$status_level+")");
+interaction::question(\$question: "Do you want to promote "+Describe(\$char)+" to "+\$new_status_name+" ("+\$new_status_level+")?", \$expires: 30, \$env: FALSE, \$expire: "+promote question has expired.", \$yes_ob: \$lib, \$yes_fun: "give_promotion", \$no: "OK, no promotion just yet!", \$par: ([
+"char":\$char,
+"info":\$new_rank_info,
+"staff_command":TRUE
+]));
+
+if(!\$new_rank_info["valid"]) \{
+  \$requirements = Arr(\$new_rank_info["requirements"]);
+  if(!sizeof(\$requirements)) \{
+  \} else if(sizeof(\$requirements) == 1) \{
+    EmitTo(\$actor, "WARNING: "+Describe(\$char)+" does not meet status requirements: "+\$new_rank_info["requirements"]);
+  \} else \{
+    EmitTo(\$actor, "WARNING: "+Describe(\$char)+" does not meet status requirements:");
+    for(i=0;i\<sizeof(\$requirements);i++) \{
+      EmitTo(\$actor, \$requirements[i]);
+    \}
+  \}
+\}
+
+return FALSE;
+
+
+
+
+
+
+
+
+
+if(\$evoke) \{
+ \$title = capitalize(\$evoke[1..strlen(\$evoke)-2]);
+\} else \{
+ \$title = nil;
+\}
+
+
+EmitTo(\$actor, "Character is :"+dump_value(\$char));
+\$rankname = Call(\$\{Allegory:Lib:Characters:Promotion\}, "promote", \$char: \$char, \$title: \$title);
+
+if(\$rankname) \{
+ if(typeof(\$rankname) == T_STRING) \{
+  /* error message. (otherwise it would have been an array */
+  EmitTo(\$actor, \$rankname);
+  return FALSE;
+ \}
+ \$title = \$rankname[1];
+ \$rankname = \$rankname[0];
+
+ EmitTo(\$actor, "You have promoted "+Describe(\$char)+" to the rank of "+\$rankname+".");
+ EmitTo(\$char, "You have been promoted to the rank of "+\$rankname+".");
+ if(\$title \&\& sizeof(Arr(\$title)))
+  EmitTo(\$char, "This rank includes an in-game title. To set which title to use, try the @title command.");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1176112799, "mqqwa", "E", 1176112839, "mqqwa", "E", 1176113489, "mqqwa", "E", 1176113641, "mqqwa", "E", 1176113723, "mqqwa", "E", 1176113856, "mqqwa", "E", 1176113911, "mqqwa", "P", 1176114192, "mqqwa", "E", 1176114244, "mqqwa", "E", 1176114304, "mqqwa", "E", 1176114400, "mqqwa", "P", 1176114548, "mqqwa", "E", 1176141305, "mqqwa", "P", 1176202681, "mqqwa", "E", 1176202764, "mqqwa", "P", 1176202908, "mqqwa", "E", 1176203084, "mqqwa", "E", 1176203748, "mqqwa", "E", 1176203784, "mqqwa", "E", 1176203840, "mqqwa", "P", 1176203895, "mqqwa", "P", 1176203975, "mqqwa", "P", 1176204051, "mqqwa", "P", 1176204129, "mqqwa", "P", 1176204189, "mqqwa", "P", 1176204593, "mqqwa", "P", 1176204663, "mqqwa", "P", 1176204696, "mqqwa", "P", 1176204932, "mqqwa", "P", 1176204961, "mqqwa", "P", 1176205092, "mqqwa", "P", 1176205211, "mqqwa", "P", 1176205252, "mqqwa", "P", 1176205271, "mqqwa", "P", 1176205302, "mqqwa", "P", 1176205350, "mqqwa", "P", 1176205394, "mqqwa", "E", 1176205437, "mqqwa", "P", 1176205445, "mqqwa", "P", 1176205461, "mqqwa", "P", 1176205477, "mqqwa", "P", 1176205589, "mqqwa", "E", 1176205597, "mqqwa", "R", 1177614914, "tonyd", "E", 1177614983, "tonyd", "P", 1177623965, "tonyd", "P", 1177624544, "tonyd", "P", 1177624862, "tonyd", "P", 1177624892, "tonyd", "P", 1177624919, "tonyd", "P", 1177624992, "tonyd", "P", 1177625175, "tonyd", "P", 1177625532, "tonyd", "P", 1177625766, "tonyd", "P", 1177626033, "tonyd", "P", 1177700936, "tonyd", "P", 1177700975, "tonyd", "P", 1177705487, "tonyd", "P", 1177705691, "tonyd", "P", 1177705705, "tonyd", "P", 1177705802, "tonyd", "P", 1177705990, "tonyd", "P", 1177706492, "tonyd", "P", 1177706567, "tonyd", "P", 1177707135, "tonyd", "P", 1178521312, "necate", "P", 1178522517, "necate", "P", 1178522548, "necate", "P", 1179181189, "necate", "P", 1179181663, "necate", "P", 1179181811, "necate", "P", 1179181852, "necate", "P", 1185691689, "tonyd", "E", 1186885132, "tonyd", "E", 1203252623, "necate", "P", 1229294152, "tonyd", "P", 1229295302, "tonyd", "P", 1229295793, "tonyd", "P", 1238921930, "tonyd", "E", 1238922260, "tonyd", "E", 1238931327, "tonyd", "E", 1238931675, "tonyd", "E", 1428215260, "tonyd", "P", 1428215288, "tonyd", "P", 1428215305, "tonyd", "P", 1428215335, "tonyd", "P", 1428215738, "tonyd", "P", 1428216209, "tonyd", "P", 1428216214, "tonyd", "P", 1428216234, "tonyd", "P", 1428216292, "tonyd", "P", 1428216302, "tonyd", "P", 1428217795, "tonyd", "P", 1428217839, "tonyd", "P", 1428217872, "tonyd", "P", 1428217886, "tonyd", "P", 1428217956, "tonyd", "P", 1428217991, "tonyd", "P", 1428218025, "tonyd", "P", 1428218046, "tonyd", "P", 1428218065, "tonyd", "P", 1428218071, "tonyd", "P", 1428218097, "tonyd", "P", 1428218144, "tonyd", "P", 1428218154, "tonyd", "P", 1428218170, "tonyd", "P", 1428218254, "tonyd", "P", 1428218310, "tonyd", "P", 1428218352, "tonyd", "P", 1428218374, "tonyd", "P", 1428218386, "tonyd", "P", 1428221824, "tonyd", "P", 1428221883, "tonyd", "P", 1428222056, "tonyd", "P", 1428222100, "tonyd", "P", 1428222124, "tonyd", "P", 1428222313, "tonyd", "P", 1428222360, "tonyd", "P", 1428222486, "tonyd", "P", 1428222515, "tonyd", "P", 1428222526, "tonyd", "P", 1428222546, "tonyd", "P", 1428225021, "tonyd", "P", 1428225074, "tonyd", "P", 1428225284, "tonyd", "P", 1428225635, "tonyd", "P", 1428228022, "tonyd", "P", 1428284317, "tonyd", "P", 1428299238, "tonyd", "P", 1428299273, "tonyd", "P", 1428299404, "tonyd", "P", 1428299860, "tonyd", "P", 1428300049, "tonyd", "P", 1428304641, "tonyd", "P", 1429961155, "tonyd", "P", 1429961368, "tonyd", "P", 1429961407, "tonyd", "P", 1429961513, "tonyd", "P", 1434002087, "tonyd", "P", 1437790593, "tonyd", "E", 1437790604, "tonyd", "E", 1437790612, "tonyd", "E", 1437790617, "tonyd", "E", 1437790628, "tonyd", "E", 1437790670, "tonyd", "P", 1437790723, "tonyd", "P", 1437790805, "tonyd", "P", 1437790876, "tonyd", "P", 1437790968, "tonyd", "P", 1437791011, "tonyd", "P", 1437791035, "tonyd", "P", 1437791136, "tonyd", "P", 1437791686, "tonyd", "P", 1437791703, "tonyd", "P", 1437791849, "tonyd", "P", 1437791959, "tonyd", "P", 1437792279, "tonyd", "P", 1437792406, "tonyd", "P", 1437792527, "tonyd", "P", 1437792582, "tonyd", "P", 1437792600, "tonyd", "P", 1437792625, "tonyd", "P", 1437792715, "tonyd", "P", 1437792740, "tonyd", "P", 1437792819, "tonyd", "P", 1437792854, "tonyd", "P", 1437792867, "tonyd", "P", 1437792889, "tonyd", "P", 1437792963, "tonyd", "P", 1437793002, "tonyd", "P", 1437793024, "tonyd", "P", 1437793061, "tonyd", "P", 1437793560, "tonyd", "P", 1437793601, "tonyd", "P", 1437793616, "tonyd", "P", 1437793645, "tonyd", "P", 1437793685, "tonyd", "P", 1437793837, "tonyd", "P", 1437793896, "tonyd", "P", 1437793920, "tonyd", "P", 1437793974, "tonyd", "P", 1437794201, "tonyd", "P", 1437794274, "tonyd", "P", 1437794344, "tonyd", "P", 1437794354, "tonyd", "P", 1437794469, "tonyd", "P", 1437794515, "tonyd", "P", 1437794530, "tonyd", "P", 1437794537, "tonyd", "P", 1437794622, "tonyd", "P", 1437794644, "tonyd", "P", 1437794681, "tonyd", "P", 1437794762, "tonyd", "P", 1437794785, "tonyd", "P", 1437794818, "tonyd", "P", 1437794896, "tonyd", "P", 1437794933, "tonyd", "P", 1437794963, "tonyd", "P", 1437794991, "tonyd", "P", 1437796443, "tonyd", "P", 1437796602, "tonyd", "P", 1437797051, "tonyd", "P", 1437797332, "tonyd", "P", 1437797453, "tonyd", "P", 1437799839, "tonyd", "P", 1437799908, "tonyd", "P", 1437799970, "tonyd", "P", 1437800319, "tonyd", "P", 1437800336, "tonyd", "P", 1437800347, "tonyd", "P", 1437800365, "tonyd", "P", 1437800498, "tonyd", "P", 1437800538, "tonyd", "P", 1437800572, "tonyd", "P", 1437800582, "tonyd", "P", 1437800620, "tonyd", "P", 1437800643, "tonyd", "P", 1437800656, "tonyd", "P", 1437800694, "tonyd", "P", 1437800723, "tonyd", "P", 1437800832, "tonyd", "P", 1437800859, "tonyd", "P", 1437800900, "tonyd", "P", 1437800932, "tonyd", "P", 1437800948, "tonyd", "P", 1437800961, "tonyd", "P", 1571880210, "jominey", "E", 1571880225, "jominey", "E", 1572404977, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

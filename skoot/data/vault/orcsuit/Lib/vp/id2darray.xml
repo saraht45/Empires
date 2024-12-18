@@ -1,0 +1,651 @@
+<object clone="/obj/properties" owner="orcsuit">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(orcsuit:Lib:vp:main)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:vp_clear_place">
+         X[M] /* 
+** Clear a place of all objects within it. 
+** 
+** Arguments: 
+** 
+**  \$id - The place id of that is to be cleared 
+**  \$movers - optional array of objects that are not to be registered as 
+**   belonging to the place they are stored from. 
+**  \$justmovers - if set, just \$movers are stored and registered, and the rest 
+**   of \$id's inventory is untouched, contrary to the above behavior. 
+**  \$storeid - Id of where registered objects are stored as (instead of being 
+**   registered as belonging to the actual \$id); only used when \$justmovers is 
+**   set, so that the movers can move out of an area, and be registered as 
+**   supposed to be at somewhere else.  Which'll happen only if the movers are 
+**   storable.  \$storeid to \$id by this script if \$justmovers isn't set. 
+** 
+** Returns: 
+** 
+**  1 if contents are successfully stored. 
+**  0 if contents are not successfully stored. This should be avoided. 
+** 
+** 
+** Customizing: 
+**  This function should be customized for most virtual systems. 
+**  It determines what it means to store objects (where each object goes) 
+**  and handles things that need to be done to an object, like turning off 
+**  NPC's.  This function also defines the data structure for recording the 
+**  stored inventory of places (what the system uses to determine what objects 
+**  to put into a place when it is remade - where the stored object belongs), 
+**  which in most cases will be identical or similar to the structure of the 
+**  record of the actual objects that represent each room in a place. 
+**  The similarity stems that you need room objects for id's, and you also 
+**  need inventories for id's; however, you do not need storage for id's of 
+**  places that'll always be permanant, as they'll never need to store things, 
+**  so a special id for, say, a room outside of the system, doesn't have to be 
+**  considered by this sytem. 
+** 
+** Default Implementation: 
+**  Assuming that this function hasn't been modified while leaving the comments 
+**  untouched, this function assumes \$id to be a 2D-array,  and the place 
+**  objects and storage inventories to be in a mapping format, but with string 
+**  representantions of the array as indices.  Example place object list if \$id 
+**  is a 2D array: 
+**   ([ "0,0":\<Some:room:object\>, "5,8":\<Another:room:object\> ]) 
+** 
+**  So that actual storage locations can be changed more easily, this 
+**  implementation refers to the properties s_storage and g_storage; if they 
+**  are objects, then certain objects will be stored in there; if not, those 
+**  objects will be stored in nil. 
+** 
+** Other Notes: 
+**  This function should hopefully never return 0; but there may be times when 
+**  it must.  One condition might be if movement to storage doesn't properly 
+**  occur.  This can be caused by: 
+**  - the item not fitting in where it is supposed to go. 
+**  - the item is a 'loose' combineable (requiring a 'tight' container), yet 
+**    the destination is not a tight container (the NIL is not a tight place). 
+**  - some other script triggers when the object is moved, that doesn't let the 
+**    object enter storage.  (Note that scripts that wait until the object is 
+**    moved, and wait long enough for the function to finish executing, will 
+**    not cause the store to be unsuccessful.) 
+*/ 
+ 
+/*\$id is assumed to be valid, and also \$storeid if \$justmovers is set*/ 
+ 
+int i, n, initvpid, immobile; 
+object placeob, what, *storables; 
+mixed regid; 
+ 
+/*Check if the there's another process in this system*/ 
+initvpid = Int(\$vpid); 
+if ( !( Call(this, "vp_queue", \$function: "vp_clear_place") ) )\{ 
+ return FALSE;\} 
+ 
+placeob = Call(this, "vp_id_to_ob"); 
+ 
+if(!placeob)\{ 
+ if(!initvpid)\{ 
+  this.runprocess = Int(this.runprocess) + 1;\} 
+ return 0; 
+\} 
+ 
+if(typeof(this.g_storage != T_OBJECT))\{ 
+ this.g_storage = nil;\} 
+if(typeof(this.s_storage != T_OBJECT))\{ 
+ this.s_storage = nil;\} 
+ 
+if(\$justmovers) 
+\{ 
+ storables = \$movers; 
+\} 
+else 
+\{ 
+ storables = copy(placeob."base:inventory"); 
+ \$storeid = \$id; 
+\} 
+ 
+regid=\$storeid; 
+/*Storeid is currently possibly set to an array; we need to change it to a 
+**string so it can be used to access the inventories.*/ 
+if(typeof(\$storeid) == T_ARRAY) 
+\{ 
+ \$storeid = Str ( \$storeid[0] ) + "," + Str ( \$storeid[1] ); 
+\} 
+ 
+/*Saving the proxes needs to be done before storing anything*/ 
+n=sizeof(storables); 
+for(i=0;i\<n;i++) 
+\{ 
+ what=storables[i]; 
+  
+ /*If the object is proximate the the place, just store the detail*/ 
+ if(what."base:proximity" \&\& NRefOb(what."base:proximity") == placeob) 
+ \{ 
+  what."virtualplace:storage:prox" = NRefDetail(what."base:proximity"); 
+ \} 
+ else /*...otherwise, store the whole NRef (or nil, as the case may be)*/ 
+ \{ 
+  what."virtualplace:storage:prox" = what."base:proximity"; 
+ \} 
+\} 
+ 
+/*Make sure that the inventory registry is set up properly*/ 
+if( typeof(this."db:placeinventory") != T_MAPPING)\{ 
+ this."db:placeinventory" = ([ ]);\} 
+if(sizeof(storables) \&\& typeof(this."db:placeinventory"[\$storeid]) != T_ARRAY) 
+\{ 
+ this."db:placeinventory"[\$storeid] = (\{ \}); 
+\} 
+ 
+/*Now, go though each item, and store it*/ 
+while(sizeof(storables)) 
+\{ 
+ what = storables[0]; 
+ /*First see about registering the object*/ 
+ if( \$justmovers \|\| !\$movers \|\| sizeof( (\{what\}) \& \$movers ) == 0 ) 
+ \{ 
+  /*Register the object in the db*/ 
+  this."db:placeinventory"[\$storeid] += (\{ what \}); 
+  /*Set where the object is stored (if \$storeid is nil, then it's stored at nil)*/ 
+  what."virtualplace:storage:id" = regid; 
+  what."virtualplace:storage:system" = this; 
+ \} 
+ 
+ /*if it's an awake NPC, shut it down*/ 
+ if(what."nip-core:stake") 
+ \{ 
+  what."virtualplace:storage:npcon" = 1; 
+  Call(what, "shutdown"); 
+ \} 
+  
+ immobile = Int(what."base:immobile"); 
+ what."base:immobile" = nil; 
+ 
+ /*Now, determine where to put the stored object, and put it there*/ 
+ if (what."udat:possessed" \|\| what."virtualplace:keeper") 
+ \{ 
+  what."base:environment" = this.s_storage; 
+  if(what."base:environment" != this.s_storage) 
+  \{ 
+   what."base:environment" = nil; 
+   if (what."base:environment") 
+   \{ 
+    EmitTo(\$actor, "Trouble with keeper: "+dump_value(what)+" didn't get stored."); 
+   /*if for some reason it didn't get moved to nil, there's a problem*/ 
+    if(!initvpid)\{ 
+     this.runprocess = Int(this.runprocess) + 1;\} 
+    return 0; 
+   \}/*end if nil failulre*/ 
+  \}/*end if s_storage failure*/ 
+ \}/*end if important*/ 
+ else 
+ \{ 
+  what."base:environment" = this.g_storage; 
+  if(what."base:environment" != this.g_storage)\{ 
+   what."base:environment" = nil; 
+   if (what."base:environment") 
+   \{ 
+     EmitTo(\$actor, "Trouble with nonkeeper: "+dump_value(what)+" didn't get stored."); 
+    /*if for some reason it didn't get moved to nil, there's a problem*/ 
+    if(!initvpid)\{ 
+     this.runprocess = Int(this.runprocess) + 1;\} 
+    return 0; 
+   \}/*end if nil failulre*/ 
+  \}/*end if g_storage failure*/ 
+ \}/*end if important else*/ 
+  what."base:immobile" = immobile; 
+  storables -= (\{what\}); 
+\}/*end while placeob.base:inventory*/ 
+ 
+/*If there is nothing registered in for the \$storeid, we don't need the entry in the 
+**mapping, as that'll just be an empty array anyway*/ 
+if(typeof(this."db:placeinventory"[\$storeid]) != T_ARRAY \|\| sizeof(this."db:placeinventory"[\$storeid]) == 0) 
+\{ 
+ this."db:placeinventory"[\$storeid] = nil; 
+\} 
+ 
+/*This function is done messing with the virtual system 
+**See if this function is the main originating virtual place function 
+**for this process, and if so, mark the process done.*/ 
+if(!initvpid)\{ 
+ this.runprocess = Int(this.runprocess) + 1;\} 
+return 1;
+      </Core:Property>
+      <Core:Property property="merry:lib:vp_create_place">
+         X[M] /* 
+** Create the object for an ID if necessary, unstore the objects that belong 
+** there, and do anything special that needs to be done. 
+** 
+** Arguments: 
+** 
+**  \$id - The ID of the place to be created. 
+**  \$placeobject - optional; the object to be used as the new location.  A new 
+**   object will be spawned if \$placeobject is not an object.  Useful for 
+**   morphing. 
+** 
+** Returns: 
+** 
+**  1 if the place is successfully created. 
+**  0 if the place is not successfully created.  Should never happen. 
+** 
+** 
+** Customizing: 
+**  This function should be customized for most virtual systems. 
+**  It depends on what it means to store an object (where each object goes) 
+**  and handles things that need to be done to an object, like turning on an 
+**  NPC.  This function also depends the data structure for recording the 
+**  stored inventory of places.  See the vp_clear_place customizing info for 
+**  more detail. 
+** 
+** Default Implementation: 
+**  Assuming that this function hasn't been modified while leaving the comments 
+**  untouched, this function assumes \$id to be any value; \$id is used as an 
+**  indice in a mapping to refer to objects and inventories. 
+** 
+**  So that actual storage locations can be changed more easily, this 
+**  implementation refers to the properties s_storage and g_storage; if they 
+**  are objects, then certain objects will be stored in there; if not, those 
+**  objects will be stored in nil. 
+** 
+** Other Notes: 
+**  Unstorage failure is not necessarily a bad thing.  It'll likely happen 
+**  occasionally.  If an item is destroyed while in storage, or gets summoned 
+**  elsewhere for some reason while in storage, unstorage will fail. 
+*/ 
+ 
+int initvpid, i, n; 
+object what, proximate; 
+string catcherror; 
+mixed strid; 
+ 
+/*Check if the there's another process in this system*/ 
+initvpid = Int(\$vpid); 
+if ( Call(this, "vp_queue", \$function: "vp_create_place") == 0 )\{ 
+ return FALSE;\} 
+ 
+/*Make sure that this place doesn't already exist*/ 
+if( Call(this, "vp_id_to_ob", \$id: \$id) ) 
+\{ 
+ if(!initvpid) 
+ \{ 
+  this.runprocess = Int(this.runprocess) + 1; 
+ \} 
+ error ("vp_create_place - \$id is already existing."); 
+\} 
+ 
+/*Get the object to use*/ 
+if (typeof(\$placeobject) != T_OBJECT) 
+\{ 
+ if(typeof(this.placeparent) == T_OBJECT) 
+ \{ 
+  \$placeobject = Spawn(this.placeparent); 
+ \} 
+ else 
+ \{ 
+  error ("vp_create_place - Unable to create object for place."); 
+ \} 
+\} 
+/*Turn an array \$id into a string for mapping access*/ 
+ 
+if(typeof(\$id) == T_ARRAY) 
+\{ 
+ strid = Str ( \$id[0] ) + "," + Str ( \$id[1] ); 
+\}else\{ 
+ strid = \$id; 
+\} 
+/*Note that some systems may need additional things done when a reusing an 
+**object for a place.  This may be handled in the vp_setup_place function*/ 
+ 
+/*register the place object*/ 
+Call(this, "vp_set_ob_for_id", \$placeob: \$placeobject, \$id: \$id); 
+if(\$placeobject."virtualplace:system" == this)\{ 
+ \$placeobject."virtualplace:id" = \$id;\} 
+ 
+/*Set details and do anything else needed*/ 
+Call(this, "vp_setup_place", \$id: \$id); 
+/*note that a system might need to wait until everything is unstored before 
+**doing some setup actions; a seperate function should be created for that. 
+**However, details should be done before unstoring, so that objects can be 
+**placed properly when unstored (the dog is next the tree, etc).*/ 
+ 
+/*Verify validity of storage areas*/ 
+if(typeof(this.g_storage) != T_OBJECT)\{ 
+ this.g_storage = nil;\} 
+if(typeof(this.s_storage) != T_OBJECT)\{ 
+ this.s_storage = nil;\} 
+ 
+/*Make sure that the inventory registry is set up properly*/ 
+if( typeof(this."db:placeinventory") != T_MAPPING ) 
+\{ 
+ this."db:placeinventory" = ([ ]); 
+\} 
+else /*if we do have valid data*/ 
+\{ 
+ if( typeof(this."db:placeinventory"[strid]) != T_ARRAY ) 
+ \{ 
+  this."db:placeinventory"[strid] = nil; 
+ \} 
+ else /*if we do have valid data*/ 
+ \{ 
+  /*clear out deleted objects*/ 
+  this."db:placeinventory"[strid] -= (\{ nil \}); 
+  /*Now, go though each item, and unstore it*/ 
+  /*i should stay 0 for all runnings of the loop, so that it's the first object 
+  **in storage each run that gets considered, and gets removed from storage. 
+  **however, if an item cannot be unstored, i will be increased.*/ 
+  i=0; 
+   
+  while(i\<sizeof(this."db:placeinventory"[strid])) 
+  \{ 
+   what = this."db:placeinventory"[strid][i]; 
+    
+   /*Determine if it's still stored, and then unstore it*/ 
+   if ( (what."base:environment" == this.g_storage \|\| 
+         what."base:environment" == this.s_storage ) 
+      \&\& Call(this, "vp_query_ids_equal", \$id1: \$id, \$id2: what."virtualplace:storage:id") 
+      \&\& what."virtualplace:storage:system" == this ) 
+   \{ 
+    what."base:environment" = \$placeobject; 
+    /*if it got moved, deregister*/ 
+    if(what."base:environment" == \$placeobject) 
+    \{ 
+     /*Deregister the object*/ 
+     this."db:placeinventory"[strid] -= (\{ what \}); 
+     what."virtualplace:storage:id" = nil; 
+     what."virtualplace:storage:system" = nil; 
+    \}/*end if sucessfully moved*/ 
+    else 
+    \{ 
+     i++; 
+    \}/*end if else successfully moved*/ 
+   \}/*end if still stored*/ 
+   else 
+   \{ 
+    /*if it wasn't in storage, then deregister it in our own data so we don't 
+    **bother with it further.  Leave the storage data in the object alone; it 
+    **may be stored by a different system now.*/ 
+    this."db:placeinventory"[strid] -= (\{ what \}); 
+   \} 
+  \}/*end for each stored item*/ 
+  /*if there's nothing left for the place, clear the entry from the mapping*/ 
+  if (sizeof(this."db:placeinventory"[strid]) == 0) 
+   this."db:placeinventory"[strid] = nil; 
+ \}/*end if storage for \$id is an array*/ 
+\}/*end if storage is a mapping*/ 
+ 
+/*With everything unstored, proxes should be set.*/ 
+n=sizeof(\$placeobject."base:inventory"); 
+for(i=0;i\<n;i++) 
+\{ 
+ what=\$placeobject."base:inventory"[i]; 
+  
+ /*If the stored prox is supposed to be an object, see if that object's still 
+ **in the area, and if so, set the prox*/ 
+ \$prox = what."virtualplace:storage:prox"; 
+ if( typeof(\$prox) == T_OBJECT \&\& 
+     Get(NRefOb(\$prox), "base:environment") == \$placeobject ) 
+ \{ 
+  what."base:proximity" = \$prox; 
+ \} 
+ else  
+ \{ 
+  /*If prox is a string, it may refer to an existing detail in the place; 
+  **check if that detail does exist, and isn't hidden.  If the check passes, 
+  **set the prox appropriately*/ 
+  if ( typeof(\$prox) == T_STRING \&\&  
+       Get(\$placeobject, "details:"+\$prox+":snames") \&\& 
+       !(Get(\$placeobject, "details:"+\$prox+":hidden")) ) 
+  \{ 
+   what."base:proximity" = NewNRef(\$placeobject, \$prox); 
+  \} 
+ \} 
+ /*And in any case, the stored prox should be nil'd.*/ 
+ what."virtualplace:storage:prox" = nil; 
+\} 
+ 
+/*Finally, wait a bit, then if the place still exists, turn on any off NPC's*/ 
+/*Because there's a delay, and we want to allow the virtual system to keep 
+**functioning while the delay is in process, we release control of the system*/ 
+ 
+/*This function is done messing with the virtual system 
+**See if this function is the main originating virtual place function 
+**for this process, and if so, mark the process done.*/ 
+if(!initvpid)\{ 
+ this.runprocess = Int(this.runprocess) + 1;\} 
+ 
+/*This delay keeps NPC's from being started up when someone's just passning 
+**through.  Depending on the system, it might be a good idea to tweak, or even 
+**greatly increase this delay.  It's perfectly feasible that, say, the wildlife 
+**in a forest wouldn't be doing anything noticeable for 30 seconds after 
+**someone's arrival; they'd be hiding from the newcomer.  Though things that 
+**need to respond to the player will need to be started up sooner. 
+**Guards would need to respond immidiately to players trying to get past 
+**somewhere.  A deer being pursued might be marked as a keeper, so that he's 
+**already started when the hunter arrives; unpursued boars could revert to 
+**normal.*/ 
+ 
+\$delay(5.0, \$placeobject, "bde4"); 
+ 
+/*At this point, if we were going to actually do something to the virtual 
+**system, we'd need to reclaim control.  In which case we'd probably need to 
+**make this remainder a seperate function.  But just starting NPC's doesn't 
+**mess with the virtual system any*/ 
+ 
+/*If the \$placeobject still exists and still has the same id, start up the 
+**NPC's.*/ 
+if(\$placeobject \&\& \$placeobject."virtualplace:id" == \$id) 
+\{ 
+ n=sizeof(\$placeobject."base:inventory"); 
+ for(i=0;i\<n;i++) 
+ \{ 
+  what = \$placeobject."base:inventory"[i]; 
+  /*See if it's an NPC, and if it was marked for bringing back*/ 
+  if(what."virtualplace:storage:npcon" \&\& what."npc:state" != "ALIVE") 
+  \{ 
+   /*One NPC having problems shouldn't stop restoring the rest*/ 
+   if( catcherror = catch(Call(what, "heartbeat")) ) /*Assignment on purpose*/ 
+   \{ 
+    if( typeof(this.errorlog) != T_ARRAY )\{ 
+     this.errorlog = allocate(0);\} 
+    this.errorlog += (\{ time(), "Error starting NPC; vsys unaffected", what, catcherror \}); 
+   \}/*end if error*/ 
+  \}/*end if rebirth*/ 
+ \}/*end for inventory*/ 
+\}/*end if place still around*/ 
+ 
+return 1;
+      </Core:Property>
+      <Core:Property property="merry:lib:vp_id_to_ob">
+         X[M] /*
+** Finds the object associated with a virtual place ID, if it exists.
+**
+** Arguments:
+**
+**  \$vpid - the id to find the object for.
+**
+** Returns: the object, if it exists, or nil if not.
+**
+**  This function should be unique for each virtual place, as it is dependent
+**   the data type of the ID and defines the storage structure for the objects
+**   associated with each place ID.
+**   This version (unless this function was customized and these comments were
+**   not) assumes \$vpid to be a 2-dimensional int array of any size, and the
+**   objects themselves to be stored in a 2D array, with nils in blank spots.
+*/
+
+/*\$vpid is assumed to be validated already; however a nil \$vpid, while valid
+**means no object for this system*/
+if(!\$vpid)\{
+ return nil;\}
+
+return (this."db:locationobjects"[\$vpid[0]][\$vpid[1]]);
+      </Core:Property>
+      <Core:Property property="merry:lib:vp_set_ob_for_id">
+         X[M] /* 
+** Sets an object to represent a place ID. 
+** 
+** Arguments: 
+** 
+**  \$id - the id to set the object to. 
+**  \$placeob - the object to set to the id.  If nil, it removes the any 
+**   any object associated with the id.from the registry. 
+**  \$vpid - virtual place id. 
+** 
+**  This function should be unique for each virtual place, as it is dependent 
+**   the data type of the ID and the storage structure for the objects 
+**   associated with each place ID. 
+**   This version (unless this function was edited and these comments were not) 
+**   assumes \$id to be a any value, and the objects to be stored in a mapping 
+**   where \$id is an indice. 
+*/ 
+ 
+/*\$id is assumed to be validated already*/ 
+ 
+int initvpid; 
+mixed strid; 
+ 
+/*Check if the there's another process in this system*/ 
+initvpid = Int(\$vpid); 
+if ( Call(this, "vp_queue", \$function: "vp_set_ob_for_id") == 0 ) 
+ return FALSE; 
+ 
+if(typeof(\$id) == T_ARRAY) 
+\{ 
+ strid = Str ( \$id[0] ) + "," + Str ( \$id[1] ); 
+\}else\{ 
+ strid = \$id; 
+\} 
+ 
+/*Register the object*/ 
+this."db:locationobjects"[strid] = \$placeob; 
+ 
+/*Note that virtualplace:system and virtualplace:id are not set here. 
+**All this function should do is register the object in the system; it should 
+**not mess with the object in any way.  This is in part so that an outside room 
+**can be given an ID and reference, without that room being an actual part of 
+**the system.*/ 
+ 
+/*This function is done messing with the virtual system 
+**See if this function is the main originating virtual place function 
+**for this process, and if so, mark the process done.*/ 
+if(!initvpid) 
+ this.runprocess = Int(this.runprocess) + 1;
+      </Core:Property>
+      <Core:Property property="merry:lib:vpa_object_leave">
+         X[M] /*
+** D=Causes an actor to leave through an exit, and have it be handled by the virtual place system.
+** V=2DArrID
+**
+** Arguments:
+**  \$actor - who's going through the exit.
+**  \$target - NRef exit to leave through.
+**  \$vpid - optional ID that the room being left is considered to be at;
+**   if omitted, the object component of target's virtualplace:id is used.
+**   Useful for calling this script for a room that doesn't have a virtualplace:id,
+**   or if exiting through, say, an object inside a room,
+**   or simply 'faking' a normal exit from somewhere unorthodox.
+**
+** Notes:
+**  The main reason this function exists, is so that it can figure out which
+**  direction the \$actor is going in when they act, and therefore what vpid is
+**  the destination, without having to manually program destination vpid's and
+**  explicitly state destionation details/nrefs into every single exit detail
+**  that connects to a virtual place.
+**
+**  After returning to this code after about 5 years, I don't recall why some
+**  parts return TRUE and other parts return FALSE.  I know if the values get
+**  checked, they could be used to stop actions/movement from succeeding, but
+**  from what I can tell, they aren't checked. --Orcsuit 1/27/2010
+*/
+
+object originob, destob;
+string leavestring, dirstring, exitprefix;
+int *originid, oppdir, direction, i;
+
+if (typeof(\$target) == T_OBJECT) \{
+  originob = NRefOb(\$target);
+  leavestring = NRefDetail(\$target);
+\} else \{
+  return TRUE; /*This function doesn't know what to do without a target NREF*/
+\}
+
+if( Call(this, "vp_validate_id") ) \{ /*Passing \$vpid*/
+  originid = \$vpid;
+\}
+if (!originid) \{
+  originid = originob."virtualplace:id";
+  if ( !(Call(this, "vp_validate_id", \$vpid: originid)) ) \{
+    return FALSE; /*We don't have an origin vpid, so don't know what to do*/
+  \}
+\}
+
+/*The exitprefix will vary by game; most have "exit " or "exit-" at the start of most of their directional exits.  Games that have more than one standard prefix to directional exits should have code that checks for both, and checks both on the opposite end as well*/
+exitprefix = "exit-";
+
+if( !( sscanf(NRefDetail(\$target), "vexit%d", direction) ) ) \{ /*Get the direction ID; if we don't get it this way, try harder*/
+  if( sscanf(NRefDetail(\$target), exitprefix+"%s", dirstring) ) \{
+    i=0;
+    while(i\<8) \{
+      if(this."data:exit:directions"[i] == dirstring) \{
+        direction = i;
+        i = 9; /*exit the while() loop, we got what we're after*/
+      \}
+      i++;
+    \}
+  \} else \{
+    return TRUE; /*We don't know what direction, so we don't know what vpid to send them to*/
+  \}
+\}
+
+/*Now that we know the direction, we do some work to find the destination vpid and the nref to come out of*/
+
+oppdir = direction +4;
+if(oppdir\>7)
+  oppdir-=8;
+
+\$OldPlaceID = copy(originid);
+\$NewPlaceID = copy(originid);
+
+switch (direction)\{
+  case 0:
+    \$NewPlaceID[1]+=1;
+    break;
+  case 1:
+    \$NewPlaceID[0]+=1;
+    \$NewPlaceID[1]+=1;
+    break;
+  case 2:
+    \$NewPlaceID[0]+=1;
+    break;
+  case 3:
+    \$NewPlaceID[0]+=1;
+    \$NewPlaceID[1]-=1;
+    break;
+  case 4:
+    \$NewPlaceID[1]-=1;
+    break;
+  case 5:
+    \$NewPlaceID[0]-=1;
+    \$NewPlaceID[1]-=1;
+    break;
+  case 6:
+    \$NewPlaceID[0]-=1;
+    break;
+  case 7:
+    \$NewPlaceID[0]-=1;
+    \$NewPlaceID[1]+=1;
+    break;
+\}
+
+\$enterdetail = \$target;
+destob = ::vp_id_to_ob(\$vpid: \$NewPlaceID);
+if(destob \&\& strlen(Describe(NewNRef(originob, exitprefix+this."data:exit:directions"[oppdir]))))
+  \$exitdetail = exitprefix + this."data:exit:directions"[oppdir]; /*example: "exit-south"*/
+else
+  \$exitdetail = "vexit" + Str(oppdir); /*example: "vexit3"*/
+
+Call(this, "vp_change_place", \$movers: \$actor, \$follow: 1); /*passing \$OldPlaceID, \$NewPlaceID, \$enterdetail, \$exitdetail*/
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1075738472, "orcsuit", "E", 1075741647, "orcsuit", "E", 1075741708, "orcsuit", "E", 1075742032, "orcsuit", "E", 1075742562, "orcsuit", "E", 1075745475, "orcsuit", "E", 1075746832, "orcsuit", "E", 1075747166, "orcsuit", "E", 1075747350, "orcsuit", "E", 1075750526, "orcsuit", "E", 1075750764, "orcsuit", "E", 1076019541, "orcsuit", "E", 1076020616, "orcsuit", "E", 1076020757, "orcsuit", "E", 1076020992, "orcsuit", "E", 1076021738, "orcsuit", "E", 1076021793, "orcsuit", "E", 1076021901, "orcsuit", "E", 1076021963, "orcsuit", "E", 1077032290, "orcsuit", "E", 1077039451, "orcsuit", "E", 1077046144, "orcsuit", "E", 1077046765, "orcsuit", "E", 1079595618, "orcsuit", "E", 1079599005, "orcsuit", "E", 1079603540, "orcsuit", "E", 1079603819, "orcsuit", "E", 1079604115, "orcsuit", "E", 1079604215, "orcsuit", "E", 1081357817, "orcsuit", "E", 1081359097, "orcsuit", "E", 1082608352, "orcsuit", "E", 1082662311, "orcsuit", "E", 1090582706, "orcsuit", "E", 1090583149, "orcsuit", "E", 1091232016, "orcsuit", "E", 1091233772, "orcsuit", "E", 1091251337, "orcsuit", "E", 1091251564, "orcsuit", "E", 1091251636, "orcsuit", "E", 1091251671, "orcsuit", "E", 1091251772, "orcsuit", "E", 1091341049, "orcsuit", "E", 1091341108, "orcsuit", "E", 1091341161, "orcsuit", "E", 1091341233, "orcsuit", "E", 1091341292, "orcsuit", "E", 1091341359, "orcsuit", "E", 1091341490, "orcsuit", "E", 1091341696, "orcsuit", "E", 1091341907, "orcsuit", "E", 1091342037, "orcsuit", "E", 1091342186, "orcsuit", "E", 1091342242, "orcsuit", "E", 1091342301, "orcsuit", "E", 1091342484, "orcsuit", "E", 1091342682, "orcsuit", "E", 1091342810, "orcsuit", "E", 1091342863, "orcsuit", "E", 1091342895, "orcsuit", "E", 1091342923, "orcsuit", "E", 1091342995, "orcsuit", "E", 1091343050, "orcsuit", "E", 1091343073, "orcsuit", "E", 1091343272, "orcsuit", "E", 1091343313, "orcsuit", "E", 1091343349, "orcsuit", "E", 1091343505, "orcsuit", "E", 1091343574, "orcsuit", "E", 1091343688, "orcsuit", "E", 1091343941, "orcsuit", "E", 1091344071, "orcsuit", "E", 1091344127, "orcsuit", "E", 1091344199, "orcsuit", "E", 1091425804, "orcsuit", "E", 1091520462, "orcsuit", "E", 1091531998, "orcsuit", "E", 1091532132, "orcsuit", "E", 1091532214, "orcsuit", "E", 1091532305, "orcsuit", "E", 1091847521, "orcsuit", "E", 1238976249, "thefireduck", "E", 1238976324, "thefireduck", "E", 1238976719, "thefireduck", "E", 1264320263, "tonyd", "X", 1264396688, "tonyd", "P", 1264396706, "tonyd", "P", 1264396735, "tonyd", "P", 1264396843, "tonyd", "P", 1264396889, "tonyd", "P", 1264398625, "tonyd", "P", 1264398648, "tonyd", "P", 1264398724, "tonyd", "P", 1264398751, "tonyd", "P", 1264398774, "tonyd", "P", 1264398798, "tonyd", "P", 1264398896, "tonyd", "P", 1264398914, "tonyd", "P", 1264398941, "tonyd", "P", 1264399337, "tonyd", "P", 1264399959, "tonyd", "P", 1264916077, "tonyd", "E", 1264926809, "tonyd", "E", 1265417098, "orcsuit", "E", 1265417241, "orcsuit", "E", 1265417381, "orcsuit", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

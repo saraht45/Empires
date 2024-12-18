@@ -1,0 +1,59 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:getaccounttype">
+         X[M] /* What type of account is this? */
+/* Expects \$udat or \$char to be passed */
+
+
+if(!\$udat \&\& \$char \&\& \$char."udat:object")
+  \$udat = \$char."udat:object";
+
+if(!\$udat \&\& \$char \&\& \$char."skotos:creator")
+  \$udat = UserAPI::query_udat(\$name: \$char."skotos:creator");
+    
+if(!\$udat) return "unknown";
+
+if(\$udat."testing:account-type" \&\& \$udat."testing:account-type" == "free") return "free";
+if(\$udat."testing:account-type" \&\& \$udat."testing:account-type" == "premium") return "premium";
+if(\$udat."testing:account-type" \&\& \$udat."testing:account-type" == "standard") return "standard";
+
+if(\$udat."skotos:flags:freebie") return "free"; /* Check for free BEFORE premium, because accounts can be marked as both! */
+if(\$udat."skotos:flags:premium") return "premium";
+
+
+return "standard";
+      </Core:Property>
+      <Core:Property property="merry:lib:opage">
+         X[M] /* Send an opage */
+mapping pending;
+
+if(!\$to \|\| typeof(\$to) != T_OBJECT) return FALSE;
+if(!\$from \|\| typeof(\$from) != T_OBJECT) return FALSE;
+if(!\$message \|\| typeof(\$message) != T_STRING) return FALSE;
+
+if(\$timestamp) \$message = "["+short_time(time())+"] "+\$message;
+
+\$pending = \$to."page:pending";
+if(!\$pending) \{
+  \$pending = ([ \$from:"\\""+\$message+"\\"" ]);
+  \$to."page:pending" = \$pending;
+\} else \{
+  if(\$pending[\$from]) \{
+    \$pending[\$from] = \$pending[\$from][..strlen(\$pending[\$from])-2]+"\\n\\n"+\$message+"\\"";
+  \} else \{
+    \$pending[\$from] = "\\""+\$message+"\\"";
+  \}
+\}
+
+EmitTo(\$to, TAG(capitalize(Str(\$from."skotos:charname")) + " has placed an offline page in your queue. To receive this page, type: " + UnSAM(ParseXML("\<acmd cmd='@page accept " + capitalize(Str(\$from."skotos:charname")) + "'\>@page accept " + capitalize(Str(\$from."skotos:charname")) + "\</acmd\>")), "page"));
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1321778357, "tonyd", "P", 1321778432, "tonyd", "P", 1321778857, "tonyd", "P", 1321778922, "tonyd", "P", 1321778969, "tonyd", "P", 1321837976, "tonyd", "P", 1321838540, "tonyd", "P", 1321862976, "???", "R", 1493179204, "tonyd", "R", 1495691266, "tonyd", "P", 1495691326, "tonyd", "P", 1495691372, "tonyd", "P", 1495691401, "tonyd", "P", 1495691510, "tonyd", "P", 1495691519, "tonyd", "P", 1495691534, "tonyd", "P", 1495691558, "tonyd", "P", 1495699198, "tonyd", "P", 1496724636, "tonyd", "P", 1496724856, "tonyd", "P", 1496724865, "tonyd", "P", 1496724872, "tonyd", "P", 1576548053, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

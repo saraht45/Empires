@@ -1,0 +1,180 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.05" density="0.1"/>
+    <Base:Container flexible="true" transparent-container="true" public-container="true" tight="false" capacity="0.5" maxweight="0.5" verb2="has hanging from it" verb3="has hanging from it"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="mold"/>
+            <Base:SName sname="cast"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="molds"/>
+            <Base:PName pname="casts"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="clay"/>
+          <Base:Adjective adjective="jeweler"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) $(this.trait:material) jeweler's mold
+          </Base:Description>
+          <Base:Description type="examine">
+             This mold is short and wide with a cavity that is shaped to resemble a bar of metal. Smaller bits of metal can be melted down and poured to form a whole or partial bar. {? | $(this.holding) | It currently holds $[Describe($this.holding)] and can be retrieved by breaking the mold. | It is currently empty. }<sbr/><quality-full/>
+          </Base:Description>
+          <Base:Description type="look">
+             A mold that can be used to cast bars of metal.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:objecttype">
+         "bar mold"
+      </Core:Property>
+      <Core:Property property="merry:react-pre:break-dob">
+         X[M] if(\$this."base:environment" != \$actor) \{ 
+    EmitTo(\$actor, "You need to be holding it.");
+    return FALSE;
+\}
+
+if(\$this.holding) \{
+    \$rod = \$this.holding;
+    EmitTo(\$actor, "You break " + Describe(\$this, nil, \$actor) + ", retrieving " + Describe(\$rod) + ".");
+    EmitIn(\$actor."base:environment", Describe(\$actor) + " breaks " + Describe(\$this, \$actor) + ", retrieving " + Describe(\$rod) + ".", \$actor);
+    \$rod."base:environment" = \$actor;
+\} else \{
+    EmitTo(\$actor, "You break " + Describe(\$this, nil, \$actor) + ", destroying it entirely.");
+    EmitIn(\$actor."base:environment", Describe(\$actor) + " breaks " + Describe(\$this, \$actor) + ", destroying it entirely.", \$actor);
+\}
+
+Slay(\$this);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:join-using">
+         X[M] if(!\$dob \|\| !sizeof(\$dob)) \{
+    EmitTo(\$actor, "What did you want to join together with " + Describe(\$this, nil, \$actor) + "?");
+    return FALSE;
+\}
+
+if(sizeof(\$dob) \< 2) \{
+    EmitTo(\$actor, "What did you want to join " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " with?");
+    return FALSE;
+\}
+
+if(sizeof(\$dob) \> 2) \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is used to join TWO like metal bars only.");
+    return FALSE;
+\}
+
+\$rod1 = NRefOb(\$dob[0]);
+\$rod2 = NRefOb(\$dob[1]);
+
+if(Str(\$rod1."trait:objecttype") != "metal" \&\& Str(\$rod2."trait:objecttype") != "metal" \&\& Str(\$rod1."trait:metal_sort") != "bar" \&\& Str(\$rod2."trait:metal_sort") != "bar") \{
+    EmitTo(\$actor, "You can only use " + Describe(\$this, nil, \$actor) + " for joining like metal bars.");
+    return FALSE;
+\}
+
+if(\$rod1."trait:material" != \$rod2."trait:material") \{
+    EmitTo(\$actor, "The two metal rods you are trying to join are not of the same material.");
+    return FALSE;
+\}
+
+if(!\$using \|\| !sizeof(\$using)) \{
+    EmitTo(\$actor, "You will need a jeweler mold to do that.");
+    return FALSE;
+\}
+
+if(sizeof(\$using) \> 1) \{
+    EmitTo(\$actor, "You can only use one jeweler mold at a time.");
+    return FALSE;
+\}
+
+\$mold = NRefOb(\$using[0]);
+
+if(\$mold."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You need to be holding the mold.");
+    return FALSE;
+\}
+
+if(Str(\$mold."trait:objecttype") != "bar mold") \{
+    EmitTo(\$actor, "You will need a jeweler mold to do that.");
+    return FALSE;
+\}
+
+if(\$mold.holding) \{
+    EmitTo(\$actor, "That mold has already been used and contains a full or partial bar. You can only retrieve it by breaking the mold.");
+    return FALSE;
+\}
+
+/* We have two like rods and we have a proper mold. Now join them. */
+
+\$newQuantity = Int(\$rod1."trait:quantity") + Int(\$rod2."trait:quantity");
+
+if(\$newQuantity \> 50) \{
+    EmitTo(\$actor, "The mold will not hold that much metal.");
+    return FALSE;
+\}
+
+\$newQuality = Int((Int(\$rod1."trait:quality")*Int(\$rod1."trait:quantity") + Int(\$rod2."trait:quality")*Int(\$rod2."trait:quantity"))/\$newQuantity) - 1;
+
+if(\$newQuality \<= 0) \$newQuality = 1;
+
+EmitTo(\$actor, "You melt down " + Describe((\{ \$rod1, \$rod2 \}), nil, \$actor) + " and pour them into " + Describe(\$this, nil, \$actor) + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " melts down " + Describe((\{ \$rod1, \$rod2 \}), \$actor) + " and pours them into " + Describe(\$this, \$actor) + ".", \$actor);
+
+Slay(\$rod2);
+
+\$rod1."trait:quantity" = \$newQuantity;
+\$rod1."trait:quality" = \$newQuality;
+\$rod1."base:environment" = nil;
+\$this.holding = \$rod1;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] Set(\$this, "details:default:adjective:" + \$this."trait:material"+":local", TRUE);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1320993539, "morwenlorelie", "E", 1320993851, "morwenlorelie", "X", 1321439440, "morwenlorelie", "E", 1321439598, "morwenlorelie", "E", 1321439629, "morwenlorelie", "E", 1321439684, "morwenlorelie", "E", 1321439701, "morwenlorelie", "E", 1322373287, "morwenlorelie", "E", 1403749664, "slurpeeslurp", "K", 1403749962, "slurpeeslurp", "E", 1403750118, "slurpeeslurp", "E", 1403750858, "slurpeeslurp", "K", 1403753619, "jominey", "E", 1403753621, "jominey", "E", 1403754357, "jominey", "K", 1403754378, "jominey", "E", 1403754384, "jominey", "E", 1403754390, "jominey", "E", 1404349793, "jominey", "E", 1404350411, "jominey", "E", 1404350484, "jominey", "K", 1404350731, "jominey", "E", 1404351093, "jominey", "E", 1404351149, "jominey", "E", 1404351426, "jominey", "E", 1404351438, "jominey", "E", 1404351485, "jominey", "E", 1404351525, "jominey", "E", 1404351729, "jominey", "E", 1404351764, "jominey", "E", 1404351774, "jominey", "X", 1404351822, "jominey", "E", 1404352005, "jominey", "E", 1404352175, "jominey", "K", 1404352205, "jominey", "E", 1404355945, "jominey", "R", 1404356332, "jominey", "R", 1404356340, "jominey", "R", 1404688486, "jominey", "E", 1404688630, "jominey", "E", 1404688782, "jominey", "K", 1404688834, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

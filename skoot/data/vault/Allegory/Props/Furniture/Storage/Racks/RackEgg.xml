@@ -1,0 +1,229 @@
+<object clone="/base/obj/thing" owner="ezralee">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(IronClaw:Props:Crafting:Fabrics:UrCompressionStorage)"/>
+    <Base:Bulk immobile="false" mass="0.5" density="0.9"/>
+    <Base:Container flexible="true" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="rack"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="racks"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="egg"/>
+          <Base:Adjective adjective="metal"/>
+          <Base:Adjective adjective="spiral"/>
+        </Base:Adjectives>
+        <Base:Descriptions/>
+        <Base:Exit door="true" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:alteration:add:default:lock">
+         ([ "adj-prop":(\{ "trait:material", "trait:size", "trait:color", "trait:brief" \}), "names":(\{ (\{ "sname", "lock" \}), (\{ "pname", "locks" \}) \}), "properties":(\{ (\{ "trait:material", "trait:lock:material" \}), (\{ "trait:size", "trait:lock:size" \}), (\{ "trait:color", "trait:lock:color" \}), (\{ "trait:brief", "trait:lock:brief" \}), (\{ "trait:examine", "trait:lock:examine" \}), (\{ "trait:quality", "trait:lock:quality" \}), (\{ "trait:lockpicking", "trait:lockpicking" \}), (\{ "details:default:exit:keycode", "details:default:exit:keycode" \}), (\{ "base:urparent", "trait:lock:parent" \}), (\{ "lock:default:lockpick:history", "lock:default:lockpick:history" \}), (\{ "trait:madeby", "trait:lock:madeby" \}), (\{ "trait:madeby:account", "trait:lock:madeby:account" \}), (\{ "trait:madeby:object", "trait:lock:madeby:object" \}) \}), "stopvalue":(\{ "trait:lock:brief", nil, "This piece of furniture already holds a lock." \}) ])
+      </Core:Property>
+      <Core:Property property="export:compression:suffix_plural">
+         "eggs"
+      </Core:Property>
+      <Core:Property property="export:compression:suffix_singular">
+         "egg"
+      </Core:Property>
+      <Core:Property property="export:is:engravable">
+         1
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "egg rack"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "This egg rack features a spiraling wire framework that allows eggs to be placed in the top and taken from the bottom, ensuring the oldest eggs are used first for proper rotation of supplies. You can SEARCH the rack to see how many eggs are currently stored within."
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "compression storage"
+      </Core:Property>
+      <Core:Property property="export:writable">"1"</Core:Property>
+      <Core:Property property="merry:lib:check_object_is_valid">
+         X[M] /* check if this object can be compressed */
+
+/* code here is for an egg */
+if(\$item."trait:objecttype" != "egg") \{
+ EmitTo(\$actor, Describe(\$item, nil, \$actor)+" is not an egg that will fit in the rack.");
+ return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_key">
+         X[M] /* find the key used to identify this item */
+string key;
+key = "";
+if(\$item."trait:flavor") \{
+ key = Str(\$item."trait:flavor");
+\}
+
+if(!key \|\| key == " " \|\| key == "")
+ key = "farm fresh";
+return key;
+      </Core:Property>
+      <Core:Property property="merry:react:search-dob%compress">
+         X[M] /* allows the retrieval of items from compression/storage */
+
+if(\$this.locked) return FALSE;
+
+\$this.locked = TRUE;
+
+if(\$this."base:environment" != \$actor."base:environment" \&\& \$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You cannot search through " + Describe(\$this, nil, nil, STYLE_NONPOSS) + " while it is being held by someone else.");
+    \$this.locked = FALSE;
+    return FALSE;
+\}
+
+if(this."details:default:exit:closed") \{
+    EmitTo(\$actor, "Alas, " + Describe(\$this, nil, \$actor) + " is closed!");
+    \$this.locked = FALSE;
+    return FALSE;
+\}
+
+if(this."compression:storing" \&\& sizeof(map_indices(this."compression:storing"))) \{
+ \$indices = copy(map_indices(this."compression:storing"));
+
+\} else \{
+ EmitTo(\$actor, "There is nothing being stored in "+Describe(this, nil, \$actor)+".");
+    \$this.locked = FALSE;
+ return FALSE;
+\}
+
+\$instructions = "To remove an item, type \\"search "+Describe(this, nil, nil, STYLE_NONPOSS)+" 'description\\"\\nFor example: search "+Describe(this, nil, nil, STYLE_NONPOSS)+" '"+Str(\$indices[0]);
+
+/* are we specifying what to remove or not? */
+if(!\$evoke) \{
+ /* list what's available */
+  EmitTo(\$actor, "You find the following in "+Describe(this, nil, \$actor)+":");
+  for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{
+   \$size = sizeof(this."compression:storing"[\$indices[\$i]]);
+   \$output = desc_cardinal(\$size)+" "+\$indices[\$i]+" ";
+   if(\$size != 1) \{
+    \$output += Str(this."compression:suffix_plural");
+   \} else \{
+    \$output += Str(this."compression:suffix_singular");
+   \}
+   EmitTo(\$actor, \$output);
+  \}
+  EmitTo(\$actor, \$instructions);
+\} else \{
+ /* try to remove specific items */
+
+ /* what are they trying to take? */
+ \$search = \$(raw-evoke);
+ \$search = replace_strings(\$search, ".", "", "!", "", "?", "");
+ \$search = explode(\$search, " ");
+
+ /* try to find search phrases that give a match */
+ \$match = nil;
+ /* try matching substrings */
+ \$end = sizeof(\$search)-1;
+ while(!\$match \&\& \$end \>= 0) \{
+  for(\$i=0;\$i\<=\$end\&\&!\$match;\$i++) \{
+   if(member(implode(\$search[\$i..\$end], " "), \$indices))
+    \$match = implode(\$search[\$i..\$end], " ");
+  \}
+  \$end--;
+ \}
+ if(!\$match) \{
+  /* didn't find what they were looking for */
+  EmitTo(\$actor, "Could not find any items matching that description.");
+  EmitTo(\$actor, \$instructions);
+    \$this.locked = FALSE;
+  return FALSE;
+ \}
+
+ /* we've got a match. Give them the items */
+ \$items = (\{ \});
+ \$search = this."compression:storing"[\$match];
+
+ /* loop through creating the items */
+ for(\$i=0;\$i\<sizeof(\$search);\$i++) \{
+  /* create the item */
+  \$item = Spawn(\$search[\$i][0]);
+  /* put it in the PC's hands */
+  \$item."base:environment" = \$actor;
+  /* check it was put into the PC's hands properly */
+  if(\$item."base:environment" != \$actor) \{
+   /* wasn't taken out (maybe their hands are full?) */
+   /* destroy this item, and assume it was never removed from storage */
+   Slay(\$item);
+  \} else \{
+   /* moved to the PC correctly */
+   /* add to list of items removed */
+   \$items += (\{ \$item \});
+   \$delay(0.1, FALSE, "2eb5");
+   /* set properties for the item */
+   for(\$j=0;\$j\<sizeof(map_indices(\$search[\$i][1]));\$j++) \{
+    Set(\$item, map_indices(\$search[\$i][1])[\$j], \$search[\$i][1][map_indices(\$search[\$i][1])[\$j]]);
+   \}
+   /* remove the item from the chest */
+   \$search[\$i] = nil;
+  \}
+ \}
+ /* clean up any removed items */
+ \$search -= (\{ nil \});
+ if(!sizeof(\$search))
+  this."compression:storing"[\$match] = nil;
+
+ if(!sizeof(\$items)) \{
+  /* couldn't remove anything */
+  EmitTo(\$actor, "You find the items in "+Describe(this, nil, \$actor)+" are too heavy for you to take out.");
+    \$this.locked = FALSE;
+  return FALSE;
+ \}
+
+ EmitTo(\$actor, "You retrieve "+Describe(\$items, nil, nil, STYLE_NONPOSS)+" from "+Describe(this, nil, \$actor)+".");
+\}
+    \$this.locked = FALSE;
+return FALSE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1586363152, "jominey", "E", 1586363175, "jominey", "E", 1586363187, "jominey", "E", 1586363215, "jominey", "E", 1586363246, "jominey", "E", 1586363275, "jominey", "E", 1586363416, "jominey", "E", 1586363672, "jominey", "E", 1586363729, "jominey", "E", 1606404956, "jominey", "E", 1606404964, "jominey", "E", 1630727698, "ezralee", "E", 1630727707, "ezralee", "E", 1630727709, "ezralee", "E", 1630727733, "ezralee", "K", 1630727761, "ezralee", "E", 1630728006, "ezralee", "E", 1630728068, "ezralee", "E", 1630728127, "ezralee", "E", 1630728167, "ezralee", "E", 1630728324, "ezralee", "E", 1630728349, "ezralee", "E", 1630728361, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:silk:color">
+         "pearl"
+      </Core:Property>
+      <Core:Property property="writable">"true"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

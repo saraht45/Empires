@@ -1,0 +1,144 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="jominey">
+  <SkotOS:MerAcHa action_id="nibble" verb="OBJ(Allegory:Neoct:Verbs:N:nibble)">
+    <Core:PCProperties>
+      <Core:Property property="desc:finish:ldef">
+         X[S] \$(You) \$(Verb:Finish) eating \$(dobname).
+      </Core:Property>
+      <Core:Property property="desc:finish:vdef:finish">
+         (\{ "finish", "finishes" \})
+      </Core:Property>
+      <Core:Property property="desc:takebite:ldef">
+         X[S] \$(You) \$(verb) \$(dobname).
+      </Core:Property>
+      <Core:Property property="desc:takebite:vdef:take">
+         (\{ "take", "takes" \})
+      </Core:Property>
+      <Core:Property property="merry:global:action">
+         X[M] if(\$iob) return TRUE;
+
+if(\$(dob:words) \&\& \$(dob:words) != "") \{
+    int x;
+    mapping replaceMap;
+    mixed* replace;
+
+    replaceMap = ([ "first":"1st", "second":"2nd", "third":"3rd", "fourth":"4th", "fifth":"5th", "sixth":"6th", "seventh":"7th", "eighth":"8th", "ninth":"9th", "tenth":"10th" ]);
+    replace = map_indices(replaceMap);
+    for(x = 0; x \< sizeof(\$(dob:words)); x++) \{
+        if(member(\$(dob:words)[x], replace)) \{
+            \$(dob:words)[x] = replaceMap[\$(dob:words)[x]];
+        \}
+    \}
+    \$dob = Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "find_food_target", \$point: implode(\$(dob:words), " "));
+\}
+
+if(!\$dob \|\| !sizeof(\$dob)) \{
+    EmitTo(\$actor, "What did you want to eat?");
+    return FALSE;
+\}
+
+if(!\$iob \&\& !\$dob \&\& !\$what) return TRUE;
+
+if(\$dob \&\& !\$what) \$what = \$dob;
+if(\$iob \&\& !\$what) \$what = \$iob;
+
+if(\$iob \&\& sizeof(\$iob)) \{
+
+    if(\$actor != NRefOb(\$iob[0])) \{
+        EmitTo(\$actor, TAG("You nibble on " + Describe(\$iob[0]) + ".", "social:first"));
+    \} else \{
+        EmitTo(\$actor, TAG("You nibble on " + Describe(\$iob[0], nil, \$actor) + ".", "social:first"));
+    \}
+
+    if(\$actor != NRefOb(\$iob[0])) \{
+        EmitTo(NRefOb(\$iob[0]), TAG(Describe(\$actor) + " nibbles on " + Describe(\$iob[0], nil, \$actor) + ".", "social:second"));
+    \}
+
+    if(\$actor == NRefOb(\$iob[0])) \{
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " nibbles on " + Describe(\$iob[0], \$actor) + ".", "social:third"), \$actor, NRefOb(\$iob[0]));
+    \} else \{
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " nibbles on " + Describe(\$iob[0]) + ".", "social:third"), \$actor, NRefOb(\$iob[0]));
+    \}
+
+    return FALSE;
+\}
+
+if (!IsPrime(\$dob[0])
+\|\| !NRefOb(\$dob[0])."base:edible") \{
+        \$food = NRefOb(\$dob[0]);
+        if(!sizeof(\$food."base:inventory")) \{
+             EmitTo(\$actor, "You cannot eat " + Describe(\$dob[0], nil, \$actor) + ".");
+            return FALSE;
+        \}
+
+        if(sizeof(\$food."base:inventory") == 1) \{
+            if(\$food."base:inventory"[0]."base:edible") \{
+                \$dob2 = (\{ NewNRef(\$food."base:inventory"[0], "default") \});
+            \} else \{
+                EmitTo(\$actor, "You cannot eat " + Describe(\$dob[0], nil, \$actor) + ".");
+                return FALSE;
+            \}
+        \} else \{
+
+            \$dob2 = Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "find_food_target", \$point: implode(\$(dob:words), " "), \$prime_source: \$food);
+
+            if(!\$dob2 \|\| !sizeof(\$dob2)) \{
+                /* Choose something randomly */
+                \$dob2 = (\{ \$food."base:inventory"[random(sizeof(\$food."base:inventory"))] \});
+            \}
+
+            if(!NRefOb(\$dob2[0])."base:edible") \{
+                EmitTo(\$actor, "You cannot eat " + Describe(\$dob[0], nil, \$actor) + ".");
+                return FALSE;
+            \}
+        \}
+
+        \$vessel = NRefOb(\$dob[0]);
+        \$dob = \$dob2;
+\}
+
+if(NRefOb(\$dob[0])."trait:quantity" \> 5) \{
+    EmitTo(\$actor, TAG("You nibble " + Describe(\$dob[0], nil, \$actor) + ".", "social:first"));
+    EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " nibbles " + Describe(\$dob[0], \$actor) + ".", "social:third"), \$actor);
+\} else\{
+    EmitTo(\$actor, TAG("You finish eating " + Describe(\$dob[0], nil, \$actor) + ".", "social:first"));
+    EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " finishes eating " + Describe(\$dob[0], \$actor) + ".", "social:third"), \$actor);
+\}
+
+\$thing = NRefOb(\$dob[0]);
+
+if(NRefOb(\$dob[0])."trait:taste") \{
+    \$(food:taste) = UnSAM(NRefOb(\$dob[0])."trait:taste");
+    \$emit = Describe(\$dob[0], nil, \$actor) + " tastes " + \$(food:taste) + ".";
+    \$delay(0.1, FALSE, "056e");
+    EmitTo(\$actor, \$emit);
+\}
+
+consume::consume(\$amount: 5, \$type: "food");
+
+if(\$dob \&\& \$dob[0] \&\& !\$dob[0]."base:possessed" \&\& Int(NRefOb(\$dob[0])."trait:quantity") \<= 0) \{
+    Slay(NRefOb(\$dob[0]));
+\}
+
+if(\$vessel) \{
+    if(FindMerry(\$vessel, "react-post", "place-where%foodcontainer")) \{
+        Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "update", \$container: \$vessel);
+    \}
+\}
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1596935487, "jominey", "E", 1596935506, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="{author}">"Kalle Alm"</Core:Property>
+      <Core:Property property="{email}">
+         "kalle@mortalis.skotos.net"
+      </Core:Property>
+      <Core:Property property="{rev}">1</Core:Property>
+      <Core:Property property="{sub_rev_stamp}">
+         1142629411
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

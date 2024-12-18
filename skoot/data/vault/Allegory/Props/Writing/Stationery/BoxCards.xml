@@ -1,0 +1,122 @@
+<object clone="/base/obj/thing" owner="sendnoodlez">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="box"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="boxes"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="card"/>
+          <Base:Adjective adjective="cards"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             box of {? | $(this.trait:embossing) | embossed } $(this.trait:shape) $(this.trait:color) $(this.trait:material) cards
+          </Base:Description>
+          <Base:Description type="examine">
+             A box of $(this.trait:shape) $(this.trait:color) $(this.trait:material) cards. $(this.trait:embossing) There appears to be about <quantity/> cards remaining. <makers-mark/> <sbr/> <quality-full/>
+          </Base:Description>
+          <Base:Description type="look">
+             A box of $(this.trait:shape) $(this.trait:color) $(this.trait:material) cards. $(this.trait:embossing)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:alteration:create:default:cut">
+         ([ "description":(\{ "You cut your ORIGINAL_OBJECT into NEW_OBJECT", "cuts ORIGINAL_OBJECT into NEW_OBJECT" \}), "input-list":(\{ (\{ \<Allegory:Lib:Crafting:Bookbinder:Paper\>, "alteration:knowledge:cutting-card" \}) \}), "input-list-actor":(\{ "alteration:knowledge:cutting-card" \}), "requiredtools":(\{ "a pair of scissors", (\{ "scissors" \}) \}), "skill":"cutting", "stopvalue":(\{ "trait:shape", nil, "This box of cards has already been altered." \}) ])
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         200
+      </Core:Property>
+      <Core:Property property="merry:inherit:react-pre:emboss-dob">
+         \<Allegory:Lib:Crafting:Custom:Embossing\>
+      </Core:Property>
+      <Core:Property property="merry:react-post:pull-dob">
+         X[M] \$item = Spawn(\$\{Allegory:Props:Writing:Stationery:Card\});        
+\$item."trait:color" = \$this."trait:color";        
+\$item."trait:shape" = \$this."trait:shape";  
+\$item."trait:material" = \$this."trait:material";         
+\$item."trait:quality" = \$this."trait:quality";   
+\$item."trait:embossing" = \$this."trait:embossing";        
+\$item."trait:madeby" = \$this."trait:madeby";        
+\$item."trait:madeby:object" = \$this."trait:madeby:object";         
+\$item."trait:madeby:account" = \$this."trait:madeby:account";   
+\$item."trait:marked" = \$this."trait:marked";        
+\$item."base:environment" = \$actor;  
+EmitIn(\$actor."base:environment", Describe(\$actor)+" pulls a card from "+Describe(\$this, \$actor)+".");   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:pull-dob">
+         X[M] \$quantity = \$this."trait:quantity";       
+if(\$quantity == 0)\{       
+EmitTo(\$actor, +Describe(\$this)+ " is empty.");       
+\$this."trait:empty" = 1;       
+return FALSE;       
+\}       
+       
+\$this."trait:quantity" = \$this."trait:quantity" - 10;       
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quantity">
+         X[M] if(\$this."trait:quantity" == 0 \|\| 0 \>= \$this."trait:quantity") \{                
+if(\$this."no:slay" == 1) \{                
+return FALSE;                
+\} else \{         
+EmitTo(\$this."base:environment", "You have taken the last card from " +Describe(\$this, nil, \$actor, STYLE_NONPOSS)+ ".");           
+\$this."trait:trash" = 1;              
+return TRUE;         
+\}                
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1574819107, "sendnoodlez", "E", 1574819133, "sendnoodlez", "K", 1574819185, "sendnoodlez", "X", 1574819237, "sendnoodlez", "E", 1574819257, "sendnoodlez", "E", 1574819300, "sendnoodlez", "E", 1574820194, "sendnoodlez", "E", 1574820207, "sendnoodlez", "K", 1574820228, "sendnoodlez", "E", 1574820416, "sendnoodlez", "E", 1607884732, "sendnoodlez", "E", 1607884794, "sendnoodlez", "E", 1607884862, "sendnoodlez", "E", 1607884874, "sendnoodlez", "E", 1607884904, "sendnoodlez", "E", 1607884973, "sendnoodlez", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

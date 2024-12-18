@@ -1,0 +1,94 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="lipread" evoke="optional" audible="false" private="true" secret="true" obscured="true" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="true" raw="false" requirement="required" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] \$target = \$dob[0];
+
+if(Int(\$actor."skill:social:lipread") == 0) \{
+    EmitTo(\$actor, "You do not know how to do that.");
+    return FALSE;
+\}
+
+if(NRefOb(\$target) == \$actor) \{
+    EmitTo(\$actor, "You cannot read your own lips.");
+    return FALSE;
+\}
+
+if(Describe(NewNRef(NRefOb(\$target), "lips")) == "") \{
+    EmitTo(\$actor, Describe(NRefOb(\$target)) + " cannot speak. But you already knew that, huh?");
+    return FALSE;
+\}
+
+if(!NRefOb(\$target)."udat:possessed") \{
+    EmitTo(\$actor, "You cannot read the lips of " + Describe(NRefOb(\$target)) + ".");
+    return FALSE;
+\}
+
+if(\$actor."lipread:target") \{
+    if(\$actor."lipread:target" == NRefOb(\$target)) \{
+        Call(\$actor, "lipread-stop", \$d: 0);
+        return FALSE;
+    \} else \{
+        Call(\$actor, "lipread-stop", \$d: 0);
+    \}
+\}
+
+EmitTo(\$actor, TAG("You begin reading the lips of " + Describe(NRefOb(\$target)) + ".", "social:first"));
+\$actor."lipread:target" = NRefOb(\$target);
+\$actor."merry:inherit:lib:lipread-stop" = \$this;
+\$actor."merry:inherit:timer:lipread-stop" = \$this;
+
+\$timer = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "social:lipread" \})) * 10;
+if(\$timer \< 30) \$timer = 30;
+
+Call(\$actor, "lipread-stop", \$d: \$timer);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lipread-stop">
+         X[M] if(\$d \> 0) \{
+    \$actor."handles:lipread" = In("lipread-stop", \$d);
+\} else \{
+    if(\$this."handles:lipread") \{
+        Stop(\$actor."handles:lipread");
+        \$actor."handles:lipread" = nil;
+    \}
+
+    EmitTo(\$this, TAG("You stop reading the lips of " + Describe(\$actor."lipread:target") + ".", "social:first"));
+    \$actor."lipread:target" = nil;
+
+    \$actor."merry:inherit:lib:lipread-stop" = nil;
+    \$actor."merry:inherit:timer:lipread-stop" = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:lipread-stop">
+         X[M] if(\$this."handles:lipread") \{
+    Stop(\$this."handles:lipread");
+    \$this."handles:lipread" = nil;
+\}
+
+EmitTo(\$this, TAG("After a short while, you lose focus and stop reading the lips of " + Describe(\$this."lipread:target") + ".", "social:first"));
+\$this."lipread:target" = nil;
+
+\$this."merry:inherit:lib:lipread-stop" = nil;
+\$this."merry:inherit:timer:lipread-stop" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1570315162, "jominey", "E", 1570324499, "jominey", "E", 1570325062, "jominey", "E", 1570330563, "jominey", "E", 1571977000, "jominey", "E", 1572745615, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

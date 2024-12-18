@@ -1,0 +1,281 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Animals:Mounts:UrMount)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             <a_or_an> $(this.trait:appearance:body) $(this.trait:appearance:color) $(this.trait:breed) $(this.trait:animaltype)</a_or_an>
+          </Base:Description>
+          <Base:Description type="examine">
+             <a_or_an>$(this.trait:appearance:body) $(this.trait:appearance:color) $(this.trait:breed) $(this.trait:animaltype)</a_or_an>. $(this.trait:look)
+          </Base:Description>
+          <Base:Description type="look">
+             <a_or_an>$(this.trait:appearance:body) $(this.trait:appearance:color) $(this.trait:breed) $(this.trait:animaltype)</a_or_an>. $(this.trait:look)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:animaltype">
+         "horse"
+      </Core:Property>
+      <Core:Property property="export:trait:commands:default">
+         (\{ "access", "allow", "deny" \})
+      </Core:Property>
+      <Core:Property property="export:trait:look">
+         "A horsey. Neighhh."
+      </Core:Property>
+      <Core:Property property="export:trait:spawnedparts">
+         ([ "back":"backs", "body":"bodies", "butt":"butts", "chest":"chests", "coat":"coats", "ear":"", "ears":"", "eye":"", "eyes":"", "forelock":"forelocks", "head":"heads", "hoof":"", "hooves":"", "jaw":"jaws", "leg-back":"", "leg-front":"", "legs-back":"", "legs-front":"", "mane":"mane", "muzzle":"muzzles", "neck":"necks", "side":"", "sides":"", "stomach":"stomachs", "tail":"tails", "teeth":"teeth", "withers":"withers" ])
+      </Core:Property>
+      <Core:Property property="merry:lib:access">
+         X[M] if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor)) \{                 
+  EmitTo(\$actor, "You are not my owner, so you can't control me.");                 
+  return FALSE;                 
+\} 
+
+\$rstr = "The following people have access to " + Describe(\$this) + ":\\n";
+if(\$this.owner) \{
+    \$rstr += "Owner - " + Describe(\$this.owner) + "\\n";
+\}
+if(\$this."trait:ownerone") \{
+    \$rstr += "Owner 1 - " + Describe(\$this."trait:ownerone") + "\\n";
+\}
+if(\$this."trait:ownerone") \{
+    \$rstr += "Owner 2 - " + Describe(\$this."trait:ownertwo") + "\\n";
+\}
+
+if(\$this."trait:friends") \{
+    \$friends = \$this."trait:friends";
+\} else \{
+    \$friends = (\{ \});
+\}
+
+\$friends -= (\{ nil \});
+
+for(\$i = 0; \$i \< sizeof(\$friends); \$i++) \{
+    \$rstr += "Friend - " + Describe(\$friends[\$i]) + "\\n";
+\}
+
+EmitTo(\$actor, \$rstr);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:allow">
+         X[M] if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor)) \{                 
+  EmitTo(\$actor, "You are not my owner, so you can't control me.");                 
+  return FALSE;                 
+\} 
+
+if(!\$param) \{
+    EmitTo(\$actor, "[OOC: Give control of your pet to another character.]");
+    EmitTo(\$actor, "Syntax: control horse 'allow bob'");
+    return FALSE;
+\}
+
+if(!(\$friend = common::lookup(\$name: \$param))) \{
+    EmitTo(\$actor, TAG("Cannot find character named " + Str(\$param), "imp"));
+    EmitTo(\$actor, "Syntax: control horse 'allow bob'");
+    return FALSE;
+\}
+
+if(\$this."trait:friends") \{
+    \$friends = \$this."trait:friends";
+\} else \{
+    \$friends= (\{ \});
+\}
+
+\$friends \|= (\{ \$friend \});
+
+\$this."trait:friends" = \$friends;
+
+EmitTo(\$actor, "Access to " + Describe(\$this) + " has been given to " + Describe(\$friend) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:deny">
+         X[M] if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor)) \{                 
+  EmitTo(\$actor, "You are not my owner, so you can't control me.");                 
+  return FALSE;                 
+\} 
+
+if(!\$param) \{
+    EmitTo(\$actor, "[OOC: Revoke control of your pet from another character.]");
+    EmitTo(\$actor, "Syntax: control horse 'deny bob'");
+    return FALSE;
+\}
+
+if(!(\$friend = common::lookup(\$name: \$param))) \{
+    EmitTo(\$actor, TAG("Cannot find character named " + Str(\$param), "imp"));
+    EmitTo(\$actor, "Syntax: control horse 'deny bob'");
+    return FALSE;
+\}
+
+if(\$this."trait:friends") \{
+    \$friends = \$this."trait:friends";
+\} else \{
+    \$friends= (\{ \});
+\}
+
+if(!member(\$friend, \$friends)) \{
+    EmitTo(\$actor, Describe(\$friend) + " does not have access to " + Describe(\$this) + ".");
+    return FALSE;
+\}
+
+\$friends -= (\{ \$friend \});
+
+\$this."trait:friends" = \$friends;
+
+EmitTo(\$actor, "Access to " + Describe(\$this) + " has been revoked from " + Describe(\$friend) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:control-dob">
+         X[M] int i, sz;                 
+int found;              
+string* commands, *commandsDefault, *commandsExtra;              
+string errormsg, self, possessive, nominative, objective, input, param;              
+mixed property, result;              
+              
+/* Gather commands located in UR baby */              
+commandsDefault = (\{ \});              
+if(\$this."trait:commands:default") \{              
+    commandsDefault = \$this."trait:commands:default";              
+\}              
+              
+/* Gather baby specific commands */              
+commandsExtra = (\{ \});              
+if(\$this."trait:commands:extra") \{              
+    commandsExtra = \$this."trait:commands:extra";              
+\}              
+              
+/* Put them all together */              
+commands = commandsDefault \| commandsExtra;              
+              
+if(!sizeof(commands)) \{              
+    commands = (\{ "none" \});              
+\}              
+              
+errormsg = "That is not a valid command for the horse. Valid orders are: \\"" + implode(commands, "\\" \\"") +"\\"";              
+              
+if(!\$evoke) \{              
+    EmitTo(\$actor, errormsg);              
+    return FALSE;              
+\}              
+                 
+input = replace_strings(\$evoke, "\\"", "", ".", "");
+
+if(sizeof(explode(input, " ")) \> 1) \{
+    param = explode(input, " ")[1];
+    input = explode(input, " ")[0];
+\}           
+              
+              
+/* check if we're allowed to command the horse */              
+\$ownerone = Str(\$this."trait:ownerone");              
+\$ownertwo = Str(\$this."trait:ownertwo");    
+if(!\$this."trait:ownerone") \$ownerone = Str(\$this.owner);     
+\$friends = \$this."trait:friends";
+
+if(!\$friends) \$friends = (\{ \});  
+             
+if(\$ownerone != Str(\$actor) \&\& \$ownertwo != Str(\$actor) \&\& !member(\$actor, \$friends)) \{                 
+  EmitTo(\$actor, "You are not my owner, so you can't control me.");                 
+  return FALSE;                 
+\}                 
+              
+              
+/* check if this is a valid order */                
+if(FindMerry(\$this, "lib", input)) \{              
+    /* Result is a script. Execute it. */              
+    result = Call(\$this, input, \$param: param);              
+\} else if(Get(\$this, "command:" + input)) \{              
+    /* Result is a simple emote. */              
+    property = Get(\$this, "command:" + input);              
+              
+    if(typeof(property) == 5) \{              
+        /* Array of emits. Choose one. */              
+        sz = sizeof(property);              
+        result = property[random(sz)];              
+    \} else \{              
+        /* Assuming it's a string. Grab it. */              
+        result = Str(property);              
+    \}              
+\} else \{              
+    /* No response was defined. */              
+    result = "[OOC: No response was defined for this action. File an assist with this error and include the command you were trying to issue.]";              
+    EmitTo(\$actor, result);              
+    return FALSE;              
+\}              
+              
+if(typeof(result) == 3) \{              
+    /* Precautionary measures to ensure emits display correct gender. */              
+    if(\$this."base:genderstring" == "male") \{              
+        self = "himself";              
+        possessive = "his";              
+        nominative = "he";              
+        objective = "him";              
+    \} else if(\$this."base:genderstring" == "female") \{              
+        self = "herself";              
+        possessive = "her";              
+        nominative = "she";              
+        objective = "her";              
+    \} else \{              
+        self = "itself";              
+        possessive = "its";              
+        nominative = "it";              
+        objective = "it";              
+    \}              
+              
+    /* Display the result. */              
+    EmitIn(\$actor."base:environment", replace_strings(result, "THIS", Describe(\$this), "SELF", self, "POSSESSIVE", possessive, "NOMINATIVE", nominative, "OBJECTIVE", objective, "HERE", Describe(\$actor."base:environment"), "OWNER", Describe(\$actor)));              
+\}              
+              
+return FALSE;
+      </Core:Property>
+      <Core:Property property="petbody">1</Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1588177315, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

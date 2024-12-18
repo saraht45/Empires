@@ -1,0 +1,225 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="tree"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="trees"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="tree"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:size) $(this.trait:material) tree
+          </Base:Description>
+          <Base:Description type="examine">
+             It's a $(this.trait:size) $(this.trait:material) tree.
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.trait:size) $(this.trait:material) tree.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:act:start">
+         X[M] /* This'll generate the material used. */                                                     
+                                    
+/* Okay, the following strings everything together. */                                    
+                                                     
+string size, material;                                                     
+                                    
+/* The following sets a random description on it's creation. */                                                     
+\{                                                     
+  size = oneof( "small", "medium", "large", "tall", "slender", "thick", "thin", "squat", "massive", "towering", "gangly", "twisted" );                                                     
+  material  = oneof( "mahogany", "oak", "elm", "pine", "rosewood", "birch", "willow", "cedar" );                                                     
+                                      
+/* This bit adds those random descriptions appropriately. */                                    
+                                                     
+  \$this."trait:size" = size;                                                     
+  \$this."trait:material" = material;                                                     
+                                     
+                                    
+/* This part adds the adjectives so they can be interacted with. */                                    
+                                                     
+  Set(\$this, "detail:adjectives:" + size, TRUE);                                                     
+  Set(\$this, "detail:adjectives:" + material, TRUE);                                                                 
+  Set(\$this, "detail:snames:" + material, TRUE);                       
+                                               
+  return TRUE;                                                     
+\}
+      </Core:Property>
+      <Core:Property property="merry:react-desc:chop-dob">
+         X[M] /* let them chop down the tree */
+\$my_adverb = "";
+if(\$adverb) \$my_adverb = \$adverb+" ";
+EmitTo(\$actor, "You "+\$my_adverb+"begin to chop down "+Describe(\$this)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" "+\$my_adverb+"begins to chop down "+Describe(\$this)+".", \$actor);
+
+/* mark them as busy */
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "cutting down "+Describe(this));
+
+\$delay(10, FALSE, "62c2");
+
+/* check if they are still chopping the tree */
+if(\$actor."busy:id" == \$id) \{
+  /* check that they are still in the room */
+  if(\$actor."base:environment" != \$this."base:environment") return TRUE;
+  EmitTo(\$actor, "You are about to finish felling "+Describe(\$this)+".");
+\}
+
+\$delay(10, FALSE, "50d3");
+
+/* check if they are still chopping the tree */
+if(\$actor."busy:id" == \$id) \{
+  /* check that they are still in the room */
+  if(\$actor."base:environment" == \$this."base:environment") \{
+    EmitTo(\$actor, "You fell "+Describe(\$this)+".");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" fells "+Describe(\$this)+".", \$actor);
+
+    /* spawn the lumber */
+    \$lumber = Spawn(\$\{Allegory:Props:Materials:Carpentry:UrLumber\});
+    /* set the material in the lumber */
+    if(\$this."trait:lumbermaterial") \{
+      \$lumber."trait:material" = \$this."trait:lumbermaterial";
+    \} else \{
+      \$lumber."trait:material" = \$this."trait:material";
+    \}
+    /* set the quality */
+    \$lumber."trait:quality" = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "career:woodcutter" \}), \$bonus: "trait:body");
+    \$lumber."base:environment" = \$actor;
+  \}
+\}
+/* mark them as not busy */
+ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+
+/* record how many trees they've cut */
+if(!\$actor."woodcutting:time" \|\| \$actor."woodcutting:time" \< time()) \{
+  \$actor."woodcutting:time" = time()+60*60*18;
+  \$actor."woodcutting:number" = 1;
+\} else \{
+  \$actor."woodcutting:number"++;
+\}
+
+/* remove the tree now that it's chopped down */
+if(!\$this."trait:master")
+  Slay(\$this);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:chop-dob">
+         X[M] /* chop down the tree */
+if(this."trait:unchoppable") \{
+  EmitTo(\$actor, "You cannot chop down "+Describe(this)+".");
+  return FALSE;
+\}
+
+/* have they chopped enough trees today? */
+if(\$actor."woodcutting:time" \&\& \$actor."woodcutting:time" \> time()) \{
+  if(\$actor."woodcutting:number" \>= Int(\$actor."skill:career:woodcutter")+1) \{
+    EmitTo(\$actor, "You have already cut so many trees today, you are too tired to cut another.");
+    return FALSE;
+  \}
+\}
+
+/* are they already busy? */
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+  EmitTo(\$actor, "You are already busy "+\$message+".");
+  return FALSE;
+\}
+
+/* do they have an axe? */
+if(\$using) \{
+  if(!member("axe", NRefOb(\$using[0])."details:default:snames")) \{
+    EmitTo(\$actor, "You cannot chop down "+Describe(this)+" without an axe.");
+    return FALSE;
+  \}
+\} else \{
+  if(!sizeof(Match(\$actor, "axe"))) \{
+    EmitTo(\$actor, "You cannot chop down "+Describe(this)+" without an axe.");
+    return FALSE;
+  \}
+\}
+
+/* let them chop down the tree */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:harvest-dob">
+         X[M] object ob;
+
+/* disabled */
+return TRUE;
+
+EmitTo(\$actor,"You carefully search " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ " in an attempt to harvest some leaves.");
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " carefully searches " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ " in an attempt to harvest some leaves.", \$actor);
+\$delay(10, FALSE, "b374");
+EmitTo(\$actor,"You successfully harvest a leaf from " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ ".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " successfully harvests a leaf from " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ ".", \$actor);
+\$obj = Spawn(Obj("Belle:leaf"));
+\$obj."trait:material" = \$this."trait:material";
+\$obj."base:environment" = \$actor."base:environment";
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:size">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1201767736, "tonyd", "E", 1201768392, "tonyd", "R", 1201768519, "tonyd", "P", 1201768573, "tonyd", "P", 1201768580, "tonyd", "P", 1201768679, "tonyd", "E", 1201768792, "tonyd", "E", 1201768837, "tonyd", "E", 1201769004, "tonyd", "P", 1201769059, "tonyd", "P", 1201769164, "tonyd", "P", 1201769193, "tonyd", "P", 1201769230, "tonyd", "P", 1201769241, "tonyd", "P", 1201769286, "tonyd", "P", 1201769309, "tonyd", "P", 1201769772, "tonyd", "P", 1201770053, "tonyd", "P", 1201770091, "tonyd", "P", 1201770397, "tonyd", "P", 1201770801, "tonyd", "P", 1201770870, "tonyd", "P", 1201771154, "tonyd", "P", 1201771198, "tonyd", "P", 1201771247, "tonyd", "P", 1201771286, "tonyd", "P", 1201771348, "tonyd", "P", 1201771398, "tonyd", "P", 1201775385, "tonyd", "P", 1201775418, "tonyd", "P", 1201778708, "tonyd", "P", 1201780582, "tonyd", "P", 1201780593, "tonyd", "P", 1201780603, "tonyd", "P", 1201780611, "tonyd", "P", 1201780617, "tonyd", "P", 1201780652, "tonyd", "P", 1201780685, "tonyd", "P", 1201780735, "tonyd", "P", 1201780943, "tonyd", "E", 1201781030, "tonyd", "P", 1201781081, "tonyd", "P", 1201781507, "tonyd", "P", 1201781626, "tonyd", "P", 1201781958, "tonyd", "P", 1201781981, "tonyd", "P", 1201781991, "tonyd", "P", 1201782280, "tonyd", "P", 1249374319, "jominey", "E", 1327975932, "necate", "R", 1347229453, "jominey", "R", 1347231075, "jominey", "R", 1347231085, "jominey", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:master">1</Core:Property>
+    </Core:Properties>
+    <Notes:Notes>
+      <Notes:Category cat="QA" catstate="Open">
+        <Notes:Note ix="1" state="Open" user="tonyd">
+           PCs can type "chop tree" to cut down trees and get lumber. They need an axe of some sort. The number of trees they can cut down depends on their woodcutter career.
+        </Notes:Note>
+        <Notes:Note ix="1201768606" state="Open" user="tonyd">
+           If you set the property "trait:unchoppable" in a tree, PCs won't be able to chop it down for lumber.
+        </Notes:Note>
+        <Notes:Note ix="1201780841" state="Open" user="tonyd">
+           "trait:material" will be set automatically in the tree, to a random type of tree. You can manually set the property if you want it to be something different. When you chop the tree, the lumber material will be the same as the tree's trait:material (so a trait:material of "willow" would make a willow tree and willow lumber) - if you want the lumber to be different, you can set "trait:lumbermaterial" - so for example you could have a "mangrove tree" that gives "rotting wood" as lumber.
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Base:Thing>
+</object>

@@ -1,0 +1,267 @@
+<object clone="/obj/properties" owner="tunk_bodin">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:expired_question">
+         X[M] /* player didn't answer in time */ 
+EmitTo(\$actor, Describe(\$par["tattooist"])+"'s offer of a tattoo has expired."); 
+EmitTo(\$par["tattooist"], "Your offer to tattoo "+Describe(\$actor)+" has expired."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_consent">
+         X[M] if(!\$tattooist \&\& \$actor) \{ 
+\$tattooist = \$actor; 
+return TRUE; 
+ \} else \{ 
+EmitTo(\$actor, "This -really- shouldnt happen."); 
+return TRUE; \} 
+ 
+/* Check we're only tattooing one thing */   
+if(!\$target \&\& \$dob) \{   
+  if(sizeof(\$dob) \> 1) \{   
+    EmitTo(\$tattooist, "Despite having two hands to work with, you may only tattoo one body part at a time.");  
+    return FALSE;   
+  \}   
+  /* set the target */   
+  \$target = \$dob[0];   
+\}   
+   
+if(!\$target) \{   
+  EmitTo(\$tattooist, "While playing the drums is cool, that isn't the intention of this command.");   
+  EmitTo(\$actor, "What do you want to tattoo?");   
+  return FALSE;   
+\}   
+   
+/* check we are tattooing a person */   
+if(!NRefOb(\$target)."base:volition") \{   
+  EmitTo(\$actor, "Dude, you might try tattooing a person, instead.");   
+  return FALSE;   
+\}   
+   
+/* check we aren't tattooing ourselves */   
+if(FALSE \&\& NRefOb(\$target) == \$actor) \{   
+  EmitTo(\$actor, "Although it's possible to tattoo yourself, it really really hurts. I mean, seriously, it does. And you've got to hold that needle while, like, yowling in pain.");   
+  EmitTo(\$actor, "Besides, this is a social game. It's more fun to get someone else to tattoo you.");   
+  return FALSE;   
+\}   
+   
+/* check we have a detail */   
+if(NRefDetail(\$target) == "default") \{   
+  EmitTo(\$tattooist, "Where on " +Describe(\$target, nil, \$actor)+ " would you like to add this tattoo?");   
+  return FALSE;   
+\}   
+   
+/* fake a symbol. Later we'll get this from either the user, or an object */   
+\$symbol = "pink unicorns";   
+   
+/* check we have a symbol */   
+if(!\$symbol) \{   
+  EmitTo(\$actor, "What are you trying to tattoo onto "+Describe(\$target, nil, \$actor)+"?");   
+  return FALSE;   
+\}   
+  
+if(!\$symboltype) \{  
+  EmitTo(\$actor, "No type. This should not occur. Please @bug the situation immediately.");  
+  return FALSE;  
+\} else if(!\$symbol) \{  
+  EmitTo(\$actor, "No symbol. This should not occur. Please @bug the situation immediately.");  
+  return FALSE;  
+\} else if(!\$tattooist) \{  
+  EmitTo(\$actor, "No tattooist. This should not occur. Please @bug the situation immediately.");  
+  return FALSE;  
+\}  
+  
+if(\$symboltype == "tattoo") \{  
+  \$mod = "tattooed";  
+  \$qual_roll = nil;  
+  \$qual_roll = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$tattooist."trait:dex", \$actor."trait:luck", \$tattooist."skill:social:tattoo", \$tattooist."career:social:tattoo" \}));  
+/* EmitTo(\$actor, \$mod);   */  
+\}  
+if(\$symboltype == "brand") \{  
+\$mod = "branded";  
+/* EmitTo(\$actor, \$mod);    */  
+\}  
+  
+/* check we have a target object */  
+if(\$target \&\& !\$target_ob)  
+  \$target_ob = NRefOb(\$target);  
+  
+if(\$using \&\& sizeof(\$using) == 1) \{  
+/* EmitTo(\$actor, Describe(\$using));   */  
+if(NRefOb(\$using[0])."trait:objecttype" != "tattooneedle") \{  
+EmitTo(\$actor, "That is an inappropriate tool for the job at hand.");  
+return FALSE;  
+\}else if(NRefOb(\$using[0])."trait:ink") \{  
+\$ink = NRefOb(\$using[0])."trait:ink";  
+/* EmitTo(\$actor, "Ink is " +\$ink+ "."); */  
+\} else \{  
+\$ink = nil;  
+/* EmitTo(\$actor, "No ink found.");  */  
+\}  
+\}  
+  
+  
+if(!\$evoke) \{  
+/* EmitTo(\$actor, dump_value(args));   */  
+  EmitTo(\$actor, "You need an evoke for this part.");  
+  return FALSE;  
+\} else \{  
+/*  EmitTo(\$actor, Str(NRefDetail(\$target)) );     */  
+\$change = "appearance:symbol:" + Str(NRefDetail(\$target));  
+\$change2 = "appearance:symboldesc:" + Str(NRefDetail(\$target));  
+\$tatt = lower_case(\$evoke[1..strlen(\$evoke)-2]);  
+  
+/* Tried this a few ways, should be obvious what i am trying to do                             */  
+if(Get(\$target_ob, \$change))\{  
+EmitTo(\$tattooist, Describe(\$target_ob)+ " has already been marked in that area.");  
+return FALSE;  
+\}  
+  
+  
+if(\$symboltype == "tattoo") \{  
+if(\$qual_roll \&\& \$qual_roll \> 10) \{  
+\$tatt += ", superbly ";  
+\} else if(\$qual_roll \&\& 3 \> \$qual_roll) \{  
+\$tatt += ", crudely ";  
+\} else \{  
+\$tatt += ", ";  
+\}  
+  
+  
+  
+if(\$ink) \{  
+\$tatt += "drawn in " +\$ink+ " ink";  
+/* EmitTo(\$actor, "Added Ink.");    */  
+\} else \{  
+\$tatt += "drawn in basic black";  
+/* EmitTo(\$actor, "Lost Ink.");    */  
+\} \}  
+  
+  
+/* ask if the player wants a tattoo */   
+interaction::question(\$actor: NRefOb(\$target), \$question: "Do you want to allow " +Describe(\$actor)+ " to tattoo "+\$symbol+" on "+Describe(\$target, nil, NRefOb(\$target))+"?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "tattoo", \$no_fun: "no_mod", \$expire_fun: "expired_question", \$par: ([ "symboltype": \$symboltype, "target": \$target, "tattooist":\$actor, "symbol":\$symbol, "evoke":\$evoke, "tatt":\$tatt, "target_ob":\$target_ob, "change":\$change, "change2":\$change2, "ink":\$ink, "mod":\$mod ]));   
+return FALSE; \}
+      </Core:Property>
+      <Core:Property property="merry:lib:no_mod">
+         X[M] /* player didn't answer in time */ 
+EmitTo(\$actor, "You reject "+Describe(\$par["tattooist"])+"'s offer of a tattoo."); 
+EmitTo(\$par["tattooist"], Describe(\$actor)+" rejects your offer of a tattoo."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:tattoo">
+         X[M] /* allows us to put a tattoo/brand/mark on a person */ 
+args += \$par; 
+/* EmitTo(\$actor, dump_value(args)); */ 
+ 
+if(!\$symboltype) \{ 
+  EmitTo(\$actor, "No type. This should not occur. Please @bug the situation immediately."); 
+  return FALSE; 
+\} else if(!\$symbol) \{ 
+  EmitTo(\$actor, "No symbol. This should not occur. Please @bug the situation immediately."); 
+  return FALSE; 
+\} else if(!\$tattooist) \{ 
+  EmitTo(\$actor, "No tattooist. This should not occur. Please @bug the situation immediately."); 
+  return FALSE; 
+\} 
+ 
+if(\$symboltype == "tattoo") \{ 
+  \$mod = "tattooed"; 
+  \$qual_roll = nil; 
+  \$qual_roll = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: (\{ \$tattooist."trait:dex", \$actor."trait:luck", \$tattooist."skill:social:tattoo", \$tattooist."career:social:tattoo" \})); 
+/* EmitTo(\$actor, \$mod);   */ 
+\} 
+if(\$symboltype == "brand") \{ 
+\$mod = "branded"; 
+/* EmitTo(\$actor, \$mod);    */ 
+\} 
+ 
+/* check we have a target object */ 
+if(\$target \&\& !\$target_ob) 
+  \$target_ob = NRefOb(\$target); 
+ 
+if(\$using \&\& sizeof(\$using) == 1) \{ 
+/* EmitTo(\$actor, Describe(\$using));   */ 
+if(NRefOb(\$using[0])."trait:objecttype" != "tattooneedle") \{ 
+EmitTo(\$actor, "That is an inappropriate tool for the job at hand."); 
+return FALSE; 
+\}else if(NRefOb(\$using[0])."trait:ink") \{ 
+\$ink = NRefOb(\$using[0])."trait:ink"; 
+/* EmitTo(\$actor, "Ink is " +\$ink+ "."); */ 
+\} else \{ 
+\$ink = nil; 
+/* EmitTo(\$actor, "No ink found.");  */ 
+\} 
+\} 
+ 
+ 
+if(!\$evoke) \{ 
+/* EmitTo(\$actor, dump_value(args));   */ 
+  EmitTo(\$actor, "You need an evoke for this part."); 
+  return FALSE; 
+\} else \{ 
+/*  EmitTo(\$actor, Str(NRefDetail(\$target)) );     */ 
+\$change = "appearance:symbol:" + Str(NRefDetail(\$target)); 
+\$change2 = "appearance:symboldesc:" + Str(NRefDetail(\$target)); 
+\$tatt = lower_case(\$evoke[1..strlen(\$evoke)-2]); 
+ 
+/* Tried this a few ways, should be obvious what i am trying to do                             */ 
+if(Get(\$target_ob, \$change))\{ 
+EmitTo(\$tattooist, Describe(\$target_ob)+ " has already been marked in that area."); 
+return FALSE; 
+\} 
+ 
+ 
+if(\$symboltype == "tattoo") \{ 
+if(\$qual_roll \&\& \$qual_roll \> 10) \{ 
+\$tatt += ", superbly "; 
+\} else if(\$qual_roll \&\& 3 \> \$qual_roll) \{ 
+\$tatt += ", crudely "; 
+\} else \{ 
+\$tatt += ", "; 
+\} 
+ 
+ 
+ 
+if(\$ink) \{ 
+\$tatt += "drawn in " +\$ink+ " ink"; 
+/* EmitTo(\$actor, "Added Ink.");    */ 
+\} else \{ 
+\$tatt += "drawn in basic black"; 
+/* EmitTo(\$actor, "Lost Ink.");    */ 
+\} \} 
+ 
+/* EmitTo(\$actor, \$change );      */ 
+Set( \$target_ob, \$change, \$mod ); 
+Set( \$target_ob, \$change2, \$tatt ); 
+  return TRUE; 
+\} 
+ 
+/* if(!\$line) \{   EmitTo(\$\{Chatters:IC:De:Death\}, dump_value(args));     */ 
+/*   EmitTo(\$actor, "You need a set design.");                               */ 
+/*   return FALSE;                                                            */ 
+/* \} else \{                                                                 */ 
+/*  EmitTo(\$actor, "Adding the tattoo.");                                    */ 
+/*  Call(\$this, "tattoo_consent");                                           */ 
+/*  return TRUE;                                                              */ 
+/*  \}                                                                        */
+      </Core:Property>
+      <Core:Property property="merry:lib:tattoo_consent">
+         X[M] EmitTo(\$actor, dump_value(args));      
+if (\$consented) \{         
+   /* this code is not executed the first time around */         
+Call(\$\{Ironclaw:Lib:Skills:Tattoo\}, "tattoo", \$symboltype: "tattoo");        
+   /* do something to tattoo the target */         
+   return TRUE;         
+\}         
+/* consent not yet given, demand it */         
+Act(\$actor, "demand_consent",         
+     \$target: NRefOb(\$dob[0]), \$message: "tattoo", \$action: "+tattoo", \$args: args + ([ "consented": TRUE ]));         
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1148849058, "tunk_bodin", "X", 1148849906, "tunk_bodin", "P", 1148849968, "tunk_bodin", "P", 1148854489, "tunk_bodin", "X", 1148854543, "tunk_bodin", "X", 1148854624, "tunk_bodin", "X", 1148855328, "tunk_bodin", "X", 1148855452, "tunk_bodin", "X", 1148855848, "tunk_bodin", "X", 1148855993, "tunk_bodin", "X", 1148864961, "tonyd", "P", 1148865048, "tonyd", "P", 1148865181, "tonyd", "P", 1148865210, "tonyd", "P", 1148865413, "tonyd", "P", 1148865785, "tonyd", "P", 1148865835, "tonyd", "P", 1148946733, "tunk_bodin", "X", 1148946764, "tunk_bodin", "X", 1148946804, "tunk_bodin", "X", 1148946890, "tunk_bodin", "X", 1148947501, "tunk_bodin", "X", 1148947580, "tunk_bodin", "X", 1148947949, "tunk_bodin", "X", 1148948622, "tunk_bodin", "X", 1148948736, "tunk_bodin", "X", 1148948763, "tunk_bodin", "X", 1148962961, "tunk_bodin", "X", 1148963115, "tunk_bodin", "X", 1148963655, "tunk_bodin", "X", 1148963901, "tunk_bodin", "X", 1148964616, "tunk_bodin", "X", 1148964655, "tunk_bodin", "X", 1148964696, "tunk_bodin", "X", 1148964732, "tunk_bodin", "X", 1148964800, "tunk_bodin", "X", 1148964882, "tunk_bodin", "X", 1148964944, "tunk_bodin", "X", 1148965315, "tunk_bodin", "X", 1148965551, "tunk_bodin", "X", 1148966243, "tunk_bodin", "X", 1148966571, "tunk_bodin", "X", 1148966702, "tunk_bodin", "X", 1148967076, "tunk_bodin", "X", 1148967253, "tunk_bodin", "X", 1148967307, "tunk_bodin", "X", 1148967492, "tunk_bodin", "X", 1148968016, "tunk_bodin", "X", 1148968060, "tunk_bodin", "X", 1148968133, "tunk_bodin", "X", 1148969133, "tunk_bodin", "X", 1148969181, "tunk_bodin", "X", 1149011228, "tunk_bodin", "X", 1149011360, "tunk_bodin", "X", 1149011700, "tunk_bodin", "X", 1149011752, "tunk_bodin", "X", 1149011850, "tunk_bodin", "X", 1149011963, "tunk_bodin", "X", 1149012010, "tunk_bodin", "X", 1149012277, "tunk_bodin", "X", 1149012386, "tunk_bodin", "X", 1149013246, "tunk_bodin", "X", 1149013379, "tunk_bodin", "X", 1149013759, "tunk_bodin", "X", 1149014061, "tunk_bodin", "X", 1149014186, "tunk_bodin", "X", 1149026901, "tunk_bodin", "X", 1149027100, "tunk_bodin", "X", 1149031656, "tunk_bodin", "X", 1149090247, "tunk_bodin", "X", 1149093882, "tunk_bodin", "X", 1149093926, "tunk_bodin", "X", 1149094073, "tunk_bodin", "X", 1149107299, "tunk_bodin", "X", 1149107427, "tunk_bodin", "X", 1149107608, "tunk_bodin", "X", 1149107641, "tunk_bodin", "X", 1149107661, "tunk_bodin", "X", 1149107811, "tunk_bodin", "X", 1149107841, "tunk_bodin", "X", 1149107877, "tunk_bodin", "X", 1149108041, "tunk_bodin", "X", 1149108145, "tunk_bodin", "X", 1149108220, "tunk_bodin", "X", 1149108390, "tunk_bodin", "X", 1149108433, "tunk_bodin", "X", 1149108511, "tunk_bodin", "X", 1149108579, "tunk_bodin", "X", 1149306732, "tonyd", "P", 1149307208, "tonyd", "P", 1149307670, "tonyd", "P", 1149307693, "tonyd", "P", 1149307729, "tonyd", "P", 1149307822, "tonyd", "P", 1149307941, "tonyd", "P", 1149307969, "tonyd", "P", 1149308213, "tonyd", "P", 1149308242, "tonyd", "P", 1149308293, "tonyd", "P", 1149308312, "tonyd", "P", 1149308449, "tonyd", "P", 1149308459, "tonyd", "P", 1149308530, "tonyd", "P", 1149309768, "tonyd", "P", 1149310530, "tonyd", "P", 1149310703, "tonyd", "P", 1149310803, "tonyd", "P", 1149310892, "tonyd", "P", 1149310936, "tonyd", "P", 1149311043, "tonyd", "P", 1149442298, "tunk_bodin", "X", 1149442774, "tunk_bodin", "X", 1149443212, "tunk_bodin", "X", 1168714978, "tunk_bodin", "R" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

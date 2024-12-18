@@ -1,0 +1,75 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+autoreturn" second="set the autoreturn property in" third="sets the autoreturn property in" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="false" requirement="required" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* Set autoreturn properties in objects */
+if(!\$evoke \|\| !\$dob \|\| !sizeof(\$dob)) \{
+  EmitTo(\$actor, "Usage: +autoreturn \<object\> 'TIMER, TYPE");
+  EmitTo(\$actor, "Usage: +autoreturn \<object\> 'OFF");
+  EmitTo(\$actor, "Example: +autoreturn bucket '5, autoreturn' will make the bucket automatically return to it's current location after 5 hours.");
+  EmitTo(\$actor, "Example: +autoreturn broom '48, replace' will make a new broom spawn in the current broom's location after 2 days.");
+  EmitTo(\$actor, "If there should be a restocking cost, edit the trait:autoreturn:restock_cost property in the object after using this command.");
+  return FALSE;
+\}
+
+/* get options */
+\$options = \$evoke[1..strlen(\$evoke)-2];
+
+if(lower_case(\$options) == "off") \{
+  /* set the properties */
+  for(\$i=0;\$i\<sizeof(\$dob);\$i++) \{
+    \$obj = NRefOb(\$dob[\$i]);
+EmitTo(\$actor, dump_value(\$obj));
+    \$obj."merry:inherit:react:take%autoreturn" = nil;
+    \$obj."merry:inherit:react:catch-what%autoreturn" = nil;
+    \$obj."merry:inherit:react:snatch-dob%autoreturn" = nil;
+    \$obj."trait:autoreturn:delay" = nil;
+    \$obj."trait:autoreturn:type" = nil;
+    \$obj."trait:autoreturn:restock_cost" = ([ "object":nil, "property":nil, "cost":nil ]);
+  \}
+  EmitTo(\$actor, "Autoreturn turned off.");
+  return FALSE;
+\}
+
+\$options = replace_strings(\$options, ",", "");
+\$options = explode(\$options, " ");
+sscanf(\$options[0], "%d", \$return_delay);
+if(sizeof(\$options) \> 1 \&\& lower_case(\$options[1]) == "replace")
+  \$return_type = "replace";
+else
+  \$return_type = "autoreturn";
+
+if(!\$return_delay) \{
+  EmitTo(\$actor, "Please provide a valid return value.");
+  return FALSE;
+\}
+
+/* set the properties */
+for(\$i=0;\$i\<sizeof(\$dob);\$i++) \{
+  \$obj = NRefOb(\$dob[\$i]);
+  \$obj."merry:inherit:react:take%autoreturn" = \$\{Ironclaw:Lib:timers:auto_return\};
+  \$obj."merry:inherit:react:catch-what%autoreturn" = \$\{Ironclaw:Lib:timers:auto_return\};
+  \$obj."merry:inherit:react:snatch-dob%autoreturn" = \$\{Ironclaw:Lib:timers:auto_return\};
+  \$obj."trait:autoreturn:delay" = \$return_delay*60*60;
+  \$obj."trait:autoreturn:type" = \$return_type;
+  \$obj."trait:autoreturn:restock_cost" = ([ "object":nil, "property":nil, "cost":nil ]);
+\}
+EmitTo(\$actor, "Autoreturn turned on.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1311139335, "tonyd", "E", 1311139520, "tonyd", "E", 1311139577, "tonyd", "E", 1311139600, "tonyd", "E", 1311139670, "tonyd", "P", 1311139678, "tonyd", "P", 1311139698, "tonyd", "P", 1311139718, "tonyd", "P", 1311139736, "tonyd", "P", 1311139895, "tonyd", "P", 1311140313, "tonyd", "P", 1311140391, "tonyd", "P", 1311140496, "tonyd", "P", 1311140637, "tonyd", "P", 1311140773, "tonyd", "P", 1311140860, "tonyd", "P", 1311141229, "tonyd", "P", 1311142055, "tonyd", "P" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

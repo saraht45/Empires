@@ -1,0 +1,115 @@
+<object clone="/usr/SkotOS/obj/mersamtag" owner="jominey">
+  <SkotOS:MerSAMTag tag_name="pattern-description">
+    <Core:PCProperties>
+      <Core:Property property="merry:global:tag">
+         X[M] string detail, itemProperty, itemName;
+object ob, itemObject, db;
+
+detail = NRefDetail(\$target);
+ob = NRefOb(\$target);
+
+\$rstr = "";
+
+if(Get(ob, "pattern:" + detail)) \{
+    db = Get(ob, "pattern:" + detail)[0];
+    itemProperty = Get(ob, "pattern:" + detail)[1];
+    itemName = Get(ob, "pattern:" + detail)[2];
+
+    if(Get(db, itemProperty)[itemName]["newObject"] \&\& Get(db, itemProperty)[itemName]["newObject"] != \$\{Allegory:Props:Jewelry:Gems:UrGem\}) \{
+        itemObject = Get(db, itemProperty)[itemName]["newObject"];
+        if(itemObject."trait:examine") \{
+            \$rstr = itemObject."trait:examine";
+        \} else \{
+            \$rstr = UnSAM(itemObject."details:default:description:examine");
+        \}
+    \} else if(Get(db, itemProperty)[itemName]["newobject"] \&\& Get(db, itemProperty)[itemName]["newobject"] != \$\{Allegory:Props:Jewelry:Gems:UrGem\}) \{
+        itemObject = Get(db, itemProperty)[itemName]["newobject"];
+
+        if(itemObject."trait:examine") \{
+            \$rstr = UnSAM(itemObject."trait:examine");
+        \} else \{
+            \$rstr = UnSAM(itemObject."details:default:description:examine");
+        \}
+    \} else \{
+        \$properties = Get(db, itemProperty)[itemName]["properties"];
+
+        for(\$i = 0; \$i \< sizeof(\$properties); \$i++) \{
+            if(contains("description", \$properties[\$i][0]) \|\| contains("examine", \$properties[\$i][0])) \{
+                \$rstr = \$properties[\$i][1];
+
+            \}
+
+            if(\$properties[\$i][0] == "trait:shape" \|\| \$properties[\$i][0] == "trait:type" \|\| \$properties[\$i][0] == "trait:brief") \{
+                \$rstr = capitalize(common::aan(\$what: \$properties[\$i][1])) + " " + replace_strings(explode(explode(itemProperty, ":")[2], "-")[1], "swordblade", "blade", "macehaed", "head", "daggerblade", "blade", "spearhead", "head") + ".";
+            \} else \{
+                \$rstr += " " + \$properties[\$i][1];
+            \}
+        \}
+    \}
+
+    if(Get(db, itemProperty)[itemName]["cost"]) \{
+
+        if(ob."pattern:baseunit") \{
+            \$baseUnit = Int(ob."pattern:baseunit");
+        \} else if(Get(ob, "pattern:" + detail + ":baseunit")) \{
+            \$baseUnit = Int(Get(ob, "pattern:" + detail +":baseunit"));
+        \} else \{
+            \$baseUnit = 10;
+        \}
+
+        if(ob."pattern:unitname") \{
+            \$unitNames = ob."pattern:unitName";
+        \} else if(Get(ob, "pattern:" + detail + ":unitname")) \{
+            \$unitNames = Get(ob, "pattern:" + detail +":unitname");
+        \} else \{
+            \$unitNames = (\{ "unit", "units" \});
+        \}
+
+        if(Flt(Get(db, itemProperty)[itemName]["cost"][0]/Int(\$baseUnit)) \<= 1.0) \{
+            \$unitName = Str(\$unitNames[0]);
+        \} else \{
+            \$unitName = Str(\$unitNames[1]);
+        \}
+
+
+        if(ob."pattern:resource") \{
+            \$resource = ob."pattern:resource";
+        \} else if(Get(ob, "pattern:" + detail + ":resource")) \{
+            \$resource = Get(ob, "pattern:" + detail +":resource");
+        \}
+
+        \$cost = Str(Flt(Get(db, itemProperty)[itemName]["cost"][0])/Flt(\$baseUnit));
+
+        if(Int(\$cost) \< 1) \$cost = " half a ";
+
+        \$rstr += "\<br/\>\<br/\>The notes indicate that this item will require " + Str(\$cost) + " " + Str(\$unitName) + " of " + Str(\$resource) + ".";
+
+    \} else \{ 
+
+        \$resource = explode(explode(itemProperty, ":")[2], "-")[1];
+
+        \$length = strlen(\$resource);
+
+        \$finalchar = \$resource[\$length-1..\$length-1];
+
+        if(\$finalchar != "s") \$resource = "a " + \$resource; 
+
+        if(contains(\$resource, "dough")) \$resource = "dough";
+        if(contains(\$resource, "cowmilk")) \$resource = "cow milk";
+        if(contains(\$resource, "batter")) \$resource = "batter";
+        if(contains(\$resource, "meat")) \$resource = "meat";
+
+        \$rstr += "\<br/\>\<br/\>The notes indicate that this item is crafted from " + Str(\$resource) + ".";
+    \}
+ 
+    return ParseXML(\$rstr);
+\}
+
+return "";
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1574870805, "jominey", "E", 1596515127, "jominey", "E", 1596515159, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerSAMTag>
+</object>

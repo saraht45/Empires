@@ -1,0 +1,193 @@
+<object clone="/usr/SkotOS/obj/mersamtag" owner="tonyd">
+  <SkotOS:MerSAMTag tag_name="describestate">
+    <Core:PCProperties>
+      <Core:Property property="merry:global:tag">
+         X[M] int i;
+/* describe any states the player may have */
+\$output = "";
+\$displaystates = (\{ \});
+
+/* check if there are any states to display */
+if(!\$target."states:list") return nil;
+
+for(i=0;i\<sizeof(\$target."states:list");i++) \{
+  \$state = Arr(\$target."states:list"[i]);
+  \$description = Call(this, "describe_state", \$state: Arr(\$target."states:list"[i]));
+  if(\$description) \{
+    \$output += capitalize(\$description);
+  \} else \{
+    \$displaystates += (\{ Arr(\$target."states:list"[i])[0] \});
+  \}
+\}
+/* draw a new line after the states */
+if(\$output != "") \$output += "\\n";
+
+\$thisoutput = "";
+for(i=0;i\<sizeof(\$displaystates);i++) \{
+  if(i == sizeof(\$displaystates)-1) \{
+    \$thisoutput += " and ";
+  \} else if(i \> 0) \{
+    \$thisoutput += ", ";
+  \}
+  \$thisoutput += \$displaystates[i];
+\}
+if(\$thisoutput != "") \{
+  \$thisoutput = Describe(\$target)+" is "+\$thisoutput;
+  \$thisoutput += ".";
+\}
+\$output += \$thisoutput;
+
+/* if we have output, return it */
+if(\$output != "") \{
+  return \$output;
+\} else \{
+  return nil;
+\}
+
+/* output only to selected viewers */
+/* error check */
+if(\$actor \&\& !\$looker) \$looker = \$actor;
+if(!\$looker) return nil;
+\$value = nil;
+
+if(\$(local:prop) \&\& Get(\$looker, \$(local:prop))) \{
+  \$value = Get(\$looker, \$(local:prop));
+  \$(local:prop) = nil;
+\}
+
+if(!\$value \&\& \$(local:skill) \&\& (Get(\$looker, "skill:"+\$(local:skill)) \|\| Get(\$looker, "career:"+\$(local:skill)))) \{
+  if(Get(\$looker, "career:"+\$(local:skill))) \{
+    \$value = Get(\$looker, "career:"+\$(local:skill));
+    if(Get(\$looker, "skill:"+\$(local:skill)) \&\& Get(\$looker, "skill:"+\$(local:skill)) \> \$value)
+      \$value = Get(\$looker, "skill:"+\$(local:skill));
+  \} else \{
+    \$value = Get(\$looker, "skill:"+\$(local:skill));
+  \}
+  \$(local:skill) = nil;
+\}
+
+if(!\$value \&\& \$(local:career) \&\& Get(\$looker, "skill:career:"+\$(local:career))) \{
+  \$value = Get(\$looker, "skill:career:"+\$(local:career));
+  \$(local:career) = nil;
+\}
+
+/* if they have the right property, output the contents of this tag */
+if(\$value)\{
+  if(\$(local:max) \|\| \$(local:min)) \{
+    /* if this value isn't a number, return the flag */
+    if(typeof(\$value) != T_INT \&\& typeof(\$value) != T_FLOAT)
+      return \$(tag-content);
+    /* if we don't meet min or max prerequisites, don't return anything */
+    if(\$(local:max) \&\& (Flt(\$value) \> Flt(\$(local:max))))
+      return nil;
+    if(\$(local:min) \&\& (Flt(\$value) \< Flt(\$(local:min))))
+      return nil;
+  \}
+  return \$(tag-content);
+\}
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_state">
+         X[M] int i;
+/* describe this state that the player has */
+if(!\$state) return nil;
+
+if(sizeof(\$state) \< 2) return nil;
+
+/* check what DB to get the description from */
+\$db = Obj("IronClaw:Lib:UrPeople:States:"+\$state[1]);
+if(!\$db) return nil;
+
+/* get the description */
+\$description = Get(\$db, "description:"+\$state[0]);
+if(!\$description) return nil;
+
+return capitalize(UnSAM( ParseXML(\$description)));
+
+\$output = "";
+\$displaystates = (\{ \});
+
+/* check if there are any states to display */
+if(!\$target."states:list") return nil;
+
+for(i=0;i\<sizeof(\$target."states:list");i++) \{
+  \$state = Arr(\$target."states:list"[i]);
+  \$description = Call(this, "describe_state", \$state: Arr(\$target."states:list"[i]));
+  if(\$description) \{
+    \$output += capitalize(\$description)+". ";
+  \} else \{
+    \$displaystates += (\{ Arr(\$target."states:list"[i])[0] \});
+  \}
+\}
+
+\$thisoutput = "";
+for(i=0;i\<sizeof(\$displaystates);i++) \{
+  if(i == sizeof(\$displaystates)-1) \{
+    \$thisoutput += " and ";
+  \} else if(i \> 0) \{
+    \$thisoutput += ", ";
+  \}
+  \$thisoutput += \$displaystates[i];
+\}
+if(\$thisoutput != "") \{
+  \$thisoutput = Describe(\$target)+" is "+\$thisoutput;
+  \$thisoutput += ".";
+\}
+\$output += \$thisoutput;
+
+/* if we have output, return it */
+if(\$output != "") \{
+  return \$output;
+\} else \{
+  return nil;
+\}
+
+/* output only to selected viewers */
+/* error check */
+if(\$actor \&\& !\$looker) \$looker = \$actor;
+if(!\$looker) return nil;
+\$value = nil;
+
+if(\$(local:prop) \&\& Get(\$looker, \$(local:prop))) \{
+  \$value = Get(\$looker, \$(local:prop));
+  \$(local:prop) = nil;
+\}
+
+if(!\$value \&\& \$(local:skill) \&\& (Get(\$looker, "skill:"+\$(local:skill)) \|\| Get(\$looker, "career:"+\$(local:skill)))) \{
+  if(Get(\$looker, "career:"+\$(local:skill))) \{
+    \$value = Get(\$looker, "career:"+\$(local:skill));
+    if(Get(\$looker, "skill:"+\$(local:skill)) \&\& Get(\$looker, "skill:"+\$(local:skill)) \> \$value)
+      \$value = Get(\$looker, "skill:"+\$(local:skill));
+  \} else \{
+    \$value = Get(\$looker, "skill:"+\$(local:skill));
+  \}
+  \$(local:skill) = nil;
+\}
+
+if(!\$value \&\& \$(local:career) \&\& Get(\$looker, "skill:career:"+\$(local:career))) \{
+  \$value = Get(\$looker, "skill:career:"+\$(local:career));
+  \$(local:career) = nil;
+\}
+
+/* if they have the right property, output the contents of this tag */
+if(\$value)\{
+  if(\$(local:max) \|\| \$(local:min)) \{
+    /* if this value isn't a number, return the flag */
+    if(typeof(\$value) != T_INT \&\& typeof(\$value) != T_FLOAT)
+      return \$(tag-content);
+    /* if we don't meet min or max prerequisites, don't return anything */
+    if(\$(local:max) \&\& (Flt(\$value) \> Flt(\$(local:max))))
+      return nil;
+    if(\$(local:min) \&\& (Flt(\$value) \< Flt(\$(local:min))))
+      return nil;
+  \}
+  return \$(tag-content);
+\}
+return nil;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1147753276, "tonyd", "E", 1147753442, "tonyd", "E", 1147753470, "tonyd", "E", 1147753781, "tonyd", "E", 1147753878, "tonyd", "E", 1147754009, "tonyd", "E", 1147754500, "tonyd", "E", 1147754510, "tonyd", "E", 1147755313, "tonyd", "E", 1147755490, "tonyd", "E", 1147756039, "tonyd", "P", 1147758097, "tonyd", "P", 1147758193, "tonyd", "P", 1147758999, "tonyd", "P", 1147759551, "tonyd", "P", 1147759623, "tonyd", "P", 1147759728, "tonyd", "P", 1147759801, "tonyd", "P", 1147760020, "tonyd", "P", 1149597696, "tonyd", "P", 1149597735, "tonyd", "P", 1149597791, "tonyd", "P", 1149597848, "tonyd", "P", 1150082831, "tonyd", "P", 1150082904, "tonyd", "P", 1150082934, "tonyd", "P", 1150082963, "tonyd", "P", 1150085217, "tonyd", "P", 1150085267, "tonyd", "P", 1150085307, "tonyd", "P", 1150085341, "tonyd", "P", 1150085370, "tonyd", "P", 1150085411, "tonyd", "P", 1150085541, "tonyd", "P", 1150085599, "tonyd", "P", 1150167285, "tonyd", "P", 1150167414, "tonyd", "E", 1150167447, "tonyd", "P", 1150167731, "tonyd", "P", 1150168554, "tonyd", "P", 1150168580, "tonyd", "P", 1150168649, "tonyd", "P", 1150168678, "tonyd", "P", 1150168727, "tonyd", "P", 1150168782, "tonyd", "P", 1150168828, "tonyd", "P", 1150169736, "tonyd", "P", 1150169835, "tonyd", "P", 1150170778, "tonyd", "P", 1150170788, "tonyd", "P", 1150170829, "tonyd", "P", 1150171249, "tonyd", "P", 1150171384, "tonyd", "P", 1150171447, "tonyd", "P", 1150171507, "tonyd", "P", 1150171547, "tonyd", "P", 1150171872, "tonyd", "P", 1150171922, "tonyd", "P", 1150172033, "tonyd", "P", 1150173388, "tonyd", "P", 1150173416, "tonyd", "P", 1309489655, "rorschakovacs", "R" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerSAMTag>
+</object>

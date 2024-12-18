@@ -1,0 +1,202 @@
+<object clone="/base/obj/thing" owner="tunk_bodin">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.02" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="flower"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="flowers"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:state) $(this.trait:color) $(this.trait:descriptor) $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="look">
+             <describe what="$(this)" nonposs="1" cap="1"/>. $(this.trait:examine)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="head-fore"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:alteration:add:default:dye">
+         ([ "noslay":"true", "properties":(\{ (\{ "trait:color", "trait:color" \}) \}) ])
+      </Core:Property>
+      <Core:Property property="export:decaydelay">
+         172800
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "flower"
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "flower"
+      </Core:Property>
+      <Core:Property property="export:trait:quality">
+         4
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "flowers"
+      </Core:Property>
+      <Core:Property property="export:trait:trash">1</Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] /* make flowers decay over time */    
+Call(this, "decay");    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:decay">
+         X[M] /* Make flowers decay over time */    
+    
+/* check if this is a spawn */    
+if(sscanf(name(this), "%s]#%s", \$tmp, \$tmp) != 2) \{    
+  /* NOT a spawn. Don't decay */    
+  return TRUE;    
+\}    
+    
+if(!this."trait:quality")    
+  this."trait:quality" = 4;    
+    
+while(this."trait:quality") \{    
+  if(this."trait:quality" \< 0) \{return FALSE;\}
+  \$delay(this.decaydelay, TRUE, "0fe5");    
+    
+  /* check if this is a spawn */    
+  if(sscanf(name(this), "%s]#%s", \$tmp, \$tmp) != 2) \{    
+    /* NOT a spawn. Don't decay */    
+    return TRUE;    
+  \}    
+  this."trait:quality"--;    
+    
+/*  EmitTo(this."base:environment", "I am "+Describe(this));    
+  EmitTo(this."base:environment", "Quality of "+Str(this."trait:quality")); */    
+\}    
+    
+\$delay(this.decaydelay*5, TRUE, "93f0");    
+    
+/* check if this is a spawn */    
+if(sscanf(name(this), "%s]#%s", \$tmp, \$tmp) != 2) \{    
+  /* NOT a spawn. Don't decay */    
+  return TRUE;    
+\}    
+    
+/* send destruction message */    
+if(this."base:environment")    
+  EmitIn(this."base:environment", Describe(\$this)+" disintegrates.");    
+if(this."base:environment"."base:environment") \{    
+  EmitTo(this."base:environment", Describe(\$this, nil, this."base:environment")+" disintegrates.");    
+  EmitIn(this."base:environment"."base:environment", Describe(\$this)+" disintegrates.", this."base:environment");    
+\}    
+Slay(this);    
+    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:dry-dob">
+         X[M] EmitTo(\$actor, "You carefully dry "+Describe(\$this)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" carefully dries "+Describe(\$this)+".", \$actor);
+
+\$dried = Spawn(\$\{Ironclaw:Props:Gardening:OLD:UrDryBloom\});
+\$dried."trait:quality" = \$this."trait:quality";
+\$dried."trait:color" = \$this."trait:color";
+\$dried."trait:descriptor" = \$this."trait:descriptor";
+\$dried."trait:brief" = \$this."trait:brief";
+\$dried."trait:smell" = "the distant fragrance of " + Str(\$this."trait:smell");
+\$dried."base:environment" = \$actor;
+Slay(this);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:descriptor">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quality">
+         X[M] /* set the description for the flower, based on quality */    
+    
+switch(this."trait:quality") \{    
+  case 12:    
+    this."trait:state" = "perfect";    
+    break;    
+  case 11:    
+    this."trait:state" = "perfect";    
+    break;    
+  case 10:    
+    this."trait:state" = "immaculate";    
+    break;    
+  case 9:    
+    this."trait:state" = "amazing";    
+    break;    
+  case 8:    
+    this."trait:state" = "pristine";    
+    break;    
+  case 7:    
+    this."trait:state" = "crisp";    
+    break;    
+  case 6:    
+    this."trait:state" = "fresh";    
+    break;    
+  case 5:    
+    this."trait:state" = "bright";    
+    break;    
+  case 2:    
+    this."trait:state" = (\{ "dull", "drooping", "faded" \})[random(2)];    
+    break;    
+  case 1:    
+    this."trait:state" = (\{ "limp", "listless" \})[random(2)];    
+    break;    
+  case 0:    
+    this."trait:state" = "wilted";    
+    break;    
+  case -1:
+    this."trait:state" = "dried";
+  default:    
+    this."trait:state" = nil;    
+    break;    
+\}    
+    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1169418093, "tunk_bodin", "X", 1169420609, "tunk_bodin", "X", 1169421188, "tunk_bodin", "X", 1201550048, "jsfox", "X", 1224854633, "slurpeeslurp", "E", 1224854652, "slurpeeslurp", "E", 1224854929, "slurpeeslurp", "E", 1252681753, "slurpeeslurp", "E", 1252681789, "slurpeeslurp", "E", 1252682326, "slurpeeslurp", "E", 1252776084, "balkaar", "E", 1252776663, "balkaar", "E", 1252776730, "balkaar", "E", 1252776841, "balkaar", "E", 1253298309, "balkaar", "E", 1253298584, "balkaar", "E", 1253298801, "balkaar", "E", 1253298901, "balkaar", "E", 1253298922, "balkaar", "E", 1253298941, "balkaar", "E", 1327975919, "necate", "R", 1347229433, "jominey", "R", 1347231369, "jominey", "R", 1352951355, "jominey", "K" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

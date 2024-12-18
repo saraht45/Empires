@@ -1,0 +1,184 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:filecrime">
+         X[M] /*
+** \$accomplices = object array of accomplices
+** \$criminals = object array of criminals
+** \$desc = description of the crime (string)
+** \$shortdesc = short description of the crime (string)
+** \$severity = severity of the crime (int); 0 - charge dropped, 1 - minor, 2 - normal, 4 - major
+** \$type = crime that was committed (assault, theft, etc)
+*/
+
+object ob;
+int next, i;
+mapping crime;
+
+ob = \$\{Allegory:Lib:Law:OpenDB\};
+
+/* What case number are we on? */
+next = Int(ob.number) + 1;
+
+/* make sure we don't overwrite anything */
+while(Get(ob, Str(next))) \{
+    next++;
+\}
+
+/* update number of cases */
+Set(ob, "number", next);
+
+/* setup case information in criminal's chatter */
+for(i = 0; i \< sizeof(\$criminals); i++) \{
+    Set(\$criminals[i], "crimes:charges:" + Str(next), ([ \$type:([ "severity":Int(\$severity) ]) ]));
+\}
+
+for(i = 0; i \< sizeof(\$accomplices); i++) \{
+    Set(\$accomplices[i], "crimes:charges:" + Str(next), ([ "assisting a criminal":([ "severity":Int(\$severity) ]) ]));
+\}
+
+/* Add the crime to the crime DB */
+crime = ([ "accomplices":\$accomplices, "criminals":\$criminals, "description":\$desc, "name":\$shortdesc ]);
+Set(ob, Str(next), crime);
+
+return next;
+      </Core:Property>
+      <Core:Property property="merry:lib:fileevidence">
+         X[M] /*
+** file evidence function 
+** \$desc = Description of evidence
+** \$value = Value this evidence adds to case (int). 0-5 (positive if innocent, negative if guilty)
+** \$criminal = woe name of criminal's chatter
+** \$name = string name of constable/person filing this evidence
+** \$casenum = case #
+*/
+
+mapping crime;
+mixed* evidence;
+object criminal, ob;
+string casenum, type;
+
+ob = \$\{Allegory:Lib:Law:OpenDB\};
+criminal = \$criminal;
+casenum = Str(\$casenum);
+
+/* Get the case information */
+crime = Get(criminal, "crimes:charges:" + casenum);
+
+/* Need to know what kind of crime this is */
+/* Should be the first (and only) index in the mapping */
+\$blah = map_indices(crime);
+type = \$blah[0];
+if(type == "arrestable") \{
+    type = \$blah[1];
+\}
+
+/* Get existing evidence (if it exists) */
+if(crime[type]["evidence"]) \{
+    evidence = crime[type]["evidence"];
+\} else \{
+    evidence = (\{ \});
+\}
+
+/* Add this evidence to the list */
+evidence += (\{ (\{ \$desc, \$value, \$name \}) \});
+crime[type]["evidence"] = evidence;
+
+/* Update information in criminal's chatter */
+Set(criminal, "crimes:charges:" + casenum, crime);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fileopinion">
+         X[M] /*
+** file opinion function 
+** \$desc = Description of opinion
+** \$opinion = "witness_guilty" or "witness_innocent"
+** \$criminal = woe name of criminal's chatter
+** \$witness = woe name of chatter filing this opinion
+** \$casenum = case #
+*/
+
+mapping crime, opinion;
+object criminal, witness, ob;
+string casenum, shortdesc, type;
+
+ob = \$\{Allegory:Lib:Law:OpenDB\};
+criminal = \$criminal;
+witness = \$witness;
+casenum = Str(\$casenum);
+
+/* Get the case information */
+crime = Get(criminal, "crimes:charges:" + casenum);
+
+/* Need to know what kind of crime this is */
+/* Should be the first (and only) index in the mapping */
+type = map_indices(crime)[0];
+
+/* Get existing opinions (if they exist) */
+if(crime[type]["opinion"]) \{
+    opinion = crime[type]["opinion"];
+\} else \{
+    opinion = ([ ]);
+\}
+
+/* Add this opinion to the list */
+opinion += ([ Str(witness):(\{ \$opinion, \$desc, proper(witness."skotos:charname") \}) ]);
+crime[type]["opinion"] = opinion;
+
+/* Update information in criminal's chatter */
+Set(criminal, "crimes:charges:" + casenum, crime);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:filetestimony">
+         X[M] /*
+** file testimony function 
+** \$desc = Description of testimony
+** \$opinion = "witness_guilty" or "witness_innocent"
+** \$severity = weight of testimony
+** \$criminal = woe name of criminal's chatter
+** \$witness = woe name of chatter filing this opinion
+** \$casenum = case #
+*/
+
+mapping crime, testimony;
+object criminal, witness, ob;
+string casenum, shortdesc, type;
+
+ob = \$\{Allegory:Lib:Law:OpenDB\};
+criminal = \$criminal;
+witness = \$witness;
+casenum = Str(\$casenum);
+
+/* Get the case information */
+crime = Get(criminal, "crimes:charges:" + casenum);
+
+/* Need to know what kind of crime this is */
+/* Should be the first (and only) index in the mapping */
+type = map_indices(crime)[0];
+
+/* Get existing testimonies (if they exist) */
+if(crime[type]["testimony"]) \{
+    testimony = crime[type]["testimony"];
+\} else \{
+    testimony = ([ ]);
+\}
+
+/* Add this testimony to the list */
+testimony += ([ Str(witness):(\{ \$opinion, \$severity, \$desc, Describe(witness."skotos:charname") \}) ]);
+crime[type]["testimony"] = testimony;
+
+/* Update information in criminal's chatter */
+Set(criminal, "crimes:charges:" + casenum, crime);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1232320681, "jominey", "E", 1232320740, "jominey", "E", 1232320763, "jominey", "E", 1232320847, "jominey", "E", 1232325953, "jominey", "E", 1232326109, "jominey", "E", 1232326159, "jominey", "E", 1232326179, "jominey", "E", 1232326688, "jominey", "E", 1232327015, "jominey", "E", 1232327709, "jominey", "E", 1232327929, "jominey", "E", 1232327942, "jominey", "E", 1232327977, "jominey", "E", 1232328153, "jominey", "E", 1232328181, "jominey", "E", 1232328201, "jominey", "E", 1232328364, "jominey", "E", 1232328399, "jominey", "E", 1232328436, "jominey", "E", 1232328457, "jominey", "E", 1232328477, "jominey", "E", 1232328494, "jominey", "E", 1232329615, "jominey", "E", 1232329866, "jominey", "E", 1232330097, "jominey", "E", 1232330555, "jominey", "E", 1232331188, "jominey", "E", 1232331362, "jominey", "E", 1232333408, "jominey", "E", 1232337067, "jominey", "E", 1232337144, "jominey", "E", 1232337220, "jominey", "E", 1232337510, "jominey", "E", 1232337541, "jominey", "E", 1232337637, "jominey", "E", 1232420215, "jominey", "E", 1232420250, "jominey", "E", 1576683647, "jominey", "R", 1576683664, "jominey", "E", 1576683679, "jominey", "E", 1576683715, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

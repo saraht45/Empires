@@ -1,0 +1,106 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="@priority" second="prioritize your attributes" third="prioritizes their attributes" evoke="forbidden" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="true">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* allow the players to change the priority of their attributes */
+
+if(\$actor."attributes:priorityshuffled3") \{
+  EmitTo(\$actor, "You have already chosen a priority for your attributes. You cannot change it again at this point.");
+  return FALSE;
+\}
+
+if(!\$line) \{
+  EmitTo(\$actor, "The @priority command is used to decide which of your attributes "+Describe(\$actor)+" is naturally talented at. Choose the attributes in order of things that "+Describe(\$actor)+" is best at, going to worst. These will be adjusted for "+Describe(\$actor)+"'s species. So if you're a bear, and you're tough for a bear, put body first. If you're fast for a bear, put speed first, and so on.");
+  EmitTo(\$actor, "The four attributes are body, will, speed, and mind");
+  EmitTo(\$actor, "body refers to natural strength and hardiness. High body characters are able to do more damage in combat.");
+  EmitTo(\$actor, "will refers to stubbornness and determination. Characters with high will can absorb more damage in combat.");
+  EmitTo(\$actor, "speed refers to natural speed and agility. High speed characters can dodge attacks more effectively.");
+  EmitTo(\$actor, "mind refers to smarts and wit. High mind characters make excellent craftsmen and traders.");
+  EmitTo(\$actor, ".");
+  EmitTo(\$actor, "Because you are a "+Str(\$actor."trait:animaltype")+" your attribute bonuses and penalties are: Body "+Str(\$actor."core:ur:parent"."trait:body")+", Will "+Str(\$actor."core:ur:parent"."trait:will")+", Speed "+Str(\$actor."core:ur:parent"."trait:speed")+", Mind "+Str(\$actor."core:ur:parent"."trait:mind")+".");
+  EmitTo(\$actor, ".");
+  EmitTo(\$actor, "To prioritize your skills please type @priority skill-1 skill-2 skill-3 skill-4 where skill-1 is the attribute that "+Describe(\$actor)+" is best at, and skill-4 is the worst.");
+  EmitTo(\$actor, "For example: @priority body mind speed will");
+  EmitTo(\$actor, ".");
+  EmitTo(\$actor, "Please note: You will only be able to change the priority of your attributes ONCE. After that this command will no longer function for this character.");
+  return FALSE;
+\}
+
+if(sscanf(\$line, "%s %s %s %s", \$one, \$two, \$three, \$four) != 4) \{
+  EmitTo(\$actor, "Unknown input.");
+  EmitTo(\$actor, "To prioritize your skills please type @priority skill-1 skill-2 skill-3 skill-4 where skill-1 is the attribute that "+Describe(\$actor)+" is best at, and skill-4 is the worst.");
+  EmitTo(\$actor, "For example: @priority body mind speed will");
+  return FALSE;
+\}
+
+\$valid = (\{ "body", "will", "speed", "mind" \});
+
+if(!member(lower_case(\$one), \$valid))\{ EmitTo(\$actor, "Unknown attribute name of: "+dump_value(\$one)); return FALSE; \}
+if(!member(lower_case(\$two), \$valid))\{ EmitTo(\$actor, "Unknown attribute name of: "+dump_value(\$two)); return FALSE; \}
+if(!member(lower_case(\$three), \$valid))\{ EmitTo(\$actor, "Unknown attribute name of: "+dump_value(\$three)); return FALSE; \}
+if(!member(lower_case(\$four), \$valid))\{ EmitTo(\$actor, "Unknown attribute name of: "+dump_value(\$four)); return FALSE; \}
+
+/* check they haven't listed the same attribute twice */
+\$tmp = (\{ \});
+\$tmp \|= (\{ \$one \});
+\$tmp \|= (\{ \$two \});
+\$tmp \|= (\{ \$three \});
+\$tmp \|= (\{ \$four \});
+if(sizeof(\$tmp) != 4) \{
+  EmitTo(\$actor, "You have listed the same attribute more than once. Please list the four attributes once each.");
+  return FALSE;
+\}
+
+\$actor."temp:attr1" = lower_case(\$one);
+\$actor."temp:attr2" = lower_case(\$two);
+\$actor."temp:attr3" = lower_case(\$four);
+
+/* now reset the attributes */
+\$body = Int(\$actor."core:ur:parent"."trait:body");
+\$will = Int(\$actor."core:ur:parent"."trait:will");
+\$speed = Int(\$actor."core:ur:parent"."trait:speed");
+\$mind = Int(\$actor."core:ur:parent"."trait:mind");
+
+if(\$one == "body") \$body += 5;
+if(\$one == "will") \$will += 5;
+if(\$one == "speed") \$speed += 5;
+if(\$one == "mind") \$mind += 5;
+
+if(\$two == "body") \$body += 2;
+if(\$two == "will") \$will += 2;
+if(\$two == "speed") \$speed += 2;
+if(\$two == "mind") \$mind += 2;
+
+if(\$four == "body") \$body -= 2;
+if(\$four == "will") \$will -= 2;
+if(\$four == "speed") \$speed -= 2;
+if(\$four == "mind") \$mind -= 2;
+
+if(\$body \< 1) \$body = 1;
+if(\$will \< 1) \$will = 1;
+if(\$speed \< 1) \$speed = 1;
+if(\$mind \< 1) \$mind = 1;
+
+\$actor."trait:body" = \$body;
+\$actor."trait:will" = \$will;
+\$actor."trait:speed" = \$speed;
+\$actor."trait:mind" = \$mind;
+
+\$actor."trait:dex" = nil; /* for old characters when we still used dex */
+\$actor."trait:agility" = nil;
+\$actor."attributes:priorityshuffled3" = TRUE;
+
+EmitTo(\$actor, "Your new attribute priorities have been set.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1187441000, "tonyd", "E", 1187441114, "tonyd", "P", 1187441155, "tonyd", "P", 1187441905, "tonyd", "P", 1187441945, "tonyd", "P", 1187441965, "tonyd", "P", 1187441970, "tonyd", "P", 1187442096, "tonyd", "P", 1187442230, "tonyd", "P", 1187442337, "tonyd", "P", 1187442448, "tonyd", "P", 1187442514, "tonyd", "P", 1187442962, "tonyd", "P", 1187442981, "tonyd", "P", 1187443716, "tonyd", "P", 1187502116, "tonyd", "P", 1187502185, "tonyd", "P", 1187502233, "tonyd", "P", 1187502669, "tonyd", "P", 1187502867, "tonyd", "P", 1187503033, "tonyd", "P", 1187503084, "tonyd", "P", 1202565288, "tonyd", "P", 1202565405, "tonyd", "P", 1293688763, "tonyd", "E", 1383533251, "jominey", "E", 1383533291, "jominey", "E", 1560355565, "jominey", "E", 1560380437, "jominey", "E", 1560380568, "jominey", "E", 1560381357, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

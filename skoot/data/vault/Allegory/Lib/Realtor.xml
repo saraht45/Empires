@@ -1,0 +1,110 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:cancel">
+         X[M] /* 
+** \$house - description
+** \$houseOb - woe name of sample house
+** \$realtor - woe name of npc
+*/
+
+\$realtor = \$par["realtor"];
+\$actor= \$par["actor"];
+\$house = \$par["house"];
+\$houseOb = \$par["houseOb"];
+
+Social(\$realtor, "nod", nil, "Alright, talk to me again if you change your mind.", "to", \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_tour">
+         X[M] /*
+** \$house - description
+** \$houseOb - woe name of sample house
+** \$realtor - woe name of npc
+*/
+
+\$realtor = \$par["realtor"];
+\$actor= \$par["actor"];
+\$house = \$par["house"];
+\$houseOb = \$par["houseOb"];
+
+Social(\$realtor, "beckon", nil, "Alright then!", nil, \$actor);
+
+\$followers = (\{ \$actor \});
+
+\$inv = \$actor."base:environment"."base:inventory";
+
+for(\$i = 0; map_sizeof(\$actor.followers) \&\& \$i \< sizeof(\$inv); \$i++) \{
+    if(\$actor.followers[\$inv[\$i]]) \$followers += (\{ \$inv[\$i] \});
+\}
+
+for(\$i = 0; \$i \< sizeof(\$followers); \$i++) \{
+    if(sizeof(\$followers) \> 1) \{
+        EmitTo(\$followers[\$i], TAG("You follow " + Describe(\$realtor) + " along with " + Describe(\$followers -(\{ \$followers[\$i] \})) + " for a tour of " + \$house + ".", "social:first"));
+    \} else \{
+        EmitTo(\$followers[\$i], TAG("You follow " + Describe(\$realtor) + " for a tour of " + \$house + ".", "social:first"));
+    \}
+
+    \$followers[\$i]."base:environment" = \$houseOb;
+\}
+
+EmitIn(\$realtor."base:environment", TAG(capitalize(Describe(\$realtor)) + " leaves with " + Describe(\$followers) + " in tow, returning just a few short moments later.", "social:third"));
+
+\$delay(3, FALSE, "75e1");
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$realtor)) + " gestures freely before departing, \\"I have to head back to the shop but take your time and look around. Come back and speak to me if you decide to buy.\\"", "social:third"));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_house">
+         X[M] /* 
+** \$house - description
+** \$houseOb - woe name of sample house
+** \$realtor - woe name of npc
+*/
+
+Social(\$realtor, "smile", nil, "Do you want a tour of " + \$house + "?", "at", \$actor);
+
+interaction::question(\$question: "", \$yes_fun: "give_tour", \$yes_ob: \$this, \$no_fun: "cancel", \$no_ob: \$this, \$expires: 30, \$expire_fun: "cancel", \$expire_ob: \$this, \$par: ([ "house":\$house, "houseOb":\$houseOb, "realtor":\$realtor, "actor":\$actor ]));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:ask-dob%realtor">
+         X[M] if(\$(for:words)) return TRUE;
+if(!\$this."realtor:houses") return TRUE;
+
+\$properties = \$this."realtor:houses";
+\$houses = map_indices(\$properties);
+
+if(\$(about:words)) \{
+    \$input = implode(\$(about:words), " ");
+    if(member(\$input, \$houses)) \{
+        Call(\$\{Allegory:Lib:Realtor\}, "show_house", \$house: \$input, \$houseOb: \$properties[\$input], \$realtor: \$this);
+        return FALSE;
+    \} else \{
+        return TRUE;
+    \}
+\}
+
+\$delay(0.5, TRUE, "580f");
+
+\$rstr = "\<br/\>\<br/\>" + capitalize(Describe(\$this)) + " can also tell you about the following properties for sale:\<br/\>\<br/\>";
+for(\$i = 0; \$i \< sizeof(\$houses); \$i++) \{
+   \$rstr += "\<acmd cmd='ask npc about " + \$houses[\$i] + "'\>" + \$houses[\$i] + "\</acmd\>" + "\<br/\>";
+\}
+
+\$rstr += "\<br/\>[Syntax: ask npc about " + Str(\$houses[0]) + "]\<br/\>";
+
+EmitTo(\$actor, UnSAM(ParseXML(\$rstr)));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1590276786, "jominey", "E", 1590276837, "jominey", "E", 1590276870, "jominey", "E", 1590277097, "jominey", "E", 1590277123, "jominey", "E", 1590277144, "jominey", "E", 1590277170, "jominey", "E", 1590277293, "jominey", "E", 1590277313, "jominey", "E", 1590277342, "jominey", "E", 1590277543, "jominey", "E", 1590277575, "jominey", "E", 1590277604, "jominey", "E", 1590277638, "jominey", "E", 1590277650, "jominey", "E", 1590277690, "jominey", "E", 1590277718, "jominey", "E", 1590277816, "jominey", "E", 1590277872, "jominey", "E", 1590277903, "jominey", "E", 1590277994, "jominey", "E", 1590278049, "jominey", "E", 1590278057, "jominey", "E", 1590278109, "jominey", "E", 1590278145, "jominey", "E", 1590278687, "jominey", "E", 1590278813, "jominey", "E", 1590278844, "jominey", "E", 1590278889, "jominey", "P", 1590279007, "jominey", "P", 1590279711, "jominey", "E", 1590279738, "jominey", "E", 1590279794, "jominey", "E", 1590279814, "jominey", "E", 1590279837, "jominey", "E", 1590279848, "jominey", "E", 1590279893, "jominey", "E", 1590279932, "jominey", "E", 1593289617, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

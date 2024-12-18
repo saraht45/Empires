@@ -1,0 +1,60 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tunk_bodin">
+  <SkotOS:MerAcHa action_id="empty" verb="OBJ(Ironclaw:Neoct:Verbs:IC:E:empty)">
+    <Core:PCProperties>
+      <Core:Property property="merry:global:action">
+         X[M] /* sanity checking */
+if(!\$dob) return TRUE;
+
+/* check we only have one container */
+if(sizeof(\$dob) \> 1) return TRUE;
+
+\$container = NRefOb(\$dob[0]);
+
+/* check the actor is holding this */
+if(\$container."base:environment" != \$actor) return TRUE;
+
+/* make sure it is open */
+if(\$container."details:objskin:exit:closed" \|\| \$container."details:default:exit:closed") \{
+    EmitTo(\$actor, "You would have better luck emptying that if it were not closed.");
+    return FALSE;
+\}
+
+/* empty the inventory into the actors hands */
+\$inv = \$container."base:inventory";
+\$remove = (\{ \});
+
+for(\$i=0; \$i\<sizeof(\$inv); \$i++)
+\{
+  if(\$inv[\$i]."base:immobile") \$remove += (\{ \$inv[\$i] \});
+\}
+
+\$inv -= \$remove;
+
+/* is this empty already */
+if(sizeof(\$inv) == 0) return TRUE;
+
+if(\$evoke) \{
+  \$evoke = ", "+\$evoke;
+\} else \{
+  \$evoke = ".";
+\}
+
+EmitTo(\$actor, "You empty "+Describe(\$inv, nil, \$actor)+" from "+Describe(\$dob, nil, \$actor)+\$evoke);
+EmitIn(\$actor."base:environment", Describe(\$actor)+" empties "+Describe(\$inv, \$actor)+" from "+Describe(\$dob, \$actor)+\$evoke, \$actor);
+
+for(\$i=0; \$i\<sizeof(\$inv); \$i++)
+\{
+  if(\$container."sys:shared:consume:last-content") \{
+      shared_consumable::consumable_remove(\$what: \$inv[\$i]);
+  \} else \{
+      \$inv[\$i]."base:environment" = \$actor;
+  \}
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1579712518, "jominey", "E", 1587675950, "jominey", "E", 1587676114, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

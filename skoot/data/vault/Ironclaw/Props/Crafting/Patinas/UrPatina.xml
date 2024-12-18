@@ -1,0 +1,146 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCrafting)"/>
+    <Base:Bulk immobile="false" mass="0.3" density="1.1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="patina"/>
+            <Base:SName sname="solution"/>
+            <Base:SName sname="bottle"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="solutions"/>
+            <Base:PName pname="patinas"/>
+            <Base:PName pname="bottles"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="patina"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             bottle of $(this.trait:color) patina solution
+          </Base:Description>
+          <Base:Description type="examine">
+             A bottle of $(this.trait:color) patina solution. According to the label, this mixture is suitable for coating: $[implode($this."trait:material:accepts", ", ")].<sbr/> There seems to be enough $(this.trait:material) for another $(this.trait:quantity) uses.
+          </Base:Description>
+          <Base:Description type="look">
+             A bottle of $(this.trait:color) patina solution.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties>
+      <Base:InitialProperty property="trait:quantity">
+         10
+      </Base:InitialProperty>
+    </Base:InitialProperties>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "bottle"
+      </Core:Property>
+      <Core:Property property="export:trait:help">
+         "ADD solution to ITEM. Usable on crafted items, not raw materials."
+      </Core:Property>
+      <Core:Property property="export:trait:material:accepts">
+         (\{ "copper", "bronze", "iron", "brass", "steel", "silver", "gold", "pristine silver" \})
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "patina"
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         10
+      </Core:Property>
+      <Core:Property property="merry:react-pre:add-dob">
+         X[M] if(\$iob \&\& sizeof(\$iob) == 1 \&\& NRefOb(\$iob[0])."base:environment" == \$actor) \{
+
+    \$acceptedMaterials = \$this."trait:material:accepts";
+    \$item = NRefOb(\$iob[0]);
+    \$material = Str(\$item."trait:material");
+
+    /* Only metalworkers can use the patina */
+    if(\$actor."trait:class1" != "blacksmith" \&\& \$actor."trait:class1" != "jeweler" \&\& \$actor."trait:class2" != "blacksmith" \&\& \$actor."trait:class2" != "jeweler") \{
+        EmitTo(\$actor, "You do not know how to use " + Describe(\$this, nil, \$actor) + ".");
+        return FALSE;
+    \}
+
+    /* Only use the patina on certain materials */
+    if(!member(\$material, \$acceptedMaterials)) \{
+        EmitTo(\$actor, "You cannot add " + Describe(\$this, nil, \$actor) + " to " + Describe(\$iob[0], nil, \$actor) + ".");
+        return FALSE;
+    \}
+
+    /* Do not allow on crafting materials, only on crafted objects */
+    if(\$item."trait:quantity") \{
+        EmitTo(\$actor, "You can only use " + Describe(\$this, nil, \$actor) + " on completed objects.");
+        return FALSE;
+    \}
+
+    if(!this."trait:quantity" \|\| this."trait:quantity" \< -1) \{
+        EmitTo(\$actor, "There is nothing left in "+Describe(this, nil, \$actor)+".");
+        return FALSE;
+    \}
+
+    EmitTo(\$actor, "You coat "+Describe(\$iob[0], nil, \$actor)+" with "+Describe(this, nil, \$actor) + ".");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" coats "+Describe(\$iob[0], \$actor)+" with "+Describe(this, \$actor)+".", \$actor);
+
+    \$item."trait:material" = \$this."trait:color" + " " + \$item."trait:material";
+
+
+    \$this."trait:quantity" = this."trait:quantity" - 1;
+
+    if(\$this."trait:quantity" \<= 0) \{
+        EmitTo(\$actor, "You have used the last of " + Describe(\$this, nil, \$actor) + ".");
+        Slay(\$this);
+        return FALSE;
+    \}
+
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1524683220, "jominey", "E", 1524683245, "jominey", "E", 1524684293, "jominey", "E", 1524684337, "jominey", "E", 1524684361, "jominey", "E", 1524684388, "jominey", "E", 1524684710, "jominey", "K", 1524684840, "jominey", "E", 1524686091, "jominey", "E", 1525911954, "jominey", "E", 1574370637, "jominey", "E", 1576804626, "jominey", "E", 1578319184, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:quantity">10</Core:Property>
+      <Core:Property property="trait:trash">1</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,192 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tonyd">
+  <SkotOS:MerAcHa action_id="evoke">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-pre:action">
+         X[M] mixed skill, lid;
+string lang, letter;
+
+string output, word, feedback;
+int seed, sum, begin, i;
+
+if(!\$evoke) return TRUE;
+
+if (\$verb \&\& (\$verb == "write" \|\| \$verb == "address" \|\| \$verb == "sign" \|\| !(lower_case(\$verb[0..0]) \>= "a" \&\& lower_case(\$verb[0..0]) \<= "z"))) \{
+  return TRUE;
+\}
+
+if (\$actor.mute) \{
+  \$evoke = "...";
+  return TRUE;
+\}
+
+lid = \$actor."SkotOS:CurrentLang";
+if (!lid \|\| Str(lid) == "0") \{
+  /* we're speaking common -- don't mark up */
+  return TRUE;
+\}
+
+/* change the \$lid (0-24) into a language name */
+lang = Call(\$\{Allegory:Lib:Languages:Lib:garble\},
+                         "lid-to-lang", \$lid: lid);
+/* figure out speaker's skill */
+skill = Call(\$\{Allegory:Lib:Languages:Lib:garble\},
+                  "get-skill", \$lid: lid, \$body: \$actor);
+
+
+skill = skill * 10;
+if(Get(\$actor, "trait:intelligence"))
+\{
+  skill += 2*Get(\$actor, "trait:intelligence");
+\}
+
+/* Get our dialect replacements */
+\$dialect = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "dialect:"+\$actor.dialect);
+
+/* If we are fluent in this language */
+if(skill \> 225)
+\{
+  output = "";
+
+  while (TRUE) \{
+    if (i \< strlen(\$evoke)) \{
+      switch(\$evoke[i]) \{
+        case 'a' .. 'z':
+        case 'A' .. 'Z':
+        case '0' .. '9':
+        case '\\'':
+          if (!word) \{
+            /* this begins a new word */
+            begin = i;
+          \}
+          word = \$evoke[begin .. i];
+          i ++;
+          continue;
+      \}
+    \}
+    if (word) \{
+      /* we have a pending word; deal with it */
+      /* Replace the word, if we have a dialect */
+      if(\$dialect)
+      \{
+        if(\$dialect[lower_case(word)]) word = \$dialect[lower_case(word)];
+      \}
+      output += word;
+      word = nil;
+    \}
+    if (i == strlen(\$evoke)) \{
+      /* OK: we're done */
+      break;
+    \}
+    output += \$evoke[i .. i];
+    i ++;
+  \}
+
+  \$(evoke-actor) = output;
+  \$(evoke-witness) = INLANG(lang, Int(skill), output);
+  feedback = Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "garble",
+               \$lang: lang, \$skill: 0, \$legibility: 120, \$text: output);
+\} else \{
+/* discover which words the actor knows how to speak, and mark them up accordingly */
+/* evoke-actor is what the actor sees (non-marked up)
+evoke-witness is what the actor sees (marked up)
+output is the collection of words that need to be marked up, grouped together, so only one unmarking test needs to be made, unless there is a mutter */
+  \$(evoke-actor) = "";
+  \$(evoke-witness) = "";
+  feedback = "";
+  output = "";
+
+  while (TRUE) \{
+    if (i \< strlen(\$evoke)) \{
+      switch(\$evoke[i]) \{
+        case 'a' .. 'z':
+        case 'A' .. 'Z':
+        case '0' .. '9':
+        case '\\'':
+          if (!word) \{
+            /* this begins a new word */
+            begin = i;
+            seed = 0;
+          \}
+          word = \$evoke[begin .. i];
+          i ++;
+          continue;
+      \}
+    \}
+    if (word) \{
+      /* we have a pending word; deal with it */
+      /* Replace the word, if we have a dialect */
+      if(\$dialect)
+      \{
+        if(\$dialect[lower_case(word)]) word = \$dialect[lower_case(word)];
+      \}
+
+      /* Sum words, and garble any that we can't say */
+        /* sum the word, to get an idea of its complexity */
+        sum = Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "sum-word", \$word: lower_case(word));
+        /* If the word is simple enough */
+        if(sum \< skill) \{
+          \$(evoke-actor) += word;
+          output += word;
+          feedback += Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "garble",
+               \$lang: lang, \$skill: 0, \$legibility: 120, \$text: word);
+        \} else \{
+          /* add any words that should be marked up before this */
+          \$(evoke-witness) += INLANG(lang, Int(skill), output);
+          output = "";
+          /* we don't know the word, mutter something */
+          if(!\$actor."lang:nomutter") \{
+            /* we mutter instead of saying this word */
+            \$mutter = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "mutters");
+            \$mutter = \$mutter[random(sizeof(\$mutter))];
+          \} else \{
+            /* don't mutter, give the word */
+            \$mutter = TAG(word, "imp");
+          \}
+          \$(evoke-actor) += \$mutter;
+          \$(evoke-witness) += \$mutter;
+          feedback += \$mutter;
+        \}
+      word = nil;
+    \}
+    if (i == strlen(\$evoke)) \{
+      /* Add any remaining */
+      \$(evoke-witness) += INLANG(lang, Int(skill), output);
+      /* OK: we're done */
+      break;
+    \}
+    \$(evoke-actor) += \$evoke[i .. i];
+    output += \$evoke[i .. i];
+    feedback += \$evoke[i .. i];
+    i ++;
+  \}
+\}
+
+\$(evoke-target) = \$(evoke-witness);
+
+/* If the actor has feedback enabled, lets give them the output as if they had a zero in the skill */
+
+if (\$actor."speech:feedback") \{
+/*  \$feedback = Call(\$\{IronClaw:Systems:Languages:Lib:garble\}, "garble",
+               \$lang: lang, \$skill: 0, \$legibility: 120, \$text: \$(evoke-actor)[1..strlen(\$(evoke-actor))-2]);*/
+    EmitTo(\$actor, "[Feedback: "+Str(feedback)+"]");
+\}
+
+/* and finally tell the Socials output engine */
+/* to include the language name in the result */
+if(skill \<= 60) \{
+\$(verb-extra:pe) = "in garbled " + capitalize(\$actor.dialect);
+\} else if (skill \>= 61 \&\& skill \<= 120) \{
+\$(verb-extra:pe) = "in broken " + capitalize(\$actor.dialect);
+\} else if (skill \>= 121 \&\& skill \<= 180) \{
+\$(verb-extra:pe) = "in passable " + capitalize(\$actor.dialect);
+\} else if (skill \>= 181) \{
+\$(verb-extra:pe) = "in " + capitalize(\$actor.dialect);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1052866439, "zell", "X", 1052866946, "zell", "E", 1052868350, "zell", "E", 1052952620, "zell", "E", 1052952647, "zell", "E", 1052952723, "zell", "E", 1052954869, "zell", "E", 1052955726, "zell", "E", 1052957145, "zell", "E", 1053318215, "zell", "E", 1053318225, "zell", "E", 1053318310, "zell", "E", 1057270126, "zell", "E", 1057278817, "zell", "X", 1057278842, "zell", "E", 1057350973, "zell", "E", 1057697672, "zell", "E", 1057698360, "zell", "E", 1057698619, "zell", "E", 1058800578, "zell", "E", 1058807349, "zell", "E", 1061698299, "kargh", "E", 1061698344, "kargh", "E", 1061698475, "kargh", "E", 1061698584, "kargh", "E", 1067544580, "kargh", "E", 1067544738, "kargh", "E", 1068944111, "kargh", "E", 1068944416, "kargh", "E", 1068944611, "kargh", "E", 1068944626, "kargh", "E", 1068944651, "kargh", "E", 1068944705, "kargh", "E", 1068945133, "kargh", "E", 1068945224, "kargh", "E", 1068947433, "kargh", "E", 1068947500, "kargh", "E", 1069002152, "kargh", "E", 1069002243, "kargh", "E", 1069003390, "kargh", "E", 1069003487, "kargh", "E", 1069098379, "kargh", "P", 1069976854, "kargh", "P", 1081380320, "nino", "E", 1081380379, "nino", "E", 1081380507, "nino", "E", 1084563721, "nino", "E", 1090595910, "nino", "P", 1110158418, "toddnilson", "X", 1112665922, "tonyd", "E", 1112942508, "tonyd", "P", 1112942770, "tonyd", "P", 1112943096, "tonyd", "P", 1112943150, "tonyd", "P", 1112943184, "tonyd", "P", 1112943258, "tonyd", "P", 1112944320, "tonyd", "P", 1112944444, "tonyd", "P", 1113107135, "tonyd", "P", 1113107163, "tonyd", "P", 1113107831, "tonyd", "P", 1113180752, "tonyd", "P", 1113180855, "tonyd", "P", 1113180936, "tonyd", "P", 1113181061, "tonyd", "P", 1113181105, "tonyd", "P", 1113181126, "tonyd", "P", 1113181199, "tonyd", "P", 1113181377, "tonyd", "P", 1113181938, "tonyd", "P", 1113182004, "tonyd", "P", 1113182027, "tonyd", "P", 1113182056, "tonyd", "P", 1113182444, "tonyd", "P", 1113182925, "tonyd", "P", 1113183011, "tonyd", "P", 1113183122, "tonyd", "P", 1113364086, "tonyd", "P", 1113376439, "tonyd", "P", 1113376513, "tonyd", "P", 1113447442, "tonyd", "P", 1113447499, "tonyd", "P", 1113698096, "tonyd", "P", 1113698146, "tonyd", "P", 1113698185, "tonyd", "P", 1113698265, "tonyd", "P", 1113698421, "tonyd", "P", 1113698541, "tonyd", "P", 1113698638, "tonyd", "P", 1113698648, "tonyd", "P", 1113699188, "tonyd", "P", 1113699341, "tonyd", "P", 1113699422, "tonyd", "P", 1113699484, "tonyd", "P", 1113699515, "tonyd", "P", 1113699587, "tonyd", "P", 1113700380, "tonyd", "P", 1113700923, "tonyd", "P", 1113701043, "tonyd", "P", 1113701248, "tonyd", "P", 1113781849, "tonyd", "P", 1139165509, "tunk_bodin", "X", 1139165860, "tunk_bodin", "X", 1140957826, "tonyd", "P", 1140957927, "tonyd", "P", 1140957984, "tonyd", "P", 1140958259, "tonyd", "P", 1140958292, "tonyd", "P", 1140958397, "tonyd", "P", 1140959278, "tonyd", "P", 1140959346, "tonyd", "P", 1141175433, "tonyd", "P", 1141176265, "tonyd", "P", 1141176332, "tonyd", "P", 1141178604, "tonyd", "P", 1141178743, "tonyd", "P", 1141178899, "tonyd", "P", 1141179432, "tonyd", "P", 1141179619, "tonyd", "P", 1141180834, "tonyd", "P", 1141180849, "tonyd", "P", 1141181058, "tonyd", "P", 1141181105, "tonyd", "P", 1141181429, "tonyd", "P", 1141181534, "tonyd", "P", 1141181694, "tonyd", "P", 1142746546, "tonyd", "P", 1142746771, "tonyd", "P", 1142748002, "tonyd", "P", 1142748210, "tonyd", "P", 1142748293, "tonyd", "P", 1142748544, "tonyd", "P", 1142748648, "tonyd", "P", 1142748794, "tonyd", "P", 1142748978, "tonyd", "P", 1142751678, "tonyd", "P", 1142751812, "tonyd", "P", 1196068983, "tonyd", "R", 1339785332, "jominey", "E", 1339785407, "jominey", "E", 1339785492, "jominey", "E", 1339785615, "jominey", "E", 1464244448, "tonyd", "P", 1567265099, "sendnoodlez", "E", 1567265350, "sendnoodlez", "E", 1567265499, "sendnoodlez", "E", 1567265567, "sendnoodlez", "E", 1567265859, "sendnoodlez", "E", 1567266110, "sendnoodlez", "E", 1567266166, "sendnoodlez", "E", 1567266221, "sendnoodlez", "E", 1567266250, "sendnoodlez", "E", 1567266411, "sendnoodlez", "E", 1567267301, "sendnoodlez", "E", 1567267387, "sendnoodlez", "E", 1567267422, "sendnoodlez", "E", 1569975714, "jominey", "R", 1574618042, "sendnoodlez", "E", 1574618559, "sendnoodlez", "E", 1593282698, "jominey", "E", 1593282755, "jominey", "E", 1593282903, "jominey", "E", 1593283481, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

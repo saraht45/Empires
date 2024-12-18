@@ -1,0 +1,132 @@
+<object clone="/base/obj/thing" owner="ezralee">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCrafting)"/>
+    <Base:Bulk immobile="false" mass="0.0025" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="flint"/>
+            <Base:SName sname="stone"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="flints"/>
+            <Base:PName pname="stones"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="black"/>
+          <Base:Adjective adjective="flint"/>
+          <Base:Adjective adjective="shiny"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             flint stone
+          </Base:Description>
+          <Base:Description type="examine">
+             A small, shiny black flint stone, about the size of a man's palm. You can <acmd tag="command" cmd="strike my stone with my firestriker">strike</acmd> the stone with the firestriker to create an ember with which to start a fire. <br/>There are about $(this.trait:quantity) uses left.
+          </Base:Description>
+          <Base:Description type="look">
+             A small, shiny black flint stone, about the size of a man's palm. You can <acmd tag="command" cmd="strike my stone with my firestriker">strike</acmd> the stone with the firestriker to create an ember with which to start a fire.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:quantity">
+         10
+      </Core:Property>
+      <Core:Property property="merry:react-post:strike-dob">
+         X[M] int i;
+object* kindling;
+mixed* inventory;
+
+if(NRefDetail(\$dob[0]) == "default") \{   
+    /* Look for kindling in the room */
+/*    inventory = \$actor."base:environment"."base:inventory";
+
+    kindling = (\{ \});
+    for(i = 0; i \< sizeof(inventory) \&\& sizeof(kindling) \< 5; i++) \{
+        if(Str(inventory[i]."trait:objecttype") == "kindling") \{
+            kindling += (\{ NRefOb(inventory[i]) \});
+        \}
+    \} */
+
+    /* Only allow fires outdoors */
+    if(!\$actor."base:environment"."trait:outside") \{
+        EmitTo(\$actor, "You strike your firestriker over the edge of the flint stone and a cascade of sparks shower down.");
+        return FALSE;
+    \}
+
+ /*  
+    if(sizeof(kindling) == 0) \{
+        EmitTo(\$actor, "You strike your firestriker over the edge of the flint stone and a cascade of sparks shower down."); 
+        EmitIn(\$actor."base:environment", Describe(\$actor)+" strikes the flint stone with the firestriker and a cascade of sparks shower down.", \$actor);
+    \} else if(sizeof(kindling) \> 0 \&\& sizeof(kindling) \< 5) \{
+        EmitTo(\$actor, "You strike your firestriker over the edge of the flint stone and a cascade of sparks shower down on top of some kindling. Unfortunately there is not enough there for a fire to start."); 
+        EmitIn(\$actor."base:environment", Describe(\$actor)+" strikes the flint stone with the firestriker and a cascade of sparks shower down on top of some kindling, but nothing happens.", \$actor);
+    \} else if(sizeof(kindling) \>= 5) \{ */
+
+        EmitTo(\$actor, "You strike your firestriker over the edge of the flint stone and a cascade of sparks shower down on top of some kindling. After a few seconds, flames begin to engulf the kindling creating a modest campfire."); 
+        EmitIn(\$actor."base:environment", Describe(\$actor)+" strikes the flint stone with the firestriker and a cascade of sparks shower down on top of some kindling. After a few seconds, flames begin to engulf the kindling creating a modest campfire.", \$actor);
+
+        \$fire = Spawn(\$\{Ironclaw:Props:Camping:Campfire\});
+        \$fire."base:environment" = \$actor."base:environment";
+        \$fire."base:immobile" = TRUE;
+        \$fire."base:immobile:local" = TRUE;
+    
+
+    \$this."trait:quantity"--;
+\}    
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quantity">
+         X[M] if(\$this."trait:quantity" \<= 0) \{
+    Slay(\$this);
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1445656873, "ezralee", "K", 1445656893, "ezralee", "K", 1445656914, "ezralee", "E", 1445657482, "ezralee", "X", 1445657562, "ezralee", "X", 1445657575, "ezralee", "E", 1445657588, "ezralee", "E", 1445657600, "ezralee", "E", 1445657610, "ezralee", "E", 1445657695, "ezralee", "E", 1445722496, "ezralee", "K", 1507993645, "jominey", "E", 1507993705, "jominey", "E", 1507993724, "jominey", "E", 1507996498, "jominey", "E", 1507998345, "jominey", "E", 1507999020, "jominey", "E", 1507999059, "jominey", "K", 1507999102, "jominey", "K", 1507999194, "jominey", "E", 1507999280, "jominey", "E", 1507999302, "jominey", "E", 1507999312, "jominey", "E", 1507999340, "jominey", "E", 1508002725, "jominey", "E", 1508003430, "jominey", "E", 1508711817, "jominey", "E", 1508711832, "jominey", "E", 1591152072, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:color">
+         "red and brown"
+      </Core:Property>
+      <Core:Property property="trait:material">
+         "polka-dotted"
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

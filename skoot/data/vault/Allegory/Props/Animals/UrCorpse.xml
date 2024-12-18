@@ -1,0 +1,193 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1" verb2="are holding" verb3="is holding"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="animal"/>
+            <Base:SName sname="carcass"/>
+            <Base:SName sname="corpse"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="carcasses"/>
+            <Base:PName pname="animals"/>
+            <Base:PName pname="corpses"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="animal"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             the corpse <a_or_an>$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>
+          </Base:Description>
+          <Base:Description type="examine">
+             {? | $(this.combat:dead) | The corpse of <a_or_an>$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>. | <a_or_an capitalize="1">$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>. } $(this.trait:examine)
+          </Base:Description>
+          <Base:Description type="look">
+             {? | $(this.combat:dead) | The corpse of <a_or_an>$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>. | <a_or_an capitalize="1">$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>. } $(this.trait:look)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties>
+      <Base:InitialProperty property="petbody">
+         1
+      </Base:InitialProperty>
+    </Base:InitialProperties>
+    <Core:Properties>
+      <Core:Property property="merry:act:start">
+         X[M] return Call(this, "rot");
+      </Core:Property>
+      <Core:Property property="merry:inherit:lib:rot">
+         \<Ironclaw:Lib:timers:rot\>
+      </Core:Property>
+      <Core:Property property="merry:react-pre:skin-dob">
+         X[M] int skill, i, j;
+mapping lootTableMap;
+mixed* lootTable;
+mixed* loot;
+
+if(!\$this."combat:dead") return TRUE;
+
+if(\$this.skinning) return FALSE;
+
+skill = Int(\$actor."skill:hunting:skinning");
+
+if(skill) \{
+    \$this.skinning = 1;
+    lootTableMap = \$this."skinning:loot";
+    lootTable = map_indices(lootTableMap);
+    loot = (\{ \});
+    
+    if(skill \< Int(\$this."trapper:difficulty")) \{
+       \$chance = 1;
+    \}
+
+    for(i = 0; sizeof(lootTable) \&\& i \< sizeof(lootTable); i++) \{
+      if(!\$chance \|\| (\$chance \&\& random(100) \> 50)) \{
+        \$tempOb = Spawn(lootTable[i]);
+        \$quality = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "skill:hunting:skinning" \}), \$bonus: (\{ "trait:intelligence" \}));
+        \$tempOb."trait:quality" = \$quality;
+        \$tempOb."trait:size" = \$this."trait:size";
+        \$tempOb."skinned:by" = \$actor;
+        \$tempProperties = lootTableMap[lootTable[i]];
+
+        for(j = 0; sizeof(\$tempProperties) \&\& j \< sizeof(\$tempProperties); j+=2) \{
+            Set(\$tempOb, \$tempProperties[j+1], Get(\$this, \$tempProperties[j]));
+        \}
+
+        if(\$tempOb."base:urparent" == \$\{Allegory:Props:Animals:AnimalParts:UrPelt\}) \{
+            \$quantity = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "skill:hunting:skinning" \}), \$bonus: (\{ "trait:intelligence" \}));
+
+            if(\$this."trait:size" == "extra-large") \{
+                \$quantity = Flt(\$quantity/2);
+                if(Int(\$quantity) \> 10) \$quantity = 10.0;
+            \} else if(\$this."trait:size" == "large") \{
+                \$quantity = Flt(\$quantity/3);
+                if(Int(\$quantity) \> 8) \$quantity = 8.0;
+            \} else if(\$this."trait:size" == "medium") \{
+                \$quantity = Flt(\$quantity/6);
+                if(Int(\$quantity) \> 4) \$quantity = 4.0;
+            \} else \{
+                \$quantity = 1.0;
+            \}
+
+            if(Int(\$quantity) \<= 0) \$quantity = 1.0;
+
+            \$tempOb."trait:quantity" = Int(\$quantity*10.0);
+        \}
+
+        if(\$tempOb."base:urparent" == \$\{Allegory:Props:Crafting:Parts:Feather\}) \{
+            \$quantity = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "skill:hunting:skinning" \}), \$bonus: (\{ "trait:intelligence" \}));
+
+            if(\$this."trait:size" == "extra-large") \{
+                \$quantity = \$quantity/2;
+                if(\$quantity \> 10) \$quantity = 10;
+            \} else if(\$this."trait:size" == "large") \{
+                \$quantity = \$quantity/3;
+                if(\$quantity \> 8) \$quantity = 8;
+            \} else if(\$this."trait:size" == "medium") \{
+                \$quantity = \$quantity/6;
+                if(\$quantity \> 4) \$quantity = 4;
+            \} else \{
+                \$quantity = 1;
+            \}
+
+            for(j = 0; j \< Int(\$quantity-1); j++) \{
+                \$tempOb2 = Duplicate(\$tempOb);
+                loot += (\{ \$tempOb2 \});
+            \}
+        \}
+
+        loot += (\{ \$tempOb \});
+    \}
+  \}
+
+    if(sizeof(loot)) \{
+        EmitTo(\$actor, "You skin " + Describe(\$this) + " producing " + Describe(loot) + ".");
+        EmitIn(\$actor."base:environment", Describe(\$actor) + " skins " + Describe(\$this) + " producing " + Describe (loot) + ".", \$actor);
+
+        for(i = 0; i \< sizeof(loot); i++) \{
+            loot[i]."base:environment" = \$actor;
+
+            if(loot[i]."base:environment" != \$actor) \{
+                loot[i]."base:environment" = \$actor."base:environment";
+            \}
+        \}
+    \} else \{
+        EmitTo(\$actor, "You attempt to skin " + Describe(\$this) + " but end up ruining every usable part.");
+        EmitIn(\$actor."base:environment", Describe(\$actor) + " attempts to skin " + Describe(\$this) + " but ends up ruining every usable part.", \$actor);
+
+    \}
+
+    \$delay(0.1, FALSE, "e131");
+
+    Slay(\$this);
+    return FALSE;
+\}
+
+EmitTo(\$actor, "You do not know how to properly skin " + Describe(\$this) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="petbody">1</Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1594914001, "jominey", "E", 1594914440, "jominey", "K", 1594914673, "jominey", "E", 1594914695, "jominey", "E", 1594922206, "jominey", "E", 1594922267, "jominey", "E", 1594922297, "jominey", "E", 1594923390, "jominey", "E", 1594924568, "jominey", "E", 1595294941, "jominey", "K", 1595294967, "jominey", "K", 1597369066, "jominey", "K", 1599924718, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

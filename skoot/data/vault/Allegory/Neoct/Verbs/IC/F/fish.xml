@@ -1,0 +1,353 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tunk_bodin">
+  <Socials:Verb imp="fish" second="fish" third="fishes" evoke="forbidden" default-role="dob" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="false" single="true" raw="false" requirement="optional" distance="armslength">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="in"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="for" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="for"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="from" direct="false" single="true" raw="false" requirement="optional" distance="armslength">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="on"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="iob" direct="false" single="false" raw="false" requirement="optional" distance="owned">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="with"/>
+          <Socials:SocObPrep prep="using"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* fishing somewhere */
+
+/* are they already busy? */
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+  EmitTo(\$actor, "You are already busy "+\$message+".");
+  return FALSE;
+\}
+
+/* what are they fishing with? */
+if(\$iob \&\& (sizeof(\$iob) == 1) \&\& (NRefOb(\$iob[0])."trait:objecttype" == "fishingnet")) \{
+  \$fishingtype = "net";
+  \$tool = NRefOb(\$iob[0]);
+\} else if(\$iob \&\& (sizeof(\$iob) == 1) \&\& (NRefOb(\$iob[0])."trait:objecttype" == "fishingrod")) \{
+  \$fishingtype = "rod";
+  \$tool = NRefOb(\$iob[0]);
+\} else if(\$iob \&\& (sizeof(\$iob) == 1) \&\& (NRefOb(\$iob[0])."trait:objecttype" == "spear")) \{
+  \$fishingtype = "spear";
+  \$tool = NRefOb(\$iob[0]);
+\} else if(\$iob \&\& (sizeof(\$iob) == 1) \&\& (NRefOb(\$iob[0])."trait:objecttype" == "rock")) \{
+  \$fishingtype = "rock";
+  \$tool = NRefOb(\$iob[0]);
+\} else \{
+  \$fishingtype = "hands";
+  \$tool = nil;
+\}
+
+/* Where are we fishing?*/
+if(\$dob) \{
+  /* are we trying to fish in too many places? */
+  if(sizeof(\$dob) \> 1) \{
+    return TRUE;
+  \}
+  \$target = NRefOb(\$dob[0]);
+  \$detail = NRefDetail(\$dob[0]);
+\} else \{
+  /* no DOB, so return true */
+  EmitTo(\$actor, "Where would you like to fish?");
+  return FALSE;
+\}
+
+/* Check that the object is a fishable location */
+if(!Get(\$target, "fishing:"+\$detail+":fisharray")) \{
+  EmitTo(\$actor, "You may only fish at designated fishing holes. Seek large bodies of water.");
+  return FALSE;
+\}
+
+if(\$fishingtype == "net") \{
+    if(Int(\$actor."effect:energy:severity") \>= 90) \{
+        EmitTo(\$actor, "You are too tired to fish right now.");
+        return FALSE;
+    \}
+\} else \{
+    if(Int(\$actor."effect:energy:severity") \>= 98) \{
+        EmitTo(\$actor, "You are too tired to fish right now.");
+        return FALSE;
+    \}
+\}
+
+/* We started fishing here */
+
+/* Make the fishing roll */
+\$attribute = "trait:speed";
+\$penalty = 0;
+\$fishskills = (\{ "general:fishing" \});
+\$delayattribute = "trait:intelligence";
+switch(\$fishingtype) \{
+  case "net":
+    EmitTo(\$actor, "You toss the end of your net in "+Describe(\$dob[0])+".");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" tosses the end of " + \$actor."base:possessive" + " net into "+Describe(\$dob[0])+".", \$actor);
+    \$delayattribute = "trait:strength";
+    \$attribute = "trait:strength";
+    \$penalty = 0;
+    break;
+  case "rod":
+    EmitTo(\$actor, "You begin fishing in "+Describe(\$dob[0])+" with your fishing pole.");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" begins fishing in "+Describe(\$dob[0])+" with " + \$actor."base:possessive" + " fishing pole.", \$actor);
+    \$delayattribute = "trait:intelligence";
+    \$attribute = "trait:intelligence";
+    \$penalty = 0;
+    break;
+  case "spear":
+    EmitTo(\$actor, "You stand over "+Describe(\$dob[0])+" with your spear poised.");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" stands over "+Describe(\$dob[0])+" with " + \$actor."base:possessive" + " spear poised.", \$actor);
+    \$delayattribute = "trait:perception";
+    \$fishskills \|= (\{ "combat:polearm" \});
+    \$penalty = -2;
+    break;
+  case "rock":
+    EmitTo(\$actor, "You stand over "+Describe(\$dob[0])+" with your rock in hand, ready to be unleashed.");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" stands over "+Describe(\$dob[0])+" with " + \$actor."base:possessive" + " rock in hand, ready to be unleashed.", \$actor);
+    \$delayattribute = "trait:perception";
+    \$fishskills = (\{ \});
+    \$penalty = -2;
+    break;
+  default:
+    EmitTo(\$actor, "You begin fishing in "+Describe(\$dob[0])+" with your bare hands.");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" begins fishing in "+Describe(\$dob[0])+" with " + \$actor."base:possessive" + " bare hands.", \$actor);
+    \$attribute = "trait:speed";
+    \$penalty = -5;
+    break;
+\}
+
+if(\$tool \&\& \$tool."fishing:attribute")
+  \$attribute = Str(\$tool."fishing:attribute");
+if(\$tool \&\& \$tool."fishing:penalty")
+  \$penalty = Int(\$tool."fishing:penalty");
+
+/* delay while they fish */
+\$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ \}), \$bonus: \$delayattribute, \$modifier: 0);
+/* delay based on how good their roll was */
+\$ftimer = 37-(\$result*3);
+
+/* mark them as busy */
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "fishing");
+\$fishinghole = \$actor."base:environment";
+
+/* check if they are still fishing */
+while(\$ftimer \> 0) \{
+  \$ftimer -= 10;
+  \$delay(10, FALSE, "52a6");
+
+  if(\$actor."busy:id" != \$id) \{
+    /* they @stopped fishing. Just exit */
+    return FALSE;
+  \}
+  /* check that they are still in the room */
+  if(\$actor."base:environment" != \$fishinghole) \{
+    EmitTo(\$actor, "You will have to stay in one place if you want to catch any fish.");
+    /* mark them as not busy */
+    ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+    return TRUE;
+  \}
+\}
+
+/* mark them as not busy */
+ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+
+/* check if they still hold the original tool */
+if(\$fishingtype != "hands") \{
+ if(\$iob \&\& (sizeof(\$iob) == 1)) \{
+  if(NRefOb(\$iob[0])."base:environment" != \$actor) \{
+   EmitTo(\$actor, "You seem to have misplaced " +Describe(NRefOb(\$iob[0]), nil, nil, STYLE_NONPOSS)+ ". Fishing has ceased.");
+   return FALSE;
+  \}
+ \}
+\}
+
+/* We've waited for our catch, make another fishing roll to see if we catch anything */
+\$result = ironclaw::roll(\$roller: \$actor, \$skills: \$fishskills, \$bonus: \$attribute, \$modifier: \$penalty);
+/* EmitTo(\$actor, dump_value(\$fishskills) + " : " + dump_value(\$attribute) + " : " + dump_value(\$penalty) + " : " + dump_value(\$result)); */
+/* reset settings */
+\$reducestock = nil;
+
+/* have they used up their number of fish for the day? */
+if(!\$actor."fishing:limit") \$actor."fishing:limit" = 0;
+if(\$actor."fishing:limit" \>= Int(\$actor."skill:general:fishing") + 10) \{
+  /* hit the limit. Should the limit be reset? */
+  if(\$actor."fishing:timelimit" \&\& \$actor."fishing:timelimit" \> time()) \{
+    /* hit limit, and the limit isn't yet reset */
+    /* are there fish here anyway? */
+    if(!\$target."fishing:stock" \|\| \$target."fishing:stock" \< 1) \{
+      \$result = 0;
+    \} else \{
+      \$reducestock = TRUE;
+    \}
+  \} else \{
+    /* reset the time limit */
+    \$actor."fishing:timelimit" = time()+60*60*20;
+    /* reset the fish limit */
+    \$actor."fishing:limit" = 0;
+  \}
+\}
+
+/* figure out the fish they got */
+if(\$reducestock \&\& \$result) NRefOb(\$target)."fishing:stock"--;
+
+if(\$fishingtype == "net" \&\& \$result) \{
+  /* special code for catching fish with nets */
+  \$caughtfish = (\{ \});
+  /* Pick fish from the array, and let the actor catch it */
+  \$fisharray = Get(\$target, "fishing:"+\$detail+":fisharray");
+
+  \$result = Int((Flt(\$result)/24.0)*Flt(sizeof(\$fisharray)));
+
+  for(\$t = 0; \$t \< random(5) + 1; \$t++) \{
+    \$tmp = random(\$result) + 1;
+    \$fish = Spawn(\$fisharray[\$tmp]);
+
+    /* Set the quality of the fish */
+    \$fish."trait:quality" = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "general:fishing" \}), \$bonus: \$attribute);
+
+    \$result = \$result - \$tmp;
+
+    /* Add the fish to the array of caught fish */
+    \$caughtfish += (\{ \$fish \});
+  \}
+  \$actor."fishing:limit"++;
+
+  status::change_status(\$char: \$actor, \$type: "energy", \$amount: 2*sizeof(\$caughtfish));
+
+  EmitTo(\$actor, "You wrestle your net ashore, filled with "+Describe(\$caughtfish)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" wrestles " + \$actor."base:possessive" + " net ashore, filled with "+Describe(\$caughtfish)+".", \$actor);
+
+  /* move the fish to the actor */
+  for(\$i=0;\$i\<sizeof(\$caughtfish);\$i++) \{
+    \$caughtfish[\$i]."base:environment" = NRefOb(\$iob[0]);
+  \}
+  \$overflow = (\{ \});
+  /* check that the fish were all moved to the net */
+  for(\$i=0;\$i\<sizeof(\$caughtfish);\$i++) \{
+    if(!\$caughtfish[\$i]."base:environment")
+        \$overflow += (\{ \$caughtfish[\$i] \});
+  \}
+  \$caughtfish -= \$overflow;
+  if(sizeof(\$overflow)) \{
+   EmitTo(\$actor, "Because your net is overflowing, "+Describe(\$overflow)+" falls back into "+Describe(\$dob[0])+".");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+"'s net is overflowing, so "+Describe(\$overflow)+" falls back into "+Describe(\$dob[0])+".", \$actor);
+   for(\$i=0;\$i\<sizeof(\$overflow);\$i++)
+    Slay(\$overflow[\$i]);
+  \}
+\} else if (\$result) \{
+  /* Pick a fish from the array, and let the actor catch it */
+  \$fisharray = Get(\$target, "fishing:"+\$detail+":fisharray");
+
+  \$result = Int((Flt(\$result)/24.0)*Flt(sizeof(\$fisharray)));
+
+  \$result = random(\$result);
+
+  \$fish = Spawn(\$fisharray[\$result]);
+
+  /* Set the quality of the fish */
+  \$fish."trait:quality" = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "general:fishing" \}), \$bonus: \$attribute);
+
+  /* output catching fish message */
+  switch(\$fishingtype) \{
+    case "rod":
+      EmitTo(\$actor, "You hooked "+Describe(\$fish)+".");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" hooks "+Describe(\$fish)+".", \$actor);
+
+      if(\$tool."trait:baittype") \{
+          Set(\$tool, "details:bait:sname:bait", FALSE);
+          Set(\$tool, "details:bait:sname:lure", FALSE);
+          Set(\$tool, "details:bait:sname:worm", FALSE);
+          Set(\$tool, "details:bait:pname:bait", FALSE);
+          Set(\$tool, "details:bait:pname:lure", FALSE);
+          Set(\$tool, "details:bait:pname:worm", FALSE);
+          Set(\$tool, "trait:baitexamine", nil);
+          Set(\$tool, "trait:baitcolor", nil);
+          Set(\$tool, "trait:baitmaterial", nil);
+          Set(\$tool, "trait:baittype", nil);
+      \}      
+
+      break;
+    case "spear":
+      EmitTo(\$actor, "You successfully speared "+Describe(\$fish)+".");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" successfully spears "+Describe(\$fish)+".", \$actor);
+      break;
+    case "rock":
+      EmitTo(\$actor, "You successfully struck "+Describe(\$fish)+" and it flips upward before landing near your feet, as does the rock.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" successfully strikes "+Describe(\$fish)+" and it flips upward before landing near " + \$actor."base:possessive" + " feet, as does the rock.", \$actor);
+      NRefOb(\$iob[0])."base:environment" = \$actor."base:environment";
+      break;
+    default:
+      EmitTo(\$actor, "You grab "+Describe(\$fish)+" in your hands and haul it inward.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" grabs "+Describe(\$fish)+" in " + \$actor."base:possessive" + " hands and hauls it inward.", \$actor);
+      break;
+  \}
+
+  /* move the fish to the actor */
+  if(\$fishingtype != "rock") \{
+    \$fish."base:environment" = \$actor;
+  \} else \{
+    \$fish."base:environment" = \$actor."base:environment";
+  \}
+
+  status::change_status(\$char: \$actor, \$type: "energy", \$amount: 2);
+
+  if(!\$fish."base:environment") \{
+    EmitTo(\$actor, "Before you can grab "+Describe(\$fish)+", it slips back into "+Describe(\$dob[0])+".");
+    EmitIn(\$actor."base:environment", "Before "+Describe(\$actor)+" can grabs "+Describe(\$fish)+", it slips back into "+Describe(\$dob[0])+".", \$actor);
+    Slay(\$fish);
+  \}
+  \$actor."fishing:limit"++;
+\} else \{
+  /* didn't catch anything */
+  switch(\$fishingtype) \{
+    case "net":
+      EmitTo(\$actor, "You wrestle your net ashore, without a catch.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" wrestles " + \$actor."base:possessive" + " net ashore, without a catch.", \$actor);
+      break;
+    case "rod":
+      EmitTo(\$actor, "You reel in your line, without a catch.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" reels in " + \$actor."base:possessive" + " line, without a catch.", \$actor);
+      break;
+    case "spear":
+      EmitTo(\$actor, "You stab uselessly and end up without a catch.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" stabs " + \$actor."base:possessive" + " spear uselessly and ends up without a catch.", \$actor);
+      break;
+    case "rock":
+      EmitTo(\$actor, "You throw your rock fruitlessly and end up without a catch.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" throws " + \$actor."base:possessive" + " rock fruitlessly and ends up without a catch.", \$actor);
+      NRefOb(\$iob[0])."base:environment" = \$actor."base:environment";
+      break;
+    default:
+      EmitTo(\$actor, "You lean back, hands empty.");
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" leans back, hands empty.", \$actor);
+      break;
+  \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1593261747, "jominey", "E", 1593261830, "jominey", "E", 1593524172, "jominey", "E", 1593900853, "jominey", "E", 1593908975, "jominey", "E", 1593909023, "jominey", "E", 1593958598, "jominey", "E", 1593958765, "jominey", "E", 1593958825, "jominey", "E", 1593958883, "jominey", "E", 1593958943, "jominey", "E", 1643209584, "sendnoodlez", "E", 1643209868, "sendnoodlez", "E", 1643215126, "sendnoodlez", "E", 1643215255, "sendnoodlez", "E", 1643215428, "sendnoodlez", "E", 1643215607, "sendnoodlez", "E" \})
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

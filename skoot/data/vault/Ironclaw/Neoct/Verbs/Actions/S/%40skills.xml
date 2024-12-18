@@ -1,0 +1,223 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tunk_bodin">
+  <SkotOS:MerAcHa action_id="@skills">
+    <Core:PCProperties>
+      <Core:Property property="merry:global:action">
+         X[M] mapping map, tmpmap;
+int i, j;
+object ob;
+string output;
+
+if(\$actor."base:urparent" == \$\{Allegory:Bodies:Mainbody\}) \{
+    Call(\$this, "allegory");
+    return FALSE;
+\}
+
+\$categories = (\{ (\{ "lang", "languages" \}), (\{ "alteration", "crafting" \}), (\{ "combat", "combat" \}), (\{ "hunting", "hunting" \}), (\{ "academics", "academics" \}), (\{ "social", "social skills" \}), (\{ "thief", "thief" \}), (\{ "career", "careers" \}) \});
+
+/* Get a mapping of all the actors skills */
+/*map = \$actor."*";
+map = prefixed_map(map, "skill:");
+*/
+map = ([ ]);
+map += prefixed_map(\$actor."*", "skill:");
+for (ob = \$actor."core:ur:parent"; ob; ob = ob."core:ur:parent") \{
+    map = prefixed_map(ob."*", "export:skill:") + map;
+\}
+
+/* ...and their careers */
+map += prefixed_map(\$actor."*", "career:");
+for (ob = \$actor."core:ur:parent"; ob; ob = ob."core:ur:parent") \{
+    map = prefixed_map(ob."*", "export:career:") + map;
+\}
+
+/* for some reason all objects have skill:fatigue */
+map -= (\{ "skill:fatigue" \});
+
+/* output their attributes */
+EmitTo(\$actor, TAG("Attributes", "imp")+":- Body: "+Str(\$actor."trait:body")+" Will: "+Str(\$actor."trait:will")+" Speed: "+Str(\$actor."trait:speed")+" Mind: "+Str(\$actor."trait:mind"));
+
+/* output their influence */
+\$influence = ironclaw::check_influencepoints(\$actor: \$actor, \$absolute: 1);
+\$current = ironclaw::check_influencepoints(\$actor: \$actor);
+if(\$influence)
+  EmitTo(\$actor, TAG("Influence", "imp")+": "+Str(\$current)+"/"+Str(\$influence));
+
+if(sizeof(map_indices(map)) == 0)
+\{
+  EmitTo(\$actor, "You don't know any "+TAG("skills", "imp")+"...yet");
+  return FALSE;
+\}
+
+/* for each category */
+for (j = 0; j \< sizeof(\$categories); j++)
+\{
+  /* Get a list of skills of this category */
+  tmpmap = ([ ]);
+  tmpmap += prefixed_map(map, "export:skill:"+\$categories[j][0]+":", TRUE);
+  tmpmap += prefixed_map(map, "skill:"+\$categories[j][0]+":", TRUE);
+  tmpmap += prefixed_map(map, "export:career:"+\$categories[j][0]+":", TRUE);
+  tmpmap += prefixed_map(map, "career:"+\$categories[j][0]+":", TRUE);
+
+  \$list = map_indices(tmpmap);
+  /* Remove these skills from the master skill mapping */
+  map -= map_indices(prefixed_map(map, "export:skill:"+\$categories[j][0]+":"));
+  map -= map_indices(prefixed_map(map, "skill:"+\$categories[j][0]+":"));
+  map -= map_indices(prefixed_map(map, "export:career:"+\$categories[j][0]+":"));
+  map -= map_indices(prefixed_map(map, "career:"+\$categories[j][0]+":"));
+
+  /* List the skills */
+  if(sizeof(\$list) \> 0) EmitTo(\$actor, TAG(capitalize(\$categories[j][1]), "imp")+":");
+  for (i = 0; i \< sizeof(\$list); i++)
+  \{
+    output = \$list[i]+": ";
+    if(Get(\$actor, "skill:"+\$categories[j][0]+":"+\$list[i]))
+      output += Get(\$actor, "skill:"+\$categories[j][0]+":"+\$list[i]);
+    if(Get(\$actor, "career:"+\$categories[j][0]+":"+\$list[i]))
+      output += "("+Get(\$actor, "career:"+\$categories[j][0]+":"+\$list[i])+")";
+    EmitTo(\$actor, output);
+  \}
+\}
+
+/* List remaining skills */
+tmpmap = ([ ]);
+tmpmap += prefixed_map(map, "export:skill:", TRUE);
+tmpmap += prefixed_map(map, "skill:", TRUE);
+tmpmap += prefixed_map(map, "export:career:", TRUE);
+tmpmap += prefixed_map(map, "career:", TRUE);
+\$list = map_indices(tmpmap);
+if(sizeof(\$list) \> 0) EmitTo(\$actor, TAG("Other skills:", "imp"));
+for (i = 0; i \< sizeof(\$list); i++)
+\{
+  if(sscanf(\$list[i], "%*s:%s", \$name) == 2)\{
+    output = \$name+": ";
+    if(Get(\$actor, "skill:"+\$list[i]))
+      output += Get(\$actor, "skill:"+\$list[i]);
+    if(Get(\$actor, "career:"+\$list[i]))
+      output += "("+Get(\$actor, "career:"+\$list[i])+")";
+    EmitTo(\$actor, output);
+  \}
+\}
+
+/* List the learning points */
+EmitTo(\$actor, "You have "+TAG(\$actor."student:learningpoints", "imp")+" learning point(s).");
+
+if(!\$actor."attributes:priorityshuffled3") EmitTo(\$actor, "(Due to changes to attributes, your attributes have been reset to their base values. Use the @priority command to reprioritize your attributes.)");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:allegory">
+         X[M] mapping map, tmpmap;
+int i, j;
+object ob;
+string output, class1, class2;
+
+\$categories = (\{ (\{ "lang", "languages" \}), (\{ "alteration", "crafting" \}), (\{ "combat", "combat" \}), (\{ "hunting", "hunting" \}), (\{ "academics", "academics" \}), (\{ "social", "social skills" \}), (\{ "thief", "thief" \}), (\{ "career", "careers" \}), (\{ "academic", "academic skills" \}), (\{ "general", "general skills" \}) \});
+
+if(\$actor."trait:class1") class1 = \$actor."trait:class1";
+if(\$actor."trait:class2") class2 = \$actor."trait:class2";
+
+EmitTo(\$actor, "");
+if(class1 \&\& !class2) \{
+    EmitTo(\$actor, "You are a " + TAG(class1, "imp") + ".");
+\}
+
+if(class1 \&\& class2) \{
+    EmitTo(\$actor, "You are a " + TAG(class1, "imp") + " and " + TAG(class2, "imp") + ".");
+\}
+
+
+/* Get a mapping of all the actors skills */
+/*map = \$actor."*";
+map = prefixed_map(map, "skill:");
+*/
+map = ([ ]);
+map += prefixed_map(\$actor."*", "skill:");
+for (ob = \$actor."core:ur:parent"; ob; ob = ob."core:ur:parent") \{
+    map = prefixed_map(ob."*", "export:skill:") + map;
+\}
+
+/* for some reason all objects have skill:fatigue */
+map -= (\{ "skill:fatigue" \});
+
+/* output their attributes */
+EmitTo(\$actor, TAG("Attributes", "imp")+
+       ":- Strength: "+Str(\$actor."trait:strength")+
+         " Speed: "+Str(\$actor."trait:speed")+
+         " Resilience: "+Str(\$actor."trait:resilience")+
+         " Perception: "+Str(\$actor."trait:perception")+
+         " Intelligence: "+Str(\$actor."trait:intelligence")+
+         " Charisma: "+Str(\$actor."trait:charisma"));
+
+/* output their influence */
+\$influence = ironclaw::check_influencepoints(\$actor: \$actor, \$absolute: 1);
+\$current = ironclaw::check_influencepoints(\$actor: \$actor);
+if(\$influence)
+  EmitTo(\$actor, TAG("Influence", "imp")+": "+Str(\$current)+"/"+Str(\$influence));
+
+if(sizeof(map_indices(map)) == 0)
+\{
+  EmitTo(\$actor, "You don't know any "+TAG("skills", "imp")+"...yet");
+  return FALSE;
+\}
+
+/* for each category */
+for (j = 0; j \< sizeof(\$categories); j++)
+\{
+  /* Get a list of skills of this category */
+  tmpmap = ([ ]);
+  tmpmap += prefixed_map(map, "export:skill:"+\$categories[j][0]+":", TRUE);
+  tmpmap += prefixed_map(map, "skill:"+\$categories[j][0]+":", TRUE);
+  tmpmap += prefixed_map(map, "export:career:"+\$categories[j][0]+":", TRUE);
+  tmpmap += prefixed_map(map, "career:"+\$categories[j][0]+":", TRUE);
+
+  \$list = map_indices(tmpmap);
+  /* Remove these skills from the master skill mapping */
+  map -= map_indices(prefixed_map(map, "export:skill:"+\$categories[j][0]+":"));
+  map -= map_indices(prefixed_map(map, "skill:"+\$categories[j][0]+":"));
+  map -= map_indices(prefixed_map(map, "export:career:"+\$categories[j][0]+":"));
+  map -= map_indices(prefixed_map(map, "career:"+\$categories[j][0]+":"));
+
+  /* List the skills */
+  if(sizeof(\$list) \> 0) EmitTo(\$actor, TAG(capitalize(\$categories[j][1]), "imp")+":");
+  for (i = 0; i \< sizeof(\$list); i++)
+  \{
+    output = \$list[i]+": ";
+    if(Get(\$actor, "skill:"+\$categories[j][0]+":"+\$list[i]))
+      output += Get(\$actor, "skill:"+\$categories[j][0]+":"+\$list[i]);
+    if(Get(\$actor, "career:"+\$categories[j][0]+":"+\$list[i]))
+      output += "("+Get(\$actor, "career:"+\$categories[j][0]+":"+\$list[i])+")";
+    EmitTo(\$actor, output);
+  \}
+\}
+
+/* List remaining skills */
+tmpmap = ([ ]);
+tmpmap += prefixed_map(map, "export:skill:", TRUE);
+tmpmap += prefixed_map(map, "skill:", TRUE);
+tmpmap += prefixed_map(map, "export:career:", TRUE);
+tmpmap += prefixed_map(map, "career:", TRUE);
+\$list = map_indices(tmpmap);
+if(sizeof(\$list) \> 0) EmitTo(\$actor, TAG("Other skills:", "imp"));
+for (i = 0; i \< sizeof(\$list); i++)
+\{
+  if(sscanf(\$list[i], "%*s:%s", \$name) == 2)\{
+    output = \$name+": ";
+    if(Get(\$actor, "skill:"+\$list[i]))
+      output += Get(\$actor, "skill:"+\$list[i]);
+    if(Get(\$actor, "career:"+\$list[i]))
+      output += "("+Get(\$actor, "career:"+\$list[i])+")";
+    EmitTo(\$actor, output);
+  \}
+\}
+
+/* List the learning points */
+EmitTo(\$actor, "You have "+TAG(\$actor."student:learningpoints", "imp")+" learning point(s).");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1566571757, "jominey", "E", 1566571897, "jominey", "E", 1566571934, "jominey", "E", 1566571968, "jominey", "E", 1596213555, "jominey", "E", 1596213612, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

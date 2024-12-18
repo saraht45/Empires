@@ -1,0 +1,245 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="certificate"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="certificates"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="marriage"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             marriage certificate
+          </Base:Description>
+          <Base:Description type="look">
+             A marriage certificate.<br/>
+$(this.writing)
+          </Base:Description>
+          <Base:Description type="writing">
+             $[Str(NRefOb($target).writing)]
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:nip:item:cost">
+         5000
+      </Core:Property>
+      <Core:Property property="export:writing">
+         "The certificate hasn't yet been filled in. It needs to be signed by both partners, and then by an ordained priest."
+      </Core:Property>
+      <Core:Property property="merry:lib:not_signing_certificate">
+         X[M] /* decided not to sign */
+EmitTo(\$actor, "You decide not to sign the marriage certificate. No ball and chain for you!");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:not_witness_certificate">
+         X[M] /* decided not to witness */
+EmitTo(\$actor, "You decide not to witness this marriage.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:signing_certificate">
+         X[M] /* check if this signing is valid */
+if(this.husband \&\& \$actor."base:gender" == 1) \{
+ if(this."husband:woe" == \$actor) \{
+  EmitTo(\$actor, "This certificate has already been signed by you.");
+ \} else \{
+  EmitTo(\$actor, "This certificate has already been signed by a husband-to-be.");
+ \}
+ return FALSE;
+\} else if(this.wife \&\& \$actor."base:gender" == 2) \{
+ if(this."wife:woe" == \$actor) \{
+  EmitTo(\$actor, "This certificate has already been signed by you.");
+ \} else \{
+  EmitTo(\$actor, "This certificate has already been signed by a wife-to-be.");
+ \}
+ return FALSE;
+\}
+
+/* sign the certificate */
+EmitTo(\$actor, "You sign "+Describe(this, nil, \$actor)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" signs "+Describe(this, \$actor)+".", \$actor);
+
+/* mark the details */
+if(\$actor."base:gender" == 1) \{
+ this.husband = capitalize(Str(\$actor."skotos:charname"));
+ this."husband:woe" = \$actor;
+ if(this.wife) \{
+  this.writing = "The certificate has been signed by "+this.husband+" and "+this.wife+".";
+ \} else \{
+  this.writing = "The certificate has been signed by "+this.husband+", and is still awaiting a signature from the wife-to-be, and then a signature from an ordained priest.";
+ \}
+\} else if(\$actor."base:gender" == 2) \{
+ this.wife = capitalize(Str(\$actor."skotos:charname"));
+ this."wife:woe" = \$actor;
+ if(this.husband) \{
+  this.writing = "The certificate has been signed by "+this.husband+" and "+this.wife+".";
+ \} else \{
+  this.writing = "The certificate has been signed by "+this.wife+", and is still awaiting a signature from the husband-to-be, and then a signature from an ordained priest.";
+ \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:signing_certificate_expire">
+         X[M] /* took too long to answer the question */
+EmitTo(\$actor, "You have taken too long to decide if you'll sign the marriage certificate. If you still want to get married, just sign it again.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:witness_certificate">
+         X[M] /* check if this signing is valid */
+if(!this.husband \|\| !this."husband:woe") \{
+ EmitTo(\$actor, "This marriage isn't valid, as the husband can't be found in the city.");
+ return TRUE;
+\}
+if(this."husband:woe"."death:dead") \{
+ EmitTo(\$actor, "This marriage isn't valid, as the husband is dead.");
+ return TRUE;
+\}
+if(this."husband:woe"."married:to") \{
+ EmitTo(\$actor, "This marriage isn't valid, as the husband is already married.");
+ return TRUE;
+\}
+
+if(!this.wife \|\| !this."wife:woe") \{
+ EmitTo(\$actor, "This marriage isn't valid, as the wife can't be found in the city.");
+ return TRUE;
+\}
+if(this."wife:woe"."death:dead") \{
+ EmitTo(\$actor, "This marriage isn't valid, as the wife is dead.");
+ return TRUE;
+\}
+if(this."wife:woe"."married:to") \{
+ EmitTo(\$actor, "This marriage isn't valid, as the wife is already married.");
+ return TRUE;
+\}
+
+this."husband:woe"."married:to" = this."wife:woe";
+this."wife:woe"."married:to" = this."husband:woe";
+
+this.witness = Describe(\$actor);
+
+/* sign the certificate */
+
+EmitTo(\$actor, "You witness "+Describe(this, nil, \$actor)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" witnesses "+Describe(this, \$actor)+".", \$actor);
+
+EmitIn(\$actor."base:environment", "A church page boy takes note of the marriage certificate details, and rushes off to file them in the church archives.");
+
+/* We should replace the below code with the ictime() function! */
+
+\{
+string icmonth, days;
+int daynumber, year;
+string *daynames;
+
+daynames = (\{ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" \});
+
+/* Find the details we want */
+sscanf(ctime( time() ), "%*s %s %d %*s %d", icmonth, daynumber, year);
+
+/* find in-character day of week */
+days = daynames[time()/(60*60*16)%7];
+
+/* Replace strings */
+icmonth = replace_strings(icmonth, "Jan", "January", "Feb", "February", "Mar", "March", "Apr", "April", "May", "May", "Jun", "June", "Jul", "July", "Aug", "August", "Sep", "September", "Oct", "October", "Nov", "November", "Dec", "December" );
+
+ 
+ this.writing += "This is to certify that";
+ this.writing += " "+this.husband+" and "+this.wife+" were lawfully married on the "+Str(desc_ordinal(daynumber))+" day of "+Str(icmonth)+", "+Str(year-420)+" according to the Rite of the Roman Catholic Church and in conformity of the laws of the Kingdom of Italy. It bears the official seal of the Holy Roman Catholic Church.\\n"; 
+this.writing += "The certificate is signed by both husband and wife, and has been witnessed by "+this.witness+".";
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:witness_certificate_expire">
+         X[M] /* took too long to answer the question */
+EmitTo(\$actor, "You have taken too long to decide if you'll witness this marriage. If you still want to witness the marriage, just sign the certificate again.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:sign-what">
+         X[M] /* are we holding the certificate? */
+if(this."base:environment" != \$actor) return TRUE;
+
+/* Do we have a husband and wife signature? */
+if(!this.husband \&\& \$actor."base:gender" == 1) \{
+ EmitTo(\$actor, "Signing this marriage certificate will mean that you will be officially married to the other person who also signs it.");
+ EmitTo(\$actor, "As the church does not allow divorces, this marriage will most likely be permanent.");
+
+ interaction::question(\$actor: \$actor, \$question: "Are you sure you want to sign this certificate and get married?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "signing_certificate", \$no_fun: "not_signing_certificate", \$expire_fun: "signing_certificate_expire", \$par: ([ "actor": \$actor]));
+ return FALSE;
+\} else if(!this.wife \&\& \$actor."base:gender" == 2) \{
+ EmitTo(\$actor, "Signing this marriage certificate will mean that you will be officially married to the other person who also signs it.");
+ EmitTo(\$actor, "As the church does not allow divorces, this marriage will most likely be permanent.");
+
+ interaction::question(\$actor: \$actor, \$question: "Are you sure you want to sign this certificate and get married?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "signing_certificate", \$no_fun: "not_signing_certificate", \$expire_fun: "signing_certificate_expire", \$par: ([ "actor": \$actor]));
+ return FALSE;
+\}
+
+/* do we need a priest's signature? */
+if(this.husband \&\& this.wife \&\& !this.witness) \{
+ /* are we an ordained priest? */
+ if(\$actor.ordained) \{
+  EmitTo(\$actor, "Signing this marriage certificate will mean that you officially witness that these "+this.husband+" and "+this.wife+" will be married, and that it is a valid marriage.");
+  EmitTo(\$actor, "As the church does not allow divorces, this marriage will most likely be permanent.");
+
+  interaction::question(\$actor: \$actor, \$question: "Are you sure you want to sanctify this marriage?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "witness_certificate", \$no_fun: "not_witness_certificate", \$expire_fun: "witness_certificate_expire", \$par: ([ "actor": \$actor]));
+
+  return FALSE;
+ \} else \{
+  EmitTo(\$actor, "Sorry, only an ordained priest can finalize a marriage certificate.");
+  return FALSE;
+ \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1173273901, "tonyd", "E", 1173274064, "tonyd", "E", 1173274096, "tonyd", "E", 1173274153, "tonyd", "E", 1173274190, "tonyd", "E", 1173274277, "tonyd", "E", 1173274341, "tonyd", "E", 1173274399, "tonyd", "E", 1173274480, "tonyd", "E", 1238823716, "tonyd", "E", 1238823724, "tonyd", "E", 1238823749, "tonyd", "E", 1238823791, "tonyd", "E", 1238823871, "tonyd", "E", 1238823919, "tonyd", "E", 1238824000, "tonyd", "E", 1238824081, "tonyd", "E", 1238824134, "tonyd", "E", 1238824244, "tonyd", "E", 1238824305, "tonyd", "E", 1238824339, "tonyd", "E", 1238824416, "tonyd", "E", 1238824524, "tonyd", "E", 1238824566, "tonyd", "E", 1238824610, "tonyd", "E", 1238824651, "tonyd", "E", 1238824714, "tonyd", "E", 1238824762, "tonyd", "E", 1238824801, "tonyd", "E", 1238824839, "tonyd", "E", 1238824884, "tonyd", "E", 1238824950, "tonyd", "E", 1238825014, "tonyd", "E", 1238825063, "tonyd", "E", 1238825105, "tonyd", "E", 1238825145, "tonyd", "E", 1238826578, "tonyd", "P", 1238826605, "tonyd", "P", 1238826627, "tonyd", "P", 1238827017, "tonyd", "P", 1238827033, "tonyd", "P", 1238827362, "tonyd", "P", 1238847364, "tonyd", "E", 1238886367, "tonyd", "P", 1238886635, "tonyd", "P", 1238886752, "tonyd", "P", 1238886853, "tonyd", "P", 1238887248, "tonyd", "P", 1238887283, "tonyd", "P", 1238887351, "tonyd", "P", 1238887608, "tonyd", "P", 1238887995, "tonyd", "P", 1238888928, "tonyd", "P", 1238889039, "tonyd", "P", 1238889137, "tonyd", "P", 1238889258, "tonyd", "P", 1238889740, "tonyd", "P", 1238890523, "tonyd", "P", 1238891195, "tonyd", "P", 1238891225, "tonyd", "P", 1238891321, "tonyd", "P", 1238891448, "tonyd", "P", 1238891706, "tonyd", "P", 1238929434, "tonyd", "P", 1238932841, "tonyd", "P", 1238932983, "tonyd", "P", 1238933453, "tonyd", "P", 1238933618, "tonyd", "P", 1238936307, "tonyd", "P", 1238936343, "tonyd", "P", 1238936384, "tonyd", "P", 1238936399, "tonyd", "P", 1238936590, "tonyd", "P", 1238936601, "tonyd", "P", 1238936673, "tonyd", "P", 1238936829, "tonyd", "P", 1238936907, "tonyd", "P", 1238936984, "tonyd", "P", 1239164961, "tonyd", "P", 1312878863, "morwenlorelie", "R", 1460190462, "tonyd", "R", 1460190548, "tonyd", "R", 1460190765, "tonyd", "P", 1460200181, "tonyd", "P", 1698169249, "annemairi", "E", 1698169999, "annemairi", "E", 1698186653, "annemairi", "E", 1698186729, "annemairi", "E", 1698188060, "annemairi", "E", 1698189254, "annemairi", "E", 1698189385, "annemairi", "E", 1698191793, "annemairi", "E", 1698192841, "ezralee", "E", 1698192952, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,435 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-post:login%ghostlogincheck">
+         X[M] /* if the character is still dead, put them back in their ghost body */ 
+ 
+\$az = \$\{Chatters:AE:az:azrael\}; 
+EmitTo(\$az, "Running script"); 
+ 
+/* delay in case they logged in again too quickly */ 
+/*if(!\$actor."death:dead" \&\& \$this."death:livingbody") \$actor = \$this."death:livingbody";*/ 
+EmitTo(\$az, dump_value(\$this."death:livingbody")); 
+ 
+if(\$actor."death:dead") \{ 
+  if(typeof(\$actor."death:dead") == T_OBJECT) \{ 
+    /* put the ghost in the right room */ 
+    /* can they go back into the room they were in before */ 
+    if(\$actor."death:dead"."base:disconnectroom") \{ 
+      \$actor."death:dead"."base:environment" = \$actor."death:dead"."base:disconnectroom"; 
+    \} else \{ 
+      \$actor."death:dead"."base:environment" = \$actor."death:dead"."virtualhome:home"; 
+    \} 
+    /* move them into the ghost */ 
+    \$actor."base:possessee" = \$actor."death:dead"; 
+  \} 
+\} else \{ 
+  /* remove this script */ 
+  Set(\$actor, "merry:inherit:act-post:login%ghostlogincheck", nil); 
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:awaiting_resurrection">
+         X[M] /* await resurrection */
+\$ghostbod."death:stage" = "awaiting resurrection";
+\$ghostbod."death:id" = \$id;
+\$victim."death:resurrection_wait_start_time" = time();
+
+\$wait_time = 60*60*24*3;
+\$delay(\$wait_time, TRUE, "aee4");
+
+if(!\$ghostbod) return TRUE;
+if(\$ghostbod."death:stage" != "awaiting resurrection") return TRUE;
+if(time()-\$wait_time+120 \< \$victim."death:resurrection_wait_start_time") return TRUE;
+
+if(\$ghostbod."death:stage" == "awaiting resurrection" \&\& \$ghostbod."death:id" == \$id) \{
+  EmitIn(\$\{Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Catacombs:Crypt\}, "A priest wearing the white robes of a S'allumer white mage arrives, and chants a complicated ritual above "+Describe(\$victim)+", bringing "+\$victim."base:objective"+" back to life.");
+  ::live_new(\$victim: \$victim);
+\}
+
+/* done */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:awaiting_return">
+         X[M] /* when the body is returned to the cathedral, auto-return it to life in a week */ 
+object tmp; 
+ 
+\$ghostbod."death:stage" = "being returned"; 
+\$id = time(); 
+\$ghostbod."death:id" = \$id; 
+\$delay(60*60*24*7, TRUE, "a6af"); 
+/*\$delay(60*30, TRUE, "6213");*/ 
+ 
+if(!\$ghostbod) return TRUE; 
+ 
+/* if the body still hasn't been returned, then return it */ 
+if(\$ghostbod."death:stage" == "being returned" \&\& \$ghostbod."death:id" == \$id) \{ 
+  tmp = \$victim; 
+  while(tmp."base:environment") \{ 
+    EmitIn(tmp."base:environment", "A City Guardsman arrives and collects "+Describe(\$victim)+"."); 
+    tmp = tmp."base:environment"; 
+  \} 
+ 
+  \$victim."base:environment" = \$\{Allegory:Setting:Rinascita:Buildings:Northeast:Jail:Basement:ColdStorage\}; 
+  \$victim."base:proximity" = NewNRef(\$victim."base:environment", "platform01"); 
+  \$victim."base:stancestring" = "lying"; 
+  \$victim."base:prepositionstring" = "on"; 
+  \$victim."base:immobile" = TRUE; 
+  EmitIn(\$\{Allegory:Setting:Rinascita:Buildings:Northeast:Jail:Basement:ColdStorage\}, "A City Guardsman places "+Describe(\$victim)+" on one of the tables."); 
+ 
+  Call(\$\{Ironclaw:Lib:Characters:Death\}, "awaiting_resurrection", \$victim: \$victim, \$id: time());  
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:die">
+         X[M] /* makes a character die */
+object tmp;
+
+/* expects \$victim */
+if(!\$victim) return FALSE;
+
+/* check they aren't dead already */
+if(\$victim."death:dead") return TRUE;
+
+/* set code and scripts in the body */
+\$victim."status:dying" = nil;
+
+
+/* create the new ghost body */
+/* make a shield for the dead body - so nothing happens to the corpse */
+\$ghostbod = Duplicate(\$victim);
+\$ghostbod."core:ur:parent" = \$victim;
+\$victim."death:shield" = \$ghostbod;
+
+/* make a ghostbody */
+\$ghostbod = Duplicate(NRefOb(\$victim));
+\$ghostbod."death:livingbody" = \$victim;
+/* set the original body as dead */
+\$victim."death:dead" = \$ghostbod;
+
+/* set scripts in the corpse */
+\$victim."merry:inherit:react-pre:take%takecorpse" = \$\{Ironclaw:Lib:Characters:Death\};
+\$victim."merry:inherit:react-pre:demand-consent%corpse" = \$\{Ironclaw:Lib:Characters:Death\};
+\$victim."merry:inherit:react-pre:take-from%corpse" = \$\{Ironclaw:Lib:Characters:Death\};
+\$victim."merry:inherit:react-pre:dress-dob%corpse" = \$\{Ironclaw:Lib:Characters:Death\};
+\$victim."merry:inherit:react-post:whisper-iob%corpse" = \$\{Ironclaw:Lib:Characters:Death\};
+
+/* set the names */
+\$victim."details:default:sname:corpse" = TRUE;
+\$victim."details:default:pname:corpses" = TRUE;
+\$victim."details:default:adjective:corpse" = TRUE;
+\$victim."details:default:adjective:of" = TRUE;
+
+/* make the ghost body into, well, a ghost body */
+/* set the ghost's name */
+\$ghostbod."details:default:description:brief" = "the ghost of "+Describe(\$ghostbod);
+
+/* set the language */
+\$ghostbod."skill:lang:ghost" = 8;
+\$ghostbod."skotos:currentlang" = 24;
+\$ghostbod.dialect = "Ghost";
+\$ghostbod."skotos:langlocked" = TRUE;
+
+/* regenerate the ghost description */
+Call(\$\{Allegory:Lib:UrPeople:Description\}, "updatedesc", \$body: \$ghostbod);
+/*\$ghostbod."base:environment" = \$victim."base:environment";*/
+\$ghostbod."base:environment" = \$\{Ironclaw:World:Underworld:Afterlife\};
+
+
+/* set the player to be a ghost when they log in */
+/*Set(\$victim, "merry:inherit:act-post:login%ghostlogincheck", \$\{Ironclaw:Lib:Characters:Death\});*/
+
+/* put the player into the ghost body */
+\$victim."base:possessee" = \$ghostbod;
+
+/* Remove from who list */
+\$ghostbod."theatre:notwhobody" = 1;
+
+/* start timers */
+/* auto-return the body to the cathedral in a week */
+
+Call(\$\{Ironclaw:Lib:Characters:Death\}, "awaiting_return");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:live">
+         X[M] /* makes a character return to life */ 
+/* expects \$victim */ 
+if(!\$victim) return FALSE; 
+ 
+/* check they are dead already */ 
+if(!\$victim."death:dead" \|\| typeof(\$victim."death:dead") != T_OBJECT) return TRUE; 
+ 
+/* set the body as alive */ 
+\$victim."death:dead" = nil; 
+ 
+/* unset code and scripts in the body */ 
+ 
+/* put the player into their own body */ 
+\$ghostbod = \$victim."base:possessee"; 
+\$victim."base:possessee" = nil; 
+/* destroy the ghost body */ 
+Slay(\$ghostbod); 
+ 
+/* unset anything that may be a problem */ 
+\$victim."base:immobile" = nil; 
+\$victim."skotos:langlocked" = nil; 
+\$victim."skotos:currentlang" = nil; 
+\$victim.dialect = nil; 
+\$victim."merry:inherit:react-pre:take%takecorpse" = nil; 
+\$victim."merry:inherit:react-pre:demand-consent%corpse" = nil; 
+\$victim."merry:inherit:react-pre:take-from%corpse" = nil; 
+\$victim."merry:inherit:react-pre:dress-dob%corpse" = nil; 
+\$victim."merry:inherit:react-post:whisper-iob%corpse" = nil;
+ 
+/* unset the names */ 
+\$victim."details:default:sname:corpse" = nil; 
+\$victim."details:default:pname:corpses" = nil; 
+\$victim."details:default:adjective:corpse" = nil; 
+\$victim."details:default:adjective:of" = nil; 
+ 
+/* remove the shield */ 
+if(\$victim."death:shield") 
+  Slay(\$victim."death:shield"); 
+ 
+/* Check if they are logged in, to receive a message */ 
+if(\$victim."udat:possessed")\{ 
+  EmitTo(\$victim, "You feel your spirit summoned back into your body. You open your eyes to see the living world, again."); 
+\} else \{ 
+  /* log out the corpse */ 
+  if(\$victim."base:environment") 
+    EmitIn(\$victim."base:environment", "A temple acolyte leads "+Describe(\$victim)+" back to their room."); 
+  \$victim."base:environment" = nil; 
+\} 
+ 
+/* Undark the chatter */ 
+if(\$victim."theatre:notwhobody") \{ 
+    \$victim."theatre:notwhobody" = nil; 
+\} 
+ 
+/* done */ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:live_new">
+         X[M] /* makes a character return to life */
+
+\$doom = \$\{Chatters:IC:de:death\};
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - STARTED");   */
+
+/* expects \$victim */
+if(!\$victim) return FALSE;
+
+/* check they are dead already */
+if(!\$victim."death:dead" \|\| typeof(\$victim."death:dead") != T_OBJECT) return TRUE;
+
+/* set the body as alive */
+\$victim."death:dead" = nil;
+
+/* unset code and scripts in the body */
+
+/* put the player into their own body */
+\$ghostbod = \$victim."base:possessee";
+\$victim."base:possessee" = nil;
+/* destroy the ghost body */
+Slay(\$ghostbod);
+
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - STEP ONE");   */
+
+/* unset anything that may be a problem */
+\$victim."base:immobile" = nil;
+\$victim."skotos:langlocked" = nil;
+\$victim."skotos:currentlang" = nil;
+\$victim.dialect = nil;
+\$victim."merry:inherit:react-pre:take%takecorpse" = nil;
+\$victim."merry:inherit:react-pre:demand-consent%corpse" = nil;
+\$victim."merry:inherit:react-pre:take-from%corpse" = nil;
+\$victim."merry:inherit:react-pre:dress-dob%corpse" = nil;
+\$victim."merry:inherit:react-post:whisper-iob%corpse" = nil;
+
+/* unset the names */
+\$victim."details:default:sname:corpse" = nil;
+\$victim."details:default:pname:corpses" = nil;
+\$victim."details:default:adjective:corpse" = nil;
+\$victim."details:default:adjective:of" = nil;
+
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - STEP TWO");   */
+
+/* remove the shield */
+if(\$victim."death:shield")
+  Slay(\$victim."death:shield");
+
+/* Check if they are logged in, to receive a message */
+if(\$victim."udat:possessed")\{
+  EmitTo(\$victim, "You feel your spirit summoned back into your body. You open your eyes to see the living world, again.");
+\} else \{
+  /* log out the corpse */
+  if(\$victim."base:environment")
+    EmitIn(\$victim."base:environment", "A temple acolyte leads "+Describe(\$victim)+" back to their room.");
+  \$victim."base:environment" = nil;
+\}
+
+/* Undark the chatter */
+if(\$victim."theatre:notwhobody") \{
+    \$victim."theatre:notwhobody" = nil;
+\}
+
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - GRAB HOME");  */
+if(\$victim."virtualhome:home") \{
+\$home = \$victim."virtualhome:home";
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - MAIN HOME IS:" +Str(\$home));  */
+\} else if(\$victim."virtualhome:tavern:virtuals") \{
+\$home = \$victim."virtualhome:tavern:virtuals";
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - SOUTH HOME IS:" +Str(\$home));  */
+\} else if(\$victim."virtualhome:tavern:virtualn") \{
+\$home = \$victim."virtualhome:tavern:virtualn";
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - NORTH HOME IS:" +Str(\$home));  */
+\} else \{
+EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - NO HOME");
+\}
+
+if(!\$home \|\| \$victim."udat:possessed") \{
+EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - NO HOME EXTENDED");
+\} else \{
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - SENDING HOME"); */
+\$victim."base:environment" = \$home;
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - SENT HOME"); */
+\}
+
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - STEP THREE");   */
+
+/* Heal all injuries - might want to add a scar script later */
+Call(\$\{Ironclaw:Lib:Combat:Cards:Injuries\}, "healing_death", \$victim: \$victim);
+
+/* EmitTo(\$doom, "Ironclaw:Lib:Characters:Death - merry:lib:live_new - STEP FOUR");   */
+/* done */
+
+/* Set the death penalty */
+if(!\$victim."death:penalty") \$victim."death:penalty" = (\{ \});
+
+\$value = \$victim."trait:body"-2;
+if(\$victim."savedprop:trait:body") \$value = \$victim."savedprop:trait:body"[0]-2;
+if(\$value \< 1) \$value = 1;
+\$victim."death:penalty" += (\{ (\{ ironclaw::set_prop(\$obj: \$victim, \$prop: "trait:body", \$value: \$value, \$timer: 60*60*24*30*3), "trait:body" \}) \});
+
+\$value = \$victim."trait:agility"-2;
+if(\$victim."savedprop:trait:agility") \$value = \$victim."savedprop:trait:agility"[0]-2;
+if(\$value \< 1) \$value = 1;
+\$victim."death:penalty" += (\{ (\{ ironclaw::set_prop(\$obj: \$victim, \$prop: "trait:agility", \$value: \$value, \$timer: 60*60*24*30*3), "trait:agility" \}) \});
+
+\$value = \$victim."trait:mind"-2;
+if(\$victim."savedprop:trait:mind") \$value = \$victim."savedprop:trait:mind"[0]-2;
+if(\$value \< 1) \$value = 1;
+\$victim."death:penalty" += (\{ (\{ ironclaw::set_prop(\$obj: \$victim, \$prop: "trait:mind", \$value: \$value, \$timer: 60*60*24*30*3), "trait:mind" \}) \});
+
+\$value = \$victim."trait:speed"-2;
+if(\$victim."savedprop:trait:speed") \$value = \$victim."savedprop:trait:speed"[0]-2;
+if(\$value \< 1) \$value = 1;
+\$victim."death:penalty" += (\{ (\{ ironclaw::set_prop(\$obj: \$victim, \$prop: "trait:speed", \$value: \$value, \$timer: 60*60*24*30*3), "trait:speed" \}) \});
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:dress-dob%corpse">
+         X[M] /* allow corpses to be dressed */ 
+int i, sz; 
+ 
+\$victim = NRefOb(\$dob[0]); 
+for(i=0;i\<sizeof(\$iob);i++) \{ 
+  \$iob[i] = NRefOb(\$iob[i]); 
+  \$iob[i]."base:environment" = \$victim; 
+\} 
+Act(\$victim, "wear", \$articles: \$iob); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:whisper-iob%corpse">
+         X[M] EmitTo(\$this."death:dead", "You hear the ethereal voice of " + Describe(\$actor) + " in your head, " + \$evoke);
+      </Core:Property>
+      <Core:Property property="merry:react-pre:demand-consent%corpse">
+         X[M] /* make the corpse give consent */ 
+Act(\$this, "allow", \$who: \$actor); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take%takecorpse">
+         X[M] /* Code to fix bugged skinks */
+if(\$this."base:urparent" == \$\{Allegory:Props:Animals:City:Rat\}) \{
+    Set(\$this, "merry:inherit:react-pre:demand-consent%corpse", nil);
+    Set(\$this, "merry:inherit:react-pre:dress-dob%corpse", nil);
+    Set(\$this, "merry:inherit:react-pre:take%takecorpse", nil);
+    Set(\$this, "merry:inherit:react-pre:take-from%corpse", nil);
+    Set(\$this, "merry:inherit:react-post:whisper-iob%corpse", nil);
+    Set(\$this, "details:default:sname:corpse", nil);
+    return TRUE;
+\}
+/*****************************/
+
+
+/* allow players to take the corpse */ 
+EmitTo(\$actor, "You haul "+Describe(\$this)+" up onto your shoulders."); 
+EmitIn(\$actor."base:environment", Describe(\$actor)+" hauls "+Describe(\$this)+" up onto "+\$actor."base:possessive"+" shoulders.", \$actor); 
+ 
+/* change carrier's capacity */ 
+\$actor."base:intrinsiccapacity:local" = 3.0; 
+\$actor."base:maxweight:local" = 3.0; 
+ 
+\$this."base:environment" = \$actor; 
+ 
+if(\$this."base:environment" != \$actor) 
+  EmitIn(\$actor."base:environment", "But, like, it didn't work."); 
+ 
+/* change carrier's capacity back */ 
+\$actor."base:intrinsiccapacity:local" = 1.0; 
+\$actor."base:maxweight:local" = 1.0; 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take-from%corpse">
+         X[M] /* allow items to be taken from a corpse */ 
+int i, sz; 
+ 
+if(\$this."base:immobile") \{ 
+    EmitTo(\$actor, "You can't do that."); 
+    return FALSE; 
+\} 
+ 
+/* first unwear or unwield the object */ 
+/* remove the nrefs */ 
+\$what = Arr(\$what); 
+\$worn = (\{ \}); 
+for(i=0;i\<sizeof(\$what);i++)\{ 
+  \$what[i] = NRefOb(\$what[i]); 
+  if(\$what[i]."base:wielded-by") \{ 
+    Act(\$this, "unwield", \$article: \$what[i]); 
+  \} 
+  if(\$what[i]."base:worn-by") \{ 
+    \$worn \|= (\{ \$what[i] \}); 
+  \} 
+\} 
+Act(\$this, "unwear", \$articles: Arr(\$worn)); 
+\$worn2 = (\{ \}); 
+for(i=0;i\<sizeof(\$worn);i++)\{ 
+  if(\$worn[i]."base:clothing:worn") \{ 
+    \$worn2 \|= (\{ \$worn[i] \}); 
+  \} 
+\} 
+if(\$worn2 \&\& sizeof(\$worn2))\{ 
+  EmitTo(\$actor, Describe(\$worn2)+" seem to be covered by other clothes. Take those other items of clothing first."); 
+\} 
+ 
+Social(\$this, "hand", nil, nil, nil, \$what, "to", \$actor); 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:take">
+         X[M] EmitTo(\$actor, "Trying to take a corpse? How gross!");
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1165042776, "tonyd", "P", 1165043293, "tonyd", "P", 1165043452, "tonyd", "P", 1165043866, "tonyd", "P", 1165044123, "tonyd", "P", 1165048143, "tonyd", "P", 1166586040, "tonyd", "P", 1167272386, "tonyd", "E", 1171159646, "tonyd", "P", 1171362742, "tonyd", "P", 1171362761, "tonyd", "P", 1172925694, "tonyd", "P", 1172925930, "tonyd", "P", 1172927071, "tonyd", "P", 1172927477, "tonyd", "P", 1172928041, "tonyd", "P", 1172928127, "tonyd", "P", 1172928365, "tonyd", "P", 1172928399, "tonyd", "P", 1172929283, "tonyd", "P", 1172929294, "tonyd", "P", 1172929514, "tonyd", "P", 1172930124, "tonyd", "P", 1172930495, "tonyd", "P", 1172930548, "tonyd", "P", 1172930617, "tonyd", "P", 1172930648, "tonyd", "P", 1172930739, "tonyd", "P", 1172930770, "tonyd", "P", 1172974872, "tonyd", "P", 1172974970, "tonyd", "P", 1172974981, "tonyd", "P", 1172988598, "tonyd", "P", 1172988715, "tonyd", "P", 1172988838, "tonyd", "P", 1172990997, "tonyd", "P", 1172991241, "tonyd", "P", 1173517096, "tonyd", "P", 1173517678, "tonyd", "P", 1173518136, "tonyd", "P", 1173518632, "tonyd", "P", 1173518670, "tonyd", "P", 1173518780, "tonyd", "P", 1173519303, "tonyd", "P", 1173519604, "tonyd", "P", 1173519995, "tonyd", "P", 1173520053, "tonyd", "P", 1173522613, "tonyd", "P", 1173523085, "tonyd", "P", 1173524601, "tonyd", "P", 1173524711, "tonyd", "P", 1173525351, "tonyd", "P", 1173526100, "tonyd", "P", 1173526138, "tonyd", "P", 1173526380, "tonyd", "P", 1173526672, "tonyd", "P", 1173526826, "tonyd", "P", 1173588447, "tonyd", "P", 1173588560, "tonyd", "P", 1173590074, "tonyd", "P", 1173590104, "tonyd", "P", 1173590169, "tonyd", "P", 1173590737, "tonyd", "P", 1173591265, "tonyd", "P", 1173591298, "tonyd", "P", 1173591361, "tonyd", "P", 1173591415, "tonyd", "P", 1173591474, "tonyd", "P", 1173591947, "tonyd", "P", 1173592010, "tonyd", "P", 1173592505, "tonyd", "P", 1173592529, "tonyd", "P", 1173693450, "tonyd", "P", 1173693581, "tonyd", "P", 1173693631, "tonyd", "P", 1173695742, "tonyd", "P", 1173695889, "tonyd", "P", 1173696059, "tonyd", "P", 1173696072, "tonyd", "P", 1173696116, "tonyd", "P", 1173696240, "tonyd", "P", 1173696521, "tonyd", "P", 1173696568, "tonyd", "P", 1173697167, "tonyd", "P", 1173697698, "tonyd", "P", 1173697783, "tonyd", "P", 1173698708, "tonyd", "P", 1173698807, "tonyd", "P", 1173698869, "tonyd", "P", 1173699501, "tonyd", "P", 1173699568, "tonyd", "P", 1173699629, "tonyd", "P", 1233873206, "jominey", "E", 1233873261, "jominey", "E", 1233946340, "jominey", "E", 1285185356, "jominey", "E", 1287595318, "tunk_bodin", "X", 1287595597, "tunk_bodin", "X", 1287602641, "tunk_bodin", "X", 1287605983, "tunk_bodin", "X", 1287606220, "tunk_bodin", "X", 1287606262, "tunk_bodin", "X", 1287606686, "tunk_bodin", "X", 1294450103, "jominey", "E", 1350881068, "tonyd", "P", 1350881194, "tonyd", "P", 1350881224, "tonyd", "P", 1350881814, "tonyd", "P", 1350881942, "tonyd", "P", 1350882065, "tonyd", "P", 1350882100, "tonyd", "P", 1350882259, "tonyd", "P", 1350882450, "tonyd", "P", 1350882486, "tonyd", "P", 1352082500, "tonyd", "E", 1425584181, "abigail", "E", 1425585363, "abigail", "E", 1425585624, "abigail", "E", 1425585647, "abigail", "E", 1425585715, "abigail", "E", 1425585839, "abigail", "E", 1425585892, "abigail", "E", 1425585955, "abigail", "E", 1425586064, "abigail", "E", 1425586139, "abigail", "E", 1425586170, "abigail", "E", 1425586221, "abigail", "E", 1425586352, "abigail", "E", 1425586509, "abigail", "E", 1425586714, "abigail", "E", 1425586795, "abigail", "E", 1425586996, "abigail", "E", 1425587023, "abigail", "E", 1425587051, "abigail", "E", 1425587075, "abigail", "E", 1425587153, "abigail", "E", 1425587182, "abigail", "E", 1425587843, "abigail", "E", 1425588019, "abigail", "E", 1425588077, "abigail", "E", 1425588102, "abigail", "E", 1425588133, "abigail", "E", 1425588169, "abigail", "E", 1425588441, "abigail", "E", 1457690130, "tonyd", "P", 1697674027, "ezralee", "E", 1697674281, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

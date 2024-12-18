@@ -1,0 +1,198 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="tunk_bodin">
+  <SkotOS:MerAcHa action_id="@dolfuture">
+    <Core:PCProperties>
+      <Core:Property property="merry:global:action">
+         X[M] string icmonth, days, t;
+int monthnumber, daynumber, year;
+string *daynames;
+
+if(!\$evoke) \{
+EmitTo( \$actor, "There was no evoke. To calculate the ICday of a certain RLdate, use @future '[month] [date] i.e. @future '12 01");
+return FALSE;
+\}
+
+/* Get the date they want to check */
+if(sscanf(\$evoke, "\\"%d %d %d\\"", monthnumber, daynumber, year) \< 2) \{
+  EmitTo( \$actor, "The correct format for this is month followed by date such as: 12 01 for the 1st of December." );
+  return FALSE;
+\}
+
+/* set the year, if it's not already set */
+if(!year) year = get_year(time());
+if(year \< 2000) year += 2000;
+
+/* Check if this is a valid date */
+if((year \< 2000) \|\| (year \> 2030)) \$invalid = TRUE;
+if ((monthnumber \< 1) \|\| (monthnumber \> 12)) \$invalid = TRUE;
+if ((daynumber \< 1) \|\| (daynumber \> 31)) \$invalid = TRUE;
+/* check number of days in the month */
+switch(monthnumber) \{
+  case 4:
+  case 6:
+  case 9:
+  case 11:
+    if(daynumber \> 30) \$invalid = TRUE;
+    break;
+  case 2:
+    if(daynumber == 29) \{
+      if(year%4 != 0)
+        \$invalid = TRUE;
+    \} else if(daynumber \> 28) \{
+      \$invalid = TRUE;
+    \}
+    break;
+\}
+
+if(\$invalid) \{
+  EmitTo( \$actor, "That is an invalid date. The correct format for this is month followed by date such as: 12 01 for the 1st of December." );
+  return FALSE;
+\}
+
+/* calculate the timestamp */
+\$timestamp = calculate_stamp( year, monthnumber, daynumber );
+
+t = ctime( \$timestamp );
+t = t[..10] + TAG( t[11..19], "imp" ) + t[20..];
+EmitTo( \$actor, "OOC -- The date you are using is "+t+" Skotos Time." );
+
+daynames = (\{ "De Domhnaigh", "De Luan", "De Mairt", "De Ceadaoin", "Deardaoin", "De Haoine", "De Sathairn" \});
+
+/* Find the details we want */
+sscanf(ctime( \$timestamp ), "%*s %s %d %*s %d", icmonth, daynumber, year);
+
+/* find in-character day of week */
+days = daynames[\$timestamp/(60*60*16)%7];
+
+/* Replace strings */
+icmonth = replace_strings(icmonth, "Jan", "Yule", "Feb", "Snow", "Mar", "Sap", "Apr", "Grass", "May", "Flower", "Jun", "Strawberry", "Jul", "Thunder", "Aug", "Green", "Sep", "Harvest", "Oct", "Hunter's", "Nov", "Frost", "Dec", "Night" );
+
+/* array for dolo months */
+\$dolarr = (\{ "Birch", "Rowan", "Ash", "Alder", "Willow", "Hawthorn", "Oak", "Holly", "Hazel", "Vine", "Ivy", "Reed", "Elder" \});
+
+/* standard month and day variables */
+/* \$a == the dol day num on the 1st of the Sallumer month */
+/* \$b == array number for dol month on the 1st day of the Sallumer month */
+
+if(icmonth == "Yule") \{
+\$a = 9;
+\$b = 0;
+\}
+if(icmonth == "Snow") \{
+\$a = 12;
+\$b = 1;
+/* this month has exceptions for Leap Day */
+if(year%4 == 0) \$leap = TRUE;
+\}
+if(icmonth == "Sap") \{
+\$a = 12;
+\$b = 2;
+\}
+if(icmonth == "Grass") \{
+\$a = 15;
+\$b = 3;
+\}
+if(icmonth == "Flower") \{
+\$a = 17;
+\$b = 4;
+\}
+if(icmonth == "Strawberry") \{
+\$a = 20;
+\$b = 5;
+\}
+if(icmonth == "Thunder") \{
+\$a = 22;
+\$b = 6;
+\}
+if(icmonth == "Green") \{
+\$a = 25;
+\$b = 7;
+\}
+if(icmonth == "Harvest") \{
+\$a = 28;
+\$b = 8;
+/* this month has exceptions as it crosses three dol months */
+\}
+if(icmonth == "Hunter's") \{
+\$a = 2;
+\$b = 9;
+\}
+if(icmonth == "Frost") \{
+\$a = 5;
+\$b = 11;
+\}
+if(icmonth == "Night") \{
+\$a = 7;
+\$b = 12;
+/* this month has exceptions for Unhewn Stone - see below */
+\}
+
+/* formulate */
+/* days in a month so we can add exceptions */
+\$m = 28;
+/* exception for leap year and Unhewn Stone (Elder 29th or Night 23th) */
+if(\$leap \|\| icmonth == "Night") \$m +=1;
+/* \$c == the Sallumer day num that is the last day of the dol month */
+\$c = (\$m-\$a)+1;
+/* grab the new months */
+/* \$m1 == The dol month coinciding with the 1st day of the Sallumer month */
+/* \$m2 == The new dol month that it will change to */
+/* \$m3 == Strictly for Hunter's as it changes twice */
+\$m1 = \$dolarr[\$b];
+\$b += 1;
+/* cycle back to 1st month */
+if(\$b == 13) \$b = 0;
+\$m2 = \$dolarr[\$b];
+/* add a new month for the Harvest's exception */
+if(icmonth == "Harvest") \{
+\$b +=1;
+\$m3 = \$dolarr[\$b];
+\}
+
+if(daynumber \> 0 \&\& \$c \>= daynumber) \{
+\$dolmonth = \$m1;
+\$doldaynum = daynumber + (\$a-1);
+\} else \{
+\$dolmonth = \$m2;
+\$doldaynum = daynumber - \$c;
+\}
+
+/* exception for Harvest */
+if(\$doldaynum == 29 \&\& icmonth == "Harvest") \{
+\$doldaynum = 1;
+\$dolmonth = \$m3;
+\}
+
+/* Add emits for special days */
+if(\$dolmonth == "Rowan" \&\& \$doldaynum == 29) EmitTo(\$actor, "It will be " +TAG("Leap Day", "imp")+ "; occuring every four years!");
+if(\$dolmonth == "Elder" \&\& \$doldaynum == 29) EmitTo(\$actor, "It will be "+TAG("Secret of the Unhewn Stone", "imp")+";denotes the quality of potential in all things.");
+/* The Equinoxes are considered Dolo holidays */
+if(\$dolmonth == "Alder" \&\& \$doldaynum == 3) EmitTo(\$actor, "It will be the " +TAG("Vernal Equinox", "imp")+ "; one of two days when sunrise and sunset are closest to being precisely 12 hours apart.");
+if(\$dolmonth == "Vine" \&\& \$doldaynum == 22) EmitTo(\$actor, "It will be the " +TAG("Autumnal Equinox", "imp")+ "; one of two days when sunrise and sunset are closest to being precisely 12 hours apart.");
+/* The Solstices are considered Dolo holidays */
+if(\$dolmonth == "Oak" \&\& \$doldaynum == 12) EmitTo(\$actor, "It will be the " +TAG("Northern Solstice", "imp")+ "; one of two days when the sun appears to stand still before reversing direction.");
+if(\$dolmonth == "Elder" \&\& \$doldaynum == 27) EmitTo(\$actor, "It will be the " +TAG("Southern Solstice", "imp")+ "; one of two days when the sun appears to stand still before reversing direction.");
+/* Two holy Dolo days; one early spring and one late autumn */
+if(\$dolmonth == "Reed" \&\& \$doldaynum == 26) EmitTo(\$actor, "It will be the " +TAG("Day of Hoping", "imp")+ "; it consists of the cutting of the tree planted on the Day of Receiving and thanks to Lutara for the bounty of the past year.");
+if(\$dolmonth == "Ash" \&\& \$doldaynum == 11) EmitTo(\$actor, "It will be the " +TAG("Day of Receiving", "imp")+ "; it consists of the planting of a tree and the giving of thanks to Lutara for surviving the winter.");
+
+/* emit main message */
+EmitTo(\$actor, "It is "+TAG(days, "imp")+", the "+TAG(desc_ordinal(\$doldaynum), "imp")+" day of "+TAG(\$dolmonth, "imp")+".");
+
+
+if(((\$timestamp/(60*60))%16) \> 12)
+\{
+  EmitTo( \$actor, "It will be midnight." );
+  EmitTo(\$actor, "It will become "+ daynames[((\$timestamp/(60*60*16+1))+1)%7] +" late in the day.");
+\} else \{
+  EmitTo( \$actor, "It will be midday." );
+  EmitTo(\$actor, "It will become "+ daynames[((\$timestamp/(60*60*16))+1)%7] +" early in the day.");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1053708676, "zwoc", "E", 1134100436, "tunk_bodin", "X", 1134100787, "tunk_bodin", "X", 1134100857, "tunk_bodin", "X", 1134100898, "tunk_bodin", "X", 1134101362, "tunk_bodin", "X", 1134102438, "tunk_bodin", "X", 1134102475, "tunk_bodin", "X", 1134102886, "tunk_bodin", "X", 1134103565, "tunk_bodin", "X", 1134103611, "tunk_bodin", "X", 1134104005, "tunk_bodin", "X", 1134104053, "tunk_bodin", "X", 1134104103, "tunk_bodin", "X", 1134104165, "tunk_bodin", "X", 1134168572, "tonyd", "P", 1134168706, "tonyd", "P", 1134168863, "tonyd", "P", 1134168908, "tonyd", "P", 1134168949, "tonyd", "P", 1134169002, "tonyd", "P", 1134169028, "tonyd", "P", 1134169062, "tonyd", "P", 1134169226, "tonyd", "P", 1134169267, "tonyd", "P", 1134169313, "tonyd", "P", 1134169674, "tonyd", "P", 1134169799, "tonyd", "P", 1134169970, "tonyd", "P", 1134169994, "tonyd", "P", 1134170024, "tonyd", "P", 1134171093, "tonyd", "P", 1134171127, "tonyd", "P", 1134171160, "tonyd", "P", 1134171194, "tonyd", "P", 1134171256, "tonyd", "P", 1134171301, "tonyd", "P", 1134171486, "tonyd", "P", 1134172182, "tonyd", "P", 1134172221, "tonyd", "P", 1134173155, "tonyd", "P", 1134173665, "tonyd", "P", 1134173766, "tonyd", "P", 1134173881, "tonyd", "P", 1134173961, "tonyd", "P", 1134174011, "tonyd", "P", 1134174065, "tonyd", "P", 1134174394, "tonyd", "P", 1134174484, "tonyd", "P", 1134174727, "tonyd", "P", 1134174743, "tonyd", "P", 1134175050, "tonyd", "P", 1134178588, "tonyd", "P", 1134178613, "tonyd", "P", 1134178645, "tonyd", "P", 1134178801, "tonyd", "P", 1134178882, "tonyd", "P", 1134179009, "tonyd", "P", 1134179024, "tonyd", "P", 1134179035, "tonyd", "P", 1134179213, "tonyd", "P", 1134179229, "tonyd", "P", 1134180970, "tonyd", "P", 1134181032, "tonyd", "P", 1134181258, "tonyd", "P", 1134181436, "tonyd", "P", 1134181533, "tonyd", "P", 1134181683, "tonyd", "P", 1134181780, "tonyd", "P", 1134181930, "tonyd", "P", 1134182153, "tonyd", "P", 1134182178, "tonyd", "P", 1134182425, "tonyd", "P", 1134182437, "tonyd", "P", 1134189576, "tunk_bodin", "X", 1134189619, "tunk_bodin", "X", 1134193903, "tunk_bodin", "X", 1135909760, "tonyd", "E", 1138245835, "tunk_bodin", "X", 1138246156, "tunk_bodin", "X", 1138246401, "tunk_bodin", "X", 1138247013, "tunk_bodin", "X", 1138247711, "tunk_bodin", "X", 1138247818, "tunk_bodin", "X", 1138248225, "tunk_bodin", "X", 1138248625, "tunk_bodin", "X", 1138248944, "tonyd", "P", 1138249124, "tonyd", "P", 1138249296, "tonyd", "P", 1138249379, "tonyd", "P", 1138249468, "tonyd", "P", 1138249577, "tonyd", "P", 1138249604, "tonyd", "P", 1138249700, "tonyd", "P", 1138249845, "tonyd", "P", 1138249934, "tonyd", "P", 1138250104, "tonyd", "P", 1138250170, "tonyd", "P", 1138250211, "tonyd", "P", 1138250279, "tonyd", "P", 1138250458, "tonyd", "P", 1138250616, "tonyd", "P", 1138250810, "tonyd", "P", 1138250951, "tonyd", "P", 1138250985, "tonyd", "P", 1138251000, "tonyd", "P", 1138251019, "tonyd", "P", 1138253815, "tonyd", "P", 1138253840, "tonyd", "P", 1138331024, "tunk_bodin", "X", 1142300212, "tunk_bodin", "X", 1142300297, "tunk_bodin", "X", 1142300717, "tunk_bodin", "X", 1142300829, "tunk_bodin", "X", 1142300856, "tunk_bodin", "X", 1173187624, "librarysage", "R", 1294377416, "tunk_bodin", "P", 1294377505, "tunk_bodin", "P", 1294377537, "tunk_bodin", "P", 1294377668, "tunk_bodin", "P", 1294377695, "tunk_bodin", "P", 1294377743, "tunk_bodin", "P", 1294377768, "tunk_bodin", "P", 1294377830, "tunk_bodin", "P", 1294378081, "tunk_bodin", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

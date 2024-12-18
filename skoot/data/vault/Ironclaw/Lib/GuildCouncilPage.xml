@@ -1,0 +1,1386 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="councilcomplaints">
+         \<Ironclaw:Data:GuildCouncil:Complaints\>
+      </Core:Property>
+      <Core:Property property="html:addtopic">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+    \$[/* run some initial code */                          
+        ::popup_initialize();                          
+        return nil;]
+\</z\>
+\$["";                     
+  \$actor = Obj(\$actor);                     
+  \$this = Obj(\$this);                  
+  \$topic = \$topic;                  
+  \$page = \$page;  
+ 
+  if(\$topic == "meetings") \$heading = "Schedule a Meeting"; 
+  if(\$topic == "project") \$heading = "Start a Project";]
+    \<zform\>
+    \<center\>
+    \<table\>
+ \$[ParseXML("\<tr\>\<td\>\<zact\>\<font size='2'\>BACK\</font\>\<action\>\<redirect propob='" + Str(\$this) + "' prop='index' page='" + \$topic + "' actor='" + Str(\$actor) + "'/\>\</action\>\</zact\>\</td\>\</tr\>")]
+        \<tr\>
+            \<td\>
+                          \<input type="hidden" name="topic" value="\$(topic)"/\>
+                          \<input type="hidden" name="actor" value="\$(actor)"/\>
+                          \<input type="hidden" name="this" value="\$(this)"/\>
+                          \<input type="hidden" name="page" value="\$(page)"/\>
+                          \<input type="hidden" name="heading" value="\$(heading)"/\>
+            \</td\>
+        \</tr\>
+        \<tr\>\<td\>\<div id="header"\>\$(heading)\</div\>\</td\>\</tr\>
+        \<tr\>\<td\>\</td\>\</tr\>
+        \<tr\>\<td\>\</td\>\</tr\>
+        \<tr\>\<td\>\</td\>\</tr\>
+        \<tr\>
+            \<td\>
+                \{? equal \| \$(topic) \| meetings \|
+                    \<table width="100%"\>
+                        \<tr\>\<td\>Scheduled By:\</td\>  \<td\>\$[capitalize(\$actor."skotos:charname")]\</td\>\</tr\>
+                        \<tr\>\<td\>Date:\</td\>   \<td\>\<input type="text" name="date" value="\$(date)"/\>\</td\>\</tr\>
+                        \<tr\>\<td\>Time:\</td\>   \<td\>\<input type="text" name="time" value="\$(time)"/\>\</td\>\</tr\>
+                        \<tr\>\<td\>Topics to Discuss:\</td\>  \<td\>\<textarea style="BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 300px; HEIGHT: 110px" name="body"\>\</textarea\>\</td\>\</tr\>
+                        \<tr\>\<td colspan="2"\>\<input type="submit" name="submit" value="Schedule Meeting"/\>\</td\>\</tr\>
+                    \</table\>
+                \}
+                \{? equal \| \$(topic) \| projects \|
+                    \<table width="100%"\>
+                        \<tr\>\<td\>Started By:\</td\>  \<td\>\$[capitalize(\$actor."skotos:charname")]\</td\>\</tr\>
+                        \<tr\>\<td\>Project Name:\</td\>  \<td\>\<input type="text" name="title" value="\$(title)"/\>\</td\>\</tr\>
+                        \<tr\>\<td\>Supervisor:\</td\>  \<td\>\<input type="text" name="supervisor" value="\$(supervisor)"/\>\</td\>\</tr\>
+                        \<tr\>\<td\>Description of Project:\</td\> \<td\>\<textarea style="BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 300px; HEIGHT: 110px" name="body"\>\</textarea\>\</td\>\</tr\>
+                        \<tr\>\<td colspan="2"\>\<input type="submit" name="submit" value="Start Project"/\>\</td\>\</tr\>
+                    \</table\>
+                \}
+            \</td\>
+        \</tr\>
+     \</table\>
+     \</center\>
+     \<action\>
+            \$["";  
+                \$actor = Obj(replace_strings(\$actor, "OBJ(", "", ")", "")); 
+                if(\$topic == "meetings") \{ 
+                    \$db = \$\{Ironclaw:Data:GuildCouncil:Meetings\}; 
+                    \$data = ([ "filedby":capitalize(\$actor."skotos:charname"), "date":\$date, "time":\$time, "body":\$body ]); 
+                    Set(\$db, Str(time()), \$data); 
+                \} else if(\$topic == "projects") \{ 
+                    \$db = \$\{Ironclaw:Data:GuildCouncil:Projects\}; 
+                    \$data = ([ "filedby":capitalize(\$actor."skotos:charname"), "supervisor":\$supervisor, "title":\$title, "body":\$body ]); 
+                    Set(\$db, Str(time()), \$data); 
+                \}]
+              \{? equal \| \$(topic) \| meetings \| \<redirect propob="\$(this)" prop="index" actor="\$(actor)" page="meetings"/\> \}
+              \{? equal \| \$(topic) \| projects \| \<redirect propob="\$(this)" prop="index" actor="\$(actor)" page="projects"/\> \}
+     \</action\>
+     \</zform\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+    \$[/* run some initial code */                             
+        ::popup_initialize();                             
+        return nil;]
+\</z\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+    \<head\>
+        \<title\>The Triskellian Guild Council\</title\>
+        \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+        \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+        \$(this.html:stylesheet)
+        \$(this.html:javascript)
+    \</head\>
+    \$["";                  
+      \$actor = Obj(\$actor);                  
+      \$this = Obj(\$this);                  
+      \$page = \$page;]
+    \<body style="background-color: black;"\>
+    \<div style="text-align: center; border: 1px solid black; margin-left: 1.5%; height: 95%; position: fixed; overflow: scroll; width: 95%; background-color: white; background-size: 100% 100%; background-repeat: no-repeat;"\>\<br/\>
+    \<center\>\<table\>
+        \<tr\>
+            \<td\>\<img src="http://anam.massagetherapy.com/Triple%20Spiral%20symbol%20--%20three%20filled%20double%20Archimedean%20spirals%20(triskelion).png" width="50px"/\>\</td\>
+            \<td\>\<font size="7"\>\<bold\>The Triskellian Guild Council\</bold\>\</font\>\</td\>
+            \<td\>\<img src="http://anam.massagetherapy.com/Triple%20Spiral%20symbol%20--%20three%20filled%20double%20Archimedean%20spirals%20(triskelion).png" width="50px"/\>\</td\>
+        \</tr\>
+        \<tr\>
+            \<td colspan="3"\>\<center\>\<font color="gray" size="3"\>\<i\>\{? equal \| \$(topic) \| complaints \| "A complaint is a unique opportunity to strengthen the relationship with the people." \| \{? equal \| \$(topic) \| buildingrequests \| "We shape our buildings; therefore they shape us." \| \{? equal \| \$(topic) \| newmemberapplications \| "Belonging and connection are the universal sources of true well-being." \| "We the people, For the people." \}\}\}\</i\>\</font\>\</center\>\</td\>
+        \</tr\>
+        \<tr\>
+            \<td colspan="3"\>\<hr style="width:100%; height:1px;"/\>\</td\>
+        \</tr\>
+        \<tr\>\<td colspan="3"\>\<font color="red"\>\<b\>NEXT MEETING DATE: \$[::retrieve_topic(\$topic: "meetings", \$nmd: TRUE)] \</b\>\</font\>\</td\>\</tr\>
+        \<tr\>
+            \<td colspan="3"\>\<hr style="width:100%; height:1px;"/\>\</td\>
+                \<td\>
+                          \<input type="hidden" name="topic" value="\$(topic)"/\>
+                          \<input type="hidden" name="actor" value="\$(actor)"/\>
+                          \<input type="hidden" name="page" value="\$(page)"/\>
+                \</td\>
+        \</tr\>
+    \</table\>\</center\>
+    \<center\>\<div width="700px"\>
+        \<table width="700px" style="height:450px"\>
+            \<tr\>
+                \<td width="200px" valign="top" style="height:100%"\>
+                    \<div style="background-color: #d3d3d3; height:100%"\>
+                    \<table style="font-size: 11pt;" width="100%" border="0px"\>
+                      \$["";                  
+                        \$rstr = "\<tr\>\<td\>\<b\>The Triskellian Guild Council\</b\>\</td\>\</tr\>" +                  
+                                "\<tr\>\<td\>" +                  
+                                "  \<zact\>\<i\>::About the TGC\</i\>" +                  
+                                "    \<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "' page='about'/\>\</action\>" +                  
+                                "  \</zact\>\</td\>\</tr\>";                  
+                        return ParseXML(\$rstr);]
+                      \$["";                  
+                        \$rstr = "" +                  
+                                "\<tr\>\<td\>" +                  
+                                "  \<zact\>\<i\>::Upcoming Meetings\</i\>" +  Str(::retrieve_topic(\$topic: "meetings", \$num: TRUE)) +                    
+                                "    \<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "' page='meetings'/\>\</action\>" +                  
+                                "  \</zact\>\</td\>\</tr\>";                  
+                        return ParseXML(\$rstr);]
+                      \$["";                  
+                        \$rstr = "" +                  
+                                "\<tr\>\<td\>" +                  
+                                "  \<zact\>\<i\>::Current Projects\</i\>" +  Str(::retrieve_topic(\$topic: "projects", \$num: TRUE)) +               
+                                "    \<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "' page='projects'/\>\</action\>" +                  
+                                "  \</zact\>\</td\>\</tr\>";                  
+                        return ParseXML(\$rstr);]
+                      \$["";                  
+                        \$rstr = "" +                  
+                                "\<tr\>\<td\>" +                  
+                                "  \<zact\>\<i\>::Archives\</i\>" +                  
+                                "    \<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "' page='archives'/\>\</action\>" +                  
+                                "  \</zact\>\</td\>\</tr\>";                  
+                        return ParseXML(\$rstr);]
+                        \<tr\>\<td\>\</td\>\</tr\>
+                      \$["";                  
+                        \$rstr = "\<tr\>\<td\>\<b\>Pending Topics\</b\>\</td\>\</tr\>" +                  
+                                "\<tr\>\<td\>" +                  
+                                "  \<zact\>\<i\>::New Member Applications\</i\>" +  Str(::retrieve_topic(\$topic: "newmemberapplications", \$num: TRUE)) +              
+                                "    \<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "' page='newmemberapplications'/\>\</action\>" +                  
+                                "  \</zact\>\</td\>\</tr\>" +                  
+                                "\<tr\>\<td\>" +                  
+                                "  \<zact\>\<i\>::Building Proposals\</i\>" +  Str(::retrieve_topic(\$topic: "buildingrequests", \$num: TRUE)) +               
+                                "    \<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "' page='buildingrequests'/\>\</action\>" +                  
+                                "  \</zact\>\</td\>\</tr\>" +                   
+                                "\<tr\>\<td\>" +                  
+                                "  \<zact\>\<i\>::Suggestion Box\</i\>" +  Str(::retrieve_topic(\$topic: "complaints", \$num: TRUE)) +                 
+                                "    \<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "' page='complaints'/\>\</action\>" +                  
+                                "  \</zact\>\</td\>\</tr\>";                  
+                        return ParseXML(\$rstr);]
+                        \<tr\>\<td\>\</td\>\</tr\>
+                      \$["";                  
+                        \$rstr = "\<tr\>\<td\>\<b\>Council Only\</b\>\</td\>\</tr\>" +                  
+                                "\<tr\>\<td\>" +                  
+                                "  \<zact\>\<i\>::Financial Reports\</i\>" +                  
+                                "    \<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "' page='financialreports'/\>\</action\>" +                  
+                                "  \</zact\>\</td\>\</tr\>";                  
+                        return ParseXML(\$rstr);]
+                    \</table\>
+                    \</div\>
+                \</td\>
+                \<td width="500px" valign="top"\>
+                    \{? equal \| \$(page) \| about \|
+                        \<center\>
+                        \<table width="90%"\>
+                            \<tr\>\<td\>\<div id="header"\>About the Triskellian Guild Council\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>The Guild Council, a product of the Don's desire to see to the needs of his people, is a collective of the most influential guilds of the free trading city of Triskellian with the purpose of administrating for the independent crafters and citizens of this fine metropolis of trade and business. The Council is a group of publicly elected officials dedicated to unbiased and fair representation of the independent guilds of the city, to which end we work arduously to discuss any and every need, idea and concern with the fine denizens of this fair city.\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<b\>Current Members:\</b\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>\$[::retrieve_members()]\</div\>\</td\>\</tr\>
+                        \</table\>
+                        \</center\>
+                    \}
+                    \{? equal \| \$(page) \| meetings \|
+                        \<center\>
+                        \<table width="90%"\>
+                            \<tr\>\<td\>\<div id="header"\>Upcoming Meetings\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>This is a Guild Council agenda which lists all upcoming meetings. Details regarding each meeting are also attached, and all residents may file their opinions regarding the topics here.\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::retrieve_topic(\$topic: "meetings")]\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::add_topic_link(\$topic: "meetings")]\</td\>\</tr\>
+                        \</table\>
+                        \</center\>
+                    \}
+                    \{? equal \| \$(page) \| projects \|
+                        \<center\>
+                        \<table width="90%"\>
+                            \<tr\>\<td\>\<div id="header"\>Current Projects\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>This file contains all the information regarding current projects, including status updates. All residents have access to these files under strict supervision.\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::retrieve_topic(\$topic: "projects")]\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::add_topic_link(\$topic: "projects")]\</td\>\</tr\>
+                        \</table\>
+                        \</center\>
+                    \}
+                    \{? equal \| \$(page) \| archives \|
+                        \<center\>
+                        \<table width="90%"\>
+                            \<tr\>\<td\>\<div id="header"\>Archives\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>The Guild Council archive contain boxes upon boxes of past discussions, organized by date. All residents have access to these files under strict supervision.\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::retrieve_archive()]\</td\>\</tr\>
+                        \</table\>
+                        \</center\>
+                    \}
+                    \{? equal \| \$(page) \| newmemberapplications \|
+                        \<center\>
+                        \<table width="90%"\>
+                            \<tr\>\<td\>\<div id="header"\>New Membership Applications\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>All pending membership applications are included in this file. Anyone may attach a note to voice questions or concerns regarding the applicants. Applications for membership can be obtained from the Guild Council administrator.\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::retrieve_topic(\$topic: "newmemberapplications")]\</td\>\</tr\>
+                        \</table\>
+                        \</center\>
+                    \}
+                    \{? equal \| \$(page) \| buildingrequests \|
+                        \<center\>
+                        \<table width="90%"\>
+                            \<tr\>\<td\>\<div id="header"\>Building Requests\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>All pending building requests are included in this file. Anyone may attach a note to voice questions or concerns regarding these requests. Building proposals can be obtained from the Guild Council administrator.\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::retrieve_topic(\$topic: "buildingrequests")]\</td\>\</tr\>
+                        \</table\>
+                        \</center\>
+                    \}
+                    \{? equal \| \$(page) \| complaints \|
+                        \<center\>
+                        \<table width="90%"\>
+                            \<tr\>\<td\>\<div id="header"\>Suggestion Box\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>All complaints are filed here. All residents of Triskellian are invited to weigh in on these issues and assist the Council with providing potential solutions. Complaint forms can be obtained from the Guild Council administrator.\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::retrieve_topic(\$topic: "complaints")]\</td\>\</tr\>
+                        \</table\>
+                        \</center\>
+                    \}
+                    \{? equal \| \$(page) \| financialreports \|
+                        \<center\>
+                        \<table width="90%"\>
+                            \<tr\>\<td\>\<div id="header"\>Financial Reports\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<div id="body"\>The Guild Council financial history is listed below. Only members of the council may view these reports. Information here is strictly confidential. The sharing of these reports to non-Council members will result in removal from the Council.\</div\>\</td\>\</tr\>
+                            \<tr\>\<td\>\<hr width="100%"/\>\</td\>\</tr\>
+                            \<tr\>\<td\>\$[::get_financial_info()]\</td\>\</tr\>
+                        \</table\>
+                        \</center\>
+                    \}
+                    \{? equal \| \$(page) \| viewtopic \|
+                        \$(this.html:viewtopic)
+                    \}
+                    \{? equal \| \$(page) \| viewarchive \|
+                        \$(this.html:viewarchive)
+                    \}
+                    \{? equal \| \$(page) \| addtopic \|
+                        \$(this.html:addtopic)
+                    \}
+                \</td\>
+            \</tr\>
+        \</table\>
+    \</div\>\</center\>
+    \</div\>
+    \</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:stylesheet">
+         X[S] \<style type="text/css"\>
+    a \\\{
+        color: #3c433c;
+        font-style: italic;
+        text-decoration: none;
+    \\\}
+    a:hover \\\{
+        color:white;
+        background-color: gray;
+    \\\}
+    #header \\\{
+        font-size: 20pt;
+        font-weight: bold;
+    \\\}
+    #body \\\{
+        font-style: italic;
+    \\\}
+\</style\>
+      </Core:Property>
+      <Core:Property property="html:viewarchive">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+    \$[/* run some initial code */                             
+        ::popup_initialize();                             
+        return nil;]
+\</z\>
+\$["";                        
+  \$actor = Obj(\$actor);                        
+  \$this = Obj(\$this);                         
+  \$entry = \$entry;               
+               
+  \$topic = explode(\$entry, ":")[0];               
+               
+  \$db = \$\{Ironclaw:Data:GuildCouncil:Archives\};                    
+  if(\$topic == "buildingrequests") \{                        
+      \$estimate = Str(Get(\$db, \$entry)["estimate"]);                     
+      \$location = Str(Get(\$db, \$entry)["location"]);                     
+      \$title = Str(Get(\$db, \$entry)["title"]);      
+      \$guild = Str(Get(\$db, \$entry)["guild"]);                 
+  \} else if(\$topic == "newmemberapplications") \{                     
+      \$crest = Str(Get(\$db, \$entry)["crest"]);                     
+      \$kitty = Str(Get(\$db, \$entry)["kitty"]);                     
+      \$members = Str(Get(\$db, \$entry)["members"]);                     
+      \$tokens = Str(Get(\$db, \$entry)["tokens"]);                     
+      \$teachers = Str(Get(\$db, \$entry)["teachers"]);                     
+      \$purpose = Str(Get(\$db, \$entry)["purpose"]);                     
+      \$reason = Str(Get(\$db, \$entry)["body"]);             
+      \$blacklistedby = Get(\$db, \$entry)["blacklistedby"];            
+      \$accomplishments = Get(\$db, \$entry)["accomplishments"];      
+      \$guild = Str(Get(\$db, \$entry)["guild"]);                    
+  \} else if(\$topic == "meetings") \{         
+      \$date = Get(\$db, \$entry)["date"];       
+      \$time = Get(\$db, \$entry)["time"];              
+  \} else if(\$topic == "projects") \{      
+      \$supervisor = Get(\$db, \$entry)["supervisor"];      
+      \$title = Get(\$db, \$entry)["title"];       
+  \} else \{             
+      \$title = Str(Get(\$db, \$entry)["title"]);      
+      \$guild = Str(Get(\$db, \$entry)["guild"]);                 
+  \}             
+         
+                       
+  \$filedby = Str(Get(\$db, \$entry)["filedby"]);                        
+  \$body = Str(Get(\$db, \$entry)["body"]);]
+    \<zform\>
+    \<center\>
+    \<table width="100%"\>
+    \$[""; return ParseXML("\<tr\>\<td\>\<zact\>\<font size='2'\>BACK\</font\>\<action\>\<redirect propob='" + Str(\$this) + "' prop='index' page='archives' actor='" + Str(\$actor) + "'/\>\</action\>\</zact\>\</td\>\</tr\>");]
+        \<tr\>
+            \<td\>
+                          \<input type="hidden" name="topic" value="\$(topic)"/\>
+                          \<input type="hidden" name="actor" value="\$(actor)"/\>
+                          \<input type="hidden" name="this" value="\$(this)"/\>
+                          \<input type="hidden" name="entry" value="\$(entry)"/\>
+                          \<input type="hidden" name="title" value="\$(title)"/\>
+                          \<input type="hidden" name="filedby" value="\$(filedby)"/\>
+                          \<input type="hidden" name="guild" value="\$(guild)"/\>
+                          \<input type="hidden" name="body" value="\$(body)"/\>
+                          \<input type="hidden" name="db" value="\$(db)"/\>
+                          \<input type="hidden" name="comment" value="\$(comment)"/\>
+                          \<input type="hidden" name="type" value="\$(type)"/\>
+                          \<input type="hidden" name="crest" value="\$(actor)"/\>
+                          \<input type="hidden" name="kitty" value="\$(kitty)"/\>
+                          \<input type="hidden" name="members" value="\$(members)"/\>
+                          \<input type="hidden" name="tokens" value="\$(tokens)"/\>
+                          \<input type="hidden" name="teachers" value="\$(teachers)"/\>
+                          \<input type="hidden" name="purpose" value="\$(purpose)"/\>
+                          \<input type="hidden" name="reason" value="\$(reason)"/\>
+                          \<input type="hidden" name="blacklistedby" value="\$(blacklistedby)"/\>
+                          \<input type="hidden" name="accomplishments" value="\$(accomplishments)"/\>
+            \</td\>
+        \</tr\>
+        \{? equal \| \$(topic) \| complaints \|
+            \<tr\>\<td colspan="3"\>\<div id="header"\>Suggestion\</div\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Subject:\</b\>\</td\>\<td colspan="2"\>\$(title)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Date:\</b\>\</td\>\<td colspan="2"\>[\$[ctime(Int(explode(\$entry, ":")[1]))]]\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Suggestion:\</b\>\</td\>\<td\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| buildingrequests \|
+            \<tr\>\<td colspan="3"\>\<div id="header"\>Building Request\</div\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Subject:\</b\>\</td\>\<td colspan="2"\>\$(title)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Date:\</b\>\</td\>\<td colspan="2"\>[\$[ctime(Int(explode(\$entry, ":")[1]))]]\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Location:\</b\>\</td\>\<td colspan="2"\>\$(location)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Estimated Costs:\</b\>\</td\>\<td colspan="2"\>\$(estimate)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Proposal Details:\</b\>\</td\>\<td\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| newmemberapplications \|
+            \<tr\>\<td colspan="3"\>\<div id="header"\>Membership Application\</div\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Applying Guild:\</b\>\</td\>\<td colspan="2"\>\$(guild)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Date:\</b\>\</td\>\<td colspan="2"\>[\$[ctime(Int(explode(\$entry, ":")[1]))]]\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Guild Crest:\</b\>\</td\>\<td colspan="2"\>\$(crest)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Total Kitty:\</b\>\</td\>\<td colspan="2"\>\$(kitty)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Active Members:\</b\>\</td\>\<td colspan="2"\>\$(members)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Total Resources:\</b\>\</td\>\<td colspan="2"\>\$(tokens)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Teachers:\</b\>\</td\>\<td colspan="2"\>\$(teachers)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Blacklisted By:\</b\>\</td\>\<td\>\$(blacklistedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Purpose of Guild:\</b\>\</td\>\<td colspan="2"\>\$(purpose)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Reason for Applying:\</b\>\</td\>\<td\>\$(reason)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Notable Accomplishments:\</b\>\</td\>\<td\>\$(accomplishments)\</td\>\</tr\>
+            \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| meetings \|
+            \<tr\>\<td colspan="3"\>\<div id="header"\>Meeting Agenda\</div\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Scheduled By:\</b\>\</td\>\<td colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Date:\</b\>\</td\>\<td colspan="2"\>\$(date)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Time:\</b\>\</td\>\<td colspan="2"\>\$(time)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Topics:\</b\>\</td\>\<td\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| projects \|
+            \<tr\>\<td colspan="3"\>\<div id="header"\>Project Overview\</div\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td\>\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Project Name:\</b\>\</td\>\<td colspan="2"\>\$(title)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Started By:\</b\>\</td\>\<td colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Date:\</b\>\</td\>\<td colspan="2"\>[\$[ctime(Int(explode(\$entry, ":")[1]))]]\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Supervisor:\</b\>\</td\>\<td colspan="2"\>\$(date)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Description:\</b\>\</td\>\<td\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+             \$["";                        
+          \$output = "";                        
+          if(Get(\$db, \$entry)["comments"] \&\& map_sizeof(Get(\$db, \$entry)["comments"])) \{                        
+              \$comments = Get(\$db, \$entry)["comments"];                        
+              \$people = map_indices(\$comments);                       
+                       
+              \$temp = (\{ \});                       
+              \$temp2 = (\{ \});                       
+              for(\$i = 0; \$i \< sizeof(\$people); \$i++) \{                       
+                  \$temp += (\{ \$comments[\$people[\$i]]["time"] \});                       
+                  \$temp = map_indices(arr_to_set(\$temp));                       
+              \}                       
+              for(\$i = 0; \$i \< sizeof(\$temp); \$i++) \{                       
+                  for(\$j = 0; \$j \< sizeof(\$people); \$j++ ) \{                       
+                      if(\$temp[\$i] == \$comments[\$people[\$j]]["time"]) \{                       
+                          \$temp2 += (\{ \$people[\$j] \});                       
+                      \}                       
+                  \}                       
+              \}                       
+                       
+              for(\$i = 0; \$i \< sizeof(\$temp2); \$i++) \{                        
+                  if(\$temp2[\$i]) \{                        
+                      \$comment = \$comments[\$temp2[\$i]]["comment"];                        
+                      \$name = capitalize(\$temp2[\$i]."skotos:charname");                        
+                      \$when = \$comments[\$temp2[\$i]]["time"];                        
+                       
+                      \$output += "\<tr\>";                       
+                      \$output += "    \<td valign='top'\>";                       
+                      \$output += "        \<table\>";                       
+                      \$output += "            \<tr\>";                       
+                      \$output += "                \<td style='text-align:right'\>\<b\>" + \$name + " says\</b\>\</td\>";                       
+                      \$output += "            \</tr\>";                       
+                      \$output += "        \</table\>";                       
+                      \$output += "    \</td\>";                        
+                      \$output += "\<td colspan='2'\>";                       
+                      \$output += "    \<table\>";                       
+                      \$output += "        \<tr\>\<td\>" + \$comment + "\</td\>\</tr\>";                        
+                      \$output += "        \<tr\>\<td\>\<font size='1'\>\<i\>[Last modified:" + short_time(Int(\$when)) + "]\</i\>\</font\>\</td\>\</tr\>";                       
+                      \$output += "    \</table\>";                       
+                      \$output += "\</td\>\</tr\>";                           
+                  \}                        
+              \}                            
+          \}                
+                        
+          return ParseXML(\$output);]
+     \</table\>
+     \</center\>
+     \</zform\>
+      </Core:Property>
+      <Core:Property property="html:viewtopic">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+    \$[/* run some initial code */                            
+        ::popup_initialize();                            
+        return nil;]
+\</z\>
+\$["";                       
+  \$actor = Obj(\$actor);                       
+  \$this = Obj(\$this);                    
+  \$topic = \$topic;                    
+  \$entry = \$entry;                    
+                    
+  if(\$topic == "buildingrequests") \{                    
+      \$db = \$\{Ironclaw:Data:GuildCouncil:BuildingRequests\};                    
+      \$estimate = Get(\$db, \$entry)["estimate"];                    
+      \$location = Get(\$db, \$entry)["location"];             
+      \$title = Get(\$db, \$entry)["title"];           
+      \$guild = Get(\$db, \$entry)["guild"];               
+  \} else if(\$topic == "newmemberapplications") \{                    
+      \$db = \$\{Ironclaw:Data:GuildCouncil:NewApplications\};                  
+      \$crest = Get(\$db, \$entry)["crest"];                    
+      \$kitty = Get(\$db, \$entry)["kitty"];                    
+      \$members = Get(\$db, \$entry)["members"];                    
+      \$tokens = Get(\$db, \$entry)["tokens"];                    
+      \$teachers = Get(\$db, \$entry)["teachers"];                    
+      \$purpose = Get(\$db, \$entry)["purpose"];                    
+      \$reason = Get(\$db, \$entry)["body"];               
+      \$blacklistedby = Get(\$db, \$entry)["blacklistedby"];            
+      \$accomplishments = Get(\$db, \$entry)["accomplishments"];         
+      \$guild = Get(\$db, \$entry)["guild"];       
+  \} else if(\$topic == "meetings") \{      
+      \$db = \$\{Ironclaw:Data:GuildCouncil:Meetings\};      
+      \$date = Get(\$db, \$entry)["date"];      
+      \$time = Get(\$db, \$entry)["time"];       
+  \} else if(\$topic == "projects") \{     
+      \$db = \$\{Ironclaw:Data:GuildCouncil:Projects\};     
+      \$supervisor = Get(\$db, \$entry)["supervisor"];     
+      \$title = Get(\$db, \$entry)["title"];      
+  \} else \{                    
+      \$db = \$\{Ironclaw:Data:GuildCouncil:Complaints\};                    
+      \$title = Get(\$db, \$entry)["title"];           
+      \$topic = "complaints";                    
+  \}                      
+                             
+  \$filedby = Get(\$db, \$entry)["filedby"];                                       
+  \$body = replace_strings(Get(\$db, \$entry)["body"], "\\n", "\<br/\>");]
+    \<zform\>
+    \<center\>
+    \<table\>
+ \$[ParseXML("\<tr\>\<td valign='top'\>\<zact\>\<font size='2'\>BACK\</font\>\<action\>\<redirect propob='" + Str(\$this) + "' prop='index' page='" + \$topic + "' actor='" + Str(\$actor) + "'/\>\</action\>\</zact\>\</td\>\</tr\>")]
+        \<tr\>
+            \<td valign="top"\>
+                          \<input type="hidden" name="supervisor" value="\$(supervisor)"/\>
+                          \<input type="hidden" name="date" value="\$(date)"/\>
+                          \<input type="hidden" name="time" value="\$(time)"/\>
+                          \<input type="hidden" name="topic" value="\$(topic)"/\>
+                          \<input type="hidden" name="actor" value="\$(actor)"/\>
+                          \<input type="hidden" name="this" value="\$(this)"/\>
+                          \<input type="hidden" name="entry" value="\$(entry)"/\>
+                          \<input type="hidden" name="title" value="\$(title)"/\>
+                          \<input type="hidden" name="filedby" value="\$(filedby)"/\>
+                          \<input type="hidden" name="guild" value="\$(guild)"/\>
+                          \<input type="hidden" name="body" value="\$(body)"/\>
+                          \<input type="hidden" name="db" value="\$(db)"/\>
+                          \<input type="hidden" name="comment" value="\$(comment)"/\>
+                          \<input type="hidden" name="type" value="\$(type)"/\>
+                          \<input type="hidden" name="crest" value="\$(actor)"/\>
+                          \<input type="hidden" name="kitty" value="\$(kitty)"/\>
+                          \<input type="hidden" name="members" value="\$(members)"/\>
+                          \<input type="hidden" name="tokens" value="\$(tokens)"/\>
+                          \<input type="hidden" name="teachers" value="\$(teachers)"/\>
+                          \<input type="hidden" name="purpose" value="\$(purpose)"/\>
+                          \<input type="hidden" name="reason" value="\$(reason)"/\>
+                          \<input type="hidden" name="blacklistedby" value="\$(blacklistedby)"/\>
+                          \<input type="hidden" name="accomplishments" value="\$(accomplishments)"/\>
+            \</td\>
+        \</tr\>
+        \{? equal \| \$(topic) \| complaints \|
+            \<tr\>\<td valign="top" colspan="3"\>\<div id="header"\>Suggestion\</div\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Subject:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(title)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Date:\</b\>\</td\>\<td valign="top" colspan="2"\>[\$[ctime(Int(\$entry))]]\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Suggestion:\</b\>\</td\>\<td valign="top"\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| buildingrequests \|
+            \<tr\>\<td valign="top" colspan="3"\>\<div id="header"\>Building Request\</div\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Subject:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(title)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Date:\</b\>\</td\>\<td valign="top" colspan="2"\>[\$[ctime(Int(\$entry))]]\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Location:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(location)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Estimated Costs:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(estimate)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Proposal Details:\</b\>\</td\>\<td valign="top"\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| newmemberapplications \|
+            \<tr\>\<td valign="top" colspan="3"\>\<div id="header"\>Membership Application\</div\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Applying Guild:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(guild)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Date:\</b\>\</td\>\<td valign="top" colspan="2"\>[\$[ctime(Int(\$entry))]]\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Guild Crest:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(crest)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Total Kitty:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(kitty)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Active Members:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(members)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Total Resources:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(tokens)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Teachers:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(teachers)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Blacklisted By:\</b\>\</td\>\<td valign="top"\>\$(blacklistedby)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Purpose of Guild:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(purpose)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Reason for Applying:\</b\>\</td\>\<td valign="top"\>\$(reason)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Notable Accomplishments:\</b\>\</td\>\<td valign="top"\>\$(accomplishments)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| meetings \|
+            \<tr\>\<td valign="top" colspan="3"\>\<div id="header"\>Meeting Agenda\</div\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Scheduled By:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Date:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(date)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Time:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(time)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Topics:\</b\>\</td\>\<td valign="top"\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| projects \|
+            \<tr\>\<td valign="top" colspan="3"\>\<div id="header"\>Project Overview\</div\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top"\>\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Project Name:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(title)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Started By:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Date:\</b\>\</td\>\<td valign="top" colspan="2"\>[\$[ctime(Int(\$entry))]]\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Supervisor:\</b\>\</td\>\<td valign="top" colspan="2"\>\$(supervisor)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="1"\>\<b\>Description:\</b\>\</td\>\<td valign="top"\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td valign="top" colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \$["";                       
+          \$output = "";                       
+          if(Get(\$db, \$entry)["comments"] \&\& map_sizeof(Get(\$db, \$entry)["comments"])) \{                       
+              \$comments = Get(\$db, \$entry)["comments"];                       
+              \$people = map_indices(\$comments);                      
+                      
+              \$temp = (\{ \});                      
+              \$temp2 = (\{ \});                      
+              for(\$i = 0; \$i \< sizeof(\$people); \$i++) \{                      
+                  \$temp += (\{ \$comments[\$people[\$i]]["time"] \});                      
+                  \$temp = map_indices(arr_to_set(\$temp));                      
+              \}                      
+              for(\$i = 0; \$i \< sizeof(\$temp); \$i++) \{                      
+                  for(\$j = 0; \$j \< sizeof(\$people); \$j++ ) \{                      
+                      if(\$temp[\$i] == \$comments[\$people[\$j]]["time"]) \{                      
+                          \$temp2 += (\{ \$people[\$j] \});                      
+                      \}                      
+                  \}                      
+              \}                      
+                      
+              for(\$i = 0; \$i \< sizeof(\$temp2); \$i++) \{                       
+                  if(\$temp2[\$i]) \{                       
+                      \$comment = \$comments[\$temp2[\$i]]["comment"];                       
+                      \$name = capitalize(\$temp2[\$i]."skotos:charname");                       
+                      \$when = \$comments[\$temp2[\$i]]["time"];                       
+                      
+                      \$output += "\<tr\>";                      
+                      \$output += "    \<td valign='top' valign='top'\>";                      
+                      \$output += "        \<table width='100px'\>";                      
+                      \$output += "            \<tr\>";                      
+                      \$output += "                \<td valign='top' style='text-align:right'\>\<b\>" + \$name + " says\</b\>\</td\>";                      
+                      \$output += "            \</tr\>";                      
+                      \$output += "        \</table\>";                      
+                      \$output += "    \</td\>";                      
+                      if(\$temp2[\$i] == \$actor) \{                       
+                          \$output += "\<td valign='top' colspan='2'\>";                      
+                          \$output += "    \<table width='300px' border='0px'\>";                      
+                          \$output += "        \<tr\>\<td valign='top' colspan='3'\>\<textarea style='BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 300px; HEIGHT: 110px' width='100%'name='comment'\>" + \$comment + "\</textarea\>\</td\>\</tr\>";                       
+                          \$output += "        \<tr\>\<td valign='top'\>\<input type='submit' value='Update Comment'/\>\<font size='1'\>\<i\>[Last modified:" + short_time(Int(\$when)) + "]\</i\>\</font\>\</td\>\</tr\>";                      
+                          \$output += "    \</table\>";                      
+                          \$output += "\</td\>\</tr\>";                       
+                      \} else \{                       
+                          \$output += "\<td valign='top' colspan='2'\>";                      
+                          \$output += "    \<table\>";                      
+                          \$output += "        \<tr\>\<td valign='top'\>" + \$comment + "\</td\>\</tr\>";                       
+                          \$output += "        \<tr\>\<td valign='top'\>\<font size='1'\>\<i\>[Last modified:" + short_time(Int(\$when)) + "]\</i\>\</font\>\</td\>\</tr\>";                      
+                          \$output += "    \</table\>";                      
+                          \$output += "\</td\>\</tr\>";                      
+                      \}                      
+                  \}                       
+              \}                       
+                      
+              if(!\$comments[\$actor]) \{                      
+                      \$output += "\<tr\>";                      
+                      \$output += "    \<td valign='top' valign='top'\>";                      
+                      \$output += "        \<table\>";                      
+                      \$output += "            \<tr\>";                      
+                      \$output += "                \<td valign='top' style='text-align:right'\>\<b\>" + capitalize(\$actor."skotos:charname") + " says\</b\>\</td\>";                      
+                      \$output += "            \</tr\>";                      
+                      \$output += "        \</table\>";                      
+                      \$output += "    \</td\>";                      
+                          \$output += "\<td valign='top' colspan='2'\>";                      
+                          \$output += "    \<table\>";                      
+                          \$output += "        \<tr\>\<td valign='top'\>\<textarea style='BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 200px; HEIGHT: 110px' width='100%'name='comment'/\>\</td\>\</tr\>";                       
+                          \$output += "        \<tr\>\<td valign='top'\>\<input type='submit' value='File Comment'/\>\</td\>\</tr\>";                      
+                          \$output += "    \</table\>";                      
+                          \$output += "\</td\>\</tr\>";                      
+              \}                      
+          \} else \{                       
+                          \$output += "\<tr\>\<td valign='top' colspan='2'\>";                      
+                          \$output += "    \<table\>";                      
+                          \$output += "        \<tr\>\<td valign='top'\>\<textarea style='BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 200px; HEIGHT: 110px' width='100%'name='comment'\>" + Str(\$comment) + "\</textarea\>\</td\>\</tr\>";                       
+                          \$output += "        \<tr\>\<td valign='top'\>\<input type='submit' value='File Comment'/\>\</td\>\</tr\>";                      
+                          \$output += "    \</table\>";                      
+                          \$output += "\</td\>\</tr\>";                      
+          \}                       
+                       
+          return ParseXML(\$output);]
+          \<tr\>\<td valign="top" colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+          \<tr\>\<td valign="top"\>\</td\>\</tr\>
+          \<tr\>
+              \<td valign="top" colspan="3"\>
+              \$["";                
+                   \$rstr = "";               
+                   if(\$actor.storyhost) \{               
+                       \$rstr += "\<tr\>\<td valign='top' colspan='3'\>[Staff Only: \<zact\>Archive this topic.\<action\>\$[\\"\\"; ::archive_topic(\$db: Obj(\\"" + Str(\$db) + "\\"), \$entry: \\"" + Str(\$entry) + "\\", \$topic: \\"" + Str(\$topic) + "\\");]\<redirect propob='" + Str(\$this) + "' prop='index' page='archives' actor='" + Str(\$actor) + "' topic='" + Str(\$topic) + "'/\>\</action\>\</zact\> !!Don't forget to add a final comment explaining the outcome!!]\</td\>\</tr\>";               
+                   \}               
+                   return ParseXML(\$rstr);]
+              \</td\>
+          \</tr\>
+     \</table\>
+     \</center\>
+     \<action\>
+            \$[""; Call(Obj(\$this), "file_comment", \$actor: \$actor, \$this: \$this, \$db: \$db, \$entry: \$entry, \$comment: \$comment, \$topic: \$topic);]
+     \</action\>
+     \</zform\>
+      </Core:Property>
+      <Core:Property property="merry:lib:add_topic_link">
+         X[M] \$rstr = "";
+
+if(!::council_member(\$who: \$actor)) \{
+    return \$rstr;
+\}
+
+if(\$topic == "meetings") \{
+    \$rstr += "\<tr\>\<td\>\<zact\>Schedule a meeting\<action\>\<redirect propob='\$(this)' prop='index' page='addtopic' topic='meetings' actor='" + Str(\$actor) + "'/\>\</action\>\</zact\>\</td\>\</tr\>"; 
+\} else if(\$topic == "projects") \{
+    \$rstr += "\<tr\>\<td\>\<zact\>Start a project\<action\>\<redirect propob='\$(this)' prop='index' page='addtopic' topic='projects' actor='" + Str(\$actor) + "'/\>\</action\>\</zact\>\</td\>\</tr\>"; 
+\}
+
+return ParseXML(\$rstr);
+      </Core:Property>
+      <Core:Property property="merry:lib:archive_topic">
+         X[M] \$archive = \$\{Ironclaw:Data:GuildCouncil:Archives\};
+
+\$data = Get(\$db, \$entry);
+
+Set(\$archive, \$topic + ":" + \$entry, \$data);
+Set(\$db, \$entry, nil);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:council_member">
+         X[M] \$guilds = Get(\$\{Ironclaw:Data:GuildCouncil:Members\}, "members");
+
+if(!\$who.guild) return FALSE;
+
+if(member(\$who.guild, \$guilds)) return TRUE;
+if(\$who.storyhost) return TRUE;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:file_application">
+         X[M] \$db = \$\{Ironclaw:Data:GuildCouncil:NewApplications\};
+
+\$gname = \$application."guild:name";
+\$crest = \$application."guild:crest";
+\$kitty = \$application."guild:kitty";
+\$members = \$application."guild:members";
+\$tokens = \$application."guild:tokens";
+\$teachers = \$application."guild:teachers";
+\$blacklistedby = \$application."guild:blacklistedby";
+\$purpose = \$application."guild:purpose";
+\$accomplishments = \$application."guild:accomplishments";
+\$reason = \$application."guild:reason";
+\$body = \$application."details:default:description:writing";
+\$filedby = \$application.lastwriter;
+
+\$property = ([ "accomplishments":\$accomplishments, "blacklistedby":\$blacklistedby, "crest":\$crest, "filedby":\$filedby, "guild":\$gname, "kitty":\$kitty, "members":\$members, "purpose":\$purpose, "body": \$body, "teachers":\$teachers, "tokens":\$tokens ]);
+
+Set(\$db, Str(time()), \$property);
+
+Slay(\$application);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:file_buildingrequest">
+         X[M] \$db = \$\{Ironclaw:Data:GuildCouncil:BuildingRequests\};
+
+\$location = \$application."request:location";
+\$title = \$application."request:title";
+\$estimate = \$application."request:estimate";
+\$filedby = \$application.lastwriter;
+\$body = \$application."details:default:description:writing";
+
+\$property = ([ "location":\$location, "title":\$title, "estimate":\$estimate, "filedby":\$filedby, "guild":\$gname, "body": \$body ]);
+
+Set(\$db, Str(time()), \$property);
+
+Slay(\$application);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:file_comment">
+         X[M] \$actor = Obj(replace_strings(\$actor, "OBJ(", "", ")", ""));
+\$db = Obj(replace_strings(\$db, "OBJ(", "", ")", ""));
+\$complaint = copy(Get(\$db, \$entry));
+\$topic = \$topic;
+
+if(\$complaint \&\& \$complaint["comments"]) \{
+    \$comments = \$complaint["comments"];
+\} else \{
+    \$comments = ([ ]);
+\}
+
+\$comments[\$actor] = ([ "comment":\$comment, "time":time() ]);
+
+\$complaint["comments"] = \$comments;
+
+Set(\$db, \$entry, \$complaint);
+
+Popup(\$actor, \$\{Ironclaw:Lib:GuildCouncilPage\}, "index", \$actor: Str(\$actor), \$this: Str(\$this), \$entry: \$entry, \$topic: \$topic, \$page: "viewtopic");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:file_complaint">
+         X[M] \$db = \$this.councilcomplaints;
+
+\$title = \$complaint."complaint:title";
+\$guild = \$complaint."complaint:guild";
+\$body = \$complaint."details:default:description:writing";
+\$filedby = \$complaint.lastwriter;
+
+\$property = ([ "title":\$title, "guild": \$guild, "body":\$body, "filedby":\$filedby ]);
+
+Set(\$db, Str(time()), \$property);
+
+Slay(\$complaint);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_financial_info">
+         X[M] \$info = "";
+
+if(!::council_member(\$who: \$actor)) \{
+    return ParseXML(\$info);
+\}
+
+\$info += "\<table width='100%'\>" +
+         "    \<tr\>" +
+         "        \<td\>" +
+         "            \<font size='3'\>\<i\>Note: The Guild Council receives the usage cost from all trade tables. This includes the fees guilds pay when renting a table. The Council also receives a flat fee of 20 denarii for every successful import brought into the city. The Guild Council has indirect access to these funds. Withdrawal requests can be sent to Master Lothario (ooc: Staff) for approval. Be specific with your reasoning for requesting these funds.\</i\>\</font\>" +
+         "        \</td\>" +
+         "    \</tr\>" +
+         "    \<tr\>" +
+         "        \<td colspan='4'\>" +
+         "            \<b\>Available Funds:\</b\> " + Str(Int(nil /* defunct */.kitty)/100) + " denarii \<br/\>" +
+         "        \</td\>" +
+         "    \</tr\>" + 
+         "\</table\>";
+
+\$info += "\<table width='100%' style='border: 1px solid black;'\>" +
+         "    \<tr\>" + 
+         "        \<td colspan='4'\>" +
+         "            \<b\>Trade Table \& Imports Ledger YTD:\</b\>" +
+         "        \</td\>" +
+         "    \</tr\>" +
+         "    \<tr style='text-align: center;'\>" +       
+         "        \<td\>\<b\>Month\</b\>\</td\>\<td\>\<b\>Trade Tables\</b\>\</td\>\<td\>\<b\>Imports\</b\>\</td\>\<td\>\<b\>Net Gain\</b\>\</td\>" + 
+         "    \</tr\>";
+
+\$years = (\{ "2019" \});
+\$months = (\{ "12", "11", "10", "09", "08", "07", "06", "05", "04", "03", "02", "01" \});
+\$months2 = (\{ "Dec", "Nov", "Oct", "Sep", "Aug", "Jul", "Jun", "May", "Apr", "Mar", "Feb", "Jan" \});
+\$num4 = 0;
+for(\$i = 0; \$i \< sizeof(\$years); \$i++) \{
+    \$year = \$years[\$i];
+    for(\$j = 0; \$j \< sizeof(\$months); \$j++) \{
+        \$council = nil /* defunct */;
+        \$month = \$months[\$j];
+        \$num1 = Int(Get(\$council, "transactions:deposit:tradingtable:" + \$year + ":" + \$month))/100;
+        \$num2 = Int(Get(\$council, "transactions:deposit:imports:" + \$year + ":" + \$month))/100;
+        \$num3 = \$num1 + \$num2;
+        \$num4 += \$num3;
+        \$info += "\<tr style='text-align:right;'\>\<td style='text-align: left;'\>[" + Str(\$months2[\$j]) + " " + Str(\$year) + "]\</td\>\<td\>" + Str(\$num1) + "\</td\>\<td\>" + Str(\$num2) + "\</td\>\<td\>" + Str(\$num3) + "\</td\>\</tr\>";
+    \}
+    \$info += "\<tr\>\<td colspan='3' style='text-align: right;'\>\<b\>YTD Total\</b\>\</td\>\<td style='text-align:right;'\>\<b\>" + Str(\$num4) + "\</b\>\</td\>\</tr\>";
+\}
+
+\$info += "\</table\>\<br/\>";
+
+\$info += "\<table\>" + 
+         "    \<tr\>\<td\>\<b\>Kitty Transfers\</b\>\</td\>\</tr\>\<tr\>\<td\>";
+         
+\$transfers = (\{ \});
+
+\$guild = \$council;
+if(Get(\$guild, "transfers")) \{
+    \$transfers = Get(\$guild, "transfers");
+\}
+
+if(!sizeof(\$transfers)) \{
+    \$info += "No records to display.";
+\}
+
+\$sz = sizeof(\$transfers);
+for(\$i = (\$sz-1); \$i \>= 0; \$i--) \{
+    \$temp = \$transfers[\$i];
+
+    if(\$temp[0]) \{
+        \$who = capitalize(\$temp[0]."skotos:charname");	/* Who initiated the transaction */
+    \} else \{
+        \$who = "Unknown";
+    \}
+
+    \$howmuch = Int(\$temp[1])/100;    /* How much is being sent/received */
+    if(\$howmuch \> 1) \$type = "denarii"; else \$type = "denar";
+
+    if(\$temp[2]) \{
+        \$otherguild = \$temp[2].fullname;    /* Guild we are trading with */
+    \} else \{
+        \$otherguild = "Unknown";
+    \}
+
+    \$when = ctime(\$temp[3])[4..10] + ctime(\$temp[3])[20..23];    /* When did this transaction take place */
+
+    if(sizeof(\$temp) \< 5) \{
+        \$info += "\<font color='red'\>[" + Str(\$when) + "]  Transferred \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\> to \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").\</font\>";
+    \} else if(sizeof(\$temp) \> 4 \&\& \$temp[4] == "receiving") \{
+        \$info += "\<font color='green'\>[" + Str(\$when) + "] Received \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\> from \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").";
+        if(sizeof(\$temp) == 6) \$info += " Reason: " + Str(\$temp[5]);
+        \$info += "\</font\>";
+    \} else if(sizeof(\$temp) \> 4 \&\& sizeof(\$temp) != 6) \{
+        \$info += "\<font color='red'\>[" + Str(\$when) + "]  Transferred \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\> to \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").\</font\>";
+    \} else \{
+        \$info += "\<font color='red'\>[" + Str(\$when) + "]  Transferred \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\> to \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + "). Reason: " + Str(\$temp[5]) + "\</font\>";
+    \}
+
+    \$info += "\<br/\>";
+\}
+
+\$info += "\</td\>\</tr\>\</table\>";
+
+return ParseXML(\$info);
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] /* checks the player isn't trying anything funny, and that we have all the information we need */
+/* returns the page we should look up */
+object *bodies;
+int i, sz;
+
+/* first basic sanity checks -- these should never happen */
+if (\$dat == nil) \{
+    error("page reached without a udat");
+\}
+if (\$name == nil) \{
+    error("page reached without a name");
+\}
+
+/* what is the character? */
+if(\$actor \&\& typeof(\$actor) == 3) \{
+    /* \$actor is a string. make it an object */
+    if(Obj(\$actor)) \{
+        \$actor = Obj(\$actor);
+    \} else \{
+        \$actor = Obj("Chatters:IC:"+\$actor[0..1]+":"+\$actor);
+    \}
+\}
+
+if(\$char \&\& typeof(\$char) == 3) \{
+    /* \$char is a string. make it an object */
+    if(Obj(\$char)) \{
+        \$char = Obj(\$char);
+    \} else \{
+        \$char = Obj("Chatters:IC:"+\$char[0..1]+":"+\$char);
+    \}
+\}
+
+if(!\$char \&\& \$actor) \$char = \$actor;
+if(!\$actor \&\& \$char) \$actor = \$char;
+if (!\$char) error("No character specified");
+
+\$charname = name(\$char)[15..strlen(name(\$char))-1];
+
+
+/* what is the guild? */
+if(\$guild \&\& typeof(\$guild) == 3 \&\& Obj("Ironclaw:Guilds:"+\$guild)) \{
+  \$guildob = Obj("Ironclaw:Guilds:"+\$guild);
+\} else if(Get(\$char, "guild")) \{
+  \$guildob = \$char.guild;
+\} else \{
+  \$guildob = nil;
+\}
+
+if(\$guildob) \{
+  \$guildname = name(\$guildob)[16..strlen(name(\$guildob))-1];
+  \$guildpages = Obj("Ironclaw:Guilds:Pages:new:"+\$guildname);
+  if(!\$guildpages) \{
+    \$guildpages = Duplicate(\$\{Allegory:Guilds:Pages:new:default_page\});
+    \$guildpages."core:objectname" = "Ironclaw:Guilds:Pages:new:"+\$guildname;
+  \}
+\}
+
+
+/* Check the player isn't trying to access someone elses body */
+/* Check if the players roster of characters */
+bodies = Udat::query_bodies_in_roster(\$user: \$name);
+
+for(i = 0; i \< sizeof(bodies);) \{
+    if(bodies[i]."theatre:id" != "IC") \{
+        bodies -= (\{ \$bodies[i] \});
+    \} else \{
+        i++;
+    \}
+\}
+
+bodies \&= (\{ \$char \});
+
+if(sizeof(bodies) \< 1 \&\& \$name != "tonyd") \{
+  error("Body "+dump_value(\$char)+" for account "+dump_value(\$name)+" not found in character roster");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:retrieve_archive">
+         X[M] \$db = \$\{Ironclaw:Data:GuildCouncil:Archives\};
+
+\$data = copy(\$db)."*" - (\{ "revisions", "new property" \});
+\$data2 = structure_propmap(\$data);
+\$categories = map_indices(\$data2);
+
+
+
+\$rstr = "";
+for(\$i = 0; \$i \< sizeof(\$categories); \$i++) \{
+    \$rstr += "\<tr\>\<td\>\</td\>\</tr\>";
+    \$rstr += "\<tr\>\<td\>\</td\>\</tr\>";
+    if(\$categories[\$i] == "complaints") \$rstr += "\<tr\>\<td\>\<b\>Past Suggestions:\</b\>\</td\>\</tr\>";
+    if(\$categories[\$i] == "buildingrequests") \$rstr += "\<tr\>\<td\>\<b\>Past Building Requests:\</b\>\</td\>\</tr\>";
+    if(\$categories[\$i] == "newmemberapplications") \$rstr += "\<tr\>\<td\>\<b\>Past Member Applications:\</b\>\</td\>\</tr\>";
+    if(\$categories[\$i] == "meetings") \$rstr += "\<tr\>\<td\>\<b\>Completed Meetings:\</b\>\</td\>\</tr\>";
+    if(\$categories[\$i] == "projects") \$rstr += "\<tr\>\<td\>\<b\>Completed Projects:\</b\>\</td\>\</tr\>";
+
+    \$entries = map_indices(\$data2[\$categories[\$i]]);
+
+    for(\$j = 0; \$j \< sizeof(\$entries); \$j++) \{
+        if(\$data2[\$categories[\$i]][\$entries[\$j]]["title"]) \$title = \$data2[\$categories[\$i]][\$entries[\$j]]["title"]; else \$title = \$data2[\$categories[\$i]][\$entries[\$j]]["guild"];
+        \$rstr += "\<tr\>\<td\>\<zact\>[" + Str(implode(explode(humanized_date(Int(\$entries[\$j])), ", ")[1..2], ", ")) + "] " + Str(\$title) + "\<action\>\<redirect propob='\$(this)' page='viewarchive' prop='index' entry='" + Str(\$categories[\$i] + ":" + \$entries[\$j]) + "' actor='" + Str(\$actor) + "'/\>\</action\>\</zact\>\</td\>\</tr\>";
+    \}
+\}
+
+return ParseXML(\$rstr);
+      </Core:Property>
+      <Core:Property property="merry:lib:retrieve_members">
+         X[M] \$db = \$\{Ironclaw:Data:GuildCouncil:Members\};
+
+\$members = \$db.members;
+
+\$rstr = "\<table\>";
+for(\$i = 0; \$i \< sizeof(\$members); \$i++) \{
+    \$guild = \$members[\$i];
+    if(\$guild.leader."trait:title") \$title = capitalize(\$guild.leader."trait:title"); else \$title = "";
+    if(\$title == "None") \$title = "";
+    \$rstr += "\<tr\>\<td\>" + \$guild.fullname + "\</td\>\<td\>(" + Str(\$title) + " " + capitalize(Str(\$guild.leader."skotos:charname")) + ")\</td\>\</tr\>";
+\}
+\$rstr += "\</table\>";
+
+return ParseXML(\$rstr);
+      </Core:Property>
+      <Core:Property property="merry:lib:retrieve_projects">
+         X[M] return "";
+      </Core:Property>
+      <Core:Property property="merry:lib:retrieve_topic">
+         X[M] if(\$topic == "complaints") \$db = \$\{Ironclaw:Data:GuildCouncil:Complaints\};
+if(\$topic == "newmemberapplications") \$db = \$\{Ironclaw:Data:GuildCouncil:NewApplications\};
+if(\$topic == "buildingrequests") \$db = \$\{Ironclaw:Data:GuildCouncil:BuildingRequests\};
+if(\$topic == "meetings") \$db = \$\{Ironclaw:Data:GuildCouncil:Meetings\};
+if(\$topic == "projects") \$db = \$\{Ironclaw:Data:GuildCouncil:Projects\};
+
+\$data = copy(\$db)."*" - (\{ "revisions", "new property" \});
+
+\$entries = map_indices(\$data);
+
+\$rstr = "";
+
+if(\$num) \{
+    if(!sizeof(\$entries)) return "(0)";
+    if(sizeof(\$entries)) return "(" + Str(sizeof(\$entries)) + ")";
+\}
+
+if(\$nmd) \{
+    if(!sizeof(\$entries)) return "TO BE ANNOUNCED";
+    if(sizeof(\$entries)) return Str(\$data[\$entries[0]]["date"]) + " @ " + Str(\$data[\$entries[0]]["time"]);
+\}
+
+if(!sizeof(\$entries)) \{
+    if(\$topic == "complaints") \{ \$rstr += "There are no pending suggestions."; \}
+    if(\$topic == "newmemberapplications") \{ \$rstr += "There are no pending applications."; \}
+    if(\$topic == "buildingrequests") \{ \$rstr += "There are no new building requests."; \}
+    if(\$topic == "projects") \{ \$rstr += "There are no current project."; \}
+    if(\$topic == "meetings") \{ \$rstr += "There are no scheduled meetings."; \}
+    return ParseXML(\$rstr);
+\}
+
+for(\$i = 0; sizeof(\$entries) \&\& \$i \< sizeof(\$entries); \$i++) \{
+     if(\$data[\$entries[\$i]]["title"]) \{
+         \$title = \$data[\$entries[\$i]]["title"]; 
+     \} else if (\$data[\$entries[\$i]]["guild"]) \{
+         \$title = \$data[\$entries[\$i]]["guild"];
+     \} else \{
+         \$title = "Meeting on " + \$data[\$entries[\$i]]["date"];
+     \}
+     \$rstr += "\<tr\>\<td\>\<zact\>[" + Str(implode(explode(humanized_date(Int(\$entries[\$i])), ", ")[1..2], ", ")) + "] " + Str(\$title) + "\<action\>\<redirect propob='\$(this)' prop='index' page='viewtopic' topic='" + \$topic + "' entry='" + Str(\$entries[\$i]) + "' actor='" + Str(\$actor) + "'/\>\</action\>\</zact\>\</td\>\</tr\>"; 
+\}
+
+return ParseXML(\$rstr);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1479397774, "jominey", "E", 1479397809, "jominey", "E", 1479397817, "jominey", "E", 1479398058, "jominey", "E", 1479398121, "jominey", "E", 1479398157, "jominey", "E", 1479398432, "jominey", "E", 1479398535, "jominey", "E", 1479399099, "jominey", "E", 1479399143, "jominey", "E", 1479399221, "jominey", "E", 1479399329, "jominey", "E", 1479399528, "jominey", "E", 1479399590, "jominey", "E", 1479399625, "jominey", "E", 1479399666, "jominey", "E", 1479399706, "jominey", "E", 1479399726, "jominey", "E", 1479399840, "jominey", "E", 1479399916, "jominey", "E", 1479400211, "jominey", "E", 1479400633, "jominey", "E", 1479400673, "jominey", "E", 1479400936, "jominey", "E", 1479401008, "jominey", "E", 1479401130, "jominey", "E", 1479401172, "jominey", "E", 1479401206, "jominey", "E", 1479401242, "jominey", "E", 1479401420, "jominey", "E", 1479401492, "jominey", "E", 1479401512, "jominey", "E", 1479401568, "jominey", "E", 1479401602, "jominey", "E", 1479401620, "jominey", "E", 1479401645, "jominey", "E", 1479401666, "jominey", "E", 1479401713, "jominey", "E", 1479401745, "jominey", "E", 1479401790, "jominey", "E", 1479401811, "jominey", "E", 1479401896, "jominey", "E", 1479401921, "jominey", "E", 1479401968, "jominey", "E", 1479401991, "jominey", "E", 1479402016, "jominey", "E", 1479402145, "jominey", "E", 1479402166, "jominey", "E", 1479402264, "jominey", "E", 1479402321, "jominey", "E", 1479402362, "jominey", "E", 1479402421, "jominey", "E", 1479402530, "jominey", "E", 1479402595, "jominey", "E", 1479402606, "jominey", "E", 1479402620, "jominey", "E", 1479402661, "jominey", "E", 1479402758, "jominey", "E", 1479403834, "jominey", "E", 1479403953, "jominey", "E", 1479404198, "jominey", "E", 1479404326, "jominey", "E", 1479404372, "jominey", "E", 1479404438, "jominey", "E", 1479404524, "jominey", "E", 1479404566, "jominey", "E", 1479404588, "jominey", "E", 1479404619, "jominey", "E", 1479404743, "jominey", "E", 1479404848, "jominey", "E", 1479404888, "jominey", "E", 1479404905, "jominey", "E", 1479404984, "jominey", "E", 1479405011, "jominey", "E", 1479405057, "jominey", "E", 1479405078, "jominey", "E", 1479405137, "jominey", "E", 1479405164, "jominey", "E", 1479405243, "jominey", "E", 1479405300, "jominey", "E", 1479405332, "jominey", "E", 1479405470, "jominey", "E", 1479405516, "jominey", "E", 1479405534, "jominey", "E", 1479405915, "jominey", "E", 1479406027, "jominey", "E", 1479406161, "jominey", "E", 1479406192, "jominey", "E", 1479406338, "jominey", "E", 1479406423, "jominey", "E", 1479406485, "jominey", "E", 1479406539, "jominey", "E", 1479406726, "jominey", "E", 1479406796, "jominey", "E", 1479407103, "jominey", "E", 1479407177, "jominey", "E", 1479407257, "jominey", "E", 1479407275, "jominey", "E", 1479407357, "jominey", "E", 1479407384, "jominey", "E", 1479407400, "jominey", "E", 1479407415, "jominey", "E", 1479407459, "jominey", "E", 1479407482, "jominey", "E", 1479407501, "jominey", "E", 1479407516, "jominey", "E", 1479407545, "jominey", "E", 1479407572, "jominey", "E", 1479407611, "jominey", "E", 1479407630, "jominey", "E", 1479407822, "jominey", "E", 1479407885, "jominey", "E", 1479407911, "jominey", "E", 1479408133, "jominey", "E", 1479408169, "jominey", "E", 1479408234, "jominey", "E", 1479408296, "jominey", "E", 1479408333, "jominey", "E", 1479408421, "jominey", "E", 1479408694, "jominey", "E", 1479408732, "jominey", "E", 1479408856, "jominey", "E", 1479409087, "jominey", "E", 1479409223, "jominey", "E", 1479409285, "jominey", "E", 1479409321, "jominey", "E", 1479409380, "jominey", "E", 1479409414, "jominey", "E", 1479409532, "jominey", "E", 1479409899, "jominey", "E", 1479409974, "jominey", "E", 1479410097, "jominey", "E", 1479410135, "jominey", "E", 1479410165, "jominey", "E", 1479410746, "jominey", "E", 1479410785, "jominey", "E", 1479411278, "jominey", "E", 1479411326, "jominey", "E", 1479411641, "jominey", "E", 1479411895, "jominey", "E", 1479412118, "jominey", "E", 1479412304, "jominey", "E", 1479412365, "jominey", "E", 1479412434, "jominey", "E", 1479412652, "jominey", "E", 1479412951, "jominey", "E", 1479414854, "jominey", "E", 1479414940, "jominey", "E", 1479415985, "jominey", "E", 1479416066, "jominey", "E", 1479416299, "jominey", "E", 1479416396, "jominey", "E", 1479416656, "jominey", "E", 1479416693, "jominey", "E", 1479416767, "jominey", "E", 1479416803, "jominey", "E", 1479416858, "jominey", "E", 1479416950, "jominey", "E", 1479417016, "jominey", "E", 1479417049, "jominey", "E", 1479417159, "jominey", "E", 1479417196, "jominey", "E", 1479417213, "jominey", "E", 1479417249, "jominey", "E", 1479417287, "jominey", "E", 1479417394, "jominey", "E", 1479417582, "jominey", "E", 1479417655, "jominey", "E", 1479417671, "jominey", "E", 1479417700, "jominey", "E", 1479420749, "jominey", "E", 1479420772, "jominey", "E", 1479420922, "jominey", "E", 1479420978, "jominey", "E", 1479421010, "jominey", "E", 1479421074, "jominey", "E", 1479421109, "jominey", "E", 1479421128, "jominey", "E", 1479421648, "jominey", "E", 1479421784, "jominey", "E", 1479421854, "jominey", "E", 1479421975, "jominey", "E", 1479422146, "jominey", "E", 1479422226, "jominey", "E", 1479422260, "jominey", "E", 1479422437, "jominey", "E", 1479422451, "jominey", "E", 1479422470, "jominey", "E", 1479422487, "jominey", "E", 1479422560, "jominey", "E", 1479422629, "jominey", "E", 1479423696, "jominey", "E", 1479426273, "jominey", "E", 1479426328, "jominey", "E", 1479426446, "jominey", "E", 1479426775, "jominey", "E", 1479426854, "jominey", "E", 1479426877, "jominey", "E", 1479427462, "jominey", "E", 1479427535, "jominey", "E", 1479427584, "jominey", "E", 1479427604, "jominey", "E", 1479427664, "jominey", "E", 1479427692, "jominey", "E", 1479427819, "jominey", "E", 1479427835, "jominey", "E", 1479427876, "jominey", "E", 1479427915, "jominey", "E", 1479427946, "jominey", "E", 1479427979, "jominey", "E", 1479428109, "jominey", "E", 1479430890, "jominey", "E", 1479430991, "jominey", "E", 1479431013, "jominey", "E", 1479431049, "jominey", "E", 1479431110, "jominey", "E", 1479431142, "jominey", "E", 1479431199, "jominey", "E", 1479431256, "jominey", "E", 1479431483, "jominey", "E", 1479431657, "jominey", "E", 1479431745, "jominey", "E", 1479431809, "jominey", "E", 1479434356, "jominey", "E", 1479434829, "jominey", "E", 1479506810, "jominey", "E", 1479506861, "jominey", "E", 1492997096, "jominey", "E", 1492997155, "jominey", "E", 1492997249, "jominey", "E", 1527546634, "jominey", "E", 1527546635, "jominey", "E", 1527546706, "jominey", "E", 1527546726, "jominey", "E", 1551146490, "jominey", "E", 1551146564, "jominey", "E", 1551146612, "jominey", "E", 1551146714, "jominey", "E", 1551146760, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="zbak:html:viewtopic">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+    \$[/* run some initial code */                   
+        ::popup_initialize();                   
+        return nil;]
+\</z\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+    \<head\>
+        \<title\>The Triskellian Guild Council\</title\>
+        \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+        \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+        \$(this.html:stylesheet)
+        \$(this.html:javascript)
+    \</head\>
+\$["";              
+  \$actor = Obj(\$actor);              
+  \$this = Obj(\$this);           
+  \$topic = \$topic;           
+  \$entry = \$entry;           
+           
+  if(\$topic == "buildingrequests") \{           
+      \$db = \$\{Ironclaw:Data:GuildCouncil:BuildingRequests\};           
+      \$estimate = Get(\$db, \$entry)["estimate"];           
+      \$location = Get(\$db, \$entry)["location"];    
+      \$title = Get(\$db, \$entry)["title"];            
+  \} else if(\$topic == "newmemberapplications") \{           
+      \$db = \$\{Ironclaw:Data:GuildCouncil:NewApplications\};         
+      \$crest = Get(\$db, \$entry)["crest"];           
+      \$kitty = Get(\$db, \$entry)["kitty"];           
+      \$members = Get(\$db, \$entry)["members"];           
+      \$tokens = Get(\$db, \$entry)["tokens"];           
+      \$teachers = Get(\$db, \$entry)["teachers"];           
+      \$purpose = Get(\$db, \$entry)["purpose"];           
+      \$reason = Get(\$db, \$entry)["reason"];      
+      \$blacklistedby = Get(\$db, \$entry)["blacklistedby"];   
+      \$accomplishments = Get(\$db, \$entry)["accomplishments"];   
+  \} else \{           
+      \$db = \$\{Ironclaw:Data:GuildCouncil:Complaints\};           
+      \$title = Get(\$db, \$entry)["title"];            
+  \}             
+                    
+  \$filedby = Get(\$db, \$entry)["filedby"];              
+  \$guild = Get(\$db, \$entry)["guild"];              
+  \$body = Get(\$db, \$entry)["body"];]
+    \<body style="background-color: black;"\>
+    \<zform\>
+    \<div style="text-align: center; border: 1px solid black; margin-left: 1.5%; height: 95%; position: fixed; overflow: scroll; width: 95%; background-color: white; background-size: 100% 100%; background-repeat: no-repeat;"\>\<br/\>
+    \<center\>
+    \<table\>
+ \$[ParseXML("\<tr\>\<td\>\<zact\>\<font size='2'\>BACK\</font\>\<action\>\<redirect propob='" + Str(\$this) + "' prop='index' actor='" + Str(\$actor) + "'/\>\</action\>\</zact\>\</td\>\</tr\>")]
+        \<tr\>
+            \<td\>
+                \<p\>
+                          \<input type="hidden" name="topic" value="\$(topic)"/\>
+                          \<input type="hidden" name="actor" value="\$(actor)"/\>
+                          \<input type="hidden" name="this" value="\$(this)"/\>
+                          \<input type="hidden" name="entry" value="\$(entry)"/\>
+                          \<input type="hidden" name="title" value="\$(title)"/\>
+                          \<input type="hidden" name="filedby" value="\$(filedby)"/\>
+                          \<input type="hidden" name="guild" value="\$(guild)"/\>
+                          \<input type="hidden" name="body" value="\$(body)"/\>
+                          \<input type="hidden" name="db" value="\$(db)"/\>
+                          \<input type="hidden" name="comment" value="\$(comment)"/\>
+                          \<input type="hidden" name="type" value="\$(type)"/\>
+                          \<input type="hidden" name="crest" value="\$(actor)"/\>
+                          \<input type="hidden" name="kitty" value="\$(kitty)"/\>
+                          \<input type="hidden" name="members" value="\$(members)"/\>
+                          \<input type="hidden" name="tokens" value="\$(tokens)"/\>
+                          \<input type="hidden" name="teachers" value="\$(teachers)"/\>
+                          \<input type="hidden" name="purpose" value="\$(purpose)"/\>
+                          \<input type="hidden" name="reason" value="\$(reason)"/\>
+                          \<input type="hidden" name="blacklistedby" value="\$(blacklistedby)"/\>
+                          \<input type="hidden" name="accomplishments" value="\$(accomplishments)"/\>
+                \</p\>
+            \</td\>
+        \</tr\>
+        \<tr\>
+            \<td\>\<img src="http://anam.massagetherapy.com/Triple%20Spiral%20symbol%20--%20three%20filled%20double%20Archimedean%20spirals%20(triskelion).png" width="50px"/\>\</td\>
+            \<td\>\<font size="7"\>\<bold\>The Triskellian Guild Council\</bold\>\</font\>\</td\>
+            \<td\>\<img src="http://anam.massagetherapy.com/Triple%20Spiral%20symbol%20--%20three%20filled%20double%20Archimedean%20spirals%20(triskelion).png" width="50px"/\>\</td\>
+        \</tr\>
+        \<tr\>
+            \<td colspan="3"\>\<center\>\<font color="gray" size="3"\>\<i\>\{? equal \| \$(topic) \| complaint \| "A complaint is a unique opportunity to strengthen the relationship with the people."\}\{? equal \| \$(topic) \| buildingrequests \| "We shape our buildings; therefore they shape us."\}\{? equal \| \$(topic) \| newmemberapplications \| "Belonging and connection are the universal sources of true well-being."\}\</i\>\</font\>\</center\>\</td\>
+        \</tr\>
+        \<tr\>
+            \<td colspan="3"\>\<hr style="width:100%; height:1px;"/\>\</td\>
+        \</tr\>
+        \</table\>
+        \<table\>
+        \<tr\>
+            \<td\>
+                \<p\>
+                          \<input type="hidden" name="topic" value="\$(topic)"/\>
+                          \<input type="hidden" name="actor" value="\$(actor)"/\>
+                          \<input type="hidden" name="this" value="\$(this)"/\>
+                          \<input type="hidden" name="entry" value="\$(entry)"/\>
+                          \<input type="hidden" name="title" value="\$(title)"/\>
+                          \<input type="hidden" name="filedby" value="\$(filedby)"/\>
+                          \<input type="hidden" name="guild" value="\$(guild)"/\>
+                          \<input type="hidden" name="body" value="\$(body)"/\>
+                          \<input type="hidden" name="db" value="\$(db)"/\>
+                          \<input type="hidden" name="comment" value="\$(comment)"/\>
+                          \<input type="hidden" name="type" value="\$(type)"/\>
+                          \<input type="hidden" name="crest" value="\$(actor)"/\>
+                          \<input type="hidden" name="kitty" value="\$(kitty)"/\>
+                          \<input type="hidden" name="members" value="\$(members)"/\>
+                          \<input type="hidden" name="tokens" value="\$(tokens)"/\>
+                          \<input type="hidden" name="teachers" value="\$(teachers)"/\>
+                          \<input type="hidden" name="purpose" value="\$(purpose)"/\>
+                          \<input type="hidden" name="reason" value="\$(reason)"/\>
+                          \<input type="hidden" name="blacklistedby" value="\$(blacklistedby)"/\>
+                          \<input type="hidden" name="accomplishments" value="\$(accomplishments)"/\>
+                \</p\>
+            \</td\>
+        \</tr\>
+        \{? equal \| \$(topic) \| complaints \|
+            \<tr\>\<td colspan="1"\>\<b\>Subject:\</b\>\</td\>\<td colspan="2"\>\$(title)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Date:\</b\>\</td\>\<td colspan="2"\>[\$[ctime(Int(\$entry))]]\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Suggestion:\</b\>\</td\>\<td\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| buildingrequests \|
+            \<tr\>\<td colspan="1"\>\<b\>Subject:\</b\>\</td\>\<td colspan="2"\>\$(title)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Date:\</b\>\</td\>\<td colspan="2"\>[\$[ctime(Int(\$entry))]]\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Location:\</b\>\</td\>\<td colspan="2"\>\$(location)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Estimated Costs:\</b\>\</td\>\<td colspan="2"\>\$(estimate)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Proposal Details:\</b\>\</td\>\<td\>\$(body)\</td\>\</tr\>
+            \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \{? equal \| \$(topic) \| newmemberapplications \|
+            \<tr\>\<td colspan="1"\>\<b\>Applying Guild:\</b\>\</td\>\<td colspan="2"\>\$(guild)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Filed By:\</b\>\</td\>\<td colspan="2"\>\$(filedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Date:\</b\>\</td\>\<td colspan="2"\>[\$[ctime(Int(\$entry))]]\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Guild Crest:\</b\>\</td\>\<td colspan="2"\>\$(crest)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Total Kitty:\</b\>\</td\>\<td colspan="2"\>\$(kitty)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\># of Active Members:\</b\>\</td\>\<td colspan="2"\>\$(members)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Total Resources:\</b\>\</td\>\<td colspan="2"\>\$(tokens)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Teachers:\</b\>\</td\>\<td colspan="2"\>\$(teachers)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Blacklisted By:\</b\>\</td\>\<td\>\$(blacklistedby)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Purpose of Guild:\</b\>\</td\>\<td colspan="2"\>\$(purpose)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Reason for Applying:\</b\>\</td\>\<td\>\$(reason)\</td\>\</tr\>
+            \<tr\>\<td colspan="1"\>\<b\>Notable Accomplishments:\</b\>\</td\>\<td\>\$(accomplishments)\</td\>\</tr\>
+            \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+        \}
+        \$["";              
+          \$output = "";              
+          if(Get(\$db, \$entry)["comments"] \&\& map_sizeof(Get(\$db, \$entry)["comments"])) \{              
+              \$comments = Get(\$db, \$entry)["comments"];              
+              \$people = map_indices(\$comments);             
+             
+              \$temp = (\{ \});             
+              \$temp2 = (\{ \});             
+              for(\$i = 0; \$i \< sizeof(\$people); \$i++) \{             
+                  \$temp += (\{ \$comments[\$people[\$i]]["time"] \});             
+                  \$temp = map_indices(arr_to_set(\$temp));             
+              \}             
+              for(\$i = 0; \$i \< sizeof(\$temp); \$i++) \{             
+                  for(\$j = 0; \$j \< sizeof(\$people); \$j++ ) \{             
+                      if(\$temp[\$i] == \$comments[\$people[\$j]]["time"]) \{             
+                          \$temp2 += (\{ \$people[\$j] \});             
+                      \}             
+                  \}             
+              \}             
+             
+              for(\$i = 0; \$i \< sizeof(\$temp2); \$i++) \{              
+                  if(\$temp2[\$i]) \{              
+                      \$comment = \$comments[\$temp2[\$i]]["comment"];              
+                      \$name = capitalize(\$temp2[\$i]."skotos:charname");              
+                      \$when = \$comments[\$temp2[\$i]]["time"];              
+             
+                      \$output += "\<tr\>";             
+                      \$output += "    \<td valign='top'\>";             
+                      \$output += "        \<table\>";             
+                      \$output += "            \<tr\>";             
+                      \$output += "                \<td style='text-align:right'\>\<b\>" + \$name + " says\</b\>\</td\>";             
+                      \$output += "            \</tr\>";             
+                      \$output += "        \</table\>";             
+                      \$output += "    \</td\>";             
+                      if(\$temp2[\$i] == \$actor) \{              
+                          \$output += "\<td colspan='2'\>";             
+                          \$output += "    \<table\>";             
+                          \$output += "        \<tr\>\<td\>\<textarea style='BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 525px; HEIGHT: 110px' width='100%'name='comment'\>" + \$comment + "\</textarea\>\</td\>\</tr\>";              
+                          \$output += "        \<tr\>\<td\>\<input type='submit' value='Update Comment'/\>\<font size='1'\>\<i\>[Last modified:" + short_time(Int(\$when)) + "]\</i\>\</font\>\</td\>\</tr\>";             
+                          \$output += "    \</table\>";             
+                          \$output += "\</td\>\</tr\>";              
+                      \} else \{              
+                          \$output += "\<td colspan='2'\>";             
+                          \$output += "    \<table\>";             
+                          \$output += "        \<tr\>\<td\>" + \$comment + "\</td\>\</tr\>";              
+                          \$output += "        \<tr\>\<td\>\<font size='1'\>\<i\>[Last modified:" + short_time(Int(\$when)) + "]\</i\>\</font\>\</td\>\</tr\>";             
+                          \$output += "    \</table\>";             
+                          \$output += "\</td\>\</tr\>";             
+                      \}             
+                  \}              
+              \}              
+             
+              if(!\$comments[\$actor]) \{             
+                      \$output += "\<tr\>";             
+                      \$output += "    \<td valign='top'\>";             
+                      \$output += "        \<table\>";             
+                      \$output += "            \<tr\>";             
+                      \$output += "                \<td style='text-align:right'\>\<b\>" + capitalize(\$actor."skotos:charname") + " says\</b\>\</td\>";             
+                      \$output += "            \</tr\>";             
+                      \$output += "        \</table\>";             
+                      \$output += "    \</td\>";             
+                          \$output += "\<td colspan='2'\>";             
+                          \$output += "    \<table\>";             
+                          \$output += "        \<tr\>\<td\>\<textarea style='BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 525px; HEIGHT: 110px' width='100%'name='comment'/\>\</td\>\</tr\>";              
+                          \$output += "        \<tr\>\<td\>\<input type='submit' value='File Comment'/\>\</td\>\</tr\>";             
+                          \$output += "    \</table\>";             
+                          \$output += "\</td\>\</tr\>";             
+              \}             
+          \} else \{              
+                          \$output += "\<tr\>\<td colspan='2'\>";             
+                          \$output += "    \<table\>";             
+                          \$output += "        \<tr\>\<td\>\<textarea style='BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 525px; HEIGHT: 110px' width='100%'name='comment'\>" + Str(\$comment) + "\</textarea\>\</td\>\</tr\>";              
+                          \$output += "        \<tr\>\<td\>\<input type='submit' value='File Comment'/\>\</td\>\</tr\>";             
+                          \$output += "    \</table\>";             
+                          \$output += "\</td\>\</tr\>";             
+          \}              
+              
+          return ParseXML(\$output);]
+          \<tr\>\<td colspan="3"\>\<hr width="100%"/\>\</td\>\</tr\>
+          \<tr\>\<td\>\</td\>\</tr\>
+          \<tr\>
+              \<td colspan="3"\>
+              \$["";       
+                   \$rstr = "";      
+                   if(\$actor.storyhost) \{      
+                       \$rstr += "\<tr\>\<td colspan='3'\>[Staff Only: \<zact\>Archive this topic.\<action\>\$[\\"\\"; ::archive_topic(\$db: Obj(\\"" + Str(\$db) + "\\"), \$entry: \\"" + Str(\$entry) + "\\", \$topic: \\"" + Str(\$topic) + "\\");]\<redirect propob='" + Str(\$this) + "' prop='viewarchive' entry='" + \$topic + ":" + \$entry + "' actor='" + Str(\$actor) + "' topic='" + Str(\$topic) + "'/\>\</action\>\</zact\> !!Don't forget to add a final comment explaining the outcome!!]\</td\>\</tr\>";      
+                   \}      
+                   return ParseXML(\$rstr);]
+              \</td\>
+          \</tr\>
+     \</table\>
+     \</center\>
+     \</div\>
+     \<action\>
+            \$[""; Call(Obj(\$this), "file_comment", \$actor: \$actor, \$this: \$this, \$db: \$db, \$entry: \$entry, \$comment: \$comment, \$topic: \$topic);]
+     \</action\>
+     \</zform\>
+     \</body\>
+\</html\>
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

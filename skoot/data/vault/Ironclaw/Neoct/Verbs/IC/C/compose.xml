@@ -1,0 +1,709 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tunk_bodin">
+  <Socials:Verb imp="@compose" second="compose" third="composes" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="true" raw="false" requirement="required" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="html:book">
+         X[S] \<html\>
+  \<head\>
+    \<title\>SkyWriter - Parchment Edit! (Write Mode)\</title\>
+  \</head\>
+  \$[Obj(\$actor)."skywriter:target" = replace_strings(\$target, "\<", "", "\>", "");]
+  \<frameset cols="100,*"\>
+    \<frame name="book:list" src="/SAM/Prop/Ironclaw:Neoct:Verbs:IC:C:compose/html:booklist?actor=\$(actor)\\\&this=\$(this)\\\&detail=\$(detail)"/\>
+    \<frame name="book:popup" src="/SAM/Prop/Ironclaw:Neoct:Verbs:IC:C:compose/html:bookpopup?actor=\$(actor)\\\&this=\$(this)\\\&detail=\$(detail)\\\&msg=\$[(\$msg ? \$msg : "")]"/\>
+  \</frameset\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:booklist">
+         X[S] \<html\>
+  \<body\>
+  \<base target="book:popup"/\>
+  \$[Call(\$\{Ironclaw:Neoct:Verbs:IC:C:compose\}, "pagelist", \$actor: \$actor); return ParseXML(\$list);]
+  \</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:bookpopup">
+         X[S] \$[\$target = Obj(\$actor)."skywriter:target";]
+\<html\>
+  \<body leftMargin="65" topMargin="50"\>
+     \<zform\>
+        \<font color="yellow" size="3"\>\$(msg)\</font\>
+        \<p\>
+          \<font face="Courier" size="2"\>\$(detail) body:\</font\>
+        \</p\>
+        \<p\>
+          \<textarea style="WIDTH: 550px; HEIGHT: 250px" name="body" rows="12" cols="50"\>
+\$[/*((\$r1 = Get(Obj(\$target), "trait:" + \$detail)) ? replace_strings(\$r1, "\<br/\>", "\\n") : "" )*/            
+            
+  string writing;            
+     string lang;            
+     mixed level, legibility, skill;            
+               
+     writing = UnSAM(Get(Obj(\$target), "trait:" + \$detail));   
+  
+     if(!writing) return "";          
+     if(strlen(writing) == 0) return "";          
+               
+     if (writing[0] == '\\"') \{            
+         writing = writing[1 ..];            
+     \}            
+     if (writing[strlen(writing)-1] == '\\"') \{            
+         writing = writing[.. strlen(writing)-2];            
+     \}            
+               
+     if(sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing) == 3) \{            
+         sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing);            
+               
+         lang = lang[1..];            
+               
+         skill = Get(Obj(\$actor), "skill:lang:" + lang);            
+               
+         \$langoutput = Call(\$\{Allegory:Lib:Languages:Actions:encounter-language\}, "garble-reading", \$text: writing, \$language: lang, \$actor: Obj(\$actor), \$legibility: legibility);            
+     \} else \{            
+         \$langoutput = writing;            
+     \}            
+     \$langoutput = replace_strings(\$langoutput, "\\n", "\<br/\>");            
+               
+     if(Obj(\$target)."base:environment" != Obj(\$actor)) \{            
+         return "";            
+     \} else \{            
+         if(\$r1 = replace_html(\$langoutput)) \{            
+             return replace_strings(\$langoutput, "\&lt;br/\&gt;", "\\n"); 
+        ;            
+         \} else \{            
+             return "";            
+         \}            
+     \}]
+\</textarea\>
+        \</p\>
+        \<p\>
+          \<input type="hidden" name="actor" value="\$(actor)"/\>
+          \<input type="hidden" name="this" value="\$(this)"/\>
+          \<input type="hidden" name="target" value="\$(target)"/\>
+          \<input type="hidden" name="detail" value="\$(detail)"/\>
+          \<input type="submit" value="Write it!" name="write"/\>
+       \</p\>
+       \<action\>
+         \$[Call(Obj(\$this), "write", \$actor: \$actor, \$this: \$this, \$target: \$target, \$detail: \$detail, \$body: \$body);]
+      \</action\>
+    \</zform\>
+  \</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:bookro">
+         X[S] \<html\>
+  \<head\>
+    \<title\>SkyWriter - Parchment Edit! (Read Only Mode)\</title\>
+  \</head\>
+  \$[Obj(\$actor)."skywriter:target" = replace_strings(\$target, "\<", "", "\>", "");]
+  \<frameset cols="100,*"\>
+    \<frame name="book:list" src="/SAM/Prop/Neoct:Writing:Verbs:compose/html:booklist?actor=\$(actor)\\\&detail=\$(detail)"/\>
+    \<frame name="book:popup" src="/SAM/Prop/Neoct:Writing:Verbs:compose/html:bookropopup?actor=\$(actor)\\\&this=\$(this)\\\&detail=\$(detail)\\\&msg=\$[(\$msg ? \$msg : "")]"/\>
+  \</frameset\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:bookropopup">
+         X[S] \$[\$target = Obj(\$actor)."skywriter:target";]
+\<html\>
+  \<body leftMargin="65" topMargin="50"\>
+        \<font color="blue" size="3"\>\$[(Obj(\$target)."base:environment" != Obj(\$actor) ? "You cannot read from " + Describe(Obj(\$target)) + " if it is not in your possession!" : "")]\</font\>
+        \<p\>
+          \<font face="Courier" size="3"\>\<b\>\<i\>Upon \$[replace_strings(\$detail, "e", "e ")] is written: \</i\>\</b\>\</font\>
+        \</p\>
+        \<p\>
+        \$[/*(Obj(\$target)."base:environment" != Obj(\$actor) ? "" : ((\$r1 = Get(Obj(\$target), "trait:" + \$detail)) ? replace_strings(\$r1, "\\n", "\<br/\>") : "" ))*/   
+   
+   
+  string writing;   
+     string lang;   
+     mixed level, legibility, skill;   
+     
+     writing = UnSAM(Obj(\$target)."details:objskin:description:writing");   
+     
+     if (writing[0] == '\\"') \{   
+         writing = writing[1 ..];   
+     \}   
+     if (writing[strlen(writing)-1] == '\\"') \{   
+         writing = writing[.. strlen(writing)-2];   
+     \}   
+     
+     if(sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing) == 3) \{   
+         sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing);   
+     
+         lang = lang[1..];   
+     
+         skill = Get(Obj(\$actor), "skill:lang:" + lang);   
+     
+         \$langoutput = Call(\$\{Allegory:Lib:Languages:Actions:encounter-language\}, "garble-reading", \$text: writing, \$language: lang, \$actor: Obj(\$actor), \$legibility: legibility);   
+     \} else \{   
+         \$langoutput = writing;   
+     \}   
+     \$langoutput = replace_strings(\$langoutput, "\\n", "\<br/\>"); 
+                
+     if(Obj(\$target)."base:environment" != Obj(\$actor)) \{ 
+         return ""; 
+     \} else \{ 
+         if(\$r1 = replace_html(\$langoutput)) \{ 
+             return replace_strings(\$langoutput, "\&lt;br/\&gt;", "\\n"); 
+        ; 
+         \} else \{ 
+             return ""; 
+         \} 
+     \}]
+        ]
+        \</p\>
+  \</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:newspaper">
+         X[S] \<html\>
+  \<head\>
+    \<title\>SkyWriter - Parchment Edit! (Write Mode)\</title\>
+  \</head\>
+  \$[Obj(\$actor)."skywriter:target" = replace_strings(\$target, "\<", "", "\>", "");]
+  \<frameset cols="100,*"\>
+    \<frame name="newspaper:list" src="/SAM/Prop/Ironclaw:Neoct:Verbs:IC:C:compose/html:newspaperlist?actor=\$(actor)\\\&this=\$(this)\\\&detail=\$(detail)"/\>
+    \<frame name="newspaper:popup" src="/SAM/Prop/Ironclaw:Neoct:Verbs:IC:C:compose/html:newspaperpopup?actor=\$(actor)\\\&this=\$(this)\\\&detail=\$(detail)\\\&msg=\$[(\$msg ? \$msg : "")]"/\>
+  \</frameset\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:newspaperlist">
+         X[S] \<html\>
+  \<body\>
+  \<base target="newspaper:popup"/\>
+  \$[Call(\$\{Ironclaw:Neoct:Verbs:IC:C:compose\}, "pagelist", \$actor: \$actor); return ParseXML(\$list);]
+  \</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:newspaperpopup">
+         X[S] \$[\$target = Obj(\$actor)."skywriter:target"; 
+       \$pages = ([ "page00":"Page 01", "page01":"Page 02", "page02":"Page 03", "page03":"Page 04", "page04":"Page 05", "page05":"Page 06", "page06":"Page 07", "page07":"Page 08" ]); 
+       \$pagenum = \$pages[\$detail];]
+\<html\>
+  \<body leftMargin="65" topMargin="50"\>
+     \<zform\>
+        \<font color="yellow" size="3"\>\$(msg)\</font\>
+        \<p\>
+          \<p\>
+            \<font face="Courier" size="2"\>\$(pagenum) title:\</font\>
+          \</p\>
+          \<textarea style="WIDTH: 550px; HEIGHT: 20px" name="title" rows="1" cols="50"\>
+\$[string writing;               
+     string lang;               
+     mixed level, legibility, skill;               
+                  
+     writing = UnSAM(Get(Obj(\$target), "trait:" + \$detail + ":title"));             
+             
+     if(!writing) return "";             
+     if(strlen(writing) == 0) return "";             
+                  
+     if (writing[0] == '\\"') \{               
+         writing = writing[1 ..];               
+     \}               
+     if (writing[strlen(writing)-1] == '\\"') \{               
+         writing = writing[.. strlen(writing)-2];               
+     \}               
+                  
+     if(sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing) == 3) \{               
+         sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing);               
+                  
+         lang = lang[1..];               
+                  
+         skill = Get(Obj(\$actor), "skill:lang:" + lang);               
+                  
+         \$langoutput = Call(\$\{Allegory:Lib:Languages:Actions:encounter-language\}, "garble-reading", \$text: writing, \$language: lang, \$actor: Obj(\$actor), \$legibility: legibility);               
+     \} else \{               
+         \$langoutput = writing;               
+     \}               
+     \$langoutput = replace_strings(\$langoutput, "\\n", "\<br/\>");               
+                  
+     if(Obj(\$target)."base:environment" != Obj(\$actor)) \{               
+         return "";               
+     \} else \{               
+         if(\$r1 = replace_html(\$langoutput)) \{               
+             return \$langoutput;               
+         \} else \{               
+             return "";               
+         \}               
+     \}]
+\</textarea\>
+        \</p\>
+        \<p\>
+          \<p\>
+            \<font face="Courier" size="2"\>\$(pagenum) body:\</font\>
+          \</p\>
+          \<textarea style="WIDTH: 550px; HEIGHT: 250px" name="body" rows="12" cols="50"\>
+\$[/*((\$r1 = Get(Obj(\$target), "trait:" + \$detail)) ? replace_strings(\$r1, "\<br/\>", "\\n") : "" )*/               
+               
+  string writing;               
+     string lang;               
+     mixed level, legibility, skill;               
+                  
+     writing = UnSAM(Get(Obj(\$target), "trait:" + \$detail));             
+             
+     if(!writing) return "";             
+     if(strlen(writing) == 0) return "";             
+                  
+     if (writing[0] == '\\"') \{               
+         writing = writing[1 ..];               
+     \}               
+     if (writing[strlen(writing)-1] == '\\"') \{               
+         writing = writing[.. strlen(writing)-2];               
+     \}               
+                  
+     if(sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing) == 3) \{               
+         sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing);               
+                  
+         lang = lang[1..];               
+                  
+         skill = Get(Obj(\$actor), "skill:lang:" + lang);               
+                  
+         \$langoutput = Call(\$\{Allegory:Lib:Languages:Actions:encounter-language\}, "garble-reading", \$text: writing, \$language: lang, \$actor: Obj(\$actor), \$legibility: legibility);               
+     \} else \{               
+         \$langoutput = writing;               
+     \}               
+     \$langoutput = replace_strings(\$langoutput, "\\n", "\<br/\>");  
+                 
+     if(Obj(\$target)."base:environment" != Obj(\$actor)) \{  
+         return "";  
+     \} else \{  
+         if(\$r1 = replace_html(\$langoutput)) \{  
+             return replace_strings(\$langoutput, "\&lt;br/\&gt;", "\\n");  
+        ;  
+         \} else \{  
+             return "";  
+         \}  
+     \}]
+\</textarea\>
+        \</p\>
+        \<p\>
+          \<input type="hidden" name="actor" value="\$(actor)"/\>
+          \<input type="hidden" name="this" value="\$(this)"/\>
+          \<input type="hidden" name="target" value="\$(target)"/\>
+          \<input type="hidden" name="detail" value="\$(detail)"/\>
+          \<input type="submit" value="Write it!" name="write"/\>
+       \</p\>
+       \<action\>
+         \$[Call(Obj(\$this), "write", \$actor: \$actor, \$this: \$this, \$target: \$target, \$detail: \$detail, \$body: \$body, \$title: \$title);]
+      \</action\>
+    \</zform\>
+  \</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:popup">
+         X[S] \<html\>
+  \<head\>
+    \<style type="text/css"\>
+      BODY \\\{ background: url(\$[common::db_prop(\$theatre: Get(Obj(\$actor), "theatre:id"), \$prop: "compose:image")]); background-position: center; background-repeat: no-repeat; background-attachment: fixed; background-color: #000000 \\\}
+    \</style\>
+    \<title\>SkyWriter! Composing: \$[Describe(Obj(\$target), nil, nil, STYLE_NONPOSS)]\</title\>
+  \</head\>
+  \<center\>
+  \<body\>
+     \<zform\>
+        \<font color="yellow" size="3"\>\$(msg)\</font\>\<br/\>\<br/\>\<sbr/\>
+          \<font face="Courier" size="2"\>Addressed to: \</font\>
+          \<input style="BORDER-RIGHT: none; BORDER-TOP: none; BORDER-LEFT: none; BORDER-BOTTOM: #000000 1pt solid; BACKGROUND: transparent; WIDTH: 200px; HEIGHT: 22px" size="38" name="addressee" value="\$(addressee)"/\>\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\<br/\>
+        \<font face="Courier" size="2"\>Parchment body:\</font\>\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;\<br/\>
+        \<textarea style="BORDER-RIGHT: none; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: none; BACKGROUND: transparent; WIDTH: 525px; HEIGHT: 200px" name="body"\>
+\$[/*((\$r1 = Obj(\$target)."details:objskin:description:writing") ? replace_strings(\$r1, "\<br/\>", "\\n") : "");*/    
+    
+    
+     string writing;    
+     string lang;    
+     mixed level, legibility, skill;    
+     
+     writing = UnSAM(Obj(\$target)."details:objskin:description:writing");    
+   
+     if(!writing) return "";   
+     if(strlen(writing) == 0) return "";   
+     
+     if (writing[0] == '\\"') \{    
+         writing = writing[1 ..];    
+     \}    
+     if (writing[strlen(writing)-1] == '\\"') \{    
+         writing = writing[.. strlen(writing)-2];    
+     \}    
+     
+     if(sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing) == 3) \{    
+         sscanf(writing, "\\000%s\|%d\\001%s\\002", lang, legibility, writing);    
+     
+         lang = lang[1..];    
+     
+         skill = Get(Obj(\$actor), "skill:lang:" + lang);    
+     
+         \$langoutput = Call(\$\{Allegory:Lib:Languages:Actions:encounter-language\}, "garble-reading", \$text: writing, \$language: lang, \$actor: Obj(\$actor), \$legibility: legibility);    
+     \} else \{    
+         \$langoutput = writing;    
+     \}    
+     \$langoutput = replace_strings(\$langoutput, "\\n", "\<br/\>");    
+     
+     if(Obj(\$target)."base:environment" != Obj(\$actor)) \{    
+         return "";    
+     \} else \{    
+         if(\$r1 = replace_html(\$langoutput)) \{    
+             return replace_strings(\$langoutput, "\<br/\>", "\\n");    
+         \} else \{    
+             return "";    
+         \}    
+     \}]
+\</textarea\>
+          \<br/\>
+          \<font face="Courier" size="2"\>Optional Signature:\</font\>
+          \<input style="BORDER-RIGHT: none; BORDER-TOP: none; BORDER-LEFT: none; BORDER-BOTTOM: #000000 1pt solid; BACKGROUND: transparent; WIDTH: 200px; HEIGHT: 22px" size="39" name="optsig" value="\$(optsig)"/\>\\\&nbsp;\\\&nbsp;\\\&nbsp;\\\&nbsp;
+        \<font face="Courier" size="2"\>Sign it?\</font\>
+          \$[(!\$sign \|\| \$sign == "" ? "\<input type=\\"checkbox\\" value=\\"true\\" name=\\"sign\\"/\>" : "\<input type=\\"checkbox\\" value=\\"true\\" name=\\"sign\\" checked=\\"true\\"/\>")]
+        \<p\>
+          \<input type="hidden" name="actor" value="\$(actor)"/\>
+          \<input type="hidden" name="this" value="\$(this)"/\>
+          \<input type="hidden" name="target" value="\$(target)"/\>
+          \<input type="submit" value="Write it!" name="write"/\>
+       \</p\>
+       \<action\>
+        \$[Call(Obj(\$this), "write", \$actor: \$actor, \$this: \$this, \$target: \$target, \$addressee: \$addressee, \$body: \$body, \$optsig: \$optsig, \$sign: \$sign);]
+      \</action\>
+    \</zform\>
+  \</body\>
+\</center\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /* if cover the cover, if page then page*/  
+
+if(NRefOb(\$dob[0])."seal:type") \{
+    EmitTo(\$actor, "You cannot modify a document that has already been signed and sealed.");
+    return FALSE;
+\}
+     
+\{     
+     
+  \$target = NRefOb(\$dob[0]);     
+     
+  if (\$target == \$actor) return TRUE;     
+     
+  if (\$target."base:environment" != \$actor) \{ EmitTo(\$actor, "You cannot write on an object that is not in your possession."); return FALSE; \}     
+
+  /* if we shouldn't use skywriter, fall through */
+  if(\$target.noskywriter) return TRUE;
+     
+
+  if (!\$target.writable) \{ EmitTo(\$actor, "You find you are unable to write on that object no matter how hard you try."); return FALSE; \}     
+     
+  if (\$target."trait:superbrief" \&\& (\$target."trait:superbrief" == "book" \|\| \$target."trait:superbrief" == "tome" \|\| \$target."trait:superbrief" == "spellbook" \|\| \$target."trait:superbrief" == "journal" \|\| \$target."trait:superbrief" == "large tome" \|\| \$target."trait:superbrief" == "manual" \|\| \$target."trait:objecttype" == "book")) \{     
+     
+    \$detail = NRefDetail(\$dob[0]);     
+     
+    if (\$detail == "default") \$detail = "page00";     
+     
+    if (\$target."trait:booksealed" \&\& \$target."trait:booksealed" == "true") \{ EmitTo(\$actor, "The book firmly resists your attempt to write upon it. Please use 'readall' to view the contents of this book."); return FALSE; \}     
+
+    if(\$actor.mobimode) \{
+        /*EmitTo(\$actor, "POPUPURL::http://game.allegoryofempires.com/SAM/Prop/" + replace_strings(name(\$this)+"/book?actor="+Str(\$actor)+"\&detail="+\$detail+"\&target="+name(\$target) + "\&this="+Str(\$this), ":", "%3A", "#", "%23"));*/
+    \} else \{
+     
+        Popup(\$actor, \$this, "book", \$actor: \$actor, \$this: dump_value(\$this), \$target: dump_value(\$target), \$detail: \$detail);     
+     
+        EmitTo(\$actor, "Creating a SkyWriter popup window!");     
+    \}
+
+    return FALSE;     
+  \}     
+
+  if (\$target."trait:superbrief" \&\& \$target."trait:superbrief" == "newspaper") \{   
+    \$detail = NRefDetail(\$dob[0]);     
+     
+    if (\$detail == "default") \$detail = "page00";      
+
+    if(\$actor.mobimode) \{
+        /* EmitTo(\$actor, "POPUPURL::http://game.allegoryofempires.com/SAM/Prop/" + replace_strings(name(\$this)+"/book?actor="+Str(\$actor)+"\&detail="+\$detail+"\&target="+name(\$target) + "\&this="+Str(\$this), ":", "%3A", "#", "%23")); */
+    \} else \{
+     
+        Popup(\$actor, \$this, "newspaper", \$actor: \$actor, \$this: dump_value(\$this), \$target: dump_value(\$target), \$detail: \$detail);     
+        EmitTo(\$actor, "Creating a SkyWriter popup window!");     
+    \}
+
+    if(\$actor."toggle:composeurl") \{
+        EmitTo(\$actor, "http://game.allegoryofempires.com/SAM/Prop/" + replace_strings(name(\$this)+"/newspaper?actor="+Str(\$actor)+"\&detail=page00"+"\&target="+Str(\$target)+"\&this="+Str(\$this), ":", "%3A", "#", "%23"));  
+    \}
+
+    return FALSE;     
+  \}
+     
+  if ((!\$target."lastsigner:object" \&\& \$target."details:objskin:description:delivery-from" \&\& \$target."details:objskin:description:delivery-from" != "" \&\& lower_case(\$target."details:objskin:description:delivery-from") != lower_case(Describe(\$actor))) \|\| \$target."lastsigner:object" \&\& \$target."lastsigner:object" != \$actor) \{     
+    EmitTo(\$actor, "You may not add to a scroll that is signed by another person. Please erase the scroll and try again.");     
+    return FALSE;     
+  \}     
+     
+/*     
+  if (\$target."details:objskin:description:delivery-from" \&\& \$target."details:objskin:description:delivery-from" != "" \&\& lower_case(\$target."details:objskin:description:delivery-from") != lower_case(Describe(\$actor))) \{ EmitTo(\$actor, "You may not add to a scroll that is signed by another person. Please erase the scroll and try again."); return FALSE; \}     
+*/     
+     
+  \$addressee = ((\$r1 = \$target."details:objskin:description:delivery-to") ? \$r1 : "");     
+  \$optsig = ((\$r1 = \$target."details:objskin:description:delivery-end") ? \$r1 : "");     
+  \$sign = ((\$r1 = \$target."details:objskin:description:delivery-from") ? \$r1 : "");     
+
+
+if(\$actor.mobimode) \{
+    /* EmitTo(\$actor, "POPUPURL::http://game.allegoryofempires.com/SAM/Prop/" + replace_strings(name(\$this)+"/popup?actor="+Str(\$actor)+"\&addressee="+\$addressee+"\&optsig="+\$optsig+"\&sign="+\$sign+"\&target="+Str(\$target)+"\&this="+Str(\$this), ":", "%3A", "#", "%23")); */
+\} else \{
+
+  Popup(\$actor, \$this, "popup", \$actor: \$actor, \$this: \$this, \$target: \$target, \$addressee: \$addressee, \$optsig: \$optsig, \$sign: \$sign);  
+
+  EmitTo(\$actor, "Creating a SkyWriter popup window!");     
+
+
+if(\$actor."toggle:composeurl") \{
+EmitTo(\$actor, "http://game.allegoryofempires.com/SAM/Prop/" + replace_strings(name(\$this)+"/popup?actor="+Str(\$actor)+"\&addressee="+\$addressee+"\&optsig="+\$optsig+"\&sign="+\$sign+"\&target="+Str(\$target)+"\&this="+Str(\$this), ":", "%3A", "#", "%23"));
+\} 
+\}
+     
+  return FALSE;     
+     
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:pagelist">
+         X[M] /* Create a list of zlinks */     
+     
+\{     
+     
+  \$target = Obj(\$actor)."skywriter:target";     
+     
+  \$pagecnt = Obj(\$target)."trait:pagecnt";     
+     
+  \$mode = (Obj(\$target)."trait:booksealed" \&\& Obj(\$target)."trait:booksealed" == "true" ? "readonly" : "write");     
+     
+  if (\$mode == "readonly") \{     
+    \$list = "\<zlink base=\\"bookropopup\\" actor=" + Str(\$actor) + " detail=\\"page00\\" this=" + Str(\$this) + "\>Cover\</zlink\>\<sbr/\>";     
+     
+    for (\$i = 1; \$i \<= Int(\$pagecnt); \$i++) \{     
+      if (Get(Obj(\$target), "trait:page" + (\$i \< 10 ? "0" + Str(\$i) : Str(\$i)))) \{     
+        \$detail = "page" + (\$i \< 10 ? "0" + Str(\$i) : Str(\$i));     
+        \$list += "\<zlink base=\\"bookropopup\\" actor=" + Str(\$actor) + " detail=" + Str(\$detail) + " this=" + Str(\$this) + "\>Page " + (\$i \< 10 ? "0" + Str(\$i) : Str(\$i)) + "\</zlink\>\<sbr/\>";     
+      \}     
+    \}     
+  \}     
+
+  if(Obj(\$target)."trait:objecttype" == "newspaper") \{
+      \$base = "newspaperpopup";
+      if (\$mode == "write") \{     
+        \$list = "";     
+     
+        for (\$i = 0; \$i \<= Int(\$pagecnt); \$i++) \{     
+          \$detail = "page" + (\$i \< 10 ? "0" + Str(\$i) : Str(\$i));     
+          \$list += "\<zlink base=\\"" + \$base + "\\" actor=" + Str(\$actor) + " detail=" + Str(\$detail) + " this=" + Str(\$this) + "\>Page " + (\$i \< 9 ? "0" + Str(\$i+1) : Str(\$i+1)) + "\</zlink\>\<sbr/\>";     
+        \}     
+      \}  
+  \} else \{
+      \$base = "bookpopup";
+      if (\$mode == "write") \{     
+        \$list = "";     
+     
+        for (\$i = 0; \$i \<= Int(\$pagecnt); \$i++) \{     
+          \$detail = "page" + (\$i \< 10 ? "0" + Str(\$i) : Str(\$i));     
+          \$list += "\<zlink base=\\"" + \$base + "\\" actor=" + Str(\$actor) + " detail=" + Str(\$detail) + " this=" + Str(\$this) + "\>Page " + (\$i \< 10 ? "0" + Str(\$i) : Str(\$i)) + "\</zlink\>\<sbr/\>";     
+        \}     
+      \}  
+  \}
+       
+     
+return \$list;     
+     
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:write">
+         X[M] /* D=Does Checks and Writes on Scroll
+
+Check to see if addressee is valid
+Check to se eif object is in your possession, again.
+
+Write on scroll.
+*/
+
+mixed langlevel, langname, langskill;
+
+/* sanity check */
+if(!Obj(\$target)) return FALSE;
+
+/* fix to stop crash when the addressee is invalid */
+\$actor = Obj(\$actor);
+
+\{
+  if (Obj(\$target)."trait:superbrief" \&\& (Obj(\$target)."trait:superbrief" == "book" \|\| Obj(\$target)."trait:superbrief" == "tome" \|\| Obj(\$target)."trait:superbrief" == "large tome" \|\| Obj(\$target)."trait:superbrief" == "spellbook" \|\| Obj(\$target)."trait:superbrief" == "journal" \|\| Obj(\$target)."trait:superbrief" == "newspaper" \|\| Obj(\$target)."trait:objecttype" == "book")) \{
+
+    if (Obj(\$target)."base:environment" != Obj(\$actor)) \{ 
+        if(Obj(\$target)."trait:superbrief" == "newspaper") \{
+            Popup(Obj(\$actor), Obj(\$this), "newspaper", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$detail: \$detail, \$title: \$title, \$msg: "You cannot write on an object that is not in your possession!"); return FALSE; 
+        \} else \{
+            Popup(Obj(\$actor), Obj(\$this), "book", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$detail: \$detail, \$msg: "You cannot write on an object that is not in your possession!"); return FALSE; 
+        \}
+    \}
+
+    if(Obj(\$target)."trait:superbrief" == "newspaper") \{
+        if (strlen(\$body) \> 3000) \{ Popup(Obj(\$actor), Obj(\$this), "bookpopup", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$title: \$title, \$detail: \$detail, \$msg: "You may not write more than 3,000 characters on a single press sheet page. You are at: " + strlen(\$body)); return FALSE; \}
+
+        if(!\$title \|\| \$title == "") \{
+           Popup(Obj(\$actor), Obj(\$this), "bookpopup", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$detail: \$detail, \$msg: "You must input a title for this page."); return FALSE;
+        \}
+    \} else \{
+        if (strlen(\$body) \> 10000) \{ Popup(Obj(\$actor), Obj(\$this), "bookpopup", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$detail: \$detail, \$msg: "You may not write more than 10,000 characters on a single page. You are at: " + strlen(\$body)); return FALSE; \}
+    \}
+
+sscanf(\$body, "\\000%s\|%d\\001%s\\002", \$t1, \$t2, \$body);
+
+    langlevel = Str((\$r1 = Obj(\$actor)."skotos:currentlang") ? \$r1 : 0);
+    langname = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + langlevel);
+    langskill = Get(\$actor, "skill:lang:" + langname);
+
+    if(langlevel \&\& langlevel != "0") \{
+        \$body = INLANG(langname, langskill, \$body);
+    \}
+
+    \$body = replace_strings(\$body, "\\r\\n", "\\n", "\<b\>", "[b]", "\</b\>", "[/b]", "\<i\>", "[i]", "\</i\>", "[/i]", "\<tt\>", "[tt]", "\</tt\>", "[/tt]", "\<big\>", "[big]", "\</big\>", "[/big]", "\<small\>", "[small]", "\</small\>", "[/small]", "\<blockquote\>", "[blockquote]", "\</blockquote\>", "[/blockquote]", "\<center\>", "[center]", "\</center\>", "[/center]", "\<em\>", "[em]", "\</em\>", "[/em]", "\<strong\>", "[strong]", "\</strong\>", "[/strong]", "\<dfn\>", "[dfn]", "\</dfn\>", "[/dfn]", "\<code\>", "[code]", "\</code\>", "[/code]");
+
+    \$body = replace_strings(\$body, "\\n", "\<br/\>");
+
+    \$body = replace_strings(\$body, "\<samp\>", "[samp]", "\</samp\>", "[/samp]", "\<kbd\>", "[kbd]", "\</kbd\>", "[/kbd]", "\<var\>", "[var]", "\</var\>", "[/var]", "\<cite\>", "[cite]", "\</cite\>", "[/cite]", "\<dl\>", "[dl]", "\</dl\>", "[/dl]", "\<dt\>", "[dt]", "\</dt\>", "[/dt]", "\<dd\>", "[dd]", "\</dd\>", "[/dd]", "\<del\>", "[del]", "\</del\>", "[/del]", "\<h1\>", "[h1]", "\</h1\>", "[/h1]", "\<h2\>", "[h2]", "\</h2\>", "[/h2]", "\<h3\>", "[h3]", "\</h3\>", "[/h3]", "\<h4\>", "[h4]", "\</h4\>", "[/h4]", "\<h5\>", "[h5]", "\</h5\>", "[/h5]", "\<h6\>", "[h6]", "\</h6\>", "[/h6]");
+
+    \$body = replace_strings(\$body, "\<ol\>", "[ol]", "\</ol\>", "[/ol]", "\<li\>", "[li]", "\</li\>", "[/li]", "\<pre\>", "[pre]", "\</pre\>", "[/pre]", "\<q\>", "[q]", "\</q\>", "[/q]", "\<sub\>", "[sub]", "\</sub\>", "[/sub]", "\<sup\>", "[sup]", "\</sup\>", "[/sup]", "\<u\>", "[u]", "\</u\>", "[/u]", "\<ul\>", "[ul]", "\</ul\>", "[/ul]", "\\'", "[quote]");
+
+    \$body = replace_xml(\$body);
+
+    \$body = replace_strings(\$body, "[b]", "\<b\>", "[/b]", "\</b\>", "[i]", "\<i\>", "[/i]", "\</i\>", "[tt]", "\<tt\>", "[/tt]", "\</tt\>", "[big]", "\<big\>", "[/big]", "\</big\>", "[small]", "\<small\>", "[/small]", "\</small\>", "[blockquote]", "\<blockquote\>", "[/blockquote]", "\</blockquote\>", "[center]", "\<center\>", "[/center]", "\</center\>", "[em]", "\<em\>", "[/em]", "\</em\>", "[strong]", "\<strong\>", "[/strong]", "\</strong\>", "[dfn]", "\<dfn\>", "[/dfn]", "\</dfn\>", "[code]", "\<code\>", "[/code]", "\</code\>");
+
+    \$body = replace_strings(\$body, "[samp]", "\<samp\>", "[/samp]", "\</samp\>", "[kbd]", "\<kbd\>", "[/kbd]", "\</kbd\>", "[var]", "\<var\>", "[/var]", "\</var\>", "[cite]", "\<cite\>", "[/cite]", "\</cite\>", "[dt]", "\<dt\>", "[/dt]", "\</dt\>", "[dd]", "\<dd\>", "[/dd]", "\</dd\>", "[dl]", "\<dl\>", "[/dl]", "\</dl\>", "[del]", "\<del\>", "[/del]", "\</del\>", "[h1]", "\<h1\>", "[/h1]", "\</h1\>", "[h2]", "\<h2\>", "[/h2]", "\</h2\>", "[h3]", "\<h3\>", "[/h3]", "\</h3\>", "[h4]", "\<h4\>", "[/h4]", "\</h4\>", "[h5]", "\<h5\>", "[/h5]", "\</h5\>", "[h6]", "\<h6\>", "[/h6]", "\</h6\>");
+
+    \$body = replace_strings(\$body, "[ol]", "\<ol\>", "[/ol]", "\</ol\>", "[li]", "\<li\>", "[/li]", "\</li\>", "[pre]", "\<pre\>", "[/pre]", "\</pre\>", "[q]", "\<q\>", "[/q]", "\</q\>", "[sub]", "\<sub\>", "[/sub]", "\</sub\>", "[sup]", "\<sup\>", "[/sup]", "\</sup\>", "[u]", "\<u\>", "[/u]", "\</u\>", "[ul]", "\<ul\>", "[/ul]", "\</ul\>", "\&quot;", "\\"", "\&amp;", "\&", "[quote]", "\\'");
+
+    if(Obj(\$target)."trait:superbrief" == "newspaper") \{
+        sscanf(\$title, "\\000%s\|%d\\001%s\\002", \$t1, \$t2, \$title);
+
+        langlevel = Str((\$r1 = Obj(\$actor)."skotos:currentlang") ? \$r1 : 0);
+        langname = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + langlevel);
+        langskill = Get(\$actor, "skill:lang:" + langname);
+
+        if(langlevel \&\& langlevel != "0") \{
+            \$title = INLANG(langname, langskill, \$title);
+        \}
+
+        \$title = replace_strings(\$title, "\\r\\n", "\\n", "\<b\>", "[b]", "\</b\>", "[/b]", "\<i\>", "[i]", "\</i\>", "[/i]", "\<tt\>", "[tt]", "\</tt\>", "[/tt]", "\<big\>", "[big]", "\</big\>", "[/big]", "\<small\>", "[small]", "\</small\>", "[/small]", "\<blockquote\>", "[blockquote]", "\</blockquote\>", "[/blockquote]", "\<center\>", "[center]", "\</center\>", "[/center]", "\<em\>", "[em]", "\</em\>", "[/em]", "\<strong\>", "[strong]", "\</strong\>", "[/strong]", "\<dfn\>", "[dfn]", "\</dfn\>", "[/dfn]", "\<code\>", "[code]", "\</code\>", "[/code]");
+
+        \$title = replace_strings(\$title, "\<samp\>", "[samp]", "\</samp\>", "[/samp]", "\<kbd\>", "[kbd]", "\</kbd\>", "[/kbd]", "\<var\>", "[var]", "\</var\>", "[/var]", "\<cite\>", "[cite]", "\</cite\>", "[/cite]", "\<dl\>", "[dl]", "\</dl\>", "[/dl]", "\<dt\>", "[dt]", "\</dt\>", "[/dt]", "\<dd\>", "[dd]", "\</dd\>", "[/dd]", "\<del\>", "[del]", "\</del\>", "[/del]", "\<h1\>", "[h1]", "\</h1\>", "[/h1]", "\<h2\>", "[h2]", "\</h2\>", "[/h2]", "\<h3\>", "[h3]", "\</h3\>", "[/h3]", "\<h4\>", "[h4]", "\</h4\>", "[/h4]", "\<h5\>", "[h5]", "\</h5\>", "[/h5]", "\<h6\>", "[h6]", "\</h6\>", "[/h6]");
+
+        \$title = replace_strings(\$title, "\<ol\>", "[ol]", "\</ol\>", "[/ol]", "\<li\>", "[li]", "\</li\>", "[/li]", "\<pre\>", "[pre]", "\</pre\>", "[/pre]", "\<q\>", "[q]", "\</q\>", "[/q]", "\<sub\>", "[sub]", "\</sub\>", "[/sub]", "\<sup\>", "[sup]", "\</sup\>", "[/sup]", "\<u\>", "[u]", "\</u\>", "[/u]", "\<ul\>", "[ul]", "\</ul\>", "[/ul]", "\\'", "[quote]");
+
+        \$title = replace_xml(\$title);
+
+        \$title = replace_strings(\$title, "[b]", "\<b\>", "[/b]", "\</b\>", "[i]", "\<i\>", "[/i]", "\</i\>", "[tt]", "\<tt\>", "[/tt]", "\</tt\>", "[big]", "\<big\>", "[/big]", "\</big\>", "[small]", "\<small\>", "[/small]", "\</small\>", "[blockquote]", "\<blockquote\>", "[/blockquote]", "\</blockquote\>", "[center]", "\<center\>", "[/center]", "\</center\>", "[em]", "\<em\>", "[/em]", "\</em\>", "[strong]", "\<strong\>", "[/strong]", "\</strong\>", "[dfn]", "\<dfn\>", "[/dfn]", "\</dfn\>", "[code]", "\<code\>", "[/code]", "\</code\>");
+
+        \$title = replace_strings(\$title, "[samp]", "\<samp\>", "[/samp]", "\</samp\>", "[kbd]", "\<kbd\>", "[/kbd]", "\</kbd\>", "[var]", "\<var\>", "[/var]", "\</var\>", "[cite]", "\<cite\>", "[/cite]", "\</cite\>", "[dt]", "\<dt\>", "[/dt]", "\</dt\>", "[dd]", "\<dd\>", "[/dd]", "\</dd\>", "[dl]", "\<dl\>", "[/dl]", "\</dl\>", "[del]", "\<del\>", "[/del]", "\</del\>", "[h1]", "\<h1\>", "[/h1]", "\</h1\>", "[h2]", "\<h2\>", "[/h2]", "\</h2\>", "[h3]", "\<h3\>", "[/h3]", "\</h3\>", "[h4]", "\<h4\>", "[/h4]", "\</h4\>", "[h5]", "\<h5\>", "[/h5]", "\</h5\>", "[h6]", "\<h6\>", "[/h6]", "\</h6\>");
+
+        \$title = replace_strings(\$title, "[ol]", "\<ol\>", "[/ol]", "\</ol\>", "[li]", "\<li\>", "[/li]", "\</li\>", "[pre]", "\<pre\>", "[/pre]", "\</pre\>", "[q]", "\<q\>", "[/q]", "\</q\>", "[sub]", "\<sub\>", "[/sub]", "\</sub\>", "[sup]", "\<sup\>", "[/sup]", "\</sup\>", "[u]", "\<u\>", "[/u]", "\</u\>", "[ul]", "\<ul\>", "[/ul]", "\</ul\>", "\&quot;", "\\"", "\&amp;", "\&", "[quote]", "\\'");
+
+        Set(Obj(\$target), "trait:" + \$detail + ":title", ParseXML(\$title));
+    \}
+
+Set(\$\{Chatters:AE:ro:roo\}, "temp", \$body);
+
+
+    Set(Obj(\$target), "trait:" + \$detail, ParseXML(\$body));
+    Obj(\$target).lastwriter = Describe(Obj(\$actor));
+    Obj(\$target).lastwritetime = time();
+    Obj(\$this).timesused++;
+
+    Obj(\$target).lastwriter_object = Obj(\$actor);
+    /* Do a skill roll to see how hard it is to recognize the handwriting on this scroll */
+    Obj(\$target).lastwriter_recognition_difficulty = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "disguise_writer" \}), \$bonus: 0);
+
+
+    if(Obj(\$target)."trait:superbrief" == "newspaper") \{
+        Popup(Obj(\$actor), Obj(\$this), "newspaper", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$detail: \$detail, \$title: \$title, \$msg: "Success!");
+    \} else \{
+        Popup(Obj(\$actor), Obj(\$this), "book", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$detail: \$detail, \$msg: "Success!");
+    \}
+
+    EmitTo(Obj(\$actor), "\\n");
+
+  return FALSE;
+
+  \}
+
+  if (Obj(\$target)."base:environment" != Obj(\$actor)) \{ Popup(Obj(\$actor), Obj(\$this), "popup", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$addressee: \$addressee, \$optsig: \$optsig, \$msg: "You cannot write on an object that is not in your possession!"); return FALSE; \}
+
+  if (\$addressee != "" \&\& !common::lookup(\$name: \$addressee)) \{ Popup(Obj(\$actor), Obj(\$this), "popup", \$actor: Obj(\$actor), \$this: Obj(\$this), \$target: Obj(\$target), \$addressee: \$addressee, \$optsig: \$optsig, \$msg: "I am unable to locate that person!"); return FALSE; \}
+
+  Obj(\$target)."details:objskin:description:delivery-end:local" = (strlen(\$optsig) \> 0 ? \$optsig : nil);
+
+  Obj(\$target)."details:objskin:description:delivery-from:local" = (\$sign ? Describe(Obj(\$actor)) : nil);
+
+  Obj(\$target)."lastsigner:object" = (\$sign ? Obj(\$actor) : nil);
+
+  Obj(\$target)."details:objskin:description:delivery-to:local" = (\$addressee != "" ? lower_case(\$addressee) : nil);
+  Obj(\$target)."brain:deliver-to" = (\$addressee != "" ? common::lookup(\$name: \$addressee) : nil);
+
+/*
+  \$body = replace_strings(replace_html(replace_strings(\$body, "\\r\\n", "\\n")), "\&quot;", "\\"");
+*/
+
+sscanf(\$body, "\\000%s\|%d\\001%s\\002", \$t1, \$t2, \$body);
+
+    langlevel = Str((\$r1 = Obj(\$actor)."skotos:currentlang") ? \$r1 : 0);
+    langname = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + langlevel);
+    langskill = Get(\$actor, "skill:lang:" + langname);
+
+    if(langlevel \&\& langlevel != "0") \{
+        \$body = INLANG(langname, langskill, \$body);
+    \}
+
+  \$body = replace_strings(\$body, "\\r\\n", "\\n", "\<b\>", "[b]", "\</b\>", "[/b]", "\<i\>", "[i]", "\</i\>", "[/i]", "\<tt\>", "[tt]", "\</tt\>", "[/tt]", "\<big\>", "[big]", "\</big\>", "[/big]", "\<small\>", "[small]", "\</small\>", "[/small]", "\<blockquote\>", "[blockquote]", "\</blockquote\>", "[/blockquote]", "\<center\>", "[center]", "\</center\>", "[/center]", "\<em\>", "[em]", "\</em\>", "[/em]", "\<strong\>", "[strong]", "\</strong\>", "[/strong]", "\<dfn\>", "[dfn]", "\</dfn\>", "[/dfn]", "\<code\>", "[code]", "\</code\>", "[/code]");
+
+  \$body = replace_strings(\$body, "\<samp\>", "[samp]", "\</samp\>", "[/samp]", "\<kbd\>", "[kbd]", "\</kbd\>", "[/kbd]", "\<var\>", "[var]", "\</var\>", "[/var]", "\<cite\>", "[cite]", "\</cite\>", "[/cite]", "\<dl\>", "[dl]", "\</dl\>", "[/dl]", "\<dt\>", "[dt]", "\</dt\>", "[/dt]", "\<dd\>", "[dd]", "\</dd\>", "[/dd]", "\<del\>", "[del]", "\</del\>", "[/del]", "\<h1\>", "[h1]", "\</h1\>", "[/h1]", "\<h2\>", "[h2]", "\</h2\>", "[/h2]", "\<h3\>", "[h3]", "\</h3\>", "[/h3]", "\<h4\>", "[h4]", "\</h4\>", "[/h4]", "\<h5\>", "[h5]", "\</h5\>", "[/h5]", "\<h6\>", "[h6]", "\</h6\>", "[/h6]");
+
+  \$body = replace_strings(\$body, "\<ol\>", "[ol]", "\</ol\>", "[/ol]", "\<li\>", "[li]", "\</li\>", "[/li]", "\<pre\>", "[pre]", "\</pre\>", "[/pre]", "\<q\>", "[q]", "\</q\>", "[/q]", "\<sub\>", "[sub]", "\</sub\>", "[/sub]", "\<sup\>", "[sup]", "\</sup\>", "[/sup]", "\<u\>", "[u]", "\</u\>", "[/u]", "\<ul\>", "[ul]", "\</ul\>", "[/ul]", "\\'", "[quote]");
+
+  \$body = replace_xml(\$body);
+
+  \$body = replace_strings(\$body, "[b]", "\<b\>", "[/b]", "\</b\>", "[i]", "\<i\>", "[/i]", "\</i\>", "[tt]", "\<tt\>", "[/tt]", "\</tt\>", "[big]", "\<big\>", "[/big]", "\</big\>", "[small]", "\<small\>", "[/small]", "\</small\>", "[blockquote]", "\<blockquote\>", "[/blockquote]", "\</blockquote\>", "[center]", "\<center\>", "[/center]", "\</center\>", "[em]", "\<em\>", "[/em]", "\</em\>", "[strong]", "\<strong\>", "[/strong]", "\</strong\>", "[dfn]", "\<dfn\>", "[/dfn]", "\</dfn\>", "[code]", "\<code\>", "[/code]", "\</code\>");
+
+  \$body = replace_strings(\$body, "[samp]", "\<samp\>", "[/samp]", "\</samp\>", "[kbd]", "\<kbd\>", "[/kbd]", "\</kbd\>", "[var]", "\<var\>", "[/var]", "\</var\>", "[cite]", "\<cite\>", "[/cite]", "\</cite\>", "[dt]", "\<dt\>", "[/dt]", "\</dt\>", "[dd]", "\<dd\>", "[/dd]", "\</dd\>", "[dl]", "\<dl\>", "[/dl]", "\</dl\>", "[del]", "\<del\>", "[/del]", "\</del\>", "[h1]", "\<h1\>", "[/h1]", "\</h1\>", "[h2]", "\<h2\>", "[/h2]", "\</h2\>", "[h3]", "\<h3\>", "[/h3]", "\</h3\>", "[h4]", "\<h4\>", "[/h4]", "\</h4\>", "[h5]", "\<h5\>", "[/h5]", "\</h5\>", "[h6]", "\<h6\>", "[/h6]", "\</h6\>");
+
+  \$body = replace_strings(\$body, "[ol]", "\<ol\>", "[/ol]", "\</ol\>", "[li]", "\<li\>", "[/li]", "\</li\>", "[pre]", "\<pre\>", "[/pre]", "\</pre\>", "[q]", "\<q\>", "[/q]", "\</q\>", "[sub]", "\<sub\>", "[/sub]", "\</sub\>", "[sup]", "\<sup\>", "[/sup]", "\</sup\>", "[u]", "\<u\>", "[/u]", "\</u\>", "[ul]", "\<ul\>", "[/ul]", "\</ul\>", "\\\\\&amp;", "\&", "\\\\\&quot;", "\\"", "[quote]", "\\'");
+
+  \$body = replace_strings(\$body, "\\\\002", "\\002", "\\\\000", "\\000", "\\\\001", "\\001", "\\\\\\\|", "\|");
+
+  Obj(\$target)."details:objskin:description:writing:local" = \$body;
+
+  Obj(\$target).lastwriter = Describe(Obj(\$actor));
+  Obj(\$target).lastwritetime = time();
+  Obj(\$target).lastwriter_object = Obj(\$actor);
+  /* Do a skill roll to see how hard it is to recognize the handwriting on this scroll */
+  Obj(\$target).lastwriter_recognition_difficulty = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "disguise_writer" \}), \$bonus: 0);
+
+
+  if (!\$sign) \$sign = "";
+
+  Obj(\$this).timesused++;
+
+  Popup(Obj(\$actor), Obj(\$this), "popup", \$actor: \$actor, \$this: \$this, \$target: \$target, \$addressee: \$addressee, \$optsig: \$optsig, \$sign: (\$sign ? \$sign : ""), \$msg: "Success!");
+
+  EmitTo(Obj(\$actor), "\\n");
+
+  return FALSE;
+
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1573320574, "jominey", "E", 1573320715, "jominey", "E", 1573320810, "jominey", "E", 1573321104, "jominey", "E", 1573321285, "jominey", "E", 1573321401, "jominey", "E", 1573321487, "jominey", "E", 1573321493, "jominey", "E", 1573321601, "jominey", "E", 1573321693, "jominey", "E", 1573321745, "jominey", "E", 1573322053, "jominey", "E", 1573322212, "jominey", "E", 1573322291, "jominey", "E", 1573324363, "jominey", "E", 1573329586, "jominey", "E", 1573329690, "jominey", "E", 1573329752, "jominey", "E", 1573329818, "jominey", "E", 1573329840, "jominey", "E", 1573329928, "jominey", "E", 1573331685, "jominey", "E", 1573331996, "jominey", "E", 1573332126, "jominey", "E", 1573342536, "jominey", "E", 1573342559, "jominey", "E", 1573342710, "jominey", "E", 1573342792, "jominey", "E", 1573348153, "jominey", "E", 1573348181, "jominey", "E", 1573349390, "jominey", "E", 1573349404, "jominey", "E", 1573349456, "jominey", "E", 1573504985, "jominey", "E", 1573505007, "jominey", "E", 1573505114, "jominey", "E", 1573505196, "jominey", "E", 1573505287, "jominey", "E", 1573505335, "jominey", "E", 1573505538, "jominey", "E", 1573505605, "jominey", "E", 1573505745, "jominey", "E", 1573505877, "jominey", "E", 1573506191, "jominey", "E", 1573506275, "jominey", "E", 1573506346, "jominey", "E", 1573506388, "jominey", "E", 1573506408, "jominey", "E", 1573506455, "jominey", "E", 1573506654, "jominey", "E", 1573688867, "jominey", "E", 1573688890, "jominey", "E", 1574175447, "jominey", "E", 1574175730, "jominey", "E", 1574175895, "jominey", "E", 1574175985, "jominey", "E", 1575512058, "jominey", "E", 1575512176, "jominey", "E", 1575512288, "jominey", "E", 1575512379, "jominey", "E", 1576685383, "jominey", "E", 1576685459, "jominey", "E", 1576685485, "jominey", "E", 1601839138, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+      <Core:Property property="timesused">252226</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

@@ -1,0 +1,132 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.5" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="octagram"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="octagrams"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="black"/>
+          <Base:Adjective adjective="occult"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             black octagram
+          </Base:Description>
+          <Base:Description type="look">
+             An occult octagram has been drawn on the ground in some black substance.
+<propcheck skill="academics:magic" min="5">The black appears to be some sort of flaking black coal.</propcheck>
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:sacrificed">
+         X[M] /* sacrifice given */
+if(!\$victim) return TRUE;
+\$octagram = NRefOb(\$victim)."tmp:magic:sacrifice:StatsUp:Octagram";
+if(!\$octagram) return TRUE;
+
+for(\$i=0;\$i\<sizeof(Arr(\$octagram.cultists));\$i++) \{
+ \$magic = 15;
+ \$magic += Arr(\$octagram.cultists)[\$i]."skill:academics:magic";
+ \$magic += Arr(\$octagram.cultists)[\$i]."career:academics:magic";
+ ironclaw::set_prop(\$obj: Arr(\$octagram.cultists)[\$i], \$prop: "trait:body", \$value: 20, \$timer: 60*60*24*7*4*2);
+ ironclaw::set_prop(\$obj: Arr(\$octagram.cultists)[\$i], \$prop: "trait:speed", \$value: 20, \$timer: 60*60*24*7*4*2);
+\}
+
+NRefOb(\$victim)."tmp:magic:sacrifice:StatsUp:Octagram" = nil;
+\$octagram.victim = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:clean-dob">
+         X[M] Slay(\$this);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:place-where">
+         X[M] /* starting the ritual? */
+
+/* are they placing a skull on the octagram? */
+if(!\$what \|\| !sizeof(\$what) \|\| !contains(name(NRefOb(\$what[0])), "IronClaw:Props:Holiday:Halloween:Props:SkullFull") ) return TRUE;
+
+/* are they wearing all black? */
+\$black = nil;
+\$red = nil;
+\$clothes = \$actor."base:clothes-worn";
+for(\$i=0;\$i\<sizeof(map_indices(\$clothes));\$i++) \{
+ for(\$j=0;\$j\<sizeof(\$clothes[map_indices(\$clothes)[\$i]]);\$j++) \{
+  \$color = Str(\$clothes[map_indices(\$clothes)[\$i]][\$j]."trait:color");
+  if(contains(\$color, "red") \|\| contains(\$color, "scarlet")) \{
+   \$red = 1;
+  \} else if(contains(\$color, "black") \|\| contains(\$color, "grey") \|\| contains(\$color, "gray") \|\| contains(\$color, "slate")) \{
+   \$black = 1;
+  \}
+ \}
+\}
+
+if(\$red) \{
+ /*if(\$this.victim) return TRUE;*/
+ \$this.victim = \$actor;
+ \$actor."tmp:magic:sacrifice:StatsUp:Octagram" = \$this;
+ EmitIn(\$this."base:environment", "Momentarily, "+Describe(\$what[0])+" glows an eerie red color.");
+\} else if(\$black) \{
+ \$list = Arr(\$this.cultists);
+ \$list \|= (\{ \$actor \});
+ \$this.cultists = \$list;
+ /* set their attributes to 1 until they complete the ritual */
+ /* it lasts for 2 months if they don't complete the ritual */
+ ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:body", \$value: 1, \$timer: 60*60*24*7*4*2);
+ ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:speed", \$value: 1, \$timer: 60*60*24*7*4*2);
+ EmitIn(\$this."base:environment", "Momentarily, "+Describe(\$what[0])+" glows an eerie green color.");
+ EmitTo(\$actor, "You feel the strength draining from your body, through the skull, and into the octagram.");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1256966479, "tonyd", "E", 1256966495, "tonyd", "X", 1256966506, "tonyd", "E", 1256966597, "tonyd", "E", 1256967197, "tonyd", "E", 1256967395, "tonyd", "P", 1256967557, "tonyd", "P", 1256967688, "tonyd", "P", 1256967723, "tonyd", "P", 1256967739, "tonyd", "P", 1256967873, "tonyd", "P", 1256967916, "tonyd", "P", 1256968017, "tonyd", "P", 1256968092, "tonyd", "P", 1256968179, "tonyd", "P", 1256968201, "tonyd", "P", 1256968235, "tonyd", "P", 1256968307, "tonyd", "P", 1256968333, "tonyd", "P", 1256968367, "tonyd", "P", 1256968530, "tonyd", "P", 1256968569, "tonyd", "P", 1256968706, "tonyd", "P", 1256968812, "tonyd", "P", 1256968914, "tonyd", "P", 1256968974, "tonyd", "P", 1256969258, "tonyd", "P", 1256969278, "tonyd", "P", 1256969494, "tonyd", "P", 1256969588, "tonyd", "P", 1256969651, "tonyd", "P", 1256969740, "tonyd", "P", 1256969828, "tonyd", "P", 1256969837, "tonyd", "P", 1256969894, "tonyd", "P", 1256969996, "tonyd", "P", 1256970076, "tonyd", "P", 1256970257, "tonyd", "P", 1256970331, "tonyd", "P", 1256970564, "tonyd", "P", 1256970673, "tonyd", "P", 1256970728, "tonyd", "P", 1256970789, "tonyd", "P", 1256970837, "tonyd", "P", 1256970877, "tonyd", "P", 1256971048, "tonyd", "P", 1256972819, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

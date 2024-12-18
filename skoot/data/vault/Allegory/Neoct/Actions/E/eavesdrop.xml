@@ -1,0 +1,178 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="SkotOS">
+  <SkotOS:MerAcHa action_id="eavesdrop">
+    <Core:PCProperties>
+      <Core:Property property="merry:act:approach">
+         X[M] if(\$actor."eavesdrop:bug") \{
+    \$bug = \$actor."eavesdrop:bug";
+    \$location = \$bug."base:environment";
+
+    EmitTo(\$actor, TAG("You stop eavesdropping on " + Describe(\$location) + ".", "social:first"));
+
+    Slay(\$bug);
+\}
+
+\$actor."merry:inherit:act:approach" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global-desc:action">
+         X[M] EmitTo(\$actor, TAG("You begin to eavesdrop on " + Describe(\$actor."eavesdrop:target") + ".", "social:first"));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:global:action">
+         X[M] \$syntax = "\\nSyntax: eavesdrop on \<exit\>";
+
+if(Int(\$actor."skill:social:eavesdrop") == 0) \{
+    EmitTo(\$actor, "You do not know how to eavesdrop effectively.");
+    return FALSE;
+\}
+
+if(\$actor."eavesdrop:bug") \{
+    \$bug = \$actor."eavesdrop:bug";
+    \$location = \$bug."base:environment";
+    EmitTo(\$actor, TAG("You stop eavesdropping on " + Describe(\$location) + ".", "social:first"));
+    Slay(\$bug);
+    return FALSE;
+\}
+
+if(!\$iob) \{
+    EmitTo(\$actor, "Where did you want to eavesdrop?" + \$syntax);
+    return FALSE;
+\}
+
+if(!sizeof(\$iob)) \{
+    EmitTo(\$actor, "Where did you want to eavesdrop?" + \$syntax);
+    return FALSE;
+\}
+
+if(sizeof(\$iob) \> 2) \{
+    EmitTo(\$actor, "You can only eavesdrop one place at a time." + \$syntax);
+    return FALSE;
+\}
+
+\$room = NRefOb(\$iob[0]);
+\$detail = NRefDetail(\$iob[0]);
+
+if(!(\$location = NRefOb(Get(\$room, "details:" + \$detail + ":exit:dest")))) \{
+    EmitTo(\$actor, "You must select an exit to eavesdrop on." + \$syntax);
+    return FALSE;
+\}
+
+if(!\$actor."base:proximity") \{
+    EmitTo(\$actor, "You are too far away to eavesdrop on " + Describe(\$location) + "." + \$syntax);
+    return FALSE;
+\}
+
+if(NRefDetail(\$actor."base:proximity") != NRefDetail(\$iob[0])) \{
+    EmitTo(\$actor, "You are too far away to eavesdrop on " + Describe(\$location) + "." + \$syntax);
+    return FALSE;
+\}
+
+\$bug = Spawn(\$\{Allegory:Props:Special:EavesdropBug\});
+\$actor."eavesdrop:bug" = \$bug;
+\$bug."base:environment" = \$location;
+\$bug."eavesdrop:listener" = \$actor;
+\$actor."merry:inherit:act:approach" = \$this;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:garble-eavesdrop">
+         X[M] int skill, result, c, i;
+string output;
+string * words;
+
+/* Roll for reach word */
+words = explode(replace_strings(\$text, "\\"", "", ".", ""), " ");
+
+output = "";
+for(i = 0; i \< sizeof(words); i++) \{
+    result = ironclaw::roll(\$roller: \$witness, \$skills: (\{ "social:eavesdrop" \}), \$bonus: (\{ "trait:perception" \}));
+
+    if(\$doorclosed) \{
+        result = result/5;
+    \} else \{
+        /* result = (result*4)/5; */
+    \}
+
+    c = strlen(words[i]);
+
+    if(result \> c) \{
+        output += words[i];
+    \} else \{
+        if(random(100) \< 95) \{
+            output += oneof("...", "mmm", "...", "...", "mumble", "psst", "psst", "pssst", "blahblah", "blah", "meh", "...", "...", "psst", "psst");
+        \} else \{
+            output += oneof("assassinate", "kill", "murder", "poison", "death", "ugly", "kiss", "hug", "marry", "trick", "steal");
+        \}
+    \}
+
+    if(i \< (sizeof(words)-1)) output += " ";
+\}
+
+return "\\"" + output + ".\\"";
+      </Core:Property>
+      <Core:Property property="merry:witness:command">
+         X[M] object listener, location, person;
+string voice, words, words2, action;
+mixed * noisyVerbs;
+mixed langlevel, langname, langskill;
+string lang, detail;
+int legibility, doorclosed;
+
+if(\$verb == "whisper" \|\| \$verb == "call" \|\| \$verb == "yell" \|\| \$verb == "scream" \|\| \$verb == "shout" \|\| \$verb == "announce") return TRUE;
+
+noisyVerbs = (\{ "laugh", "giggle", "cry", "sob", "wail", "guffaw", "moan", "groan", "whimper", "sing", "croon", "cough", "scowl" \});
+
+if(member(\$verb, noisyVerbs)) \{
+    action = \$verb;
+\}
+
+if(!\$this."eavesdrop:listener") return FALSE;
+
+listener = \$this."eavesdrop:listener";
+location = \$this."base:environment";
+person = \$actor;
+
+detail = NRefDetail(listener."base:proximity");
+doorclosed = Get(listener."base:environment", "details:" + detail + ":exit:closed");
+
+if(doorclosed) voice = "muffled "; else voice = "";
+
+if(\$actor."base:gender" == 1) voice += "masculine voice";
+if(\$actor."base:gender" == 2) voice += "feminine voice";
+if(\$actor."base:gender" != 1 \&\& \$actor."base:gender" != 2) voice += "voice";
+
+if(\$evoke) \{
+    words = Call(\$this, "garble-eavesdrop", \$text: \$evoke, \$witness: listener, \$doorclosed: doorclosed);
+
+    langlevel = Str((\$r1 = \$actor."skotos:currentlang") ? \$r1 : 0);
+    langname = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + langlevel);
+    langskill = Get(\$actor, "skill:lang:" + langname);
+
+    \$l = "";
+    if (langlevel \&\& langlevel != "0" \&\& strlen(words) \> 0) \{
+        words = INLANG(langname, langskill, words);
+        sscanf(words, "\\000%s\|%d\\001%s\\002", lang, legibility, words);
+        words = Call(\$\{Allegory:Lib:Languages:Actions:encounter-language\}, "garble-reading", \$text: words, \$language: langname, \$actor: Obj(listener), \$legibility: langskill);   
+
+        \$l = " in " + capitalize(langname) + " ";
+    \}
+
+    if(action) \{
+        EmitTo(listener, TAG("From " + Describe(location) + ", you hear a " + voice + " " + action + \$l + ": " + words, "evoke:third"));
+    \} else \{
+        EmitTo(listener, TAG("From " + Describe(location) + ", you hear a " + voice + \$l + ": " + words, "evoke:third"));
+    \}
+\} else if(action) \{
+    EmitTo(listener, TAG("From " + Describe(location) + ", you hear a " + voice + " " + action + ".", "evoke:third"));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1570317614, "jominey", "E", 1570320082, "jominey", "E", 1570320186, "jominey", "E", 1570320260, "jominey", "E", 1570320522, "jominey", "E", 1570320552, "jominey", "E", 1570320759, "jominey", "E", 1570320882, "jominey", "E", 1570321107, "jominey", "E", 1570321212, "jominey", "E", 1570321458, "jominey", "E", 1570321560, "jominey", "E", 1570321605, "jominey", "E", 1570322277, "jominey", "E", 1570322368, "jominey", "E", 1570322583, "jominey", "E", 1570322713, "jominey", "E", 1570322941, "jominey", "E", 1570323007, "jominey", "E", 1570323256, "jominey", "E", 1570323265, "jominey", "E", 1570323538, "jominey", "E", 1570323677, "jominey", "E", 1570323724, "jominey", "E", 1570323775, "jominey", "E", 1570323918, "jominey", "E", 1570324081, "jominey", "E", 1570324128, "jominey", "E", 1570328338, "jominey", "E", 1570328522, "jominey", "E", 1570329094, "jominey", "E", 1570329128, "jominey", "E", 1570329229, "jominey", "E", 1570329255, "jominey", "E", 1570329643, "jominey", "E", 1570329699, "jominey", "E", 1570329956, "jominey", "E", 1571976957, "jominey", "E", 1572911355, "jominey", "E", 1572912590, "jominey", "E", 1574177280, "jominey", "E", 1574177365, "jominey", "E", 1574177640, "jominey", "E", 1574177747, "jominey", "E", 1574177807, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

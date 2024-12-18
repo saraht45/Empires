@@ -1,0 +1,451 @@
+<object clone="/usr/SkotOS/obj/verb" owner="killandra">
+  <Socials:Verb imp="@patron" second="patron" third="patronizes" evoke="forbidden" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="true" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="gimli:lib:check_patron_constables">
+         "E[G]\\n// Are we inducting them into the constabulary?\\n// We are passed \$char and \$patron\\nif(\$char.\\"patron\\" != \$patron) return FALSE;\\nif(Int(\$char.\\"rank:status:church\\")) return FALSE; // \$char is not yet a novice\\nif(\$char.\\"base:environment\\" != \$\{Ironclaw:World:NewTown:North:Buildings:Cathedrale:Cathedral\}\\n\|\| \$patron.\\"base:environment\\" != \$\{Ironclaw:World:NewTown:North:Buildings:Cathedrale:Cathedral\}) return FALSE;\\n// They are both at the church\\nif(Int(\$patron.\\"rank:status:constables\\") \< 4) return FALSE; // Patron has high enough rank\\nif(\$patron.\\"loyalty:group\\" != \\"constables\\") return FALSE; // Patron has the right loyalty\\n\\n\$rankname = \\"deputy\\";\\n\$group = \\"constables\\";\\n\$question = \\"Do you want to induct \\"+Describe(\$char)+\\" into the \\"+\$group+\\" as a \\"+\$rankname+\\"?\\";\\ninteraction::question(\$actor: \$patron, \$par: ([\\"patron\\":\$patron, \\"char\\":\$char, \\"group\\":\$group, \\"rankname\\":\$rankname]), \$question: \$question, \$expires: 60*3, \$env: \\"FALSE\\", \$yes_ob: this, \$yes_fun: \\"induct_yes\\", \$no_ob: this, \$no_fun: \\"induct_no\\", \$expire: \\"Induction question has expired. You can always use the @patron command again if you wish to induct \\"+Describe(\$char)+\\".\\");\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:check_patron_next">
+         "E[G]\\n// What other questions do we need to ask?\\n\$delay(0.01, TRUE);\\nswitch(\$par[\\"group\\"]) \{\\n  case \\"church\\":\\n    ::check_patron(\$char:\$par[\\"char\\"], \$patron:\$par[\\"patron\\"], \$group:\\"constables\\", \$rankname:\\"deputy\\", \$location:\$\{Ironclaw:World:NewTown:North:Buildings:Cathedrale:Cathedral\});\\n    break;\\n  case \\"constables\\":\\n    ::check_patron(\$char:\$par[\\"char\\"], \$patron:\$par[\\"patron\\"], \$group:\\"underworld\\", \$rankname:\\"henchman\\", \$location:\$\{Ironclaw:World:NewTown:North:Buildings:Cathedrale:Cathedral\});\\n    break;\\n  default:\\n    break;\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:induct_accept">
+         "E[G]\\n// They accepted\\n\$patron = \$par[\\"patron\\"];\\n\$char = \$par[\\"char\\"];\\n\$group = \$par[\\"group\\"];\\n\$rankname = \$par[\\"rankname\\"];\\nEmitTo(\$char, \\"You accept \\"+Describe(\$patron)+\\"'s offer.\\");\\nEmitTo(\$patron, Describe(\$char)+\\" has accepted your offer.\\");\\n\\n\$lib = \$\{Ironclaw:Lib:Characters:Rank\};\\n\$new_rank_info = Call(\$lib, \\"check_status\\", \$char:\$char, \$path:\\"status:\\"+\$group, \$give_promotion:TRUE, \$show_promotion_requirements:FALSE);\\n\$new_status_name = \$new_rank_info[\\"rankname\\"];\\n\$new_status_level = \$new_rank_info[\\"level\\"];\\n\\nif(\$new_status_level != 3) \{ // Sanity check\\n  EmitTo(\$char, \\"Sorry, something went wrong! Please try again.\\");\\n  return FALSE;\\n\}\\n\\nif(\$group == \\"church\\") \{\\n  \$here = \$char.\\"base:environment\\";\\n  \$priest = \$\{Ironclaw:NPCs:Cathedral:Priest\};\\n\\n  // if(\$char \&\& \$char.\\"base:environment\\") EmitIn(\$here, \\"A wizened old mouse shuffles into \\"+Describe(\$here)+\\".\\");\\n  EmitIn(\$here, \\"A wizened old mouse shuffles into \\"+Describe(\$here)+\\".\\");\\n  \$priest.\\"base:environment\\" = \$here;\\n  \$delay(5, TRUE);\\n\\n  Social(\$priest, \\"cough\\");\\n  Social(\$priest, \\"smile\\");\\n  \\n  \\n  \$delay(20, TRUE);\\n  EmitIn(\$here, Describe(\$priest)+\\" gestures for \\"+Describe(\$char)+\\" to kneel before the statue, and lower \\"+\$char.\\"base:possessive\\"+\\" head.\\", \$char);\\n  EmitTo(\$char, Describe(\$priest)+\\" gestures for you to kneel before the statue, and lower your head.\\");\\n  \$delay(20, TRUE);\\n  \$statue = \$\{[IronClaw:Props:Misc:Decorations:Statue]#110974\};\\n  if(\$char.\\"base:stancestring\\" != \\"kneeling\\" \|\| !\$char.\\"base:proximity\\" \|\| NRefOb(\$char.\\"base:proximity\\") != \$statue) \{\\n    Social(\$char, \\"kneel\\", nil, nil, \\"before\\", \$statue);\\n    \$delay(2, TRUE);\\n  \}\\n  \\n  if(\$patron \&\& \$patron.\\"base:environment\\" == \$here)\\n    Social(\$priest, \\"state\\", nil, Describe(\$patron)+\\" is here to bear witness to the induction of a new novice.\\");\\n  else\\n    Social(\$priest, \\"state\\", nil, \\"I am here to bear witness to the induction of a new novice.\\");\\n    \\n  Social(\$priest, \\"ask\\", nil, \\"Do you swear always to follow the light, emulate the saints, and obey the Church?\\", nil, \$char);\\n  EmitTo(\$char, \\"The wizened mouse whispers to you, \\\\\\"Answer that you do.\\\\\\"\\");\\n  \$delay(20, TRUE);\\n  \\n  if(\$patron \&\& \$patron.\\"base:environment\\" == \$here) \{\\n    Social(\$priest, \\"ask\\", nil, \\"Do you believe that \\"+Describe(\$char)+\\" is, indeed, worthy of joining the Church as a novice?\\", nil, \$patron);\\n    EmitTo(\$patron, \\"The wizened mouse whispers to you, \\\\\\"Answer that you do.\\\\\\"\\");\\n    \$delay(20, TRUE);\\n  \}\\n  \\n  if(\$patron \&\& \$patron.\\"base:environment\\" == \$here) \{\\n    Social(\$priest, \\"ask\\", nil, \\"Will you guide \\"+Describe(\$char)+\\" in matters of Faith, educate \\"+Describe(\$char)+\\", and offer moral guidance?\\", nil, \$patron);\\n    EmitTo(\$patron, \\"The wizened mouse whispers to you, \\\\\\"Answer that you will.\\\\\\"\\");\\n    \$delay(20, TRUE);\\n  \}\\n  \\n  Social(\$priest, \\"tell\\", nil, \\"Then be welcome among us as our newest Novice. May you always walk in the Light.\\", nil, \$char);\\n  \\n  \$delay(10, TRUE);\\n  EmitIn(\$here, Describe(\$priest)+\\" bows to the statue of Saint Helloise, before leaving.\\");\\n  \$priest.\\"base:environment\\" = nil;\\n  \\n  EmitIn(\$here, \\"An acolyte hands \\"+Describe(\$char)+\\" a set of robes, indicating \\"+\$char.\\"base:possessive\\"+\\" new station in the Church.\\");\\n  \\n  \$robe = Spawn(\$\{Ironclaw:Props:Clothing:Robes:Robe-Scholar\});\\n  \$robe.\\"trait:color\\" = \\"white\\";\\n  \$robe.\\"base:environment\\" = \$here; // Put it into the room before giving to the PC. That way if the PCs inventory is full, it'll be in the room\\n  \$robe.\\"base:environment\\" = \$char;\\n\}\\n\\n\$par = ([ \\"info\\":\$new_rank_info, \\"char\\":\$char, \\"no_influence_change\\":TRUE ]);\\nCall(\$lib, \\"give_promotion\\", \$par:\$par);\\n\\nreturn TRUE;\\n"
+      </Core:Property>
+      <Core:Property property="gimli:lib:induct_decline">
+         "E[G]\\n// They declined\\n\$patron = \$par[\\"patron\\"];\\n\$char = \$par[\\"char\\"];\\n\$group = \$par[\\"group\\"];\\n\$rankname = \$par[\\"rankname\\"];\\nEmitTo(\$char, \\"You decline \\"+Describe(\$patron)+\\"'s offer.\\");\\nEmitTo(\$patron, Describe(\$char)+\\" declines your offer.\\");\\nreturn TRUE;\\n"
+      </Core:Property>
+      <Core:Property property="gimli:lib:induct_no">
+         "E[G]\\n// Decided not to induct them\\nEmitTo(\$actor, \\"OK!\\");\\n\\n// What other questions do we need to ask?\\nreturn ::check_patron_next(\$par:\$par);"
+      </Core:Property>
+      <Core:Property property="gimli:lib:induct_yes">
+         "E[G]\\n// We are inducting them!\\n\$patron = \$par[\\"patron\\"];\\n\$char = \$par[\\"char\\"];\\n\$group = \$par[\\"group\\"];\\n\$rankname = \$par[\\"rankname\\"];\\n\\nEmitTo(\$patron, \\"Asking \\"+Describe(\$char)+\\" if they want to become a \\"+\$rankname+\\"...\\");\\n\$question = Describe(\$patron)+\\" has offered to induct you into the \\"+\$group+\\" as a \\"+\$rankname+\\". Do you accept?\\";\\ninteraction::question(\$actor: \$char, \$par: ([\\"patron\\":\$patron, \\"char\\":\$char, \\"group\\":\$group, \\"rankname\\":\$rankname]), \$question: \$question, \$expires: 60*3, \$env: \\"FALSE\\", \$yes_ob: this, \$yes_fun: \\"induct_accept\\", \$no_ob: this, \$no_fun: \\"induct_decline\\", \$expire: \\"The induction question has expired. \\"+Describe(\$patron)+\\" can always use the @patron command again if they wish to induct you.\\");\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:global:command instead! */
+/* Offer to become someone's patron */
+
+if(\$(dob:words)) \{
+    \$input = \$(dob:words);
+    if(sizeof(\$input) == 1) \{
+        \$char = common::lookup(\$name: \$input[0]);
+        if(\$char) \$dob = (\{ NewNRef(\$char, "default") \});
+    \}
+
+    if(sizeof(\$input) == 2) \{
+        if(\$input[0] == "remove") \{
+            if(\$input[1] == "patron") \{
+                if(\$actor.patron) \{
+                    \$question = "Are you sure you want to remove " + capitalize(\$actor.patron."skotos:charname") + " as your patron?";
+                    interaction::question(\$actor: \$actor, \$par: (["patron":\$actor.patron]), \$question: \$question, \$expires: 60*3, \$env: "FALSE", \$yes_ob: this, \$yes_fun: "remove_patron_yes", \$no_ob: this, \$no_fun: "remove_patron_no", \$expire_ob: this, \$expire_fun: "remove_patron_no");
+
+                    return FALSE;
+                \} else \{
+                    EmitTo(\$actor, "You do not have a patron to remove.");
+                    return FALSE;
+                \}
+            \} else if(\$input[1] == "protege") \{
+                if(\$evoke) \{
+                    \$name = replace_strings(\$evoke, "\\"", "", ".", "");
+                    \$char = common::lookup(\$name: \$name);
+                    if(!\$char) \{
+                        EmitTo(\$actor, "Cannot find character \\"" + Str(\$name) + "\\" on your protege list. Make sure you are using single names only (do not include titles).");
+                        return FALSE;
+                    \} else \{
+                        if(!member(\$char, \$actor.proteges)) \{
+                            EmitTo(\$actor, "Cannot find character \\"" + Str(\$name) + "\\" on your protege list. Make sure you are using single names only (do not include titles).");
+                        \} else \{
+                            \$question = "Are you sure you want to remove " + capitalize(\$char."skotos:charname") + " as your protege?";
+                            interaction::question(\$actor: \$actor, \$par: (["protege":\$char]), \$question: \$question, \$expires: 60*3, \$env: "FALSE", \$yes_ob: this, \$yes_fun: "remove_protege_yes", \$no_ob: this, \$no_fun: "remove_protege_no", \$expire_ob: this, \$expire_fun: "remove_protege_no");
+                        \}
+                        return FALSE;
+                    \}
+                \} else \{
+                    EmitTo(\$actor, "You must specify a protege to remove using the following syntax: @patron remove protege \\"Bob\\"");
+                    return FALSE;
+                \}
+            \}
+        \}
+    \}
+\}
+
+if(!\$dob) \{
+  /* List their current patron and proteges */
+  if(\$actor.patron) \{
+    \$text = "Your patron is "+capitalize(\$actor.patron."skotos:charname")+".";
+    if(\$actor.patron."loyalty:name")
+      \$text += " "+capitalize(\$actor.patron."skotos:charname")+" is loyal to "+\$actor.patron."loyalty:name"+".";
+    EmitTo(\$actor, \$text);
+  \} else \{
+    EmitTo(\$actor, "You have no patron");
+  \}
+  if(\$actor.proteges) \{
+
+    /* Clean up the list */
+    \$old = (\{ \});
+    for(\$i = 0; \$i \< sizeof(\$actor.proteges); \$i++) \{
+        /* Remove proteges who no longer have us listed as a patron */
+        if(\$actor.proteges[\$i].patron \&\& \$actor.proteges[\$i].patron != \$actor) \{
+            \$old \|= (\{ \$actor.proteges[\$i] \});
+        \}
+
+        /* Remove deleted characters */
+        if(contains(Str(\$actor.proteges[\$i]), "Backup")) \{
+            \$old \|= (\{ \$actor.proteges[\$i] \});
+        \}
+
+        /* Remove mothballed characters */
+        if(\$actor.proteges[\$i].mothballed) \{
+            \$old \|= (\{ \$actor.proteges[\$i] \});
+        \}
+
+    \}
+
+    \$actor."proteges:old" += \$old;
+    \$actor.proteges -= \$old;
+
+    \$actor.proteges -= (\{ nil \});
+
+    if(sizeof(\$actor.proteges)) \{
+        \$text = "Your proteges are: ";
+        for(\$i=0;\$i\<sizeof(\$actor.proteges);\$i++) \{
+          \$text += capitalize(\$actor.proteges[\$i]."skotos:charname");
+          if(\$actor.proteges[\$i]."loyalty:name")
+            \$text += " ("+\$actor.proteges[\$i]."loyalty:name"+")";
+          if(\$i == sizeof(\$actor.proteges)-2)
+            \$text += " and ";
+          else if(\$i \< sizeof(\$actor.proteges)-2)
+            \$text += ", ";
+        \}
+        EmitTo(\$actor, \$text);
+    \} else \{
+        EmitTo(\$actor, "You have no proteges");
+    \}
+  \} else \{
+    EmitTo(\$actor, "You have no proteges");
+  \}
+
+  EmitTo(\$actor, "\\nType \\"@patron remove patron\\" to remove your current patron.");
+  EmitTo(\$actor, "Type \\"@patron remove protege 'Name'\\" to remove a protege.");
+  return FALSE;
+\}
+
+if(sizeof(\$dob) != 1) \{
+  EmitTo(\$actor, "You may only patronise one person at a time.");
+  return FALSE;
+\}
+\$char = NRefOb(\$dob[0]);
+
+if(\$char.patron == \$actor) \{
+  EmitTo(\$actor, "You are already "+capitalize(\$char."skotos:charname")+"'s patron.");
+  ::check_patron(\$char: \$char, \$patron: \$actor, \$group: "church", \$rankname: "novice", \$location: \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Nave\});
+  return FALSE;
+\}
+
+if(\$actor."udat:object" == \$char."udat:object" \&\& !\$actor.storyhost) \{
+  EmitTo(\$actor, "Seriously? Please don't try to patron your alts. And please read the forum thread about alt interactions.");
+  return FALSE;
+\}
+
+if(!\$actor.storyhost \&\& Call(\$\{Ironclaw:Lib:Characters:RankScripts\}, "ip_check", \$char1: \$actor, \$char2: \$char)) \{
+    EmitTo(\$actor, "You cannot patron someone who shares your ip address. Contact staff if you are confused by this rule.");
+    return FALSE;
+\}
+
+
+/* Tell \$char that you would like to become their patron. */
+EmitTo(\$actor, "You offer to become "+Describe(\$char)+"'s patron.");
+\$question = Describe(\$actor)+" offers to become your patron.";
+/* Do they already have a patron? */
+if(\$char.patron)
+  \$question += " If you accept "+Describe(\$actor)+"'s patronage, "+capitalize(\$char.patron."skotos:charname")+" will no longer be your patron.";
+\$question += " Do you accept "+Describe(\$actor)+" as your patron?";
+
+
+interaction::question(\$actor: \$char, \$par: (["patron":\$actor]), \$question: \$question, \$expires: 60*3, \$env: "FALSE", \$yes_ob: this, \$yes_fun: "question_yes", \$no_ob: this, \$no_fun: "question_no", \$expire_ob: this, \$expire_fun: "question_expired");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_patron">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_patron instead! */
+/* We are passed \$char and \$patron */
+/* We are also passed \$rankname, \$group, and \$location */
+
+if(!\$rankname) return FALSE;
+if(!\$group) return FALSE;
+if(!\$location) return FALSE;
+
+if(\$char.patron != \$patron) return FALSE;
+
+if(Int(Get(\$char, "rank:status:"+\$group)))
+    return ::check_patron_next(\$par: (["patron":\$patron, "char":\$char, "group":\$group, "rankname":\$rankname]));
+
+if(\$char."base:environment" != \$location
+\|\| \$patron."base:environment" != \$location)
+    return ::check_patron_next(\$par: (["patron":\$patron, "char":\$char, "group":\$group, "rankname":\$rankname]));
+
+if(Int(Get(\$patron, "rank:status:"+\$group)) \< 4 \&\& Int(Get(\$patron, "rank:status:"+\$group+"_mil")) \< 4)
+    return ::check_patron_next(\$par: (["patron":\$patron, "char":\$char, "group":\$group, "rankname":\$rankname]));
+
+if(\$patron."loyalty:group" != \$group)
+    return ::check_patron_next(\$par: (["patron":\$patron, "char":\$char, "group":\$group, "rankname":\$rankname]));
+
+\$question = "Do you want to induct "+Describe(\$char)+" into the "+\$group+" as a "+\$rankname+"?";
+interaction::question(\$actor: \$patron, \$par: (["patron":\$patron, "char":\$char, "group":\$group, "rankname":\$rankname]), \$question: \$question, \$expires: 60*3, \$env: "FALSE", \$yes_ob: this, \$yes_fun: "induct_yes", \$no_ob: this, \$no_fun: "induct_no", \$expire: "Induction question has expired. You can always use the @patron command again if you wish to induct "+Describe(\$char)+".");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_patron_church">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_patron_church instead! */
+/* Are we inducting them into the church? */
+/* We are passed \$char and \$patron */
+EmitTo(\$char, "Checking church patron");
+EmitTo(\$actor, "Checking church patron");
+if(\$char.patron != \$patron) return FALSE;
+if(Int(\$char."rank:status:church")) return FALSE; /* \$char is not yet a novice */
+if(\$char."base:environment" != \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Nave\}
+\|\| \$patron."base:environment" != \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Nave\}) return FALSE;
+/* They are both at the church */
+if(Int(\$patron."rank:status:church") \< 4) return FALSE; /* Patron has high enough rank */
+if(\$patron."loyalty:group" != "church") return FALSE; /* Patron has the right loyalty */
+
+\$rankname = "novice";
+\$group = "church";
+\$question = "Do you want to induct "+Describe(\$char)+" into the "+\$group+" as a "+\$rankname+"?";
+interaction::question(\$actor: \$patron, \$par: (["patron":\$patron, "char":\$char, "group":\$group, "rankname":\$rankname]), \$question: \$question, \$expires: 60*3, \$env: "FALSE", \$yes_ob: this, \$yes_fun: "induct_yes", \$no_ob: this, \$no_fun: "induct_no", \$expire: "Induction question has expired. You can always use the @patron command again if you wish to induct "+Describe(\$char)+".");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_patron_constables">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_patron_constables instead! */
+/* Are we inducting them into the constabulary? */
+/* We are passed \$char and \$patron */
+if(\$char.patron != \$patron) return FALSE;
+if(Int(\$char."rank:status:church")) return FALSE; /* \$char is not yet a novice */
+if(\$char."base:environment" != \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Nave\}
+\|\| \$patron."base:environment" != \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Nave\}) return FALSE;
+/* They are both at the church */
+if(Int(\$patron."rank:status:constables") \< 4) return FALSE; /* Patron has high enough rank */
+if(\$patron."loyalty:group" != "constables") return FALSE; /* Patron has the right loyalty */
+
+\$rankname = "deputy";
+\$group = "constables";
+\$question = "Do you want to induct "+Describe(\$char)+" into the "+\$group+" as a "+\$rankname+"?";
+interaction::question(\$actor: \$patron, \$par: (["patron":\$patron, "char":\$char, "group":\$group, "rankname":\$rankname]), \$question: \$question, \$expires: 60*3, \$env: "FALSE", \$yes_ob: this, \$yes_fun: "induct_yes", \$no_ob: this, \$no_fun: "induct_no", \$expire: "Induction question has expired. You can always use the @patron command again if you wish to induct "+Describe(\$char)+".");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_patron_next">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_patron_next instead! */
+/* What other questions do we need to ask? */
+\$delay(0.01, TRUE, "6b44");
+switch(\$par["group"]) \{
+  case "church":
+    ::check_patron(\$char: \$par["char"], \$patron: \$par["patron"], \$group: "constables", \$rankname: "deputy", \$location: \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Nave\});
+    break;
+  case "constables":
+    ::check_patron(\$char: \$par["char"], \$patron: \$par["patron"], \$group: "underworld", \$rankname: "henchman", \$location: \$\{Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Nave\});
+    break;
+  default:
+    break;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:induct_accept">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:induct_accept instead! */
+/* They accepted */
+\$patron = \$par["patron"];
+\$char = \$par["char"];
+\$group = \$par["group"];
+\$rankname = \$par["rankname"];
+EmitTo(\$char, "You accept "+Describe(\$patron)+"'s offer.");
+EmitTo(\$patron, Describe(\$char)+" has accepted your offer.");
+
+\$lib = \$\{Ironclaw:Lib:Characters:Rank\};
+\$new_rank_info = Call(\$lib, "check_status", \$char: \$char, \$path: "status:"+\$group, \$give_promotion: TRUE, \$show_promotion_requirements: FALSE);
+\$new_status_name = \$new_rank_info["rankname"];
+\$new_status_level = \$new_rank_info["level"];
+
+if(\$new_status_level != 3) \{ /* Sanity check */
+  EmitTo(\$char, "Sorry, something went wrong! Please try again.");
+  return FALSE;
+\}
+
+if(\$group == "church") \{
+  \$here = \$char."base:environment";
+  \$priest = \$\{Ironclaw:NPCs:Cathedral:Priest\};
+
+  /* if(\$char \&\& \$char."base:environment") EmitIn(\$here, "A wizened old mouse shuffles into "+Describe(\$here)+"."); */
+  EmitIn(\$here, "A wizened old mouse shuffles into "+Describe(\$here)+".");
+  \$priest."base:environment" = \$here;
+  \$delay(5, TRUE, "7df0");
+
+  Social(\$priest, "cough");
+  Social(\$priest, "smile");
+  
+  
+  \$delay(20, TRUE, "2d0c");
+  EmitIn(\$here, Describe(\$priest)+" gestures for "+Describe(\$char)+" to kneel before the statue, and lower "+\$char."base:possessive"+" head.", \$char);
+  EmitTo(\$char, Describe(\$priest)+" gestures for you to kneel before the statue, and lower your head.");
+  \$delay(20, TRUE, "964d");
+  \$statue = \$\{[IronClaw:Props:Misc:Decorations:Statue]#110974\};
+  if(\$char."base:stancestring" != "kneeling" \|\| !\$char."base:proximity" \|\| NRefOb(\$char."base:proximity") != \$statue) \{
+    Social(\$char, "kneel", nil, nil, "before", \$statue);
+    \$delay(2, TRUE, "2332");
+  \}
+  
+  if(\$patron \&\& \$patron."base:environment" == \$here)
+    Social(\$priest, "state", nil, Describe(\$patron)+" is here to bear witness to the induction of a new novice.");
+  else
+    Social(\$priest, "state", nil, "I am here to bear witness to the induction of a new novice.");
+    
+  Social(\$priest, "ask", nil, "Do you swear always to follow the light, emulate the saints, and obey the Church?", nil, \$char);
+  EmitTo(\$char, "The wizened mouse whispers to you, \\"Answer that you do.\\"");
+  \$delay(20, TRUE, "4f22");
+  
+  if(\$patron \&\& \$patron."base:environment" == \$here) \{
+    Social(\$priest, "ask", nil, "Do you believe that "+Describe(\$char)+" is, indeed, worthy of joining the Church as a novice?", nil, \$patron);
+    EmitTo(\$patron, "The wizened mouse whispers to you, \\"Answer that you do.\\"");
+    \$delay(20, TRUE, "ec60");
+  \}
+  
+  if(\$patron \&\& \$patron."base:environment" == \$here) \{
+    Social(\$priest, "ask", nil, "Will you guide "+Describe(\$char)+" in matters of Faith, educate "+Describe(\$char)+", and offer moral guidance?", nil, \$patron);
+    EmitTo(\$patron, "The wizened mouse whispers to you, \\"Answer that you will.\\"");
+    \$delay(20, TRUE, "163c");
+  \}
+  
+  Social(\$priest, "tell", nil, "Then be welcome among us as our newest Novice. May you always walk in the Light.", nil, \$char);
+  
+  \$delay(10, TRUE, "80bf");
+  EmitIn(\$here, Describe(\$priest)+" bows to the statue of Saint Helloise, before leaving.");
+  \$priest."base:environment" = nil;
+  
+  EmitIn(\$here, "An acolyte hands "+Describe(\$char)+" a set of robes, indicating "+\$char."base:possessive"+" new station in the Church.");
+  
+  \$robe = Spawn(\$\{Allegory:Props:Clothing:Robes:Scholar\});
+  \$robe."trait:color" = "white";
+  \$robe."base:environment" = \$here; /* Put it into the room before giving to the PC. That way if the PCs inventory is full, it'll be in the room */
+  \$robe."base:environment" = \$char;
+\}
+
+\$par = ([ "info":\$new_rank_info, "char":\$char, "no_influence_change":TRUE ]);
+Call(\$lib, "give_promotion", \$par: \$par);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:induct_decline">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:induct_decline instead! */
+/* They declined */
+\$patron = \$par["patron"];
+\$char = \$par["char"];
+\$group = \$par["group"];
+\$rankname = \$par["rankname"];
+EmitTo(\$char, "You decline "+Describe(\$patron)+"'s offer.");
+EmitTo(\$patron, Describe(\$char)+" declines your offer.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:induct_no">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:induct_no instead! */
+/* Decided not to induct them */
+EmitTo(\$actor, "OK!");
+
+/* What other questions do we need to ask? */
+return ::check_patron_next(\$par: \$par);
+      </Core:Property>
+      <Core:Property property="merry:lib:induct_yes">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:induct_yes instead! */
+/* We are inducting them! */
+\$patron = \$par["patron"];
+\$char = \$par["char"];
+\$group = \$par["group"];
+\$rankname = \$par["rankname"];
+
+EmitTo(\$patron, "Asking "+Describe(\$char)+" if they want to become a "+\$rankname+"...");
+\$question = Describe(\$patron)+" has offered to induct you into the "+\$group+" as a "+\$rankname+". Do you accept?";
+interaction::question(\$actor: \$char, \$par: (["patron":\$patron, "char":\$char, "group":\$group, "rankname":\$rankname]), \$question: \$question, \$expires: 60*3, \$env: "FALSE", \$yes_ob: this, \$yes_fun: "induct_accept", \$no_ob: this, \$no_fun: "induct_decline", \$expire: "The induction question has expired. "+Describe(\$patron)+" can always use the @patron command again if they wish to induct you.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question_expired">
+         X[M] /* offer of sponsorship has expired */
+EmitTo(\$actor, TAG("[OOC: The offer of patronage from "+Describe(\$par["patron"])+" has expired]", "IMP"));
+EmitTo(\$par["patron"], TAG("[OOC: "+Describe(\$actor)+" has taken too long to accept your offer of patronage. The offer has now expired (but you can always offer it again)]", "IMP"));
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question_no">
+         X[M] /* offer of sponsorship declined */
+EmitTo(\$actor, "You decline "+Describe(\$par["patron"])+"'s offer of patronage.");
+EmitTo(\$par["patron"], TAG(Describe(\$actor)+" has declined your offer of patronage.", "IMP"));
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question_yes">
+         X[M] /* offer of patronage accepted */
+EmitTo(\$par["patron"], TAG("You are now "+Describe(\$actor)+"'s patron.", "IMP"));
+EmitTo(\$actor, TAG(Describe(\$par["patron"])+" is now your new patron.", "IMP"));
+
+/* Record previous patrons */
+if(\$actor.patron) \{
+  if(!\$actor."patron:old") \$actor."patron:old" = (\{ \});
+  \$actor."patron:old" \|= (\{ \$actor.patron \});
+
+  /* Update the old patron */
+  if(!\$actor.patron."proteges:old") \$actor.patron."proteges:old" = (\{ \});
+  \$actor.patron."proteges:old" \|= (\{ \$actor \});
+  \$actor.patron.proteges -= (\{ \$actor \});
+\}
+\$actor.patron = \$par["patron"];
+
+if(!\$par["patron"].proteges) \$par["patron"].proteges = (\{ \});
+\$par["patron"].proteges \|= (\{ \$actor \});
+
+::check_patron_church(\$char: \$actor, \$patron: \$par["patron"]);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_patron_no">
+         X[M] /* Do not remove patron */
+
+EmitTo(\$actor, "Okay.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_patron_yes">
+         X[M] /* Remove patron */
+\$patron = \$par["patron"];
+
+favor::remove_patron(\$patron: \$patron, \$protege: \$actor);
+
+EmitTo(\$actor, "Done.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_protege_no">
+         X[M] /* Do not remove protege */
+
+EmitTo(\$actor, "Okay.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_protege_yes">
+         X[M] /* Remove protege */
+
+favor::remove_patron(\$patron: \$actor, \$protege: \$par["protege"]);
+
+EmitTo(\$actor, "Done.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1306057760, "tonyd", "E", 1306057821, "tonyd", "E", 1306057824, "tonyd", "E", 1306057848, "tonyd", "E", 1306058937, "tonyd", "P", 1306058959, "tonyd", "P", 1306058978, "tonyd", "E", 1306059079, "tonyd", "P", 1306059099, "tonyd", "P", 1306059110, "tonyd", "P", 1306059259, "tonyd", "P", 1306059493, "tonyd", "P", 1306059615, "tonyd", "P", 1306059618, "tonyd", "P", 1306059695, "tonyd", "P", 1306060510, "tonyd", "P", 1306060626, "tonyd", "P", 1306060638, "tonyd", "P", 1306110491, "tonyd", "P", 1306120216, "tonyd", "P", 1306120286, "tonyd", "P", 1306120451, "tonyd", "P", 1306120535, "tonyd", "P", 1306120562, "tonyd", "P", 1306120603, "tonyd", "P", 1306120652, "tonyd", "P", 1306120706, "tonyd", "P", 1306120754, "tonyd", "P", 1306120939, "tonyd", "P", 1306120951, "tonyd", "P", 1306121008, "tonyd", "P", 1306121075, "tonyd", "P", 1306121111, "tonyd", "P", 1306121282, "tonyd", "P", 1306121298, "tonyd", "P", 1306121387, "tonyd", "P", 1306121580, "tonyd", "P", 1306121621, "tonyd", "P", 1306122135, "tonyd", "P", 1306122149, "tonyd", "P", 1306122156, "tonyd", "P", 1306122229, "tonyd", "P", 1306122454, "tonyd", "P", 1306123916, "tonyd", "P", 1306124327, "tonyd", "P", 1306124414, "tonyd", "P", 1306132823, "tunk_bodin", "X", 1306148452, "tonyd", "P", 1306148475, "tonyd", "P", 1306148508, "tonyd", "P", 1306148599, "tonyd", "P", 1306148633, "tonyd", "P", 1306148684, "tonyd", "P", 1306148706, "tonyd", "P", 1306148762, "tonyd", "P", 1306270080, "jominey", "E", 1306272361, "jominey", "E", 1321780209, "tonyd", "E", 1321839121, "tonyd", "E", 1430036402, "killandra", "E", 1430037278, "tonyd", "P", 1430037289, "tonyd", "P", 1430037349, "tonyd", "P", 1430037425, "tonyd", "P", 1430037435, "tonyd", "P", 1430037502, "tonyd", "P", 1430037532, "tonyd", "P", 1430037611, "tonyd", "P", 1430037631, "tonyd", "P", 1430037744, "tonyd", "P", 1430037971, "tonyd", "P", 1430038051, "tonyd", "P", 1430038058, "tonyd", "P", 1430038069, "tonyd", "P", 1430038107, "tonyd", "P", 1430038128, "tonyd", "P", 1430038155, "tonyd", "P", 1430038197, "tonyd", "P", 1430038207, "tonyd", "P", 1430038309, "tonyd", "P", 1430038417, "tonyd", "P", 1430038561, "tonyd", "P", 1430038597, "tonyd", "P", 1430038816, "tonyd", "P", 1430038915, "tonyd", "P", 1430039150, "tonyd", "P", 1430039225, "tonyd", "P", 1430039617, "tonyd", "P", 1430039626, "tonyd", "P", 1430039653, "tonyd", "P", 1430040175, "tonyd", "P", 1430043287, "tonyd", "P", 1430043307, "tonyd", "P", 1430043358, "tonyd", "P", 1430043397, "tonyd", "P", 1430043448, "tonyd", "P", 1430043559, "tonyd", "P", 1430043601, "tonyd", "P", 1430043619, "tonyd", "P", 1430043644, "tonyd", "P", 1430043672, "tonyd", "P", 1430043770, "tonyd", "P", 1430043783, "tonyd", "P", 1434008461, "tonyd", "P", 1434008474, "tonyd", "P", 1434008499, "tonyd", "P", 1434008545, "tonyd", "P", 1434008586, "tonyd", "P", 1434008599, "tonyd", "P", 1434008689, "tonyd", "P", 1434008750, "tonyd", "P", 1434009003, "tonyd", "P", 1434627385, "tonyd", "P", 1434627412, "tonyd", "P", 1434627436, "tonyd", "P", 1434627455, "tonyd", "P", 1434627494, "tonyd", "P", 1434627538, "tonyd", "P", 1434627639, "tonyd", "P", 1434627734, "tonyd", "P", 1434627821, "tonyd", "P", 1434627835, "tonyd", "P", 1434628041, "tonyd", "P", 1434628062, "tonyd", "P", 1434628094, "tonyd", "P", 1434628139, "tonyd", "P", 1434628194, "tonyd", "P", 1434628218, "tonyd", "P", 1434628260, "tonyd", "P", 1434628334, "tonyd", "P", 1434628380, "tonyd", "P", 1434628420, "tonyd", "P", 1434628445, "tonyd", "P", 1434628644, "tonyd", "P", 1434628698, "tonyd", "P", 1434628713, "tonyd", "P", 1434628735, "tonyd", "P", 1434628764, "tonyd", "P", 1434628786, "tonyd", "P", 1434628815, "tonyd", "P", 1434628838, "tonyd", "P", 1434628886, "tonyd", "P", 1434628921, "tonyd", "P", 1434629095, "tonyd", "P", 1434629111, "tonyd", "P", 1434629167, "tonyd", "P", 1434629196, "tonyd", "P", 1434629210, "tonyd", "P", 1434629306, "tonyd", "P", 1434629379, "tonyd", "P", 1434629432, "tonyd", "P", 1434629526, "tonyd", "P", 1434629723, "tonyd", "P", 1434629811, "tonyd", "P", 1434629817, "tonyd", "P", 1434630033, "tonyd", "P", 1434630092, "tonyd", "P", 1434630172, "tonyd", "P", 1435132345, "tonyd", "P", 1435132351, "tonyd", "P", 1435132410, "tonyd", "P", 1435132465, "tonyd", "P", 1435132486, "tonyd", "P", 1435132523, "tonyd", "P", 1435132536, "tonyd", "P", 1435132564, "tonyd", "P", 1435132572, "tonyd", "P", 1435132600, "tonyd", "P", 1435132695, "tonyd", "P", 1435133512, "tonyd", "P", 1435133547, "tonyd", "P", 1435134098, "tonyd", "P", 1435134125, "tonyd", "P", 1435134160, "tonyd", "P", 1435134179, "tonyd", "P", 1435134194, "tonyd", "P", 1435134215, "tonyd", "P", 1435134239, "tonyd", "P", 1435134261, "tonyd", "P", 1435134300, "tonyd", "P", 1435134323, "tonyd", "P", 1435134345, "tonyd", "P", 1435134388, "tonyd", "P", 1435134469, "tonyd", "P", 1435134527, "tonyd", "P", 1435134539, "tonyd", "P", 1435134677, "tonyd", "P", 1435134702, "tonyd", "P", 1435134726, "tonyd", "P", 1435134777, "tonyd", "P", 1435134801, "tonyd", "P", 1435134828, "tonyd", "P", 1435134989, "tonyd", "P", 1435135051, "tonyd", "P", 1435135081, "tonyd", "P", 1435135102, "tonyd", "P", 1435135119, "tonyd", "P", 1435135238, "tonyd", "P", 1440218094, "tonyd", "P", 1440218145, "tonyd", "P", 1440218174, "tonyd", "P", 1440218218, "tonyd", "P", 1440218240, "tonyd", "P", 1440218331, "tonyd", "P", 1440218386, "tonyd", "P", 1440218629, "tonyd", "P", 1440218768, "tonyd", "P", 1440218904, "tonyd", "P", 1440218994, "tonyd", "P", 1440219032, "tonyd", "P", 1440219160, "tonyd", "P", 1440219538, "tonyd", "P", 1440219648, "tonyd", "P", 1440219920, "tonyd", "P", 1440219935, "tonyd", "P", 1440220063, "tonyd", "P", 1440220079, "tonyd", "P", 1440220133, "tonyd", "P", 1440220311, "tonyd", "P", 1440220464, "tonyd", "P", 1440220488, "tonyd", "P", 1440220735, "tonyd", "P", 1440220998, "tonyd", "P", 1440221291, "tonyd", "P", 1440221308, "tonyd", "P", 1440221319, "tonyd", "P", 1440221547, "tonyd", "P", 1440221669, "tonyd", "P", 1440221875, "tonyd", "P", 1440222106, "tonyd", "P", 1440232665, "tonyd", "P", 1477107200, "jominey", "E", 1477107206, "jominey", "E", 1477107222, "jominey", "E", 1477107252, "jominey", "E", 1525009940, "jominey", "E", 1525009949, "jominey", "E", 1525009956, "jominey", "E", 1525009987, "jominey", "E", 1525010135, "jominey", "E", 1525010211, "jominey", "E", 1525015336, "jominey", "E", 1525015419, "jominey", "E", 1525015427, "jominey", "E", 1525015461, "jominey", "E", 1525016195, "jominey", "E", 1525016204, "jominey", "E", 1525016233, "jominey", "E", 1525016361, "jominey", "E", 1525017078, "jominey", "E", 1525017158, "jominey", "E", 1525017176, "jominey", "E", 1525017221, "jominey", "E", 1525017303, "jominey", "E", 1525017344, "jominey", "E", 1525017389, "jominey", "E", 1525017396, "jominey", "E", 1525017410, "jominey", "E", 1525017802, "jominey", "E", 1525573386, "jominey", "P", 1525573415, "jominey", "P", 1525573442, "jominey", "P", 1572830115, "jominey", "E", 1572830140, "jominey", "E", 1573596269, "jominey", "E", 1573596286, "jominey", "E", 1573596302, "jominey", "E", 1589765271, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

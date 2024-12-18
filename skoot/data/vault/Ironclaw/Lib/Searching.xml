@@ -1,0 +1,199 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="looted">481</Core:Property>
+      <Core:Property property="merry:lib:pre-search">
+         X[M] mapping tables;
+int i, j, roll, chance, chanceTotal, tempChance;
+mixed *tablesList, *sortedList, *tempList;
+mixed found;
+
+
+if(Get(\$env, "search:tables")) \{
+    tables = Get(\$env, "search:tables");
+    tablesList = map_indices(tables);
+
+    sortedList = (\{ \});
+    for(i = 0; i \< sizeof(tablesList); i++) \{
+        chance = tables[tablesList[i]];
+
+        if(!sizeof(sortedList)) \{
+            sortedList \|= (\{ tablesList[i] \});
+        \} else \{
+            tempList = (\{ \});
+            for(j = 0; j \< sizeof(sortedList); j++) \{
+                tempChance = tables[sortedList[j]];
+                if(chance \> tempChance) \{
+                    tempList \|= (\{ tablesList[i] \});
+                    tempList \|= (\{ sortedList[j] \});
+                \} else \{
+                    tempList \|= (\{ sortedList[j] \}); 
+
+                    if(sizeof(sortedList) == (j+1)) \{
+                        tempList \|= (\{ tablesList[i] \});
+                    \}
+                \}
+            \}
+            sortedList = copy(tempList);
+        \}
+        chanceTotal += chance;
+    \}
+
+    \$obsbonus = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "mental:observation" \}), \$bonus: (\{ "trait:mind" \}));
+
+    roll = random(chanceTotal) - \$obsbonus;
+
+    \$t = roll;
+    for(i = 0; i \< sizeof(sortedList) \&\& !found; i++) \{
+        tempChance = tables[sortedList[i]];
+
+        \$t -= tempChance;
+
+        if(\$t \<= 0) \{
+            found = sortedList[i];
+        \}
+    \}
+
+    \$table = found;
+
+    if(\$dob \&\& \$dob[0]) \{
+        EmitTo(\$actor, TAG("You begin searching " + Describe(\$dob[0]) + ".", "social:first"));
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " begins searching " + Describe(\$dob[0]) + ".", "social:third"), \$actor);
+    \} else \{
+        EmitTo(\$actor, "You begin searching " + TAG(Describe(\$actor."base:environment") + ".", "social:first"));
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " begins searching " + Describe(\$actor."base:environment") + ".", "social:third"), \$actor);
+    \}
+  
+    \$actor.isbusy = 1;
+
+    \$delay(20 + random (15), FALSE, "daf5");
+    \$actor.isbusy = nil;
+
+    if(!\$env) \$table == "nothing";
+
+    if(\$env \&\& Int(\$env.looted) \>= 3) \{
+        EmitTo(\$actor, TAG("There is nothing of value left.", "social:first"));
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " finds nothing.", "social:third"), \$actor);
+    \} else if(\$table == "nothing") \{
+        EmitTo(\$actor, TAG("You find nothing.", "social:first"));
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " finds nothing.", "social:third"), \$actor);
+    \} else \{
+        ::search(\$table: \$table, \$obsbonus: \$obsbonus);
+    \}
+
+    if(\$env.lootable) \{
+        \$env.looted = Int(\$env.looted) + 1;
+    \}
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:search">
+         X[M] int i, j, chanceTotal, roll, tempChance, newStock;
+string *itemList, *sortedList, *tempList, found, propName, propValue;
+mixed *tables, **properties;
+object table, newOb;
+mapping item, itemMap, foundItem;
+
+if(\$table) \{
+    table = \$table;
+
+    itemList = map_indices(prefixed_map(table."*", "searchingitem:"));
+
+    chanceTotal = 0;
+    sortedList = (\{ \});
+    for(i = 0; i \< sizeof(itemList); i++) \{
+        item = Get(table, itemList[i]);
+        if(item["stock"] \&\& (item["stock"] \> 0 \|\| item["stock"] == -1)) \{
+            if(!sizeof(sortedList)) \{
+                sortedList \|= (\{ itemList[i] \});
+            \} else \{
+                tempList = (\{ \});
+                for(j = 0; j \< sizeof(sortedList); j++) \{
+                    \$tempChance = Get(table, sortedList[j])["chance"];
+                    if(item["chance"] \> \$tempChance) \{
+                        tempList \|= (\{ itemList[i] \});
+                        tempList \|= (\{ sortedList[j] \});
+                    \} else \{
+                        tempList \|= (\{ sortedList[j] \});
+
+                        if(sizeof(sortedList) == (j+1)) \{
+                            tempList \|= (\{ itemList[i] \});
+                        \}
+                    \}
+                \}
+                sortedList = copy(tempList);
+            \}
+            chanceTotal += item["chance"];
+        \}
+    \}
+
+    roll = random(chanceTotal) + \$obsbonus;
+
+    \$t = roll;
+    for(i = 0; i \< sizeof(sortedList) \&\& !found; i++) \{
+        tempChance = Get(table, sortedList[i])["chance"];
+        \$t -= tempChance;
+
+        if(\$t \<= 0 \|\| i == sizeof(sortedList)-1) \{
+            found = sortedList[i];
+            foundItem = Get(table, found);
+        \}
+    \}
+    
+    if(!foundItem) \{
+        EmitTo(\$actor, TAG("You find nothing.", "social:first"));
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " finds nothing.", "social:third"), \$actor);
+        \$this.looted = Int(\$this.looted) + 1;
+        return FALSE;
+    \}
+
+    \$t = 1;
+    if(foundItem["max quantity"]) \{
+        \$t = random(foundItem["max quantity"]) + 1;
+    \}
+
+    \$foundArr = (\{ \});
+    for(i = 0; i \< \$t; i++) \{
+        newOb = Spawn(foundItem["object"]);
+
+        if(foundItem["properties"]) \{
+            properties = foundItem["properties"];
+            for(i = 0; i \< sizeof(properties); i++) \{
+                \$temp = copy(properties[i]);
+                propName = \$temp[0];
+
+                if(!\$temp[1]) \{
+                    \$old = Get(\$env, propName);
+                    Set(newOb, propName, \$old);
+                \} else \{
+                    \$temp -= (\{ propName \});
+                    propValue = \$temp[random(sizeof(\$temp))];
+                    Set(newOb, propName, propValue);
+                \}
+            \}
+        \}
+
+        \$foundArr += (\{ newOb \});
+    \}
+
+    if(foundItem["stock"] \&\& foundItem["stock"] \> 0) \{
+        newStock = foundItem["stock"] - 1;
+        if(newStock \< 0) newStock = 0;
+        foundItem["stock"] = newStock;
+        Set(table, found, foundItem);
+    \}
+    newOb."base:environment" = \$actor;
+    EmitTo(\$actor, TAG("You find " + Describe(\$foundArr, nil, nil, STYLE_NONPOSS) + ".", "social:first"));
+    EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " finds something.", "social:third"), \$actor);
+
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1390581245, "jominey", "E", 1390581626, "jominey", "E", 1390754422, "jominey", "E", 1390754761, "jominey", "E", 1390754961, "jominey", "E", 1390755112, "jominey", "E", 1390755200, "jominey", "E", 1390755346, "jominey", "E", 1390755380, "jominey", "E", 1390755883, "jominey", "E", 1390755939, "jominey", "E", 1390755975, "jominey", "E", 1390755994, "jominey", "E", 1390756080, "jominey", "E", 1390756187, "jominey", "E", 1390756271, "jominey", "E", 1390756412, "jominey", "E", 1390756433, "jominey", "E", 1390756619, "jominey", "E", 1390756850, "jominey", "E", 1390756996, "jominey", "E", 1390757063, "jominey", "E", 1390757122, "jominey", "E", 1390757272, "jominey", "E", 1390757327, "jominey", "E", 1390757369, "jominey", "E", 1390757430, "jominey", "E", 1390757709, "jominey", "E", 1390757806, "jominey", "E", 1390757841, "jominey", "E", 1390757864, "jominey", "E", 1390757898, "jominey", "E", 1390758037, "jominey", "E", 1390758800, "jominey", "E", 1390758922, "jominey", "E", 1390759100, "jominey", "E", 1390759112, "jominey", "E", 1390760082, "jominey", "E", 1390760154, "jominey", "E", 1390760191, "jominey", "E", 1390760277, "jominey", "E", 1390760284, "jominey", "E", 1390760332, "jominey", "E", 1390760573, "jominey", "E", 1390761323, "jominey", "E", 1390761364, "jominey", "E", 1390761378, "jominey", "E", 1390761491, "jominey", "E", 1390763817, "jominey", "E", 1390763986, "jominey", "E", 1390763995, "jominey", "E", 1390764470, "jominey", "E", 1390765771, "jominey", "E", 1390765820, "jominey", "E", 1390766249, "jominey", "E", 1390766305, "jominey", "E", 1390766364, "jominey", "E", 1390766507, "jominey", "E", 1390766591, "jominey", "E", 1390766656, "jominey", "P", 1390766732, "jominey", "E", 1390766785, "jominey", "E", 1390766852, "jominey", "E", 1390766876, "jominey", "E", 1390767012, "jominey", "P", 1390767267, "jominey", "E", 1390767361, "jominey", "E", 1390767496, "jominey", "E", 1390767562, "jominey", "E", 1390767593, "jominey", "E", 1390767627, "jominey", "E", 1390767667, "jominey", "E", 1390767717, "jominey", "E", 1390767826, "jominey", "E", 1390767875, "jominey", "E", 1390767904, "jominey", "E", 1390767977, "jominey", "E", 1390768059, "jominey", "E", 1390768299, "jominey", "E", 1390768322, "jominey", "E", 1390768338, "jominey", "E", 1390768483, "jominey", "E", 1390768555, "jominey", "E", 1390768589, "jominey", "E", 1390769335, "jominey", "E", 1390769352, "jominey", "E", 1401236881, "jominey", "E", 1401237121, "jominey", "E", 1401237507, "jominey", "E", 1401237601, "jominey", "E", 1401237679, "jominey", "E", 1401237718, "jominey", "E", 1401238293, "jominey", "E", 1403667511, "jominey", "E", 1403668217, "jominey", "E", 1403668279, "jominey", "E", 1403829155, "jominey", "E", 1403829476, "jominey", "E", 1403928799, "jominey", "E", 1403928924, "jominey", "E", 1403929231, "jominey", "E", 1404247555, "jominey", "E", 1404247593, "jominey", "E", 1404248019, "jominey", "E", 1433017325, "jominey", "E", 1433017575, "jominey", "E", 1433017831, "jominey", "E", 1433017867, "jominey", "E", 1433017976, "jominey", "E", 1433018068, "jominey", "E", 1433018160, "jominey", "E", 1433018342, "jominey", "E", 1433018366, "jominey", "E", 1433018829, "jominey", "E", 1433018923, "jominey", "E", 1433019068, "jominey", "E", 1433019199, "jominey", "E", 1508119955, "jominey", "P", 1508181596, "jominey", "E", 1508181630, "jominey", "E", 1508181674, "jominey", "E", 1508193348, "jominey", "E", 1508193385, "jominey", "E", 1508193444, "jominey", "E", 1520634538, "jominey", "E", 1520634652, "jominey", "E", 1521299122, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

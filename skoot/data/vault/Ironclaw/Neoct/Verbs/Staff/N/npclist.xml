@@ -1,0 +1,133 @@
+<object clone="/usr/SkotOS/obj/verb" owner="orcsuit">
+  <Socials:Verb imp="+npclist" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="true">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="log:creator">
+         "Orcsuit"
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /*
+ * D=+npclist to list npc's or add an npc to the list
+ */
+
+mapping e;
+object *n, npc, env;
+int i, sz;
+string *temp;
+
+if (!\$line \|\| \$line == "short") \{
+    n        = this.npcs;
+    sz       = sizeof(n);
+    \$content = (\{ (\{ "Name", "Woename", "Q/S", "Location"\}) \});
+
+    for (i = 0; i \< sz; i++) \{
+        npc = n[i];
+        env = npc."base:environment";
+        temp = (\{ \});
+        temp += (\{ Describe(npc) \});
+        temp += (\{ name(npc) \});
+        temp += (\{ (npc.addquest ? "*" : "") \});
+        temp += (\{ (env ? name(env) : "nil") \});
+        \$content += (\{ temp \});
+    \}
+
+    \$ignoreseparator = "top bottom left right";
+    ascii::table(\$displayTo: \$actor);
+    return FALSE;
+\}
+
+if (\$line=="full") \{
+    n        = this.npcs;
+    sz       = sizeof(n);
+    \$content = (\{ (\{ "Name", "Woename", "Loc Woename", "Loc Name", "Gives Quest", "Possession"\}) \});
+
+    for (i = 0; i \< sz; i++) \{
+        npc = n[i];
+        env = npc."base:environment";
+        temp = (\{ \});
+        temp += (\{ Describe(npc) \});
+        temp += (\{ name(npc) \});
+        temp += (\{ (env ? name(env) : "nil") \});
+        temp += (\{ (env ? Describe(env) : "In the NIL") \});
+        temp += (\{ (npc.addquest ? mixed_to_ascii(npc.addquest) : "") \});
+        temp += (\{ (npc."udat:possessed" ? Str(npc."udat:name") : "") \});
+        \$content += (\{ temp \});
+    \}
+
+    \$ignoreseparator = "top bottom left right";
+    ascii::table(\$displayTo: \$actor);
+    return FALSE;
+\}
+
+if (\$line[0] == '+') \{
+    \$line = strip(\$line[1..]);
+
+    if (\$line[0] == '+') \{
+        \$doit = TRUE;
+        \$line = \$line[1..];
+    \}
+    EmitTo(\$actor, dump_value( (\{\$here, \$line, \$actor\}) ));
+    n = Match(\$actor."base:environment", \$line, \$actor);
+    if (sizeof(n) \> 1) \{
+        EmitTo(\$actor, "You must choose one of "+Describe(n, nil, \$actor));
+        return 0;
+    \}
+    if(sizeof(n) == 1) \{
+        npc = NRefOb(n[0]);
+    \} else \{
+        npc = ascii_to_mixed("\<"+\$line+"\>");
+    \}
+    if (member(npc, this.npcs)) \{
+        EmitTo(\$actor, "That NPC is already in the list.");
+        return FALSE;
+    \}
+
+    this.npcs += (\{ npc \});
+    EmitTo(\$actor, Describe(npc) + " (" + name(npc) + ") stored.");
+    return FALSE;
+\} else if (\$line[0] == '-') \{
+    \$line = \$line[1..];
+        n = Match(\$actor."base:environment", \$line, \$actor);
+    if (sizeof(n) \> 1) \{
+        EmitTo(\$actor, "You must choose one of "+Describe(n, nil, \$actor));
+        return 0;
+    \}
+    if(sizeof(n) == 1) \{
+        npc = NRefOb(n[0]);
+    \} else \{
+      npc = ascii_to_mixed("\<"+strip(\$line)+"\>");
+    \}
+    if (!member(npc, this.npcs)) \{
+        EmitTo(\$actor, "NPC "+name(npc)+" not found in list.");
+        return FALSE;
+    \}
+    this.npcs -= (\{ npc \});
+    EmitTo(\$actor, "Removed NPC "+name(npc));
+    return FALSE;
+\}
+
+EmitTo(\$actor, "Eventually support for targeting an NPC in your environment would be nice.  and a search function.  and maybe grouping by category or location, or just sorting by name.  But not now.  For now, use +npclist to list NPC's, or +npclist +woe:name to add an npc, or +npclist -woe:name to remove one.");
+      </Core:Property>
+      <Core:Property property="npcs">
+         (\{ nil, \<Chatters:IC:vo:voodoo\>, \<Chatters:IC:si:sirazad\>, nil, nil, nil, \<Ironclaw:NPC:RuggedSailor2\>, \<[Ironclaw:NPC:SpawnASailor]#36661\>, \<[Ironclaw:NPC:SpawnASailor]#38698\>, nil, \<Ironclaw:NPCs:Misc:DistraughtFarmer\> \})
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1267530943, "orcsuit", "E", 1267531007, "orcsuit", "E", 1267531092, "orcsuit", "E", 1267531257, "orcsuit", "E", 1267531296, "orcsuit", "E", 1267531329, "orcsuit", "E", 1267531354, "orcsuit", "E", 1267540034, "orcsuit", "E", 1267541723, "orcsuit", "E", 1267541789, "orcsuit", "E", 1267541995, "orcsuit", "P", 1267542079, "orcsuit", "P", 1267542204, "orcsuit", "P", 1267542373, "orcsuit", "P", 1267542486, "orcsuit", "P", 1267542538, "orcsuit", "P", 1267542626, "orcsuit", "P", 1267542732, "orcsuit", "P", 1267542977, "orcsuit", "P", 1267543056, "orcsuit", "P", 1267543230, "orcsuit", "P", 1267543267, "orcsuit", "P", 1267543406, "orcsuit", "P", 1267543512, "orcsuit", "P", 1267543715, "orcsuit", "P", 1267543795, "orcsuit", "P", 1267578029, "orcsuit", "E", 1267578065, "orcsuit", "E", 1267578097, "orcsuit", "E", 1267578123, "orcsuit", "E", 1267578379, "orcsuit", "E", 1267578761, "orcsuit", "E", 1267591067, "orcsuit", "P", 1267591211, "orcsuit", "P", 1267591307, "orcsuit", "P", 1267591433, "orcsuit", "P", 1267591470, "orcsuit", "P", 1267689128, "orcsuit", "R" \})
+      </Core:Property>
+      <Core:Property property="{author}">
+         "James Sanders"
+      </Core:Property>
+      <Core:Property property="{email}">
+         "orcishspacesuit@gmail.com"
+      </Core:Property>
+      <Core:Property property="{rev}">1</Core:Property>
+      <Core:Property property="{sub_rev_stamp}">
+         1267530913
+      </Core:Property>
+      <Core:Property property="{sub_rev}">1</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

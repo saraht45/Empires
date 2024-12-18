@@ -1,0 +1,115 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="@sponsors" second="sponsor" third="sponsors" evoke="forbidden" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="true" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* Allow a PC to be sponsored for promotion */
+if(!\$dob) \{
+  EmitTo(\$actor, "Listing your sponsors");
+  return FALSE;
+\}
+if(sizeof(\$dob) != 1) \{
+  EmitTo(\$actor, "You may only sponsor one person at a time.");
+  return FALSE;
+\}
+\$char = NRefOb(\$dob[0]);
+
+/*
+if(!\$char."trait:promotion") \{
+*/
+if(!\$char."trait:favor:promotion") \{
+  EmitTo(\$actor, Describe(\$char)+" is not able to be promoted right now.");
+  return FALSE;
+\}
+
+if(!\$actor."rank:rank") \$actor."rank:rank" = 3;
+if(!\$char."rank:rank") \$char."rank:rank" = 3;
+if(\$actor."rank:rank" \<= \$char."rank:rank"
+\|\| \$actor."rank:rank"-3 \> \$char."rank:rank") \{
+  EmitTo(\$actor, "To sponsor someone you must be 1 to 3 ranks higher than them.");
+  return FALSE;
+\}
+
+if(\$actor."udat:object" == \$char."udat:object") \{
+  EmitTo(\$actor, "Seriously? Please don't try to sponsor your alts. And please read the forum thread about alt interactions.");
+  return FALSE;
+\}
+
+EmitTo(\$actor, "You offer to sponsor "+Describe(\$char)+" for a promotion.");
+interaction::question(\$actor: \$char, \$par: (["sponsor":\$actor]), \$question: Describe(\$actor)+" has offered to sponsor you for promotion. If you accept, you will be promoted - but you may loose your rank if "+Describe(\$actor)+" revokes "+\$actor."base:possessive"+" sponsorship. Your behaviour (both good and bad) will also reflect on your sponsors. Do you accept "+Describe(\$actor)+" as your sponsor?", \$expires: 60*3, \$env: "FALSE", \$yes_ob: this, \$yes_fun: "question_yes", \$no_ob: this, \$no_fun: "question_no", \$expire_ob: this, \$expire_fun: "question_expired");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question_expired">
+         X[M] /* offer of sponsorship has expired */ 
+EmitTo(\$actor, TAG("[OOC: The offer of sponsorship from "+Describe(\$par["sponsor"])+" has expired]", "IMP")); 
+EmitTo(\$par["sponsor"], TAG("[OOC: "+Describe(\$actor)+" has taken too long to accept your offer of sponsorship. The offer has now expired (but you can always offer it again)]", "IMP")); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question_no">
+         X[M] /* offer of sponsorship declined */ 
+EmitTo(\$actor, "You decline "+Describe(\$par["sponsor"])+"'s offer of sponsorship."); 
+EmitTo(\$par["sponsor"], TAG(Describe(\$actor)+" has declined your offer of sponsorship.", "IMP")); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question_yes">
+         X[M] /* offer of sponsorship accepted */
+/*
+if(!\$actor."trait:promotion") \{
+*/
+if(!\$actor."trait:favor:promotion") \{
+  EmitTo(\$actor, "You aren't able to be promoted at this moment.");
+  EmitTo(\$par["sponsor"], TAG(Describe(\$actor)+" isn't able to be promoted at this moment.", "IMP"));
+  return FALSE;
+\}
+
+/* do the promotion */
+\$rankname = Call(\$\{Allegory:Lib:Characters:Promotion\}, "promote", \$char: \$actor);
+\$actor."trait:favor:lastpromoted";
+/*
+\$actor."trait:promotion" = nil;
+*/
+\$actor."trait:favor:promotion" = nil;
+
+/* set the array of sponsors */
+\$sponsor = \$par["sponsor"];
+\$guild = (\$sponsor \&\& \$sponsor.guild) ? \$sponsor.guild : nil;
+
+if(!\$actor."rank:sponsors") \$actor."rank:sponsors" = (\{ \});
+\$actor."rank:sponsors" += (\{ (\{ \$actor."rank:rank", \$sponsor, \$guild \}) \});
+
+if(\$rankname) \{
+ if(typeof(\$rankname) == T_STRING) \{
+  /* error message. (otherwise it would have been an array */
+  EmitTo(\$actor, \$rankname);
+  return FALSE;
+ \}
+ \$title = \$rankname[1];
+ \$rankname = \$rankname[0];
+
+ EmitTo(\$actor, "You have been promoted to the rank of "+\$rankname+".");
+ EmitTo(\$par["sponsor"], "You have promoted "+Describe(\$actor)+" to the rank of "+\$rankname+".");
+ if(\$title \&\& sizeof(Arr(\$title)))
+  EmitTo(\$actor, "This rank includes an in-game title. To set which title to use, try the @title command.");
+\}
+
+\$msg = "[PROMOTIONS] " +Describe(\$actor)+ " has been sponsored by " +Describe(\$par["sponsor"])+ " and elevated to the rank of " +\$rankname+ ".";
+\$data = \$\{Data:DB:assist:AssistGeneralDB\};
+assist::dofileassist(\$data: \$data, \$char: Str(\$actor), \$queue: "new", \$assisttext: \$msg, \$log: "[TAS]");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1306057760, "tonyd", "E", 1306057821, "tonyd", "E", 1306057824, "tonyd", "E", 1306057848, "tonyd", "E", 1306058937, "tonyd", "P", 1306058959, "tonyd", "P", 1306058978, "tonyd", "E", 1306059079, "tonyd", "P", 1306059099, "tonyd", "P", 1306059110, "tonyd", "P", 1306059259, "tonyd", "P", 1306059493, "tonyd", "P", 1306059615, "tonyd", "P", 1306059618, "tonyd", "P", 1306059695, "tonyd", "P", 1306060510, "tonyd", "P", 1306060626, "tonyd", "P", 1306060638, "tonyd", "P", 1306110491, "tonyd", "P", 1306120216, "tonyd", "P", 1306120286, "tonyd", "P", 1306120451, "tonyd", "P", 1306120535, "tonyd", "P", 1306120562, "tonyd", "P", 1306120603, "tonyd", "P", 1306120652, "tonyd", "P", 1306120706, "tonyd", "P", 1306120754, "tonyd", "P", 1306120939, "tonyd", "P", 1306120951, "tonyd", "P", 1306121008, "tonyd", "P", 1306121075, "tonyd", "P", 1306121111, "tonyd", "P", 1306121282, "tonyd", "P", 1306121298, "tonyd", "P", 1306121387, "tonyd", "P", 1306121580, "tonyd", "P", 1306121621, "tonyd", "P", 1306122135, "tonyd", "P", 1306122149, "tonyd", "P", 1306122156, "tonyd", "P", 1306122229, "tonyd", "P", 1306122454, "tonyd", "P", 1306123916, "tonyd", "P", 1306124327, "tonyd", "P", 1306124414, "tonyd", "P", 1306132823, "tunk_bodin", "X", 1306148452, "tonyd", "P", 1306148475, "tonyd", "P", 1306148508, "tonyd", "P", 1306148599, "tonyd", "P", 1306148633, "tonyd", "P", 1306148684, "tonyd", "P", 1306148706, "tonyd", "P", 1306148762, "tonyd", "P", 1306270080, "jominey", "E", 1306272361, "jominey", "E", 1321780209, "tonyd", "E", 1321839121, "tonyd", "E", 1430043876, "tonyd", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

@@ -1,0 +1,64 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="+trename" evoke="forbidden" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="line" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* */       
+
+object *bodies;
+string oldname, newname, theatre;
+
+/* check that we were handed the right number of parameters */
+if (\$(line:words) == nil \|\| (sizeof(\$(line:words)) != 2 \&\& sizeof(\$(line:words)) != 3)) \{
+  EmitTo(\$actor, "Syntax: +rename \<oldname\> \<newname\>\\n");
+  EmitTo(\$actor, "Optionally: +rename \<oldname\> \<newname\> \<theatre\>\\n");
+  return FALSE;
+\}
+
+oldname = \$(line:words)[0];
+newname = \$(line:words)[1];
+if(sizeof(\$(line:words)) == 3)\{  theatre = \$(line:words)[2];
+\} else \{  theatre = nil; \}
+
+bodies = Get(UDat::, "all-bodies:" + "IC:to:" + oldname);
+if (!bodies \|\| sizeof(bodies) == 0) \{
+  EmitTo(\$actor, "Error: \\"" + oldname + "\\" does not exist.");
+  return FALSE;
+\} else if (sizeof(bodies) \> 1) \{
+  EmitTo(\$actor, "Error: \\"" + oldname + "\\" refers to more than one body.");
+  EmitTo(\$actor, "bodies owned by " + oldname + ":");
+  for(\$i = 0; \$i \< sizeof(bodies); \$i = \$i + 1)
+  \{
+    EmitTo(\$actor, Str(bodies[\$i]));
+  \}
+  EmitTo(\$actor, "Done");
+  return FALSE;
+\}
+
+if (Get(UDat::, "bodies:" + newname)) \{
+  /* this emulates the old unique-name-on-server approach */
+  EmitTo(\$actor, "Error: \\"" + newname + "\\" already exists.");
+  return FALSE;
+\}
+
+Call(\$\{Zell:Lib:bodies\}, "rename",
+     \$oldname: oldname, \$newname: newname);
+
+EmitTo(\$actor, "Done!");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1061167901, "zell", "E", 1061168049, "zell", "E", 1061168753, "zell", "E", 1062746554, "tonyd", "E", 1062749386, "tonyd", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

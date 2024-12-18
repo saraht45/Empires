@@ -1,0 +1,276 @@
+<object clone="/obj/properties" owner="tunk_bodin">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="approvers">
+         (\{ "barbra18", "tonyd", "tunk_bodin" \})
+      </Core:Property>
+      <Core:Property property="builders">
+         (\{ "barbra18", "tonyd", "tunk_bodin", "random1377" \})
+      </Core:Property>
+      <Core:Property property="html:popup">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/*Check if we are allowed to view this page */  
+if(\$(Udat.Host)) \{  
+  \$isbuilder = TRUE;  
+\} else \{  
+  \$isbuilder = nil;  
+\}  
+if(member(\$name, this.approvers)) \{  
+  \$isapprover = TRUE;  
+\} else \{  
+  \$isapprover = nil;  
+\}  
+return nil;]
+\<html lang="en"\>
+\<head\>
+    \<title\>Building Page\</title\>
+    \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+    \$(Ironclaw:Theatre:CreateCharacter.xtra:stylesheet)
+\</head\>
+   \<body\>
+      \$(this.xtra:header)
+      \<div id="main"\>
+        \<table width="98%" background="http://www.skotos.net/IronclawGame/images/skin/parch-d2.jpg" style="margin-top: 8px; margin-left: 1%; margin-right: 1%;"\>\<tr\>\<td\>
+\<center\>\<h1\>Building!\</h1\>\</center\>
+\<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup"\>Refresh page\</zlink\>]\</p\>
+\{? \| \$(deleteobject) \|
+  \{? \| \$[/* are they allowed to delete this object? */  
+    \$details = Get(this, \$deleteobject);  
+    if(\$details \&\& (\$isapprover \|\| member(\$name, \$details[5])))  
+    return TRUE;  
+    return FALSE;] \|
+    \$[/* delete the object */  
+    Set(this, \$deleteobject, nil);  
+    return nil;]
+    \<p\>\<font color="red"\>Object deleted\</font\>\</p\>
+  \|\}
+\|\}
+\{? \| \$(propose) \|
+  \<h2\>Proposing an object\</h2\>
+  \<p\>
+  \{? \| \$(error) \| \<font color="red" size="3"\>\$(error)\</font\>\<br/\>\<sbr/\> \|\}
+  \<zform name="\$(name)"\>
+    Object name: \<input name="title" style="width:350px; height:27px"/\>
+    \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 80px" name="outline"\>Brief outline of object\</textarea\>
+    \<input type="submit" value="Submit" class="submit-button"/\>
+    \<action\>
+      \$[\$error = nil;  
+      \$id=Str(time());  
+      if(\$title == "") \{  
+        \$error = "No name was submitted.";  
+        return nil;  
+      \}  
+      /* does the object already exist? */  
+      if(Get(this, "object:current:"+\$id) \|\| Get(this, "object:proposed:"+\$id) \|\| Get(this, "object:archived:"+\$id)) \{  
+        \$error = "An error happened. Please try again.";  
+        return nil;  
+      \}  
+      /* set the plot */  
+      \$id = "object:proposed:"+\$id;  
+      Set(this, \$id, (\{ \$title, \$outline, (\{ \}), (\{ \}), \$name, (\{ \$name \}), (\{ \}) \}));  
+      return nil;]
+      \{? \| \$(error) \|
+        \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" propose="TRUE" error="\$(error)"/\>
+      \|
+        \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkplot="\$(id)"/\>
+      \}
+    \</action\>
+  \</zform\>
+  \</p\>
+\}
+\{? \| \$(movetocurrent) \|
+  \$[/* move the proposed object to the current objects list */  
+  /* first check that they are allowed to */  
+  if(!\$isapprover) return nil;  
+  \$newname = "object:current:"+\$checkobject[14..strlen(\$checkobject)-1];  
+  Set(this, \$newname, copy(Get(this, \$checkobject)));  
+  Set(this, \$checkobject, nil);  
+  \$checkobject = \$newname;  
+  return nil;]
+\}
+\{? \| \$[/* are they allowed to view this object? */  
+if(\$checkobject \&\& (\$isbuilder \|\| member(\$name, \$checkobject[5])))  
+  return TRUE;  
+return FALSE;] \|
+  \$[\$details = Get(this, \$checkobject);  
+  /* if we didn't find it, try with the others */  
+  if(!\$details) \{  
+    if(Get(this, "object:current:"+\$checkobject[14..strlen(\$checkobject)-1]))  
+      \$details = Get(this, "object:current:"+\$checkobject[14..strlen(\$checkobject)-1]);  
+  \}  
+  return nil;]
+  \{? \| \$(delcomment) \|
+    \$[/* check if we are allowed to delete this */  
+    if(!\$isbuilder \&\& \$name != \$details[4]) return nil;  
+    /* delete the comment */  
+    \$details[3][\$delcomment-1] = nil;  
+    \$details[3] -= (\{ nil \});  
+    Set(this, \$checkobject, \$details);  
+    return nil;]
+  \|\}
+  \{? \| \$(approvestep) \|
+    \{? \| \$(isapprover) \|
+      \$[/* approve the step */  
+      \$details[2][\$approvestep-1][3] = \$name;  
+      return nil;]
+    \|\}
+  \|\}
+  \{? \| \$(deletestep) \|
+    \{? \| \$(isapprover) \|
+      \$[/* delete the step */  
+      \$details[2][\$deletestep-1] = nil;  
+      \$details[2] -=  (\{ nil \});  
+      return nil;]
+    \|\}
+  \|\}
+  \<h3\>\$(details.0)\</h3\>
+  \<p\>\$(details.1)\</p\>
+  \{? \| \$[if(\$details[2] \&\& sizeof(\$details[2])) return TRUE; return FALSE;] \|
+    \<for var="step" val="\$(details.2)"\>
+      \<table width="100%" border="1"\>\<tr\>\<td\>
+      \<h4\>\$(step.0) - Approved:
+      \{? \| \$(step.3) \| Yes \| No \}
+      \</h4\>
+      \<p\>\$(step.1)\</p\>
+      \<p\>\$(step.2)
+      \{? \| \$[if(\$isapprover \&\& !\$details[2][\$iteration-1][3]) return TRUE; return FALSE;] \|
+        \<sbr/\>\\\&nbsp;\<sbr/\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(checkobject)" deletestep="\$(iteration)"\>Delete Step\</zlink\>]
+      \|\}
+      \{? \| \$[if(\$isapprover \&\& !\$details[2][\$iteration-1][3]) return TRUE; return FALSE;] \|
+        \<sbr/\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(checkobject)" approvestep="\$(iteration)"\>Approve Step\</zlink\>]
+      \|\}
+      \</p\>
+      \</td\>\</tr\>\</table\>
+    \</for\>
+  \|\}
+  \{? \| \$[if(\$details[3] \&\& sizeof(\$details[3])) return TRUE; return FALSE;] \|
+    \<table width="100%" border="1"\>
+    \<for var="comment" val="\$(details.3)"\>
+      \<tr\>\<td\>
+      \<p\>\$(comment.0.0) - \$(comment.1)
+      \{? \| \$[/* can we delete this? */  
+      return TRUE;] \|
+        \<sbr/\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(checkobject)" delcomment="\$(iteration)"\>Delete Comment\</zlink\>]
+      \}
+      \</p\>
+      \</td\>\</tr\>
+    \</for\>
+    \</table\>
+  \|\}
+  \{? \| \$(addstep) \|
+    \<p\>
+    \<zform checkobject="\$(checkobject)"\>
+    Name of this step: \<input name="title" style="width:160px; height:27px"/\>
+    \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 80px" name="outline"\>Brief outline of how careers and skills are connected to this object\</textarea\>
+    \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 80px" name="props"\>List of required code\</textarea\>
+    \<input type="submit" value="Submit" class="submit-button"/\>
+    \<action\>
+      \$[\$error = nil;  
+      if(\$title == "") \{  
+        \$error = "No name for this step.";  
+        return nil;  
+      \}  
+      /* set the object */  
+      \$tmp = Get(this, \$checkobject);  
+      \$tmp[2] += (\{ (\{ \$title, \$outline, \$props, nil \}) \});  
+      Set(this, \$checkobject, \$tmp);  
+      return nil;]
+      \{? \| \$(error) \|
+        \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" propose="TRUE" error="\$(error)"/\>
+      \|
+        \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(checkobject)" error="\$(error)"/\>
+      \}
+      \</action\>
+    \</zform\>
+    \</p\>
+  \|
+    \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(checkobject)" addstep="TRUE"\>Add step\</zlink\>]\</p\>
+  \}
+  \{? \| \$(addcomment) \|
+    \<p\>
+    \<zform checkobject="\$(checkobject)" name="\$(name)"\>
+    Your name: \<input name="myname" style="width:160px; height:27px"/\>
+    \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 80px" name="comment"\>Write your comment here\</textarea\>
+    \<input type="submit" value="Submit" class="submit-button"/\>
+    \<action\>
+      \$[\$error = nil;  
+      if(\$myname == "")  
+        \$myname = "Anon.";  
+      /* set the comment */  
+      \$tmp = Get(this, \$checkobject);  
+      \$tmp[3] += (\{ (\{ (\{ \$myname, \$name \}), \$comment \}) \});  
+      Set(this, \$checkobject, \$tmp);  
+      return nil;]
+      \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(checkobject)" error="\$(error)"/\>
+    \</action\>
+    \</zform\>
+    \</p\>
+  \|
+    \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(checkobject)" addcomment="TRUE"\>Add comment\</zlink\>]\</p\>
+  \}
+  \{? \| \$[if(\$checkobject[0..12] == "object:proposed" \&\& !\$movetocurrent \&\& \$isapprover) return TRUE; return FALSE;] \|
+    [\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(checkobject)" movetocurrent="TRUE"\>Approve object\</zlink\>]
+  \|\}
+\}
+\<h2\>Current objects\</h2\>
+\$[\$objects = map_indices(prefixed_map(this."*", "object:current:")); return nil;]
+\<for var="object" val="\$(objects)"\>
+  \$[\$details = Get(this, \$object); return nil;]
+  \{? \| \$[/* are they allowed to view this object? */  
+if(\$details \&\& (\$isbuilder \|\| member(\$name, \$details[5])))  
+  return TRUE;  
+return FALSE;] \|
+    \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(object)"\>details\</zlink\>]
+    \$(details.0)\</p\>
+  \}
+\</for\>
+\<h2\>Proposed objects\</h2\>
+  \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" propose="TRUE"\>Propose a object\</zlink\>]\</p\>
+\$[\$objects = map_indices(prefixed_map(this."*", "object:proposed:")); return nil;]
+\<for var="object" val="\$(objects)"\>
+  \$[\$details = Get(this, \$object); return nil;]
+  \{? \| \$[/* are they allowed to view this object? */  
+if(\$details \&\& (\$isbuilder \|\| member(\$name, \$details[5])))  
+  return TRUE;  
+return FALSE;] \|
+    \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(object)"\>details\</zlink\>]
+    \$(details.0)
+    \{? \| \$[/* are they allowed to delete this object? */  
+      if(\$details \&\& (\$isapprover \|\| member(\$name, \$details[5])))  
+      return TRUE;  
+      return FALSE;] \|
+      [\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" deleteobject="\$(object)"\>delete\</zlink\>]
+    \|\}
+    \</p\>
+  \}
+\</for\>
+\<h2\>Object Archives\</h2\>
+\$[\$objects = map_indices(prefixed_map(this."*", "object:archived:")); return nil;]
+\<for var="object" val="\$(objects)"\>
+  \$[\$details = Get(this, \$object); return nil;]
+  \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Build/popup" checkobject="\$(object)"\>details\</zlink\>]
+  \$(details.0)\</p\>
+\</for\>
+      \</td\>\</tr\>\</table\>
+        \<span id="bottombox"\>
+          \<div id="footer"\>\\\&nbsp;\</div\>
+        \</span\>
+\</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="object:proposed:1170877451">
+         (\{ "Testmonkey", "This is a test, this is only a test, were this a real object I would be fired.", (\{  \}), (\{  \}), "tunk_bodin", (\{ "tunk_bodin" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="object:proposed:1237085178">
+         (\{ "test", "Brief outline of object", (\{  \}), (\{  \}), "tonyd", (\{ "tonyd" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1170477771, "tonyd", "P", 1170478074, "tonyd", "P", 1170478083, "tonyd", "P", 1170478102, "tonyd", "P", 1170478479, "tonyd", "P", 1170551692, "tonyd", "P", 1170554868, "tonyd", "P", 1170555034, "tonyd", "P", 1170555057, "tonyd", "P", 1170555066, "tonyd", "P", 1170555955, "tonyd", "P", 1170556189, "tonyd", "P", 1170556481, "tonyd", "P", 1170556660, "tonyd", "P", 1170556698, "tonyd", "P", 1170556989, "tonyd", "P", 1170557164, "tonyd", "P", 1170557253, "tonyd", "P", 1170557847, "tonyd", "P", 1170557869, "tonyd", "P", 1170557915, "tonyd", "P", 1170557939, "tonyd", "P", 1170558092, "tonyd", "P", 1170558363, "tonyd", "P", 1170558396, "tonyd", "P", 1170559055, "tonyd", "P", 1170559065, "tonyd", "P", 1170559117, "tonyd", "P", 1170559385, "tonyd", "P", 1170559418, "tonyd", "P", 1170559455, "tonyd", "P", 1170876793, "tunk_bodin", "X", 1170876874, "tunk_bodin", "X", 1170877413, "tunk_bodin", "X", 1229213033, "tonyd", "E", 1291251188, "tonyd", "R" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,282 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act-post:linkdie%researcher">
+         X[M] \$actor = \$this;
+::research_end(\$researcher: \$actor);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:quit%researcher">
+         X[M] \$actor = \$this;
+::research_end(\$researcher: \$actor);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:enter%researcher">
+         X[M] \$actor = \$this;
+::research_end(\$researcher: \$actor);
+EmitTo(\$actor, "Your movement causes you to lose track of your research efforts.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:teleport%researcher">
+         X[M] \$actor = \$this;
+::research_end(\$researcher: \$actor);
+EmitTo(\$actor, "Your movement causes you to lose track of your research efforts.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:act_research_noise">
+         X[M] int delay;
+object lib;
+
+lib = \$\{Allegory:Lib:Research:SearchScripts\};
+
+delay = 45;
+if(lib."research:emit:delay") \{
+    delay = Int(lib."research:emit:delay");
+\}
+
+if(\$researcher."research:handles:noise") \{
+    Stop(\$researcher."research:handles:noise");
+    \$researcher."research:handles:noise" = nil;
+\}
+
+if (\$researcher.researching \&\& \$researcher."base:environment")
+\{
+    mixed custom;
+
+    custom = \$researcher."base:environment"."research:noise";
+    if (custom) \{
+        EmitTo(\$researcher, UnSAM(custom));
+    \} else \{
+        switch (random(4)) \{
+        default:
+        case 0:
+            EmitTo(\$researcher, "You continue to search for any books of interest.");
+            break;
+        case 1:
+            EmitTo(\$researcher, "You continue to pore over the books.");
+            break;
+        case 2:
+            EmitTo(\$researcher, "You diligently continue to research.");
+            break;
+        case 3:
+            EmitTo(\$researcher, "You continually search for answers.");
+            break;
+        \}
+    \}
+\}
+
+\$researcher."research:handles:noise" = In("research_noise_timer", delay);
+      </Core:Property>
+      <Core:Property property="merry:lib:calculatetime">
+         X[M] int research, timer;
+float perc;
+
+\$researcher = \$this;
+
+research = (Int(\$researcher."trait:intelligence") * 2) + Int(\$researcher."trait:perception");
+
+if(research \> 72) \{
+    research = 72;
+\}
+
+if(research == 0) \{
+    perc = 0.0;
+\} else \{
+    perc = Flt(research)/100.0;
+\}
+
+timer = Int(\$seed/2) - Int((Flt(\$seed)/2.0) * perc);
+timer = \$seed - random(timer);
+
+return timer;
+      </Core:Property>
+      <Core:Property property="merry:lib:config">
+         X[M] /* Setup or clear inherits depending on \$type parameter */
+if(\$type == "setup") \{
+    \$lib = \$\{Allegory:Lib:Research:SearchScripts\};
+\} else \{
+    \$lib = nil;
+\}
+
+\$researcher."merry:inherit:lib:research_start" = \$lib;
+\$researcher."merry:inherit:timer:research_end" = \$lib;
+\$researcher."merry:inherit:timer:research_noise_timer" = \$lib;
+\$researcher."merry:inherit:lib:act_research_noise" = \$lib;
+\$researcher."merry:inherit:lib:research_end" = \$lib;
+\$researcher."merry:inherit:act:enter%researcher" = \$lib;
+\$researcher."merry:inherit:act:teleport%researcher" = \$lib;
+\$researcher."merry:inherit:act-post:linkdie%researcher" = \$lib;
+\$researcher."merry:inherit:act-post:quit%researcher" = \$lib;
+\$researcher."merry:inherit:lib:config" = \$lib;
+\$researcher."merry:inherit:lib:calculatetime" = \$lib;
+      </Core:Property>
+      <Core:Property property="merry:lib:expire_entry">
+         X[M] /* didn't give an answer. End while letting them know their time has expired.*/
+EmitTo(\$actor, "After letting your attention drift, you realize that you no longer remember the location of the entry you spotted.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:leave_entry">
+         X[M] EmitTo(\$actor, "You decide to not read the entry you found.");
+\$actor."question:env" = nil;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:libsearch">
+         X[M] /* Setup inherits */
+::config(\$researcher: \$actor, \$type: "setup");
+
+/* Start the search */
+Call(\$actor, "research_start", \$keyword: \$keyword);
+      </Core:Property>
+      <Core:Property property="merry:lib:research_end">
+         X[M] int i, j, size, modifier;
+string keyword;
+mixed* keywords, results, skills;
+object db, startroom, endroom;
+
+/* Make note of the keyword */
+keyword = \$researcher."research:keyword";
+
+/* Make note of researcher's starting room and ending room */
+startroom = \$researcher."research:room";
+endroom = \$researcher."base:environment";
+
+/* Stop and clear the timers */
+if(\$researcher."research:handles:noise") \{
+    Stop(\$researcher."research:handles:noise");
+    \$researcher."research:handles:noise" = nil;
+\}
+
+if(\$researcher."research:handles:timer") \{
+    Stop(\$researcher."research:handles:timer");
+    \$researcher."research:handles:timer" = nil;
+\}
+
+/* Clear inherits */
+\$researcher.researching = nil;
+\$researcher."research:room" = nil;
+\$researcher."research:keyword" = nil;
+::config(\$researcher: \$researcher, \$type: "clear");
+
+/* Stop here if the search ended prematurely */
+if(!\$finish) \{
+    return FALSE;
+\}
+
+/* Make sure chatter is in the room that search was started in */
+if(startroom != endroom) \{
+    \$researcher."research:room" = nil;
+    return FALSE;
+\}
+
+/* find which shelf of books the actor is searching */
+db = Get(endroom, "library:database");
+size = Int(Get(db, "entries:total"));
+results = (\{ \});
+modifier = Int(Get(\$researcher, "career:academics:scholar"))/4;
+
+if(modifier \> 6) \{
+    modifier = 6;
+\}
+
+for(i = 0; i \< size; i++) \{
+    if(Get(db, "entry:" + Str(i+1))) \{
+        keywords = Get(db, "entry:" + Str(i+1))["Keywords"];
+        if(member(keyword, keywords)) \{
+            if(!Get(db, "entry:" + Str(i+1))["Skills"]) \{
+                results += (\{ i+1 \});
+            \} else \{
+                skills = Get(db, "entry:" + Str(i+1))["Skills"];
+ 
+                for(j = 0; j \< sizeof(skills); j+=2) \{
+                    if((Int(Get(\$researcher, skills[j])) + modifier) \>= Int(skills[j+1])) \{
+                        results += (\{ i+1 \});
+                    \}
+                \}
+            \}
+        \}
+    \}
+\}
+
+EmitIn(endroom, Describe(\$researcher)+" pauses looking through the shelves.", \$researcher);
+
+if(sizeof(results) \&\& sizeof(results) \> 0) \{
+    EmitTo(\$researcher, "You found at least one entry matching your criteria.");
+    interaction::question(\$actor: \$researcher, \$question: "Do you want to read it now?", \$expires: 160, \$env: "TRUE", \$yes_ob: \$\{Allegory:Lib:Research:SearchScripts\}, \$no_ob: \$\{Allegory:Lib:Research:SearchScripts\}, \$expire_ob: \$\{Allegory:Lib:Research:SearchScripts\}, \$yes_fun: "take_entry", \$no_fun: "leave_entry", \$expire_fun: "expire_entry", \$par: ([ "db": db, "results": results ]));
+\} else \{
+    EmitTo(\$researcher, "After several moments of searching, you still cannot find anything meeting your criteria.");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:research_start">
+         X[M] object lib;
+int emitdelay, researchtimer;
+lib = \$\{Allegory:Lib:Research:SearchScripts\};
+
+researchtimer = 300;
+if(lib."research:timer:delay")\{
+    researchtimer = Int(lib."research:timer:delay");
+\}
+
+researchtimer = ::calculatetime(\$seed: researchtimer);
+
+emitdelay = 45;
+if(lib."research:emit:delay") \{
+    emitdelay = Int(lib."research:emit:delay");
+\}
+
+\$researcher = \$this;
+
+\$researcher.researching = 1;
+\$room = \$researcher."base:environment";
+
+/* Make note of the room the researcher is in */
+\$researcher."research:room" = \$room;
+
+/* Make note of the keywords */
+\$researcher."research:keyword" = \$keyword;
+
+/* Start the timers */
+\$researcher."research:handles:noise" = In("research_noise_timer", emitdelay);
+\$researcher."research:handles:timer" = In("research_end", researchtimer);
+
+/* Emit the start of the search */
+EmitTo(\$researcher, "You begin to search the shelves.");
+EmitIn(\$room, Describe(\$researcher)+" begins to search the shelves.", \$researcher);
+      </Core:Property>
+      <Core:Property property="merry:lib:take_entry">
+         X[M] \$db = \$par["db"];
+\$results = \$par["results"];
+
+\$random = \$results[random(sizeof(\$results))];
+
+EmitTo(\$actor, "\\n" + Get(\$db, "entry:" + Str(\$random))["Content"]);
+      </Core:Property>
+      <Core:Property property="merry:timer:research_end">
+         X[M] \$actor = \$this;
+
+::research_end(\$researcher: \$actor, \$finish: 1);
+      </Core:Property>
+      <Core:Property property="merry:timer:research_noise_timer">
+         X[M] \$actor = \$this;
+if(!\$actor."udat:possessed") \{
+    ::research_end(\$researcher: \$actor);
+    return FALSE;
+\}
+
+::act_research_noise(\$researcher: \$actor);
+      </Core:Property>
+      <Core:Property property="research:emit:delay">
+         45
+      </Core:Property>
+      <Core:Property property="research:timer:delay">
+         300
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1249498475, "jominey", "E", 1249498567, "jominey", "E", 1249498939, "jominey", "E", 1249498988, "jominey", "E", 1249499053, "jominey", "E", 1249499232, "jominey", "E", 1249500304, "jominey", "E", 1249500398, "jominey", "E", 1249500448, "jominey", "E", 1249500519, "jominey", "E", 1249500602, "jominey", "E", 1249500665, "jominey", "E", 1249500916, "jominey", "E", 1249500952, "jominey", "E", 1249500992, "jominey", "E", 1249501027, "jominey", "E", 1249501068, "jominey", "E", 1249501087, "jominey", "E", 1249501100, "jominey", "E", 1249501158, "jominey", "E", 1249501360, "jominey", "E", 1249501687, "jominey", "E", 1249501702, "jominey", "E", 1249501724, "jominey", "E", 1249501744, "jominey", "E", 1249501775, "jominey", "E", 1249501916, "jominey", "E", 1249501970, "jominey", "E", 1249502101, "jominey", "E", 1249502182, "jominey", "E", 1249502239, "jominey", "E", 1249502372, "jominey", "E", 1249502471, "jominey", "E", 1249502521, "jominey", "E", 1249502557, "jominey", "E", 1249505468, "jominey", "E", 1249505551, "jominey", "E", 1249505995, "jominey", "E", 1249509519, "jominey", "E", 1355357287, "jominey", "E", 1355358077, "jominey", "E", 1355358470, "jominey", "E", 1355358513, "jominey", "E", 1355359087, "jominey", "E", 1355359370, "jominey", "E", 1590942792, "sendnoodlez", "R", 1590942915, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

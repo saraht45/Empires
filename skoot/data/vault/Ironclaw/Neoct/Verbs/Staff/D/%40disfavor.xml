@@ -1,0 +1,90 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="@disfavor" evoke="forbidden" audible="true" private="false" secret="true" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* grants a social rank increase to a character */
+/* note that this in-game requires a promotion token */
+
+if(!\$(dob:words)) \{
+  /*EmitTo(\$actor, "Format: +disfavor \<name\> \<amount\> 'Gossip to add to NPC rumors'");*/
+  EmitTo(\$actor, "Format: @disfavor \<name\>");
+  return FALSE;
+\}
+
+\$a_subj = lower_case( \$(dob:words)[0] );
+/*sscanf(implode(\$(dob:words), " "), "%s %d", \$a_subj, \$amount );*/
+sscanf(implode(\$(dob:words), " "), "%s", \$a_subj);
+\$char = common::lookup(\$name: \$a_subj);
+
+if(!\$char) \{
+  EmitTo(\$actor, "Unknown character.");
+  return FALSE;
+\}
+
+if(!\$actor."loyalty:guild") \{
+  EmitTo(\$actor, "You cannot favor or disfavor people until you wear a cloak displaying your chosen loyalties.");
+  return FALSE;
+\}
+
+if(\$actor."base:environment" != \$char."base:environment") \{
+    EmitTo(\$actor, "You must be in the same room as " + Describe(\$char) + " to disfavor them.");
+    return FALSE;
+\}
+
+/*
+if(typeof(\$amount) == T_NIL) \{
+  EmitTo(\$actor, "Unknown amount of disfavor.");
+  return FALSE;
+\}
+*/
+if(!\$actor."favor:giving") \$actor."favor:giving" = ([ ]);
+if(!\$actor."favor:giving"[name(\$char)]) \$actor."favor:giving"[name(\$char)] = 0;
+
+\$actor."favor:giving"[name(\$char)] -= 1;
+
+EmitTo(\$actor, "You have disfavored "+Describe(\$char)+".");
+
+return FALSE;
+
+if(!\$char."trait:favor") \$char."trait:favor" = 0;
+\$char."trait:favor" -= \$amount*\$amount;
+
+EmitTo(\$actor, "Took "+Str(\$amount*\$amount)+" points of favor from "+Describe(\$char)+".");
+EmitTo(\$actor, Describe(\$char)+" now has "+Str(\$char."trait:favor")+" points of favor.");
+
+/* now set the rumors */
+if(\$evoke) \{
+ \$evoke = \$evoke[1..strlen(\$evoke)-2];
+
+ /* add punctuation if there's no completing full stop */
+ if( (\$evoke[strlen(\$evoke)-1] \>= 97 \&\& \$evoke[strlen(\$evoke)-1] \<= 122) \|\|
+     (\$evoke[strlen(\$evoke)-1] \>= 65 \&\& \$evoke[strlen(\$evoke)-1] \<= 90) ) \{
+
+  \$evoke += ".";
+ \}
+
+ EmitTo(\$actor, "Setting rumor of: "+\$evoke);
+ \$rumordb = \$\{Ironclaw:NIP:Rumor:Rumours\};
+ \$count = Int(\$rumordb."favor:count");
+ \$count++;
+ if(\$count \> 800) \$count = 0;
+ \$rumordb."favor:count" = \$count;
+ Set(\$rumordb, "topic:favor"+Str(\$count), ([ "keywords":(\{ \$a_subj, "favor", "gossip", "rumor" \}), "rumor":\$evoke ]) );
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1263270043, "necate", "E", 1263710328, "tonyd", "P", 1263710379, "tonyd", "E", 1263710393, "tonyd", "E", 1263710397, "tonyd", "E", 1263710428, "tonyd", "E", 1263710471, "tonyd", "E", 1263710492, "tonyd", "E", 1263710545, "tonyd", "P", 1263710570, "tonyd", "P", 1263710605, "tonyd", "P", 1263710638, "tonyd", "P", 1263710651, "tonyd", "P", 1263710729, "tonyd", "P", 1263710759, "tonyd", "P", 1263710776, "tonyd", "P", 1263711040, "tonyd", "E", 1263713072, "tonyd", "P", 1264898321, "tonyd", "E", 1268139788, "tonyd", "P", 1411023478, "tonyd", "P", 1411023609, "tonyd", "R", 1411023622, "tonyd", "E", 1480955556, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

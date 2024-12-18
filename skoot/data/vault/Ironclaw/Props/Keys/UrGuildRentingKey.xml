@@ -1,0 +1,388 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.03" density="8"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="key"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="keys"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) $(this.trait:material) key
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.trait:color) $(this.trait:material) key.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="tag" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="tag"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="tags"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">tag</Base:Description>
+          <Base:Description type="look">
+             A tag is attached to this key.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:nip:item:cost">
+         0
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "key"
+      </Core:Property>
+      <Core:Property property="merry:lib:delete_room">
+         X[M] \$actor = \$par["actor"];
+\$room = \$par["room"];
+
+EmitTo(\$actor, "Thank you. The room has been returned.");
+
+if(\$actor."virtualhome:home") \{
+    \$movingroom = \$actor."virtualhome:home";
+\} else if(\$actor."virtualhome:tavern:virtualn") \{
+    \$movingroom = \$actor."virtualhome:tavern:virtualn";
+\} else if(\$actor."virtualhome:tavern:virtuals") \{
+    \$movingroom = \$actor."virtualhome:tavern:virtuals";
+\} else if(\$actor."virtualhome:gildedbalance:firstfloor:closetone") \{
+    \$movingroom = \$actor."virtualhome:gildedbalance:firstfloor:closetone";
+\} else if(\$actor."virtualhome:gildedbalance:firstfloor:closettwo") \{
+    \$movingroom = \$actor."virtualhome:gildedbalance:firstfloor:closettwo";
+\} else \{
+    \$movingroom = \$\{Ironclaw:World:DockTown:Commons:Props:DonationBox\};
+\}
+
+\$rooms = map_values(common::exits(\$room: \$room, \$spread: 2))[0] + map_values(common::exits(\$room: \$room, \$spread: 2))[1] + (\{ \$room \});
+
+for(\$x = 0; \$x \< sizeof(\$rooms); \$x++) \{
+    if(NRefOb(\$rooms[\$x])."guild:virtual" == \$room."guild:virtual" \&\& NRefOb(\$rooms[\$x]).guildowner == \$actor.guild) \{
+        ::do_delete(\$room: NRefOb(\$rooms[\$x]), \$actor: \$actor, \$movingroom: \$movingroom);
+    \}
+\}
+
+Slay(\$this);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_delete">
+         X[M] /* \$room is the room we are deleting */
+/* \$movingroom is where the contents will be relocated */
+\$room = NRefOb(\$room);
+\$inv = copy(\$room."base:inventory");
+for(\$i=0; \$i \< sizeof(\$inv) ;\$i++) \{
+    /* There are still things in this room */
+    if(\$inv[\$i]."base:volition") \{
+        /* There is an animal in the room! */
+        EmitTo(\$inv[\$i], "Servants politely move you out of this room.");
+        if(\$this."return:room") \{
+            \$inv[\$i]."base:environment" = \$this."return:room";
+        \} else \{
+            \$inv[\$i]."base:environment" = \$\{Allegory:Setting:Rinascita:Buildings:Southwest:TradeHouse:Lobby\};
+        \}
+    \} else if((\$inv[\$i]."base:integration" \|\| \$inv[\$i]."base:immobile") \&\& !\$inv[\$i]."guild:fixedby") \{
+        /* This is part of the room */
+        if(\$inv[\$i]."base:inventory" \&\& sizeof(\$inv[\$i]."base:inventory")) \{
+            \$inv2 = copy(\$inv[\$i]."base:inventory");
+
+            for(\$j = 0; \$j \< sizeof(\$inv2); \$j++) \{
+                if(!\$inv2[\$j]."base:integration" \&\& !\$inv2[\$j]."base:immobile") \{
+                    \$inv2[\$j]."base:environment" = \$movingroom;
+                \} else \{
+                    if(\$inv2[\$j]."base:inventory" \&\& sizeof(\$inv2[\$j]."base:inventory")) \{
+                        \$inv3 = copy(\$inv2[\$j]."base:inventory");
+
+                        for(\$k = 0; \$k \< sizeof(\$inv3); \$k++) \{
+                            if(!\$inv3[\$k]."base:integration" \&\& !\$inv3[\$k]."base:immobile") \{
+                                \$inv3[\$k]."base:environment" = \$movingroom;
+                    
+                            \}
+                        \}
+                    \}
+                \}
+            \}
+        \}
+
+        Slay(\$inv[\$i]);
+    \} else \{
+        /* Moving to donation bin or tavern inn room*/
+        \$inv[\$i]."base:environment" = \$movingroom;
+    \}
+\}
+
+Slay(\$room);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:evict">
+         X[M] if(\$guild.leader) \{
+    \$actor = \$guild.leader;
+
+    if(\$actor."virtualhome:home") \{
+        \$movingroom = \$actor."virtualhome:home";
+    \} else if(\$actor."virtualhome:tavern:virtualn") \{
+        \$movingroom = \$actor."virtualhome:tavern:virtualn";
+    \} else if(\$actor."virtualhome:tavern:virtuals") \{
+        \$movingroom = \$actor."virtualhome:tavern:virtuals";
+    \} else if(\$actor."virtualhome:gildedbalance:firstfloor:closetone") \{
+        \$movingroom = \$actor."virtualhome:gildedbalance:firstfloor:closetone";
+    \} else if(\$actor."virtualhome:gildedbalance:firstfloor:closettwo") \{
+        \$movingroom = \$actor."virtualhome:gildedbalance:firstfloor:closettwo";
+    \} else \{
+        \$movingroom = \$\{Ironclaw:World:DockTown:Commons:Props:DonationBox\};
+    \}
+\} else \{
+    \$movingroom = \$\{Ironclaw:World:DockTown:Commons:Props:DonationBox\};
+\}
+
+\$rooms = map_values(common::exits(\$room: \$room, \$spread: 2))[0] + map_values(common::exits(\$room: \$room, \$spread: 2))[1] + (\{ \$room \});
+
+for(\$x = 0; \$x \< sizeof(\$rooms); \$x++) \{
+    if(NRefOb(\$rooms[\$x])."guild:virtual" == \$room."guild:virtual" \&\& NRefOb(\$rooms[\$x]).guildowner == \$actor.guild) \{
+        ::do_delete(\$room: NRefOb(\$rooms[\$x]), \$actor: \$actor, \$movingroom: \$movingroom);
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:expire_fun">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:returning_accept">
+         X[M] \$delay(0.5, TRUE, "9145");
+/* Double check if the player wants to return the room */
+interaction::question(\$actor: \$actor, \$question: "Servants will go to your guild space and put any belongings they find in the donation bin. You can always remove your belongings first, and return your key later. Are you sure you want to stop renting your guild space now?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "delete_room", \$no_fun: "returning_decline", \$expire_fun: "returning_expire", \$par: ([ "room": \$par["room"], "actor": \$actor]));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:returning_decline">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:returning_expire">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:lock-using">
+         X[M] /* Code for virtual room keys */
+
+/* Check if this key unlocks this virtual room */
+if(\$this."base:keycode") \{
+  if(
+    (Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")
+  \&\&
+    name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")))
+  \&\&
+    (name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest"))) == \$this."base:keycode")) \|\|
+    (Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")."base:urparent"
+  \&\&
+    name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest"))."base:urparent")
+  \&\&
+    (name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest"))."base:urparent") == \$this."base:keycode"))
+  ) \{
+    /* The key matches this door */
+    Set(\$actor."base:environment", "details:" + NRefDetail(\$what[0]) + ":exit:dest", Obj(\$this."base:keycode"));
+    EmitTo(\$actor, "You lock "+Describe(\$what[0])+".");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" locks "+Describe(\$what[0])+".", \$actor);
+    return FALSE;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:offer-what%returning">
+         X[M] if(\$who \&\& \$who[0].returnsrooms) \{
+  /* If this isn't our key */
+  if(!\$actor.guild) return TRUE;
+  if(\$this."trait:owner" \&\& (\$this."trait:owner" != \$actor.guild)) return TRUE;
+  if(\$this."trait:owner" \&\& (\$this."trait:owner" == \$actor.guild)) \{
+      if(\$actor != \$this."trait:owner".leader) \{
+          EmitTo(\$actor, "I'm sorry but only the guild leader can return a shared guild space.");
+          return FALSE;
+      \}
+  \}
+
+  if(\$actor == \$this."trait:owner".leader)\{
+    \$room = \$this."trait:owner".virtualroom;
+
+    /* Check if the player wants to return the room */
+    interaction::question(\$actor: \$actor, \$question: "Do you want to stop renting "+Describe(\$room)+"?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "returning_accept", \$no_fun: "returning_decline", \$expire_fun: "returning_expire", \$par: ([ "room": \$room, "actor": \$actor]));
+
+    return FALSE;
+  \} else \{
+    /* No owner. Slay key. */
+    EmitTo(\$actor, Describe(\$who[0])+" takes "+Describe(\$this, nil, \$actor)+".");
+    EmitIn(\$actor."base:environment", Describe(\$who[0])+" takes "+Describe(\$this)+".", \$actor);
+    Slay(\$this);
+    return FALSE;
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unlock-using">
+         X[M] /* Code for guild room keys */
+
+\$door = NRefDetail(\$what[0]);
+\$dest = Get(NRefOb(\$what[0]), "details:" + \$door + ":exit:dest");
+\$destOb = NRefOb(\$dest);
+\$destDetail = NRefDetail(\$dest);
+
+if(Obj(\$this."base:keycode") == \$destOb."base:urparent") \{
+    Set(NRefOb(\$what[0]), "details:" + \$door + ":exit:dest", NewNRef(\$destOb."base:urparent", \$destDetail));
+\}
+
+/* Check if this key unlocks this virtual room */
+/* base:keycode is the parent room of the room we are trying to enter */
+if(\$this."base:keycode") \{
+  if(
+    (Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")
+  \&\&
+    name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")))
+  \&\&
+    (name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest"))) == \$this."base:keycode"))
+  ) \{
+
+        /* The key matches this door */
+        /* Check if this key is already owned by someone */
+        /* This will be set to the owning guild */
+        if(\$this."trait:owner") \{
+            if(!\$this."trait:owner".virtualroom) \$this."trait:owner" = nil;
+        \}
+
+        if(!\$this."trait:owner") \{
+            /* Nobody owns the key. Does the guild already have a room of this type? */
+            /* First check if actor is in a guild AND is the leader of the guild */
+            if(!\$actor.guild) \{
+                EmitTo(\$actor, "Sorry, only guild owners have the authority to rent guild space. You will need to create a guild first.");
+                return FALSE;
+            \}
+
+
+            \$guild = \$actor.guild;
+
+            if(\$guild.leader != \$actor) \{
+                EmitTo(\$actor, "Sorry, only guild owners have the authority to rent guild space.");
+                return FALSE;
+            \}
+
+
+            /* Now make sure the guild is not already renting a guild room */
+            if(\$guild.virtualroom) \{
+                EmitTo(\$actor, "Your guild is already renting a guild space somewhere.");
+                return FALSE;
+            \}
+
+            /* Noble houses need not apply */
+            if(\$guild == \$\{Allegory:Guilds:france\} \|\| 
+               \$guild == \$\{Allegory:Guilds:scotland\} \|\|
+               \$guild == \$\{Allegory:Guilds:germany\} \|\|
+               \$guild == \$\{Allegory:Guilds:italy\} ) \{
+ 
+               EmitTo(\$actor, "Noble houses cannot rent guild spaces.");
+               return FALSE;
+            \}
+
+            if(\$this.roomcost) \{
+                if(\$this.roomcost \&\& (\$this.roomcost \> 0)) \{
+                    if(Int(\$this.roomcost/100) \< 2) \{
+                        \$cost = "1 denar";
+                    \} else \{
+                        \$cost = Str(Int(\$this.roomcost/100))+" denarii";
+                    \}
+
+                    \$councilDat = \$\{Ironclaw:Data:GuildCouncil:Members\};
+                    if(member(\$guild, \$councilDat.members)) \{
+                        EmitTo(\$actor, "This room has an ongoing cost of "+\$cost+", but as long as your guild holds a seat on the guild council, this fee will be waived.");
+                    \} else \{
+                        EmitTo(\$actor, "This room has an ongoing cost of "+\$cost+". Your guild will be charged this amount everyday.");
+                    \}
+                \}
+            \}
+
+            /* Create the room */
+            \$newroom = Spawn(Obj(\$this."base:keycode"));
+            \$actor.guild.virtualroom = \$newroom;
+            \$newroom.guildowner = \$actor.guild;
+
+            \$renters = (\{ \});
+            if(Get(Obj(\$this."base:keycode"), "renters")) \$renters = Get(Obj(\$this."base:keycode"), "renters");
+            \$renters += (\{ \$guild \});
+            Set(Obj(\$this."base:keycode"), "renters", \$renters);
+
+            /* Label the key */
+            \$this."trait:owner" = \$guild;
+            \$this."details:tag:description:writing" = \$guild.fullname;
+            \$this."details:default:description:writing" = \$guild.fullname;
+            EmitTo(\$actor, "You unlock "+Describe(\$what[0])+", and label "+Describe(\$this, nil, \$actor)+".");
+            EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+".", \$actor);
+            \$door = NRefDetail(Get(NRefOb(\$what[0]), "details:" + NRefDetail(\$what[0]) + ":exit:dest"));
+            Set(NRefOb(\$what[0]), "details:" + NRefDetail(\$what[0]) + ":exit:dest", NewNRef(\$actor.guild.virtualroom, \$door));
+            Set(NRefOb(\$what[0]), "details:" + NRefDetail(\$what[0]) + ":exit:locked", FALSE);
+            return FALSE;
+        \} else \{
+            /* The key is already owned */
+            EmitTo(\$actor, "You unlock "+Describe(\$what[0])+".");
+            EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+".", \$actor);
+            \$guild = \$this."trait:owner";
+            \$door = NRefDetail(Get(NRefOb(\$what[0]), "details:" + NRefDetail(\$what[0]) + ":exit:dest"));
+            Set(NRefOb(\$what[0]), "details:" + NRefDetail(\$what[0]) + ":exit:dest", NewNRef(\$guild.virtualroom, \$door));
+            Set(NRefOb(\$what[0]), "details:" + NRefDetail(\$what[0]) + ":exit:locked", FALSE);
+            return FALSE;
+        \}
+    \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1520453125, "jominey", "E", 1520453376, "jominey", "E", 1520453450, "jominey", "E", 1520453538, "jominey", "E", 1520455584, "jominey", "E", 1520455764, "jominey", "E", 1520456081, "jominey", "E", 1520456268, "jominey", "E", 1520458564, "jominey", "E", 1520460972, "jominey", "E", 1520461006, "jominey", "E", 1520461029, "jominey", "E", 1520461046, "jominey", "E", 1520461054, "jominey", "E", 1520461110, "jominey", "E", 1520461133, "jominey", "E", 1520461195, "jominey", "E", 1520461209, "jominey", "E", 1520462805, "jominey", "E", 1520463004, "jominey", "E", 1520463052, "jominey", "E", 1520464210, "jominey", "E", 1520464339, "jominey", "E", 1520464413, "jominey", "E", 1520464447, "jominey", "E", 1520464483, "jominey", "E", 1520464693, "jominey", "E", 1520464739, "jominey", "E", 1520464811, "jominey", "E", 1520464931, "jominey", "E", 1520464976, "jominey", "E", 1520465026, "jominey", "E", 1520465066, "jominey", "E", 1520465403, "jominey", "E", 1520465450, "jominey", "E", 1520465565, "jominey", "E", 1520465624, "jominey", "E", 1520465690, "jominey", "E", 1520465954, "jominey", "E", 1520465989, "jominey", "E", 1520466016, "jominey", "E", 1520466154, "jominey", "E", 1520469218, "jominey", "E", 1520469421, "jominey", "E", 1520470327, "jominey", "E", 1520560318, "jominey", "S", 1523835656, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

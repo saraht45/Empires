@@ -1,0 +1,168 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="pay" second="pay" third="pays" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="amount" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="iob" direct="false" single="false" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="to"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* Tell the PC how much money they have */
+
+\$sugarmama = \$actor;
+
+if(!\$(amount:words)) \{
+  EmitTo(\$sugarmama, "Format: Pay \<amount\> to PC");
+  EmitTo(\$sugarmama, "e.g. Pay 1 lira 50 florins to Bob");
+  EmitTo(\$sugarmama, "Format: Pay recall");
+  return FALSE;
+\}
+
+if((!\$iob \|\| !sizeof(\$iob)) \&\& lower_case(\$(amount:words)[0]) != "recall") \{
+  EmitTo(\$sugarmama, "Format: Pay \<amount\> to PC");
+  EmitTo(\$sugarmama, "e.g. Pay 1 lira 50 florins to Bob");
+  EmitTo(\$sugarmama, "Format: Pay recall");
+  return FALSE;
+\}
+
+if(lower_case(\$(amount:words)[0]) == "recall") \{
+  /* Doing a pay recall */
+  EmitTo(\$actor, "Pay recall functionality is not complete yet. Sorry!");
+
+  if(\$actor."pay:recall:incoming") \{
+    EmitTo(\$actor, "INCOMING PAYMENTS");
+    for(\$i=0;\$i\<sizeof(\$actor."pay:recall:incoming");\$i++) \{
+      EmitTo(\$actor, short_time(\$actor."pay:recall:incoming"[\$i][0])+" "+ironclaw::describe_money(\$amount: \$actor."pay:recall:incoming"[\$i][1])+" from "+\$actor."pay:recall:incoming"[\$i][2]);
+    \}
+  \}
+  if(\$actor."pay:recall:outgoing") \{
+    EmitTo(\$actor, "OUTGOING PAYMENTS");
+    for(\$i=0;\$i\<sizeof(\$actor."pay:recall:outgoing");\$i++) \{
+      EmitTo(\$actor, short_time(\$actor."pay:recall:outgoing"[\$i][0])+" "+ironclaw::describe_money(\$amount: \$actor."pay:recall:outgoing"[\$i][1])+" to "+\$actor."pay:recall:outgoing"[\$i][2]);
+    \}
+  \}
+  
+  return FALSE;
+\}
+
+if(sizeof(\$iob) \> 1) \{
+  EmitTo(\$sugarmama, "Please only pay one PC at a time.");
+  return FALSE;
+\}
+
+/* Is the sugarbaby a valid PC / currently inhabited NPC? */
+\$sugarbaby = NRefOb(\$iob[0]);
+if(!\$sugarbaby."udat:account" \&\& name(\$sugarbaby)[..8] != "Chatters:") \{
+  /* Let's check if it's a NPC that does special things when paid coin */
+  if(!FindMerry(\$sugarbaby, "lib", "get_paid")) \{
+      EmitTo(\$sugarmama, "You can't pay "+Describe(\$sugarbaby, nil, \$sugarmama)+".");
+      return FALSE;
+  \}
+\}
+
+\$amount = 0;
+\$total = 0;
+for(\$i=0;\$i\<sizeof(\$(amount:words));\$i++) \{
+  \$word = \$(amount:words)[\$i];
+  if(sscanf(\$word, "%f", \$amount)) \{
+    continue;
+  \}
+
+  /* Not a number. Is it a denomination? */
+  \$word = replace_strings(lower_case(\$word), ",", "", " ", "", ";", "");
+
+  if(\$word == "lira" \|\| \$word == "liras") \{
+    \$total += Int(\$amount*2400.00);
+    \$amount = 0.0;
+  \} else if(\$word == "florin" \|\| \$word == "florins" \|\| \$word == "florins") \{
+    \$total += Int(\$amount*100.00);
+    \$amount = 0.0;
+  \} else if(\$word == "bronze" \|\| \$word == "bronzes") \{
+    \$total += Int(\$amount*10.00);
+    \$amount = 0.0;
+  \} else if(\$word == "brass" \|\| \$word == "brasses") \{
+    \$total += Int(\$amount);
+    \$amount = 0;
+  \}
+\}
+
+if(\$amount) \{
+  /* Some money without specifying a denomination. Assume florins */
+  \$total += Int(\$amount*100.00);
+\}
+
+if(\$total \> Int(\$sugarmama."trait:money")) \{
+  EmitTo(\$sugarmama, "You don't have "+ironclaw::describe_money(\$amount: \$total)+" - You've only got "+ironclaw::describe_money(\$amount: \$sugarmama."trait:money")+".");
+  return FALSE;
+\}
+
+if(FindMerry(\$sugarbaby, "lib", "get_paid")) \{
+    Call(\$this, "accept_pay", \$par: ([ "sugarbaby": \$sugarbaby, "sugarmama":\$sugarmama, "evoke":\$evoke, "total":\$total]));
+    \$delay(0.25, FALSE, "3cf9");
+    Call(\$sugarbaby, "get_paid");
+    return FALSE;
+\}
+
+EmitTo(\$sugarmama, "You offer " + ironclaw::describe_money(\$amount: \$total) + " to " + Describe(\$sugarbaby) + ".");
+interaction::question(\$actor: \$sugarbaby, \$question: Describe(\$sugarmama) + " wants to pay you " + ironclaw::describe_money(\$amount: \$total) + ". Do you accept it?", \$expires: 80, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "accept_pay", \$no_fun: "refuse_pay", \$expire_fun: "refuse_pay", \$par: ([ "sugarbaby": \$sugarbaby, "sugarmama":\$sugarmama, "evoke":\$evoke, "total":\$total]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:accept_pay">
+         X[M] \$sugarmama = \$par["sugarmama"];
+\$sugarbaby = \$par["sugarbaby"];
+\$total = \$par["total"];
+\$evoke = \$par["evoke"];
+\$sugarmamaacct = \$sugarmama."skotos:creator";
+\$sugarbabyacct = \$sugarbaby."skotos:creator";
+
+NRefOb(\$sugarbaby)."trait:money" = Int(NRefOb(\$sugarbaby)."trait:money")+\$total;
+\$sugarmama."trait:money" -= \$total;
+
+\$evokestring = \$evoke ? ", "+\$evoke : ".";
+EmitTo(\$sugarmama, TAG("You pay "+ironclaw::describe_money(\$amount: \$total)+" to "+Describe(\$sugarbaby)+\$evokestring, "imp"));
+EmitTo(\$sugarbaby, TAG(Describe(\$sugarmama)+" pays you "+ironclaw::describe_money(\$amount: \$total)+\$evokestring, "imp"));
+EmitIn(\$sugarmama."base:environment", Describe(\$sugarmama)+" pays "+Describe(\$sugarbaby)+" "+ironclaw::describe_money(\$amount: \$total)+\$evokestring, \$sugarmama, \$sugarbaby);
+
+/* Record this stuff for pay recall */
+if(!\$sugarmama."pay:recall:outgoing") \$sugarmama."pay:recall:outgoing" = (\{ \});
+\$sugarmama."pay:recall:outgoing" += (\{ (\{ time(), \$total, Describe(\$sugarbaby) \}) \});
+
+if(!\$sugarbaby."pay:recall:incoming") \$sugarbaby."pay:recall:incoming" = (\{ \});
+\$sugarbaby."pay:recall:incoming" += (\{ (\{ time(), \$total, Describe(\$sugarmama) \}) \});
+
+/*For catching dirty rat bastard cheaters*/
+if(\$sugarmamaacct == \$sugarbabyacct)  \{
+       \$assisttext = "ALT ABUSE WARNING: " + proper(\$sugarmama."skotos:charname") + " is a dirty rat bastard cheater and paid money to " + proper(\$sugarbaby."skotos:charname") + ".";
+        assist::dofileassist(\$data: \$\{Data:DB:assist:AssistGeneralDB\}, \$char: Str(\$\{Chatters:AE:to:topsy\}), \$queue: "guide", \$assisttext: \$assisttext, \$log: "[TAS]");
+    \}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:refuse_pay">
+         X[M] \$sugarmama = \$par["sugarmama"];
+\$sugarbaby = \$par["sugarbaby"];
+\$total = \$par["total"];
+\$evoke = \$par["evoke"];
+
+EmitTo(\$sugarmama, Describe(\$sugarbaby) + " refuses your offer of " + ironclaw::describe_money(\$amount: \$total) + ".");
+EmitTo(\$sugarbaby, "You refuse " + Describe(\$sugarmama) + "'s offer of " + ironclaw::describe_money(\$amount: \$total) + ".");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1424965679, "jominey", "E", 1424965701, "jominey", "E", 1424965809, "jominey", "E", 1424965859, "jominey", "E", 1424967835, "jominey", "E", 1424967864, "jominey", "E", 1424967884, "jominey", "E", 1424967986, "jominey", "E", 1427520784, "jominey", "E", 1427521208, "jominey", "E", 1427521236, "jominey", "E", 1451259082, "tonyd", "E", 1451259149, "tonyd", "P", 1451259177, "tonyd", "P", 1451259225, "tonyd", "P", 1451259407, "tonyd", "P", 1451259509, "tonyd", "P", 1451259536, "tonyd", "P", 1451259589, "tonyd", "P", 1451259629, "tonyd", "P", 1451259681, "tonyd", "P", 1451259716, "tonyd", "P", 1451259986, "tonyd", "P", 1451259997, "tonyd", "P", 1451260013, "tonyd", "P", 1451260044, "tonyd", "P", 1451260049, "tonyd", "P", 1451260174, "tonyd", "P", 1451260332, "tonyd", "P", 1451260359, "tonyd", "P", 1451260434, "tonyd", "P", 1451260469, "tonyd", "P", 1451260498, "tonyd", "P", 1451260502, "tonyd", "P", 1571956688, "jominey", "E", 1571957449, "jominey", "R", 1571957504, "jominey", "R", 1647746407, "ezralee", "E", 1647746521, "ezralee", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

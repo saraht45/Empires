@@ -1,0 +1,491 @@
+<object clone="/obj/properties" owner="annemairi">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="description:cut:1">
+         X[S] A deep cut \{crosses\|lies across\|decorates\} \<describe what="\$(target)"/\>.
+      </Core:Property>
+      <Core:Property property="description:hurt:1">
+         X[S] \<describe what="\$(target)"/\> appears to have been \{badly\|seriously\} hurt.
+      </Core:Property>
+      <Core:Property property="description:lash:1">
+         X[S] \{Angry\|Painful\|Nasty\|Raised\} red welts \{stripe\|cross\|crisscross\} \<describe what="\$(target)"/\>.
+      </Core:Property>
+      <Core:Property property="description:lash:1-2">
+         X[S] \{Angry\|Painful\|Nasty\|Raised\} white welts \{stripe\|cross\|crisscross\} \<describe what="\$(target)"/\>.
+      </Core:Property>
+      <Core:Property property="export:log:creator">
+         "Azrael"
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_hit">
+         X[M] /* what information do we have for the injury? */
+
+if(!\$action) error("Combat: No action passed");
+if(!\$action \|\| sizeof(\$action) \< 4) error("Action value not properly passed.");
+
+/*EmitTo(\$actor, \$action[4]["injury"]);
+EmitTo(\$actor, dump_value(\$action[4]));
+EmitTo(\$actor, dump_value(\$action));*/
+
+/* can't target the default */
+/* EXTENSION: this list of random targets should be updated based on weapon/injury type */
+if(NRefDetail(\$hitlocation) == "default") \$hitlocation = NewNRef(\$victim, "body");
+
+/* do we have a script for this injury type? */
+if(\$action[4]["lib"] \&\& \$action[4]["injury"] \&\& FindMerry(\$action[4]["lib"], "lib", \$action[4]["injury"])) \{
+ \$info = Call(\$action[4]["lib"], \$action[4]["injury"]);
+\}else if(\$action[4]["injury"] \&\& FindMerry(\$this, "lib", \$action[4]["injury"])) \{
+ \$info = Call(\$this, \$action[4]["injury"]);
+\} else if(\$action[1] \&\& FindMerry(\$this, "lib", \$action[1])) \{
+ \$info = Call(\$this, \$action[1]);
+\} else \{
+ \$info = Call(\$this, "hurt");
+\}
+
+/* describe the reaction to the hit */
+EmitTo(\$attacker, Str(\$info["desc1"]));
+EmitTo(\$victim, Str(\$info["desc2"]));
+EmitIn(\$victim."base:environment", Str(\$info["desc3"]), \$attacker, \$victim);
+
+/* give an injury */
+if(Int(\$victim."combat:damage") \<= 36) \{
+ \$victim."combat:damage" = Int(\$victim."combat:damage") + Int(\$action[3]);
+ if(Int(\$victim."combat:damage") \> 36) \$victim."combat:damage" = 36;
+ /* Add them to the list of people to be healed */
+ \$\{Ironclaw:Lib:Combat:Cards:Injuries\}.characters \|= (\{ \$victim \});
+\}
+
+/* give an injury description */
+
+/* EXTENSION: The specific hit should be able to optionally give wound type */
+
+/* \$hitlocation */
+/*EmitTo(\$actor, \$action[4]["injury"]);
+EmitTo(\$actor, dump_value(\$action[4]));
+EmitTo(\$actor, dump_value(\$action));*/
+
+\$location = "combat:injury:"+NRefDetail(\$hitlocation);
+\$target = NRefOb(\$hitlocation);
+
+\$inj_mapping = Get(\$target, \$location);
+if(!\$inj_mapping)
+ \$inj_mapping = ([ ]);
+/* increase the total damage done to this bodypart */
+if(\$inj_mapping["total"]) \{
+ \$inj_mapping["total"] += Int(\$action[3]);
+\} else \{
+ \$inj_mapping["total"] = Int(\$action[3]);
+\}
+/* add this injury to the listing */
+if(!\$inj_mapping["injuries"])
+ \$inj_mapping["injuries"] = ([ ]);
+/* do we have a type? */
+/* NOT WRITTEN YET */
+\$type = "hurt";
+if(!\$inj_mapping["injuries"][\$type])
+ \$inj_mapping["injuries"][\$type] = (\{\});
+
+\$inj_mapping["injuries"][\$type] += (\{ (\{ Int(\$action[3]), \$action[4], ([]) \}) \});
+Set(\$target, \$location, \$inj_mapping);
+
+/* old code */
+/* Call(\$\{IronClaw:Lib:Combat:Lib-old\}, "grant-damage", \$target: \$hitlocation, \$damage: \$action[3], \$weapon: \$action[4]["weapon"], \$newcombat: 1); */
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:description:hurt">
+         X[M] string output;
+output = "You see some sort of gory wound.";
+
+/* \$az = \$\{Chatters:IC:az:azrael\};
+EmitTo(\$az, dump_value(args));
+EmitTo(\$az, dump_value(\$injury)); */
+
+/* do we already have a choice for which description to display? */
+if(!\$injury[2]["description"]) \$injury[2]["description"] = ([ ]);
+if(!\$injury[2]["description"]["choice"]) \{
+ /* choose the description based on how much damage has been done already */
+ if(\$injury[0] == 1) \{
+  \$injury[2]["description"]["choice"] = random(2);
+ \} else if(\$injury[0] == 2) \{
+  \$injury[2]["description"]["choice"] = random(2)+2;
+ \} else if(\$injury[0] == 3) \{
+  \$injury[2]["description"]["choice"] = 4;
+ \} else if(\$injury[0] == 4) \{
+  \$injury[2]["description"]["choice"] = 5;
+ \} else if(\$injury[0] == 5) \{
+  \$injury[2]["description"]["choice"] = 6;
+ \} else if(\$injury[0] == 6) \{
+  \$injury[2]["description"]["choice"] = random(2)+7;
+ \} else \{
+  \$injury[2]["description"]["choice"] = random(10);
+ \}
+\}
+
+\$choice = \$injury[2]["description"]["choice"];
+if(\$choice == 0) \{
+ output = "The flesh has been "+oneof("grazed","scraped","scratched","nicked")+oneof("",""," superficially")+" on the surface of "+Describe(\$target, nil, \$target)+". "+oneof("Scarce","Limited","Scant","Sparse")+" amounts of blood filter to the top of the site in an attempt to scab over.";
+\} else if(\$choice == 1) \{
+ output = "The skin on "+Describe(\$target, nil, \$target)+" has been "+oneof("punctured","penetrated","perforated","pierced")+" just enough to be noticeable. A "+oneof("modest","piddling","trivial")+" pool of blood now fills the shallow "+oneof("hole","cavity","niche")+" and has begun to dry over.";
+\} else if(\$choice == 2) \{
+ output = "The skin/flesh on "+Describe(\$target, nil, \$target)+" has been "+oneof("faintly","lightly","delicately","mildly","indistinctly","slightly","thinly")+" marked by a "+oneof("sharp","keen-edged","pointy","tapered")+" blade. Any "+oneof("traces","fragments","hints","indications","remnants","nuances","signs","streaks")+" of blood are "+oneof("minimal","inappreciable","minor","minute")+", and no cause for "+oneof("concern","distress")+".";
+\} else if(\$choice == 3) \{
+ output = "A mere "+oneof("scratch","blemish","score","scrape")+" decorates the surface of "+Describe(\$target, nil, \$target)+". The "+oneof("flesh","skin")+" is "+oneof("raised","elevated")+", slightly "+oneof("puffy","bulgy","inflamed","swollen","aggravated","distended")+", and "+oneof("red","bloodshot","crimson-colored","florid","rubicund","ruddy red")+".";
+\} else if(\$choice == 4) \{
+ output = "A "+oneof("horrible","daunting","dire","dreadful","formidable","horrid","horrific","terrible")+" gash, fresh and brightly "+oneof("leaking","oozing","passing","spilling","trickling","dripping","discharging")+" vital life blood.";
+\} else if(\$choice == 5) \{
+ output = "A "+oneof("horrible","daunting","dire","dreadful","formidable","horrid","horrific","terrible")+" gash, "+oneof("swollen","inflated","distended","bulging","protruding","puffy")+" and "+oneof("thick","fat","chunky","pudgy","thickset")+" with "+oneof("congealing","clotting","coagulating","compressing","gooey","gloppy","gummous","viscous")+" blackened blood and tissue. An "+oneof("unpleasant","abhorrent","obnoxious","unpalatable","icky","objectionable")+" smell seems to permeate the air around it.";
+\} else if(\$choice == 6) \{
+ output = "A "+oneof("deep","deep-seated","profound","rooted","grave","severe")+" puncture wound marks "+Describe(\$target)+"'s flesh, allowing a "+oneof("steady","constant","continuous","incessant","neverending")+" stream of blood to "+oneof("trickle","dribble","drip","percolate","seep","flow","ooze","weep")+" outward.";
+\} else if(\$choice == 7) \{
+ output = "A "+oneof("large","colossal","enormous","generous","giant","gigantic","massive","sizable")+", "+oneof("jagged","barbed","ragged","notched","irregular","ridged","rough","rugged","scabrous","uneven")+" hole has been ripped into the skin of "+Describe(\$target, nil, \$target)+", "+oneof("penetrating","driving","drilling","encroaching","ingressing","perforating","pervading")+" deeply into the body and exposing underlying muscle and sinew.";
+\} else if(\$choice == 8) \{
+ output = "The "+oneof("flesh","body tissue","skin","meat")+" is horribly torn asunder, bone revealing itself to the air as it "+oneof("oozes","leaks","passes","spills","gushes","discharges")+" vital "+oneof("life blood","fluids")+".";
+\} else \{
+ output = "The "+oneof("flesh","skin","meat","tissue")+" on "+Describe(\$target, nil, \$target)+" has been torn open causing blood to freely escape the body.";
+\}
+
+
+return output;
+
+return "You see some sort of gory wound.";
+
+/*
+The flesh has been grazed/scraped/scratched/nicked superficially on the surface of (person's) (body part) with a sharp object. Scarce/Limited/Scant/Sparse amounts of blood filter to the top of the site in an attempt to scab over.
+
+The skin on (person's) (body part) has been punctured/penetrated/perforated/pierced just enough to be noticeable. A modest/piddling/trivial pool of blood now fills the shallow hole/cavity/niche and has begun to dry over.
+
+The skin/flesh on (person's) (body part) has been faintly/lightly/delicately/mildly/indistinctly/slightly/thinly marked by a sharp/keen-edged/pointy/razor-sharp/tapered blade. Any traces/fragments/hints/indications/remnants/nuances/signs/streaks of blood are minimal/inappreciable/minor/minute, and no cause for concern/distress.
+
+A mere scratch/blemish/score/scrape decorates the surface of (person's) (body part). The flesh/skin is raised/elevated, slightly puffy/bulgy/mildly inflamed/slightly swollen/mildly aggravated/somewhat distended, and red/bloodshot/crimson-colored/florid/rubicund/ruddy red.
+
+A horrible/daunting/dire/dreadful/formidable/horrid/horrific/terrible gash, fresh and brightly leaking/oozing/passing/spilling/trickling/dripping/discharging vital life blood.
+
+A horrible/daunting/dire/dreadful/formidable/horrid/horrific/terrible gash, swollen/inflated/distended/bulging/protruding/puffy and thick/fat/chunky/pudgy/thickset with congealing/clotting/coagulating/compressing/gooey/gloppy/gummous/viscous blackened blood and tissue. An unpleasant/abhorrent/obnoxious/unpalatable/icky/objectionable smell seems to permeate the air around it.
+
+This wound seems near lethal; the flesh/body tissue/skin/meat horribly torn asunder, bone revealing itself to the air as it oozes/leaks/passes/spills/gushes/discharges vital life blood/fluids.
+
+A deep/deep-seated/profound/rooted/grave/severe puncture wound marks (person's) flesh allowing a steady/constant/continuous/incessant/neverending stream of blood to trickle/dribble/drip/percolate/seep/flow/ooze/weep outward.
+
+A large/colossal/enormous/generous/giant/gigantic/massive/sizable, jagged/barbed/ragged/notched/irregular/ridged/rough/rugged/scabrous/uneven hole has been ripped into the skin of (person's) (body part), penetrating/driving/drilling/encroaching/ingressing/perforating/pervading deeply into the body and exposing underlying muscle and sinew.
+
+The flesh/skin/meat/tissue on (person's) (body part) has been torn open causing blood to freely escape the body.
+*/
+      </Core:Property>
+      <Core:Property property="merry:lib:description:infection">
+         X[M] /* describe the infection */
+string output;
+output = "";
+
+/* can't see the infection if it's not bad enough */
+if(\$complication["value"] \< 5) return "";
+
+if(\$complication["increasing"] \&\& \$complication["value"] \<= 10) \{
+ /* still getting worse */
+ return " The sheen from some milky yellow pus has begun to cover "+Describe(\$target, nil, \$actor)+".";
+\} else if(\$complication["value"] \> 10) \{
+ /* very infected */
+ return " The thick yellow pus draining from "+Describe(\$target, nil, \$actor)+" has begun to crust over near the edges. Angry black veins pulse across the infection site, and "+Describe(\$target, nil, \$actor)+\$isare+" swollen and hot to touch.";
+\} else if(\$complication["value"] \> 5) \{
+ /* very infected */
+ return " The thick yellow pus draining from "+Describe(\$target, nil, \$actor)+" has begun to crust over near the edges.";
+\} else \{
+ /* less infected, and not getting worse */
+ return " Scabs of thick yellow pus still coat "+Describe(\$target, nil, \$actor)+".";
+\}
+/* should have already returned something */
+return "[Error: complication description not generated correctly.]";
+      </Core:Property>
+      <Core:Property property="merry:lib:hurt">
+         X[M] /* return info for this injury type */
+mapping output;
+
+/*EmitTo(\$actor, dump_value(\$action));*/
+\$az = \$\{Chatters:AE:az:azrael\};
+
+\$desc = \$action[4]["injury"];
+if(!\$desc) \$desc = \$action[1];
+
+\$choices = map_indices(prefixed_map(this."*", "description:"+\$desc+":"+Str(\$action[3])));
+
+/* sanity checking in case there isn't a description for every level */
+if(!sizeof(\$choices))
+ \$choices = map_indices(prefixed_map(this."*", "description:"+\$desc+":"));
+
+if(!sizeof(\$choices)) \{
+ \$desc = "hurt";
+ \$choices = map_indices(prefixed_map(this."*", "description:hurt:"+Str(\$action[3])));
+\}
+
+if(!sizeof(\$choices))
+ \$choices = map_indices(prefixed_map(this."*", "description:hurt:"));
+
+\$choices = \$choices[random(sizeof(\$choices))];
+\$choices = \$choices[strlen("description:"+\$desc+":")..];
+
+if(\$action[3] == 1) \{
+ \$desc1 = Describe(\$victim)+" winces as "+Describe(\$action[4]["weapon"], nil, \$attacker)+" connects with "+Describe(\$hitlocation, \$victim)+".";
+ \$desc2 = "A stinging sensation shoots through "+Describe(\$hitlocation, nil, \$victim)+" as "+Describe(\$action[4]["weapon"], \$attacker)+" connects with it.";
+ \$desc3 = Describe(\$victim)+" winces as "+Describe(\$action[4]["weapon"])+" connects with "+Describe(\$hitlocation, \$victim)+".";
+\} else if(\$action[3] == 2) \{
+ \$desc1 = Describe(\$victim)+" grunts in discomfort against your onslaught.";
+ \$desc2 = "You grunt in discomfort against "+Describe(\$attacker)+"'s onslaught.";
+ \$desc3 = Describe(\$victim)+" grunts in discomfort against "+Describe(\$attacker)+"'s onslaught.";
+\} else if(FALSE \&\& \$action[3] == 3) \{
+ \$desc1 = Describe(\$victim)+" recoils in pain from your assault.";
+ \$desc2 = "You recoil in pain from "+Describe(\$attacker)+"'s assault.";
+ \$desc3 = Describe(\$victim)+" recoils in pain from "+Describe(\$attacker)+"'s assault.";
+\} else if(\$action[3] == 4) \{
+ \$tmpverb = (\{ (\{"hiss", "hisses"\}), (\{"whimper","whimpers"\}), (\{"cry","cries"\}), (\{"moan","moans"\}) \});
+ \$tmpverb = \$tmpverb[random(sizeof(\$tmpverb))];
+ \$desc1 = "Gritting "+\$victim."base:possessive"+" teeth, "+Describe(\$victim)+" "+\$tmpverb[1]+" in pain.";
+ \$desc2 = "You grit your teeth and "+\$tmpverb[0]+" in pain.";
+ \$desc3 = "Gritting "+\$victim."base:possessive"+" teeth, "+Describe(\$victim)+" "+\$tmpverb[1]+" in pain.";
+\} else if(\$action[3] == 5) \{
+ \$tmpverb = (\{ (\{"howl", "howls"\}), (\{"scream","screams"\}), (\{"wail","wails"\}), (\{"roar","roars"\}) \});
+ \$tmpverb = \$tmpverb[random(sizeof(\$tmpverb))];
+ \$desc1 = Describe(\$victim)+" "+\$tmpverb[1]+" in anguish as "+\$victim."base:pronoun"+" takes the full brunt of your attack.";
+ \$desc2 = "You "+\$tmpverb[0]+" in anguish as you take the full brunt of "+Describe(\$attacker)+"'s attack.";
+ \$desc3 = Describe(\$victim)+" "+\$tmpverb[1]+" in anguish as "+\$victim."base:pronoun"+" takes the full brunt of "+Describe(\$attacker)+"'s attack.";
+\} else if(\$action[3] == 6) \{
+ \$desc1 = Describe(\$action[4]["weapon"], nil, \$attacker)+" bites deeply into "+Describe(\$hitlocation, \$victim)+", elicting throes of agony.";
+ \$desc2 = Describe(\$action[4]["weapon"], \$attacker)+" bites deeply into "+Describe(\$hitlocation, nil, \$victim)+", elicting throes of agony.";
+ \$desc3 = Describe(\$action[4]["weapon"])+" bites deeply into "+Describe(\$hitlocation, \$victim)+", elicting throes of agony.";
+\} else \{
+ \$desc1 = Describe(\$victim)+" bleeds from "+Describe(\$hitlocation, \$victim)+".";
+ \$desc2 = "You bleed from "+Describe(\$hitlocation, nil, \$victim)+".";
+ \$desc3 = Describe(\$victim)+" bleeds from "+Describe(\$hitlocation, \$victim)+".";
+
+
+switch(random(6)) \{
+ case 5:
+  \$desc1 = Describe(\$victim)+" cries out in pain.";
+  \$desc2 = "You cry out from the pain.";
+  \$desc3 = Describe(\$victim)+" cries out from the pain.";
+  break;
+ case 4:
+  \$desc1 = Describe(\$victim)+" collapses to "+\$victim."base:possessive"+" knees.";
+  \$desc2 = "You collapse to your knees.";
+  \$desc3 = Describe(\$victim)+" collapses to "+\$victim."base:possessive"+" knees.";
+  break;
+ case 3:
+  \$desc1 = Describe(\$victim)+" stumbles from your hit.";
+  \$desc2 = "You stumble, from that last hit.";
+  \$desc3 = Describe(\$victim)+" stumbles from the hit.";
+  break;
+ case 2:
+  \$desc1 = Describe(\$victim)+" howls in pain.";
+  \$desc2 = "You howl from the pain.";
+  \$desc3 = Describe(\$victim)+" howls from the pain.";
+  break;
+ case 1:
+  \$desc1 = Describe(\$victim)+" staggers backwards, temporarily stunned.";
+  \$desc2 = "You stagger backwards, while trying to gather your wits.";
+  \$desc3 = Describe(\$victim)+" staggers backwards, temporarily stunned.";
+  break;
+ default:
+  \$desc1 = Describe(\$victim)+" bleeds from "+Describe(\$hitlocation, \$victim)+".";
+  \$desc2 = "You bleed from "+Describe(\$hitlocation, nil, \$victim)+".";
+  \$desc3 = Describe(\$victim)+" bleeds from "+Describe(\$hitlocation, \$victim)+".";
+  break;
+\}
+
+\}
+
+output = ([ "desc":\$desc, "longdesc":\$choices, "desc1":\$desc1, "desc2":\$desc2, "desc3":\$desc3, "extras":([ ]) ]);
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_injuries">
+         X[M] /* show injuries for this body part */
+string output, desc;
+int i;
+output = "";
+\$victim = NRefOb(\$target);
+\$detail = NRefDetail(\$target);
+
+/* TEST CODE */
+/* This code is using the new wound describing stuff */
+\$description = Call(\$\{Ironclaw:Staff:Az:test:WoundsLib\}, "show_wound", \$location: \$target, \$looker: \$actor, \$level: "look");
+if(\$description \&\& \$description != "") return "\\n"+capitalize(\$description);
+/* If we don't get a description with the new wound code, use the old code */
+/* END TEST CODE */
+
+/* are there any injuries? */
+if(Get(\$victim, "combat:injury:"+\$detail)) \{
+    \$injuries = Get(\$victim, "combat:injury:"+\$detail);
+\} else \{
+    return output;
+\}
+
+/* is there any information in the injuries mapping? */
+if(typeof(\$injuries) != T_MAPPING \|\| !sizeof(map_indices(\$injuries))) \{
+    Set(\$victim, "combat:injury:"+\$detail, nil);
+    return output;
+\}
+
+/* what is the observers medical skill? */
+\$firstaid = Int(\$actor."skill:mental:first-aid");
+
+if(Int(\$actor."career:mental:first-aid") \> \$firstaid)
+    \$firstaid = Int(\$actor."career:mental:first-aid");
+
+/* is the detail plural? */
+if(Get(\$victim, "details:"+\$detail+":plural")) \{
+    \$isare = " are";
+\} else \{
+    \$isare = " is";
+\}
+
+/* is it bandaged? */
+if(\$injuries["bandaged"]) \{
+ /* describe the bandage */
+ if(sizeof(\$injuries["bandaged"]) \> 1)
+  \$bandage = \$injuries["bandaged"][1]+" ";
+ if(sizeof(\$injuries["bandaged"]) \> 2)
+  \$bandage = \$injuries["bandaged"][2]+" "+\$bandage;
+ if(sizeof(\$injuries["bandaged"]) \> 3) \{
+  \$bandage = \$bandage+\$injuries["bandaged"][3];
+ \} else \{
+  \$bandage = \$bandage+"bandage";
+ \}
+
+ if(\$injuries["bandaged"][0] \< 0) \{
+  /* If the bandage has been disturbed */
+  return capitalize(Describe(\$target, nil, \$actor))+\$isare+" covered with a bloody "+\$bandage+". The bandage looks like it really needs to be changed.";
+ \} else if(\$injuries["bandaged"][0] == 0) \{
+  /* if the bandage is finished */
+  return capitalize(Describe(\$target, nil, \$actor))+\$isare+" covered with a grubby "+\$bandage+". The bandage looks like it might need to be changed.";
+ \} else if(\$firstaid \>= 5 \&\& \$injuries["bandaged"][0] \< 3 \&\& \$injuries["total"] \&\& \$injuries["total"] \> \$injuries["bandaged"][0]) \{
+  /* if the bandage is needs replacing soon */
+  return capitalize(Describe(\$target, nil, \$actor))+\$isare+" covered with a slightly grubby "+\$bandage+". The bandage looks like it might need to be changed soon.";
+ \} else \{
+  return capitalize(Describe(\$target, nil, \$actor))+\$isare+" covered with a "+\$bandage+".";
+ \}
+\}
+
+/* example: Property: combat:injury:calves = ([ "bandaged":(\{ 1, "silk", "blue", "wrapping" \}), "total":3 ]) */
+
+/* grab the basic complications info */
+if(\$injuries["complications"]) \{
+ \$basiccomplications = \$injuries["complications"];
+\} else \{
+ \$basiccomplications = ([ ]);
+\}
+
+/* do we have any injuries to display? */
+if(\$injuries["injuries"] \&\& sizeof(map_indices(\$injuries["injuries"]))) \{
+ for(\$i = 0; \$i\<sizeof(map_indices(\$injuries["injuries"]));\$i++) \{
+  \$injury = Arr(\$injuries["injuries"][map_indices(\$injuries["injuries"])[\$i]]);
+
+  /* if more than one of this injury type, count them */
+  if(sizeof(\$injury) \> 1) \{
+      if(sizeof(\$injury) \> \$firstaid+2) \{
+          output += "You see multiple "+Str(map_indices(\$injuries["injuries"])[\$i])+"s. ";
+      \} else \{
+          output += "You see "+desc_cardinal(sizeof(\$injury))+" "+Str(map_indices(\$injuries["injuries"])[\$i])+"s. ";
+      \}
+  \}
+
+  /* find the worst injury to describe */
+  \$index = -1;
+  \$max = 0;
+  for(\$j=0;\$j\<sizeof(\$injury);\$j++) \{
+      if(\$injury[\$j][0] \>= \$max) \{
+          \$index = \$j;
+          \$max = \$injury[\$j][0];
+      \}
+  \}
+
+  if(\$index != -1) \{
+      /* now describe this injury */
+      \$injury = \$injury[\$index];
+      if(\$injury[1]["location"]) \{
+          \$location = \$injury[1]["location"];
+      \} else \{
+          \$location = nil;
+      \}
+
+      if(\$injury[1]["weapon"]) \{
+          \$weapon = \$injury[1]["weapon"];
+      \} else \{
+          \$weapon = nil;
+      \}
+
+      if(\$weapon \&\& FindMerry(\$weapon, "lib", "description:hurt")) \{
+          output += Call(\$weapon, "description:hurt");
+      \} else if(\$location \&\& FindMerry(\$location, "lib", "description:"+map_indices(\$injuries["injuries"])[\$i]) )\{
+          output += Call(\$location, "description:"+map_indices(\$injuries["injuries"])[\$i] );
+      \} else if( FindMerry(this, "lib", "description:"+map_indices(\$injuries["injuries"])[\$i]) ) \{
+          output += Call(this, "description:"+map_indices(\$injuries["injuries"])[\$i] );
+      \} else if( FindMerry(this, "lib", "description:hurt") ) \{
+          output += Call(this, "description:hurt");
+      \}
+      output += " ";
+  \}
+ \}
+\}
+
+/* example: Property: combat:injury:calves = ([ "injuries":([ "cut":(\{ (\{ 3, ([ "location":\<Ironclaw:Lib:Combat:New:hitdescription\> ]), ([ ]) \}), (\{ 1, ([]), ([]) \}) \}) ]), "total":3 ]) */
+
+/* do we have any further complications to display? */
+if(sizeof(map_indices(\$basiccomplications))) \{
+ for(\$i=0;\$i\<sizeof(map_indices(\$basiccomplications));\$i++) \{
+  \$complication = \$basiccomplications[map_indices(\$basiccomplications)[\$i]];
+  if( \$complication["location"] \&\& FindMerry(\$complication["location"], "lib", "description:"+map_indices(\$basiccomplications)[\$i]) ) \{
+   output += Call(\$complication["location"], "description:"+map_indices(\$basiccomplications)[\$i] );
+  \} else if( FindMerry(this, "lib", "description:"+map_indices(\$basiccomplications)[\$i]) ) \{
+   output += Call(this, "description:"+map_indices(\$basiccomplications)[\$i] );
+  \}
+ \}
+\}
+
+/* example: Property: combat:injury:calves = ([ "injuries":([ "cut":(\{ (\{ 3, ([ ]), ([ ]) \}) \}) ]), "total":3, "complications":([ "infection":([ "increasing":1, "value":12 ]) ]) ]) */
+
+
+/* example: Property: combat:injury:calves = ([ "injuries":([  ]), "total":3 ]) */
+
+
+/* all in one example: Property: combat:injury:calves = ([ "bandaged":(\{ 1, "silk", "blue", "wrapping" \}), "total":3 ]) */
+
+
+return output;
+
+
+
+/*output += dump_value(args);*/
+for(i=0;i\<sizeof(\$injuries);i++) \{
+ \$injury = \$injuries[i];
+ output += UnSAM(Get(\$injury["ob"], "description:"+\$injury["injury"]+":"+\$injury["id"]))+" ";
+\}
+
+
+return output;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1272177840, "tonyd", "E", 1272178268, "tonyd", "P", 1272178451, "tonyd", "P", 1272179563, "tonyd", "P", 1272179631, "tonyd", "P", 1272179919, "tonyd", "P", 1272180055, "tonyd", "P", 1272180145, "tonyd", "P", 1272180244, "tonyd", "P", 1272180319, "tonyd", "P", 1272180505, "tonyd", "P", 1272180570, "tonyd", "P", 1272180644, "tonyd", "P", 1272181462, "tonyd", "P", 1272182330, "tonyd", "P", 1272182423, "tonyd", "P", 1272182771, "tonyd", "P", 1272182786, "tonyd", "P", 1272182990, "tonyd", "P", 1276687565, "tonyd", "E", 1278395554, "tonyd", "P", 1278494157, "tonyd", "P", 1278494203, "tonyd", "P", 1278509799, "tonyd", "P", 1278559282, "tonyd", "P", 1278559307, "tonyd", "P", 1278560228, "tonyd", "P", 1278584567, "tonyd", "E", 1278997977, "tonyd", "P", 1278998035, "tonyd", "P", 1283026079, "jominey", "E", 1283026225, "jominey", "E", 1283026844, "jominey", "E", 1283026869, "jominey", "E", 1283028584, "jominey", "E", 1283029805, "jominey", "E", 1283029854, "jominey", "E", 1283029917, "jominey", "E", 1283029957, "jominey", "E", 1283030019, "jominey", "E", 1283030124, "jominey", "E", 1287003584, "jominey", "E", 1306539256, "jominey", "E", 1306540079, "jominey", "E", 1306540132, "jominey", "E", 1306545019, "jominey", "E", 1307140333, "jominey", "E", 1307140401, "jominey", "E", 1307140482, "jominey", "E", 1307140532, "jominey", "E", 1307140558, "jominey", "E", 1307140661, "jominey", "E", 1344122928, "jominey", "E", 1344122972, "jominey", "E", 1344123166, "jominey", "E", 1344123408, "jominey", "E", 1344123439, "jominey", "E", 1344125396, "jominey", "E", 1344125612, "jominey", "E", 1344125678, "jominey", "E", 1350970856, "tonyd", "P", 1350970871, "tonyd", "P", 1350970881, "tonyd", "P", 1350970977, "tonyd", "P", 1350971125, "tonyd", "P", 1350971175, "tonyd", "P", 1421627123, "rorschakovacs", "E" \})
+      </Core:Property>
+      <Core:Property property="thoughts">
+         X[M] /*
+So... what do we need?
+
+We need an injury:
+- one word description (lashed, cut, etc.)
+- larger description when looked at or examined
+- healing description
+
+We need a description to show damage was done
+- maybe based on the injury? like "Azrael's whip leaves dark red welts across Bob's right shoulder"
+
+Other complications
+- like infection, poison etc.
+
+
+example of property in body:
+Property: combat:injury:calves = ([ "complications":([ "infection":([ "increasing":1, "value":12 ]) ]), "injuries":([ "cut":(\{ (\{ 5, ([ ]), ([ "description":([ "choice":6 ]) ]) \}) \}) ]), "total":3 ])
+
+*/
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

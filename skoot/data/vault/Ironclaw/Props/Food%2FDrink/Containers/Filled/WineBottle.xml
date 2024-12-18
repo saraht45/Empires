@@ -1,0 +1,91 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Props:Food/Drink:Containers:WineBottle)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:sys:shared:consume:closed">
+         1
+      </Core:Property>
+      <Core:Property property="export:sys:shared:consume:contents">
+         \<Ironclaw:Props:Food/Drink:Drinks:wine\>
+      </Core:Property>
+      <Core:Property property="merry:react:open-what">
+         X[M] /* opening the bottle */
+int roll;
+
+/* is it still sealed? */
+if(!this."sys:shared:consume:closed") return TRUE;
+
+/* are they sabering the bottle? */
+if(\$using \&\& sizeof(\$using) == 1 \&\& (NRefOb(\$using[0])."details:default:snames:sabre" \|\| NRefOb(\$using[0])."details:default:snames:saber" \|\| NRefOb(\$using[0])."details:default:snames:rapier")) \{
+ roll = ironclaw::roll(\$skills: (\{"social:sabering"\}), \$bonus: "trait:mind");
+ /* open it */
+ this."sys:shared:consume:closed" = 0;
+ /* fill it */
+ shared_consumable::consumable_add(\$what: this."sys:shared:consume:contents", \$where: this);
+ /* emote the sabering */
+ if(roll \> random(12)) \{
+   /* success. They slice off the bottle cap. */
+   EmitTo(\$actor, "With a smooth swing, you slide "+Describe(\$using[0], nil, \$actor)+" up the neck of "+Describe(this, nil, \$actor)+", slicing off the cap.");
+   EmitIn(\$actor."base:environment", "With a smooth swing, "+Describe(\$actor)+" slides "+Describe(\$using[0], \$actor)+" up the neck of "+Describe(this, \$actor)+", slicing off the cap.", \$actor);
+ \} else \{
+   /* failure, they smashed the bottle */
+   EmitTo(\$actor, "You swing "+Describe(\$using[0], nil, \$actor)+" at the neck of "+Describe(this, nil, \$actor)+", smashing it, and spilling "+Describe(this."base:inventory")+" everywhere.");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+" swings "+Describe(\$using[0], \$actor)+" at the neck of "+Describe(this, \$actor)+", smashing it, and spilling "+Describe(this."base:inventory")+" everywhere.", \$actor);
+   Slay(this);
+ \}
+ return FALSE;
+\}
+
+/* open the bottle normally */
+roll = ironclaw::roll(\$skills: (\{"social:sabering"\}), \$bonus: "trait:body");
+if(roll \<= 2) \{
+ EmitTo(\$actor, "You struggle, and fail, to open "+Describe(this, nil, \$actor)+".");
+ EmitIn(\$actor."base:environment", Describe(\$actor)+" struggles, and fails, to open "+Describe(this, \$actor)+".", \$actor);
+ return FALSE;
+\} else if(roll \<= 4) \{
+ EmitTo(\$actor, "You struggle momentarily with the stopper on "+Describe(this, nil, \$actor)+".");
+ EmitIn(\$actor."base:environment", Describe(\$actor)+" struggles momentarily with the stopper on "+Describe(this, \$actor)+".", \$actor);
+\}
+/* open it */
+this."sys:shared:consume:closed" = 0;
+/* fill it */
+shared_consumable::consumable_add(\$what: this."sys:shared:consume:contents", \$where: this);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1223210196, "tonyd", "P", 1223210225, "tonyd", "P", 1223210265, "tonyd", "P", 1223210427, "tonyd", "P", 1223210516, "tonyd", "P", 1223210538, "tonyd", "P", 1223211255, "tonyd", "P", 1223211269, "tonyd", "P", 1223211288, "tonyd", "P", 1223211300, "tonyd", "P", 1223211441, "tonyd", "P", 1223213465, "tonyd", "P", 1223213553, "tonyd", "P", 1223213576, "tonyd", "P", 1223213593, "tonyd", "P", 1223213758, "tonyd", "P", 1223217770, "tonyd", "P", 1223217788, "tonyd", "P", 1223217796, "tonyd", "P", 1223219577, "tonyd", "P", 1223219608, "tonyd", "P", 1223219959, "tonyd", "R", 1223220085, "tonyd", "P", 1223286336, "tonyd", "P", 1223286596, "tonyd", "P", 1223287868, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

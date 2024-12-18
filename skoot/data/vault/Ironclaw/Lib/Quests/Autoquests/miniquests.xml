@@ -1,0 +1,442 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:pay_quester">
+         X[M] /* Pay the PC some money after they complete a quest */
+if(!\$amount) return 0;
+if(!\$actor) return 0;
+
+/* Increase the PCs money */
+\$amount = Int(\$amount);
+\$actor."trait:money" = Int(\$actor."trait:money")+\$amount;
+
+/* Track this economy change */
+\$economy = \$\{Ironclaw:Lib:Economy:economy\};
+\$economy.questincome = Int(\$economy.questincome)+\$amount;
+
+/* Now record when they should next get more money */
+if(Int(\$actor."trait:income:paiduntil") \< time()-60*60*24*7  ) \{
+  \$actor."trait:income:paiduntil" = time()-60*60*24*7;
+\}
+
+/* What percent of a day's wages was this payment? */
+\$income = Int(\$actor."trait:income")+Int(\$actor."trait:extraincome");
+if(\$income \<= 0) \$income = \$amount; /* In case they don't have an income set, make this worth 1 day's income */
+\$percent = Flt(\$amount) / Flt(\$income);
+\$actor."trait:income:paiduntil" += Int(Flt(60*60*24)*\$percent);
+
+return ironclaw::describe_money(\$amount: \$amount);
+      </Core:Property>
+      <Core:Property property="merry:lib:quest:deliver_letter">
+         X[M] /* A quest where an NPC asks the PC to deliver a letter to another PC */
+/* sanity check */
+if(!\$actor) return FALSE;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+\$debugger = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$debugger, "Checking deliver letter quest");
+
+/* Quest still in development */
+/* Only allow the coder to be given this quest, until it's finished being coded */
+if(\$actor != \$debugger) return FALSE;
+
+/* How much should this quest pay? (modified for the current economy) */
+\$payment = 400;
+
+
+
+if(\$state == "check_valid") \{
+  /* Is this a valid quest to run? */
+EmitTo(\$az, "Checking "+Describe(\$actor)+" for letter delivery quest");
+  /* Don't ask if they are already answering a question */
+  if(\$actor."question:id") return FALSE;
+  /* They won't get offered this quest if they've already earned too much daily income */
+  if(Int(\$actor."trait:income:paiduntil") \> time()) return FALSE;
+  /* They may only deliver one letter at a time */
+  if(\$actor."quest:miniquests"["deliver letter"]) return FALSE;
+  /* Make sure they aren't busy */
+  if(ironclaw::busy_check(\$character: \$actor)) return FALSE;
+
+  /* It's a valid quest */
+  return TRUE;
+\} else if(\$(quest:callback)) \{
+  /* The letter has been delivered, and has called this function */
+  \$(quest:callback) = nil;
+
+  EmitTo(\$actor, "You hand "+Describe(\$item, nil, \$actor)+" to "+Describe(\$who)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" hands "+Describe(\$item, \$actor)+" to "+Describe(\$who)+".", \$actor);
+  EmitIn(\$actor."base:environment", Describe(\$who)+" scans the list and nods, \\"I'll see that these are delivered. Thank you.\\"");
+
+  /* Is this quest still valid? */
+  if(\$id
+  \&\& sizeof(\$id) \>= 3
+  \&\& \$id[0]."quest:miniquests"
+  \&\& \$id[0]."quest:miniquests"[\$id[1]]
+  \&\& \$id[0]."quest:miniquests"[\$id[1]]["id"] == \$id[2]) \{
+    /* remove this quest from the list */
+    \$id[0]."quest:miniquests"[\$id[1]] = nil;
+
+    /* Pay the PC for this quest */
+    if(\$item."delivery:payment") \{
+      EmitTo(\$actor, Describe(\$who)+" hands you "+::pay_quester(\$amount: \$item."delivery:payment", \$actor: \$actor)+".");
+      EmitIn(\$actor."base:environment", Describe(\$who)+" hands some coins to "+Describe(\$actor)+".", \$actor);
+    \}
+
+  \}
+
+  /* Slay the letter */
+  Slay(\$item);
+  EmitTo(\$az, "Delivery letter to nurse quest completed by "+dump_value(\$actor)+" for "+dump_value(\$id[0]));
+
+  /* Finish this quest, but now trigger a new quest that follows it */
+  /*\$delay(5+random(60*3), TRUE, "82da");*/
+  \$delay(2, TRUE, "82da");
+  Call(\$\{Ironclaw:Lib:Quests:Autoquests:Autoquest\}, "run_quest", \$quest: "merry:lib:quest:deliver_letter_to_doctor", \$actor: nil);
+  return TRUE;
+\} else if(\$imperative == "@yes") \{
+  /* \$actor accepted the quest */
+
+  if(!\$actor."tmp:quests:delivery:info") return FALSE;
+  \$info = \$actor."tmp:quests:delivery:info";
+  EmitTo(\$actor, "Info is "+dump_value(\$info));
+
+  EmitTo(\$actor, "The woman thanks you, and hands you a letter.");
+  EmitIn(\$actor."base:environment", "When "+Describe(\$actor)+" agrees to help, the woman hands "+\$actor."base:pronoun"+" a letter, along with her thanks.", \$actor);
+  \$letter = Spawn(\$\{Ironclaw:Lib:Quests:Autoquests:DeliverLetter:UrLetter\});
+  \$letter."base:environment" = \$actor;
+  /* Sanity check to make sure the \$actor can carry the letter */
+  if(\$letter."base:environment" == \$actor) \{
+    /* Generate a random id */
+    \$id = random(1000000);
+    \$letter."details:default:description:writing" = \$info["text"];
+    \$letter."bonus:instructions" = \$info["instructions"];
+    \$letter."bonus:description" = \$info["description"];
+    \$letter."bonus:skill" = \$info["skill"];
+    \$letter."bonus:level" = \$info["bonus_level"];
+    \$letter."bonus:text" = \$info["bonus"];
+    \$letter."delivery:target" = nil /* defunct */;
+    \$letter."delivery:successscript" = (\{ this, "quest:deliver_letter", ([]) \}); /* object, script, parameters */
+    \$letter."delivery:id" = (\{ \$actor, "deliver letter", \$id \});
+
+    /* Pay for this quest (modified for the current economy) */
+    \$payment = ::questpayment(\$amount: \$payment);
+    \$letter."delivery:payment" = \$payment;
+/*
+    \$actor."quest:miniquests"["deliver letter"] = ([
+      "description":\$info["brief"],
+      "name":"Deliver letter",
+      "id":\$id,
+      "reward": \$payment ? ironclaw::describe_money(\$amount: \$payment) : "Gratitude" ]);
+*/
+  \} else \{
+    Slay(\$letter);
+  \}
+EmitTo(\$az, "Quest accepted by "+dump_value(\$actor));
+  return TRUE;
+\} else if(\$imperative == "@no") \{
+  /* \$actor refused the quest */
+  EmitTo(\$actor, "The woman returns to her house.");
+  EmitIn(\$actor."base:environment", "When "+Describe(\$actor)+" refuses to help, the woman returns to her house.", \$actor);
+EmitTo(\$az, "Quest refused by "+dump_value(\$actor));
+  return TRUE;
+\} else if(\$expire_fun == "quest:deliver_letter") \{
+  /* \$actor didn't answer about the quest, and the offer expired */
+  EmitTo(\$actor, "After waiting for a response, the woman figures you can't help, and returns to her house.");
+EmitTo(\$az, "Quest expired for "+dump_value(\$actor));
+  return TRUE;
+\}
+
+/* Here's the start of the quest (usually where the PC gets asked if they want to accept the quest) */
+EmitTo(\$az, "Offering delivery letter to PC quest to "+dump_value(\$actor));
+
+/* Pick a PC to deliver the letter to */
+EmitTo(\$actor, "PC list is "+dump_value(\$pcs_online));
+\$info = Call(\$\{Ironclaw:Lib:Quests:Autoquests:DeliverLetter:Library\}, "generate_professional_letter_request", \$list: \$pcs_online);
+if(!\$info) return FALSE;
+
+EmitTo(\$actor, "Info is "+dump_value(\$info));
+/* Save this info */
+\$actor."tmp:quests:delivery:info" = \$info;
+
+EmitIn(\$actor."base:environment", "A woman calls out from a doorway, \\"Excuse me?\\"");
+if(\$info["explanation"]) EmitIn(\$actor."base:environment", Str(\$info["explanation"]));
+EmitIn(\$actor."base:environment", "The woman explains, \\"After you get this signed, just drop it off with the bank clerk.\\"");
+
+\$payment = ::questpayment(\$amount: \$payment);
+if(\$payment)
+  EmitIn(\$actor."base:environment", "The woman continues, \\"I can pay you "+ironclaw::describe_money(\$amount: \$payment)+".\\"");
+else
+  EmitIn(\$actor."base:environment", "The woman apologizes, \\"I can't afford to pay you anything... but please...?\\"");
+
+if(!\$info["question"]) \$info["question"] = "Will you deliver the letter?";
+interaction::question(\$question: Str(\$info["question"]), \$expires: 60, \$env: "TRUE", \$yes_ob: this, \$expire_ob: this, \$no_ob: this, \$yes_fun: "quest:deliver_letter", \$no_fun: "quest:deliver_letter", \$expire_fun: "quest:deliver_letter");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:quest:deliver_letter_to_doctor">
+         X[M] /* A quest where an NPC asks the PC to deliver a letter */
+/* sanity check */
+if(!\$actor) return FALSE;
+
+/* How much should this quest pay? (modified for the current economy) */
+\$payment = 800;
+
+/* Significant NPCs */
+\$nurse = nil /* defunct */;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+if(\$state == "check_valid") \{
+  /* Is this a valid quest to run? */
+  int i, doctor;
+  object char;
+
+  /* Can only be offered this quest while in the infirmary */
+  if(\$actor."base:environment" != \$\{Allegory:Setting:ForteRicchezza:Buildings:Infirmary:WaitingRoom\}) return FALSE;
+  /* They won't get offered this quest if they've already earned too much daily income */
+  if(Int(\$actor."trait:income:paiduntil") \> time()) return FALSE;
+  /* They may only deliver one letter at a time */
+  if(\$actor."quest:miniquests"["deliver letter"]) return FALSE;
+  /* Make sure they aren't busy */
+  if(ironclaw::busy_check(\$character: \$actor)) return FALSE;
+  /* Is there a doctor online? */
+  doctor = FALSE;
+  for(i=0;i\<sizeof(\$pc_list)\&\&!\$doctor;i++) \{
+    char = \$pc_list[i];
+    if((Int(char."career:mental:first-aid") \>= 5
+    \|\| Int(char."skill:mental:first-aid") + Int(char."career:mental:first-aid") \>= 24)
+    \&\& (char == \$actor \|\| char."udat:object" != \$actor."udat:object"))
+      doctor = TRUE;
+  \}
+  if(!doctor) return FALSE;
+  /* It's a valid quest */
+  return TRUE;
+\} else if(\$(quest:callback)) \{
+  /* The letter has been delivered, and has called this function */
+  \$(quest:callback) = nil;
+
+  EmitTo(\$actor, "You hand "+Describe(\$item, nil, \$actor)+" to "+Describe(\$who)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" hands "+Describe(\$item, \$actor)+" to "+Describe(\$who)+".", \$actor);
+
+  /* Was the letter signed by a doctor? */
+  /* Was it signed at all? */
+  if(!\$item."lastsigner:object") \{
+    EmitIn(\$actor."base:environment", Describe(\$who)+" scans the letter, then hands it back to you, \\"This isn't signed. Please get it signed by a doctor, and bring it back here.\\"");
+    return FALSE;
+  \}
+  /* Was it signed by a doctor? */
+  if(Int(\$item."lastsigner:object"."career:mental:first-aid") \>= 5
+  \|\| Int(\$item."lastsigner:object"."skill:mental:first-aid") + Int(\$item."lastsigner:object"."career:mental:first-aid") \>= 24) \{
+    EmitIn(\$actor."base:environment", Describe(\$who)+" scans the letter and nods, \\"Perfect. Thank you.\\"");
+  \} else \{
+    EmitIn(\$actor."base:environment", Describe(\$who)+" scans the letter, then hands it back to you, \\"I don't think "+Str(\$item."details:default:descriptions:delivery-from")+" is well known as a doctor.\\"");
+    return FALSE;
+  \}
+
+  /* Is this quest still valid? */
+  if(\$id
+  \&\& sizeof(\$id) \>= 3
+  \&\& \$id[0]."quest:miniquests"
+  \&\& \$id[0]."quest:miniquests"[\$id[1]]
+  \&\& \$id[0]."quest:miniquests"[\$id[1]]["id"] == \$id[2]) \{
+    /* remove this quest from the list */
+    \$id[0]."quest:miniquests"[\$id[1]] = nil;
+
+    /* Pay the PC for this quest */
+    if(\$item."delivery:payment") \{
+      EmitTo(\$actor, Describe(\$who)+" hands you "+::pay_quester(\$amount: \$item."delivery:payment", \$actor: \$actor)+".");
+      EmitIn(\$actor."base:environment", Describe(\$who)+" hands some coins to "+Describe(\$actor)+".", \$actor);
+    \}
+  \}
+
+  /* Slay the letter */
+  Slay(\$item);
+  EmitTo(\$az, "Delivery signed doctor letter quest completed by "+dump_value(\$actor)+" for "+dump_value(\$id[0]));
+  return TRUE;
+\} else if(\$imperative == "@yes") \{
+  /* \$actor accepted the quest */
+  EmitTo(\$actor, Describe(\$nurse)+" hands you a letter.");
+  Social(\$nurse, "explain", nil, "Get this signed by a doctor, then bring it back here.");
+  Social(\$nurse, "suggest", nil, "You might want to pay the doctor something for their expertise.", "to", \$actor);
+  \$letter = Spawn(\$\{Ironclaw:Lib:Quests:Autoquests:DeliverLetter:UrLetter\});
+  \$letter."base:environment" = \$actor;
+  /* Sanity check to make sure the \$actor can carry the letter */
+  if(\$letter."base:environment" == \$actor) \{
+    /* Generate a random id */
+    \$id = random(1000000);
+    \$letter."details:default:description:writing" = "Preparation to be sent to the infirmary::\\n\\n"+Call(\$\{Ironclaw:Lib:Quests:Autoquests:Libraries:medical\}, "generate_medical_letter_text")+"\\n\\n(Must be signed by a doctor before the apothecary will prepare it)";
+    \$letter."delivery:target" = \$nurse;
+    \$letter."delivery:successscript" = (\{ this, "quest:deliver_letter_to_doctor", ([]) \}); /* object, script, parameters */
+    \$letter."delivery:id" = (\{ \$actor, "deliver letter", \$id \});
+
+    /* Pay for this quest (modified for the current economy) */
+    \$payment = ::questpayment(\$amount: \$payment);
+    \$letter."delivery:payment" = \$payment;
+
+    \$actor."quest:miniquests"["deliver letter"] = ([
+      "description":"Get a doctor to sign the letter, then deliver it to the nurse.",
+      "name":"Deliver letter",
+      "id":\$id,
+      "reward": \$payment ? ironclaw::describe_money(\$amount: \$payment) : "Gratitude" ]);
+  \} else \{
+    Slay(\$letter);
+  \}
+EmitTo(\$az, "Quest accepted by "+dump_value(\$actor));
+  return TRUE;
+\} else if(\$imperative == "@no") \{
+  /* \$actor refused the quest */
+  Social(\$nurse, "ask", nil, "Not interested? OK, I'll have someone else deliver it, then.", nil, \$actor);
+EmitTo(\$az, "Quest refused by "+dump_value(\$actor));
+  return TRUE;
+\} else if(\$expire_fun == "quest:deliver_letter_to_npc") \{
+  /* \$actor didn't answer about the quest, and the offer expired */
+  Social(\$nurse, "ask", nil, "Not interested? OK, I'll have someone else deliver it, then.", nil, \$actor);
+EmitTo(\$az, "Quest expired for "+dump_value(\$actor));
+  return TRUE;
+\}
+
+/* Here's the start of the quest (usually where the PC gets asked if they want to accept the quest) */
+EmitTo(\$az, "Offering delivery letter to PC doctor quest to "+dump_value(\$actor));
+
+\$payment = ::questpayment(\$amount: \$payment);
+Social(\$nurse, "ask", nil, "Would you be a darling, and run an errand for me?", nil, \$actor);
+Social(\$nurse, "explain", nil, "I've written up the treatment, but I need a doctor to sign it for the apothecary.", "to", \$actor);
+
+if(\$payment)
+  Social(\$nurse, "say", nil, "I can pay you "+ironclaw::describe_money(\$amount: \$payment)+" when you return.", "to", \$actor);
+
+interaction::question(\$question: "Will you find a doctor to sign the letter?", \$expires: 60, \$env: "TRUE", \$yes_ob: this, \$expire_ob: this, \$no_ob: this, \$yes_fun: "quest:deliver_letter_to_doctor", \$no_fun: "quest:deliver_letter_to_doctor", \$expire_fun: "quest:deliver_letter_to_doctor");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:quest:deliver_letter_to_npc">
+         X[M] /* A quest where an NPC asks the PC to deliver a letter */
+/* sanity check */
+if(!\$actor) return FALSE;
+
+/* How much should this quest pay? (modified for the current economy) */
+\$payment = 400;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+if(\$state == "check_valid") \{
+  /* Is this a valid quest to run? */
+EmitTo(\$az, "Checking "+Describe(\$actor)+" for nurse quest");
+  /* They won't get offered this quest if they've already earned too much daily income */
+  if(Int(\$actor."trait:income:paiduntil") \> time()) return FALSE;
+  /* They may only deliver one letter at a time */
+  if(\$actor."quest:miniquests"["deliver letter"]) return FALSE;
+  /* Make sure they aren't busy */
+  if(ironclaw::busy_check(\$character: \$actor)) return FALSE;
+
+  /* It's a valid quest */
+  return TRUE;
+\} else if(\$(quest:callback)) \{
+  /* The letter has been delivered, and has called this function */
+  \$(quest:callback) = nil;
+
+  EmitTo(\$actor, "You hand "+Describe(\$item, nil, \$actor)+" to "+Describe(\$who)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" hands "+Describe(\$item, \$actor)+" to "+Describe(\$who)+".", \$actor);
+  EmitIn(\$actor."base:environment", Describe(\$who)+" scans the list and nods, \\"I'll see that these are delivered. Thank you.\\"");
+
+  /* Is this quest still valid? */
+  if(\$id
+  \&\& sizeof(\$id) \>= 3
+  \&\& \$id[0]."quest:miniquests"
+  \&\& \$id[0]."quest:miniquests"[\$id[1]]
+  \&\& \$id[0]."quest:miniquests"[\$id[1]]["id"] == \$id[2]) \{
+    /* remove this quest from the list */
+    \$id[0]."quest:miniquests"[\$id[1]] = nil;
+
+    /* Pay the PC for this quest */
+    if(\$item."delivery:payment") \{
+      EmitTo(\$actor, Describe(\$who)+" hands you "+::pay_quester(\$amount: \$item."delivery:payment", \$actor: \$actor)+".");
+      EmitIn(\$actor."base:environment", Describe(\$who)+" hands some coins to "+Describe(\$actor)+".", \$actor);
+    \}
+
+  \}
+
+  /* Slay the letter */
+  Slay(\$item);
+  EmitTo(\$az, "Delivery letter to nurse quest completed by "+dump_value(\$actor)+" for "+dump_value(\$id[0]));
+
+  /* Finish this quest, but now trigger a new quest that follows it */
+  /*\$delay(5+random(60*3), TRUE, "82da");*/
+  \$delay(2, TRUE, "82da");
+  Call(\$\{Ironclaw:Lib:Quests:Autoquests:Autoquest\}, "run_quest", \$quest: "merry:lib:quest:deliver_letter_to_doctor", \$actor: nil);
+  return TRUE;
+\} else if(\$imperative == "@yes") \{
+  /* \$actor accepted the quest */
+  EmitTo(\$actor, "With tears in her eyes, the woman thanks you, and hands you a letter.");
+  EmitIn(\$actor."base:environment", "When "+Describe(\$actor)+" agrees to help, the woman hands "+\$actor."base:pronoun"+" a letter, along with many thanks.", \$actor);
+  \$letter = Spawn(\$\{Ironclaw:Lib:Quests:Autoquests:DeliverLetter:UrLetter\});
+  \$letter."base:environment" = \$actor;
+  /* Sanity check to make sure the \$actor can carry the letter */
+  if(\$letter."base:environment" == \$actor) \{
+    /* Generate a random id */
+    \$id = random(1000000);
+    \$letter."details:default:description:writing" = "For the nurse at the infirmary:\\n\\n"+Call(\$\{Ironclaw:Lib:Quests:Autoquests:Libraries:medical\}, "generate_medical_letter_text");
+    \$letter."delivery:target" = nil /* defunct */;
+    \$letter."delivery:successscript" = (\{ this, "quest:deliver_letter_to_npc", ([]) \}); /* object, script, parameters */
+    \$letter."delivery:id" = (\{ \$actor, "deliver letter", \$id \});
+
+    /* Pay for this quest (modified for the current economy) */
+    \$payment = ::questpayment(\$amount: \$payment);
+    \$letter."delivery:payment" = \$payment;
+
+    \$actor."quest:miniquests"["deliver letter"] = ([
+      "description":"Deliver the woman's letter to the nurse.",
+      "name":"Deliver letter",
+      "id":\$id,
+      "reward": \$payment ? ironclaw::describe_money(\$amount: \$payment) : "Gratitude" ]);
+  \} else \{
+    Slay(\$letter);
+  \}
+EmitTo(\$az, "Quest accepted by "+dump_value(\$actor));
+  return TRUE;
+\} else if(\$imperative == "@no") \{
+  /* \$actor refused the quest */
+  EmitTo(\$actor, "With tears in her eyes and a look of desperation, the woman returns to her house.");
+  EmitIn(\$actor."base:environment", "When "+Describe(\$actor)+" refuses to help, the woman returns to her house, with tears in her eyes and a look of desperation.", \$actor);
+EmitTo(\$az, "Quest refused by "+dump_value(\$actor));
+  return TRUE;
+\} else if(\$expire_fun == "quest:deliver_letter_to_npc") \{
+  /* \$actor didn't answer about the quest, and the offer expired */
+  EmitTo(\$actor, "After waiting for a response, the woman figures you can't help, and returns to her house.");
+EmitTo(\$az, "Quest expired for "+dump_value(\$actor));
+  return TRUE;
+\}
+
+/* Here's the start of the quest (usually where the PC gets asked if they want to accept the quest) */
+EmitTo(\$az, "Offering delivery letter to nurse quest to "+dump_value(\$actor));
+
+EmitIn(\$actor."base:environment", "A woman calls out from a doorway, \\"Excuse me?\\"");
+EmitTo(\$actor, "The woman explains to you, \\"My son is sick, and I can't leave him. I've written a list of medicines, if you could take this to the nurse at the infirmary I'd appreciate it.\\"");
+EmitIn(\$actor."base:environment", "The woman explains to "+Describe(\$actor)+", \\"My son is sick, and I can't leave him. I've written a list of medicines, if you could take this to the nurse at the infirmary I'd appreciate it.\\"", \$actor);
+
+\$payment = ::questpayment(\$amount: \$payment);
+if(\$payment)
+  EmitIn(\$actor."base:environment", "The woman continues, \\"I can pay you "+ironclaw::describe_money(\$amount: \$payment)+".\\"");
+else
+  EmitIn(\$actor."base:environment", "The woman apologizes, \\"I can't afford to pay you anything... but please...?\\"");
+
+interaction::question(\$question: "Will you deliver the letter?", \$expires: 60, \$env: "TRUE", \$yes_ob: this, \$expire_ob: this, \$no_ob: this, \$yes_fun: "quest:deliver_letter_to_npc", \$no_fun: "quest:deliver_letter_to_npc", \$expire_fun: "quest:deliver_letter_to_npc");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:questpayment">
+         X[M] /* Decide how much money to offer the PC */
+if(!\$amount) return 0;
+
+/* modify based on current economy */
+\$multiplier = Get(\$\{Ironclaw:Lib:Economy:economy\}, "economy:balance:income_multiplier");
+return Int(Flt(\$amount) * Flt(\$multiplier));
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1302677826, "tonyd", "E", 1302677998, "tonyd", "E", 1302678789, "tonyd", "E", 1303787864, "tonyd", "E", 1303787881, "tonyd", "E", 1303787909, "tonyd", "E", 1315295694, "tonyd", "P", 1315295725, "tonyd", "P", 1315295730, "tonyd", "P", 1315295738, "tonyd", "P", 1315295782, "tonyd", "P", 1315456150, "tonyd", "P", 1315457517, "tonyd", "P", 1315457922, "tonyd", "P", 1315458159, "tonyd", "P", 1315458545, "tonyd", "P", 1315458764, "tonyd", "P", 1315458974, "tonyd", "P", 1315459108, "tonyd", "P", 1315459136, "tonyd", "P", 1315459158, "tonyd", "P", 1315459243, "tonyd", "P", 1315459325, "tonyd", "P", 1315459451, "tonyd", "P", 1315459611, "tonyd", "P", 1315459691, "tonyd", "P", 1315459937, "tonyd", "P", 1315460003, "tonyd", "P", 1315460150, "tonyd", "P", 1315460166, "tonyd", "P", 1315460444, "tonyd", "P", 1315460471, "tonyd", "P", 1315460481, "tonyd", "P", 1315460578, "tonyd", "P", 1315461043, "tonyd", "P", 1315461067, "tonyd", "P", 1315461120, "tonyd", "P", 1315461351, "tonyd", "P", 1315461429, "tonyd", "P", 1315461459, "tonyd", "P", 1315461655, "tonyd", "P", 1315461836, "tonyd", "P", 1315462062, "tonyd", "P", 1315462573, "tonyd", "P", 1315462601, "tonyd", "P", 1315462863, "tonyd", "P", 1315462883, "tonyd", "P", 1315463101, "tonyd", "P", 1315463223, "tonyd", "P", 1315463257, "tonyd", "P", 1315463278, "tonyd", "P", 1315463285, "tonyd", "P", 1315463425, "tonyd", "P", 1315463455, "tonyd", "P", 1315463506, "tonyd", "P", 1315463521, "tonyd", "P", 1315463613, "tonyd", "P", 1315463666, "tonyd", "P", 1319005502, "tonyd", "P", 1319007222, "tonyd", "P", 1319007236, "tonyd", "P", 1319007299, "tonyd", "P", 1319007659, "tonyd", "P", 1319007681, "tonyd", "P", 1319007696, "tonyd", "P", 1319007752, "tonyd", "P", 1319007802, "tonyd", "P", 1319007859, "tonyd", "P", 1319007900, "tonyd", "P", 1319008333, "tonyd", "P", 1319008363, "tonyd", "P", 1319008441, "tonyd", "P", 1319008558, "tonyd", "P", 1319008690, "tonyd", "P", 1319008727, "tonyd", "P", 1319008826, "tonyd", "P", 1319008860, "tonyd", "P", 1319008913, "tonyd", "P", 1319008958, "tonyd", "P", 1319009073, "tonyd", "P", 1319009103, "tonyd", "P", 1319009207, "tonyd", "P", 1319009230, "tonyd", "P", 1319009383, "tonyd", "P", 1319009405, "tonyd", "P", 1319009487, "tonyd", "P", 1319009626, "tonyd", "P", 1319009647, "tonyd", "P", 1319009820, "tonyd", "P", 1319009865, "tonyd", "P", 1319009902, "tonyd", "P", 1319009945, "tonyd", "P", 1319010925, "tonyd", "P", 1319010952, "tonyd", "P", 1319011018, "tonyd", "P", 1319011069, "tonyd", "P", 1319011108, "tonyd", "P", 1319011166, "tonyd", "P", 1319011212, "tonyd", "P", 1319011245, "tonyd", "P", 1319011277, "tonyd", "P", 1319011305, "tonyd", "P", 1319011330, "tonyd", "P", 1319011347, "tonyd", "P", 1319011373, "tonyd", "P", 1319011408, "tonyd", "P", 1319011420, "tonyd", "P", 1319011430, "tonyd", "P", 1319011551, "tonyd", "P", 1319011705, "tonyd", "P", 1319011726, "tonyd", "P", 1319011851, "tonyd", "P", 1319012171, "tonyd", "P", 1319012220, "tonyd", "P", 1320536931, "tonyd", "E", 1320537056, "tonyd", "P", 1320538546, "tonyd", "P", 1320540465, "tonyd", "P", 1321522523, "tonyd", "P", 1321522706, "tonyd", "P", 1321522781, "tonyd", "P", 1321522856, "tonyd", "P", 1321522872, "tonyd", "P", 1321522950, "tonyd", "P", 1321522973, "tonyd", "P", 1321523068, "tonyd", "P", 1321523138, "tonyd", "P", 1321523181, "tonyd", "P", 1321523192, "tonyd", "P", 1321523214, "tonyd", "P", 1321523302, "tonyd", "P", 1321523727, "tonyd", "P", 1321524021, "tonyd", "P", 1321524239, "tonyd", "P", 1321524417, "tonyd", "P", 1321524444, "tonyd", "P", 1321525329, "tonyd", "P", 1321525398, "tonyd", "P", 1321527958, "tonyd", "P", 1321528529, "tonyd", "P", 1321528656, "tonyd", "P", 1321528694, "tonyd", "P", 1321528753, "tonyd", "P", 1321528785, "tonyd", "P", 1321528898, "tonyd", "P", 1321529947, "tonyd", "P", 1321530013, "tonyd", "P", 1321530040, "tonyd", "P", 1321766731, "tonyd", "P", 1321766767, "tonyd", "P", 1321766846, "tonyd", "P", 1321766938, "tonyd", "P", 1321766997, "tonyd", "P", 1321767588, "tonyd", "P", 1321767608, "tonyd", "P", 1321768359, "tonyd", "P", 1321768378, "tonyd", "P", 1321768594, "tonyd", "P", 1321768816, "tonyd", "P", 1321768879, "tonyd", "P", 1321768910, "tonyd", "P", 1321768941, "tonyd", "P", 1321768964, "tonyd", "P", 1321768995, "tonyd", "P", 1321769018, "tonyd", "P", 1321769035, "tonyd", "P", 1321769441, "tonyd", "P", 1321769475, "tonyd", "P", 1321770397, "tonyd", "P", 1321771005, "tonyd", "P", 1321771051, "tonyd", "P", 1321771064, "tonyd", "P", 1321771075, "tonyd", "P", 1321771179, "tonyd", "P", 1321771241, "tonyd", "P", 1321771255, "tonyd", "P", 1322094740, "tonyd", "P", 1322706651, "tonyd", "P", 1322706722, "tonyd", "P", 1325286314, "tonyd", "P", 1325286620, "tonyd", "P", 1325286656, "tonyd", "P", 1325286734, "tonyd", "P", 1325286909, "tonyd", "P", 1325287628, "tonyd", "P", 1325289801, "tonyd", "P", 1325289917, "tonyd", "P", 1325290003, "tonyd", "P", 1325291010, "tonyd", "P", 1325291015, "tonyd", "P", 1325292645, "tonyd", "P", 1325727978, "tonyd", "P", 1325728018, "tonyd", "P", 1325728078, "tonyd", "P", 1325728085, "tonyd", "P", 1325728385, "tonyd", "P", 1325728469, "tonyd", "P", 1326514774, "tonyd", "P", 1326514852, "tonyd", "P", 1326515591, "tonyd", "P", 1326518229, "tonyd", "P", 1326518379, "tonyd", "P", 1326518401, "tonyd", "P", 1326599433, "tonyd", "P", 1331874088, "tonyd", "P", 1331874112, "tonyd", "P", 1331874147, "tonyd", "P", 1332224360, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

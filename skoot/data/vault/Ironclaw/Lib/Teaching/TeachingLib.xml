@@ -1,0 +1,522 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="cost:career">5</Core:Property>
+      <Core:Property property="cost:lang">10</Core:Property>
+      <Core:Property property="cost:skill">10</Core:Property>
+      <Core:Property property="difficulty:career">5</Core:Property>
+      <Core:Property property="gimli:lib:get_skill_cost">
+         "E[G]\\n// Gets the learning point cost of a new skill\\n\\nif(!\$level) return -1;\\nif(!\$category) return -1;\\n\\n// what is the cost to the student?\\nif(\$category == \\"career\\") \{\\n \$cost = \$level*10;\\n if(\$cost \> 100) \$cost = 100;\\n\} else if (\$category == \\"lang\\") \{\\n \$cost = \$level*3;\\n if(\$cost \> 30) \$cost = 30;\\n\} else \{\\n \$cost = \$level*5;\\n if(\$cost \> 50) \$cost = 50;\\n\}\\n\\nreturn \$cost;"
+      </Core:Property>
+      <Core:Property property="merry:lib:gather_statistics">
+         X[M] /* Gather info about PC skills and learning points */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$char = nil /* defunct */;
+
+/* Loop through all characters checking their skills */
+\$folder = "Chatters:IC";
+\$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+for(\$a=0;\$a\<sizeof(\$folders);\$a++) \{
+  \$delay(0.00001, TRUE, "2768");
+  \$folder = "Chatters:IC:"+\$folders[\$a];
+  /* EmitTo(\$az, dump_value(\$folders[\$a])); */
+  \$characters = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+  for(\$j=0;\$j\<sizeof(\$characters);\$j++) \{
+    \$char = Obj("Chatters:IC:"+\$folders[\$a]+":"+\$characters[\$j]);
+
+\$skills = Arr(map_indices(prefixed_map(\$char."*", "skill:")));
+\$skills -= (\{ "skill:fatigue" \});
+
+\$points_spent = 0;
+for(\$i=0; \$i\<sizeof(\$skills);\$i++) \{
+  \$skill = explode(lower_case(\$skills[\$i]), ":");
+  if(sizeof(\$skill) \>= 3) \{
+    if(\$skill[1] == "career") \$multiplier = 10;
+    else if(\$skill[1] == "lang") \$multiplier = 3;
+    else \$multiplier = 5;
+    \$counter = Int(Get(\$char, \$skills[\$i]));
+    while(\$counter) \{
+      \$points_spent += \$counter*\$multiplier;
+      \$counter--;
+    \}
+  \}
+\}
+/* Don't count the points from the starting career */
+\$points_spent -= 150;
+/* But do count the learning points they have saved up */
+\$points_spent += Int(\$char."student:learningpoints");
+
+\$lifetime = time() - Int(\$char."skotos:creation_time");
+\$lifetime = Int(Flt(\$lifetime)/Flt(60*60*24));
+/* \$lifetime is now the number of days they've had the PC for */
+\$max_points = \$lifetime*4; /* 4 points a day for doing nothing */
+/* How much time have they spent online? */
+\$online_time = Int(\$char."cdat:sessiontime")/60*30; /* half hour blocks */
+if(\$online_time \<= \$lifetime*6) \$max_points += \$online_time;
+else \$max_points += \$lifetime*6;
+
+\$efficiency = 100.0*Flt(\$points_spent)/Flt(\$max_points);
+
+if(\$char."skotos:creator" != "npcs" \&\& \$lifetime \> 2 \&\& \$online_time \> 12 \&\& \$points_spent \> 150) \{
+  if(\$efficiency \> 200.0) \{
+    EmitIn(\$az."base:environment", "STAFF: "+dump_value(\$char));
+  \} else if(\$efficiency \> 95.0) \{
+    EmitIn(\$az."base:environment", TAG(dump_value(\$char)+" ("+Str(\$char."skotos:creator")+") Points: "+dump_value(\$points_spent)+" Max Points: "+dump_value(\$max_points)+" Efficiency: "+dump_value(\$efficiency)+"%", "imp"));
+  \} else if(\$efficiency \> 70.0) \{
+    EmitIn(\$az."base:environment", dump_value(\$char)+" ("+Str(\$char."skotos:creator")+") Points: "+dump_value(\$points_spent)+" Max Points: "+dump_value(\$max_points)+" Efficiency: "+dump_value(\$efficiency)+"%");
+  \}
+\}
+
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_skill_cost">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_skill_cost instead! */
+/* Gets the learning point cost of a new skill */
+
+if(!\$level) return -1;
+if(!\$category) return -1;
+
+/* what is the cost to the student? */
+if(\$category == "career") \{
+ \$cost = \$level*10;
+ if(\$cost \> 100) \$cost = 100;
+\} else if (\$category == "lang") \{
+ \$cost = \$level*3;
+ if(\$cost \> 30) \$cost = 30;
+\} else \{
+ \$cost = \$level*5;
+ if(\$cost \> 50) \$cost = 50;
+\}
+
+return \$cost;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_accept">
+         X[M] \$teacher = \$par["teacher"];
+\$topic = \$par["topic"];
+\$category = \$par["category"];
+\$cost = \$par["cost"];
+
+/* Check we have enough learning points to be able to afford this */
+if(\$cost)
+\{
+  if(!\$actor."student:learningpoints" \|\| (\$actor."student:learningpoints" \< \$cost))
+  \{
+    EmitTo(\$actor, "You don't have enough study points to learn this. Wait some time, then try again later.");
+    EmitTo(\$teacher, Describe(\$actor)+" does not have enough study points to study with you.");
+    return FALSE;
+  \}
+\}
+
+/* Check we aren't already studying something */
+if(\$actor."student:topic" \&\& (\$topic != \$actor."student:topic") \&\& (\$actor."student:teacher" \&\& \$teacher != \$actor."student:teacher")) \{
+  EmitTo(\$actor, "You are no longer studying "+\$actor."student:topic"+" with "+Describe(\$actor."student:teacher")+".");
+  EmitTo(\$actor."student:teacher", Describe(\$actor)+" is are no longer studying "+\$actor."student:topic"+" with you.");
+  /* Remove this student from the old teachers teaching list */
+  \$actor."student:teacher" = nil;
+  \$actor."student:topic" = nil;
+  \$actor."student:teacher"."teaching:students" -= (\{ \$actor \});
+\}
+
+/* If we are already studying this */
+if(\$actor."student:topic" \&\& (\$topic == \$actor."student:topic") \&\& (\$teacher == \$actor."student:teacher")) \{
+  EmitTo(\$actor, "You continue studying "+\$actor."student:topic"+" with "+Describe(\$teacher)+".");
+  EmitTo(\$actor."student:teacher", Describe(\$actor)+" continues studying "+\$topic+" with you.");
+  return FALSE;
+\}
+
+/* Check if the teacher is good enough to train the actor in this skill */
+if(!Get(\$teacher, "skill:"+\$category+":"+\$topic))
+\{
+  EmitTo(\$teacher, "You cannot teach "+\$topic+", as you know nothing about it.");
+  EmitTo(\$actor, "You already know as much about "+\$topic+" as "+Describe(\$teacher)+" can teach.");
+  return FALSE;
+\}
+
+if(Int(Get(\$actor, "skill:"+\$category+":"+\$topic)) \&\& (Int(Get(\$actor, "skill:"+\$category+":"+\$topic)) \>= Int(Get(\$teacher, "skill:"+\$category+":"+\$topic))))
+\{
+  EmitTo(\$teacher, Describe(\$actor)+" already knows as much about "+\$topic+" as you can teach.");
+  EmitTo(\$actor, "You already know as much about "+\$topic+" as "+Describe(\$teacher)+" can teach.");
+  return FALSE;
+\}
+
+/* Check if the teacher is still in the room */
+if(\$teacher."base:environment" == \$actor."base:environment")
+\{
+  /* Check if the teacher is still teaching the topic */
+  if(\$teacher."teaching:topic" != \$topic)
+  \{
+    EmitTo(\$actor, Describe(\$teacher)+" is no longer teaching about "+\$topic+".");
+    EmitTo(\$teacher, Describe(\$actor)+" cannot accept your offer to teach "+\$topic+", as you are no longer teaching that.");
+    return FALSE;
+  \} else \{
+    /* check the teacher is allowed to teach this many students */
+    if(\$teacher."teaching:students") \{
+      \$num_of_students = sizeof(\$teacher."teaching:students")+1;
+    \} else \{
+      \$num_of_students = 1;
+    \}
+    if(\$teacher."skill:academics:teaching") \{
+      \$teaching_max = Int(\$teacher."skill:academics:teaching");
+    \} else \{
+      \$teaching_max = 1;
+    \}
+    if(\$teacher."career:academics:teaching") \{
+      if(\$teacher."career:academics:teaching" \> \$teaching_max)
+        \$teaching_max = Int(\$teacher."career:academics:teaching");
+    \}
+    if(\$num_of_students \> \$teaching_max) \{
+      EmitTo(\$teacher, "You cannot teach "+Describe(\$actor)+" while you are teaching so many other students.");
+      EmitTo(\$actor, Describe(\$teacher)+" cannot teach you while they have so many other students.");
+      return FALSE;
+    \}
+
+    EmitTo(\$actor, Describe(\$teacher)+" begins to teach you about "+\$topic+".");
+    EmitTo(\$teacher, "You begin to teach "+Describe(\$actor)+" about "+\$topic+".");
+    EmitIn(\$actor."base:environment", Describe(\$teacher)+" begins to teach "+Describe(\$actor)+" about "+\$topic+".", \$actor, \$teacher);
+  \}
+\} else \{
+  EmitTo(\$actor, Describe(\$teacher)+" is no longer in the room with you.");
+  EmitTo(\$teacher, Describe(\$actor)+" cannot accept your offer to teach "+\$topic+", as "+\$actor."base:pronoun"+" is no longer in the room with you.");
+  return FALSE;
+\}
+
+/* Add student to the teachers list of students */
+if(\$teacher."teaching:students")\{
+  \$teacher."teaching:students" += (\{ \$actor \});
+\} else \{
+  \$teacher."teaching:students" = (\{ \$actor \});
+\}
+/* Add the topic and teacher to the students list */
+\$actor."student:topic" = \$topic;
+\$actor."student:teacher" = \$teacher;
+\$lesson_name = time();
+\$actor."student:lesson_name" = \$lesson_name;
+
+/* Calculate the dice to roll for this lesson */
+\$dice = (\{ \$teacher."skill:academics:teaching", \$teacher."career:academics:teaching", Get(\$teacher, "skill:"+\$category+":"+\$topic) \}); /* teachers teaching ability + skill */
+\$dice += (\{ \$actor."trait:wits", Get(\$actor, "career:"+\$category+":"+\$topic) \}); /* actors wits + skill */
+
+/* Calculate the target we have to reach */
+if(Int(Get(\$actor, "skill:"+\$category+":"+\$topic)))
+\{
+  \$target = Int(Get(\$actor, "skill:"+\$category+":"+\$topic));
+\} else \{
+  \$target = 1;
+\}
+/* calculate the target multiplier */
+if(Get(\$\{Ironclaw:Lib:Teaching:TeachingLib\}, "difficulty:"+\$category+":"+\$topic)) \{
+  \$multiplier = Get(\$\{Ironclaw:Lib:Teaching:TeachingLib\}, "difficulty:"+\$category+":"+\$topic);
+\} else if(Get(\$\{Ironclaw:Lib:Teaching:TeachingLib\}, "difficulty:"+\$category)) \{
+  \$multiplier = Get(\$\{Ironclaw:Lib:Teaching:TeachingLib\}, "difficulty:"+\$category);
+\} else \{
+  \$multiplier = 1;
+\}
+
+\$target = \$target * \$multiplier;
+
+
+
+/* calculate the learning delay */
+\$learning_delay = 900;
+if(\$actor."trait:mind")
+  \$learning_delay -= \$actor."trait:mind"*60;
+if(\$learning_delay \< 300)
+  \$learning_delay = 300;
+
+while(TRUE) \{
+/* wait an appropriate amount of time */
+  /* based on students intelligence */
+  \$delay(\$learning_delay, TRUE, "50c7");
+
+  /* Check if we are still being taught this lesson */
+  if(\$actor."student:lesson_name" != \$lesson_name)
+  \{
+    return FALSE;
+  \}
+
+  /* Check if the teacher is still in the room */
+  if(\$teacher."base:environment" != \$actor."base:environment")
+  \{
+    /* If not, give a little while for the teacher or student to return */
+    \$delay(300, TRUE, "86d0");
+    /* If still apart, end the lesson */
+    if(\$teacher."base:environment" != \$actor."base:environment")
+    \{
+      EmitTo(\$actor, "Your lesson with "+Describe(\$teacher)+" is cancelled, because you were away from "+Describe(\$teacher)+" for too long.");
+      EmitTo(\$teacher, "Your lesson with "+Describe(\$actor)+" is cancelled, because you were away from "+Describe(\$actor)+" for too long.");
+      /* Remove this student from the teachers list */
+      \$teacher."teaching:students" -= (\{ \$actor \});
+      /* Remove the topic and teacher from the students list */
+      \$actor."student:topic" = nil;
+      \$actor."student:teacher" = nil;
+
+      return TRUE;
+    \}
+  \}
+
+  /* Check if we are still being taught this lesson */
+  if(\$actor."student:lesson_name" != \$lesson_name)
+  \{
+    return FALSE;
+  \}
+
+
+/* Check if the teacher is still teaching this topic to this student */
+EmitTo(\$teacher, "Checking if you're still teaching the topic");
+  if((\$teacher."teaching:topic" != \$topic))
+  \{
+    return TRUE;
+  \}
+
+  /* Check if the student passed */
+  \$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: \$dice);
+  /*EmitTo(\$teacher, "Result is "+\$result);*/
+
+  if(Get(\$actor, "learning:skill:"+\$category+":"+\$topic)) \{
+    if(Get(\$actor, "learning:skill:"+\$category+":"+\$topic) + \$result \> \$target)
+    \{
+      Set(\$actor, "learning:skill:"+\$category+":"+\$topic, nil);
+      break;
+    \} else \{
+      Set(\$actor, "learning:skill:"+\$category+":"+\$topic, Get(\$actor, "learning:skill:"+\$category+":"+\$topic) + \$result);
+    \}
+  \} else if (\$result \> \$target) \{
+    break;
+  \} else \{
+    Set(\$actor, "learning:skill:"+\$category+":"+\$topic, \$result);
+  \}
+\}
+
+/* Charge the learning cost */
+  \$actor."student:learningpoints" -= \$cost;
+
+/* Remove this student from the teachers list */
+\$teacher."teaching:students" -= (\{ \$actor \});
+/* Remove the topic and teacher from the students list */
+\$actor."student:topic" = nil;
+\$actor."student:teacher" = nil;
+
+/* Grant the skill increase */
+if(Get(\$actor, "skill:"+\$category+":"+\$topic))
+\{
+  Set(\$actor, "skill:"+\$category+":"+\$topic, Int(Get(\$actor, "skill:"+\$category+":"+\$topic)) + 1);
+\} else \{
+  Set(\$actor, "skill:"+\$category+":"+\$topic, 1);
+\}
+
+/* Output a message saying the lesson is over */
+EmitTo(\$teacher, Describe(\$actor)+" has finished studying "+\$topic+".");
+EmitTo(\$actor, Describe(\$teacher)+" has finished teaching you "+\$topic+".");
+EmitIn(\$actor."base:environment", Describe(\$teacher)+" finishes teaching "+Describe(\$actor)+" about "+\$topic+".", \$actor, \$teacher);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_decline">
+         X[M] EmitTo(\$actor, "You decline "+Describe(\$par["teacher"])+"'s offer to teach you "+\$par["topic"]+"."); 
+EmitTo(\$par["teacher"], Describe(\$actor)+" declines your offer to teach "+\$par["topic"]+"."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_expire">
+         X[M] EmitTo(\$actor, Describe(\$par["teacher"])+"'s offer to teach you "+\$par["topic"]+" has expired."); 
+EmitTo(\$par["teacher"], "Your offer to teach "+Describe(\$actor)+" "+\$par["topic"]+" has expired."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:updatecareer">
+         X[M] /* reset career skills */
+int i, j;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* remove current career skills */
+\$skills = map_indices(prefixed_map(\$body."*", "career:"));
+for(i=0;i\<sizeof(\$skills);i++)
+ Set(\$body, \$skills[i], nil);
+
+\$income = 0;
+\$tokens = ([ ]);
+
+\$careers = map_indices(prefixed_map(\$body."*", "skill:career:"));
+\$database = \$\{Ironclaw:Lib:Teaching:newCareersDB\};
+
+/* gather a list of new career skills to set */
+\$skills = ([ ]);
+for(i=0;i\<sizeof(\$careers);i++) \{
+ \$info = Get(\$database, \$careers[i][13..]);
+ if(!\$info) continue;
+ \$level = Int(Get(\$body, \$careers[i]));
+ \$income += Int(\$info["income"])*\$level;
+
+ for(j=0;j\<sizeof(\$info["skills"]);j++) \{
+  if(typeof(\$info["skills"][j]) == T_ARRAY \&\& sizeof(\$info["skills"][j]) \>= 2) \{
+   \$skills["career:"+\$info["skills"][j][0]] = Flt(\$skills["career:"+\$info["skills"][j][0]]) + Flt(\$info["skills"][j][1])*Flt(\$level);
+  \} else \{
+   \$skills["career:"+Arr(\$info["skills"][j])[0]] = Flt(\$skills["career:"+Arr(\$info["skills"][j])[0]])+1.0*Flt(\$level);
+  \}
+ \}
+
+ for(j=0;j\<sizeof(Arr(\$info["tokens"]));j++) \{
+  \$tokens[Arr(\$info["tokens"])[j]] = Int(\$tokens[Arr(\$info["tokens"])[j]])+\$level;
+  if(\$tokens[Arr(\$info["tokens"])[j]] \> 12) \$tokens[Arr(\$info["tokens"])[j]] = 12;
+ \}
+\}
+
+/* set these skills */
+\$body."trait:income" = \$income;
+\$body."guild:tokens" = \$tokens;
+for(i=0;i\<sizeof(map_indices(\$skills));i++)
+ Set(\$body, map_indices(\$skills)[i], Int(\$skills[map_indices(\$skills)[i]]));
+
+return TRUE;
+
+/* old code below */
+sscanf(\$(hook-property), "skill:career:%s", \$topic);
+
+\$value = Get(\$body, \$(hook-property));
+if(!\$value) return TRUE;
+
+/* we need to check the careers database, to see what other skills to grant */
+if(\$database = Get(\$\{Ironclaw:Lib:Teaching:CareersDB\}, \$topic))
+\{
+  /* gather a list of skills this career would grant */
+  \$skillmap = ([ ]);
+  \$increasingmap = ([ ]);
+  \$mappingmap = ([ ]);
+  \$arraylist = (\{\});
+
+  for(\$i = 1; \$i \< \$value+1; \$i++)
+  \{
+    /* gather a list of the skills that should be increased */
+
+    if(\$database[Str(\$i)] \&\& \$database[Str(\$i)]["increasing"])
+    \{
+      \$list = \$database[Str(\$i)]["increasing"];
+      for(\$j = 0; \$j \< sizeof(\$list); \$j++)
+      \{
+        /* add code here to remove elements from the list if they are 0 */
+        \$increasingmap[\$list[\$j][0]] = \$list[\$j][1];
+      \}
+    \}
+
+    /* Add these skills to the skill list */
+    for(\$j = 0; \$j \< sizeof(map_indices(\$increasingmap)); \$j++)
+    \{
+      \$tmp = Flt(\$skillmap[map_indices(\$increasingmap)[\$j]]);
+      if(!\$tmp) \$tmp = Flt(0);
+      \$tmp += Flt(\$increasingmap[map_indices(\$increasingmap)[\$j]]);
+      \$skillmap[map_indices(\$increasingmap)[\$j]] = \$tmp;
+    \}
+    /* Add any set skills for this level to the list */
+    if(\$database[Str(\$i)] \&\& \$database[Str(\$i)]["set"]) \{
+      \$list = \$database[Str(\$i)]["set"];
+      for(\$j = 0; \$j \< sizeof(\$list); \$j++)
+      \{
+        \$skillmap[\$list[\$j][0]] = \$list[\$j][1];
+      \}
+    \}
+
+    /* Add any set arrays for this level to the list */
+    if(\$database[Str(\$i)] \&\& \$database[Str(\$i)]["setarray"])
+      \$arraylist \|= \$database[Str(\$i)]["setarray"];
+
+    /* Add any set prop mappings for this level to the list */
+    if(\$database[Str(\$i)] \&\& \$database[Str(\$i)]["setmap"]) \{
+      \$list = \$database[Str(\$i)]["setmap"];
+      for(\$j = 0; \$j \< sizeof(\$list); \$j++)
+      \{
+        if(\$mappingmap[\$list[\$j][0]])
+        \{
+          \$mappingmap[\$list[\$j][0]] += (\{ (\{ \$list[\$j][1], \$list[\$j][2] \}) \});
+        \} else \{
+          \$mappingmap[\$list[\$j][0]] = (\{ (\{ \$list[\$j][1], \$list[\$j][2] \}) \});
+        \}
+      \}
+    \}
+  \}
+
+  /* grant these skills to the player */
+  for(\$i = 0; \$i \< sizeof(map_indices(\$skillmap)); \$i++)
+  \{
+    /* Check if the player already has this property */
+    if(Get(\$body, map_indices(\$skillmap)[\$i]))
+    \{
+      if((typeof(Get(\$body, map_indices(\$skillmap)[\$i])) != T_INT) \&\& (typeof(Get(\$body, map_indices(\$skillmap)[\$i])) != T_FLOAT))
+      \{
+        /* grant it */
+        Set(\$body, map_indices(\$skillmap)[\$i], \$skillmap[map_indices(\$skillmap)[\$i]]);
+      \} else \{
+        /* If so, check if we're trying to set a number, and if the new number is higher, grant it */
+        if(Int(\$skillmap[map_indices(\$skillmap)[\$i]]) \> Int(Get(\$body, map_indices(\$skillmap)[\$i])))
+        \{
+          Set(\$body, map_indices(\$skillmap)[\$i], Int(\$skillmap[map_indices(\$skillmap)[\$i]]));
+        \}
+      \}
+    \} else \{
+      /* If not, grant it */
+      /* if it's a number, set that */
+      if(typeof(\$skillmap[map_indices(\$skillmap)[\$i]]) != T_INT \&\& typeof(\$skillmap[map_indices(\$skillmap)[\$i]]) != T_FLOAT) \{
+        Set(\$body, map_indices(\$skillmap)[\$i], \$skillmap[map_indices(\$skillmap)[\$i]]);
+      \} else \{
+        /* it's a number. Make it an Int */
+        Set(\$body, map_indices(\$skillmap)[\$i], Int(\$skillmap[map_indices(\$skillmap)[\$i]]));
+      \}
+    \}
+  \}
+
+  /*EmitTo(\$teacher, "Granting maps to "+Describe(\$actor));*/
+  for(\$i = 0; \$i \< sizeof(map_indices(\$mappingmap)); \$i++)
+  \{
+    \$property = map_indices(\$mappingmap)[\$i];
+
+    /* Get existing propmap */
+    if(Get(\$body, \$property))
+    \{
+      \$tmp = Get(\$body, \$property);
+    \} else \{
+      \$tmp = ([ ]);
+    \}
+
+
+    \$values = \$mappingmap[\$property];
+    for(\$j = 0; \$j \< sizeof(\$values); \$j++)
+    \{
+      \$tmp[Str(\$values[\$j][0])] = \$values[\$j][1];
+    \}
+
+    /* Set the new propmap */
+    Set(\$body, \$property, \$tmp);
+  \}
+
+  /*EmitTo(\$teacher, "Granting arrays to "+Describe(\$body));*/
+  /* Add array elements */
+  if(\$arraylist) \{
+    for(\$i = 0; \$i \< sizeof(\$arraylist); \$i++)
+    \{
+      /*EmitTo(\$teacher, "adding "+\$arraylist[\$i][1]+" to array "+\$arraylist[\$i][0]+".");*/
+      if(Get(\$body, \$arraylist[\$i][0]))
+      \{
+        \$newarray = Get(\$body, \$arraylist[\$i][0]);
+        \$newarray \|= (\{ \$arraylist[\$i][1] \});
+        Set(\$body, \$arraylist[\$i][0], \$newarray);
+      \} else \{
+        Set(\$body, \$arraylist[\$i][0], (\{ \$arraylist[\$i][1] \}));
+      \}
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1232754352, "tonyd", "R", 1254862716, "tonyd", "P", 1254862820, "tonyd", "P", 1254862847, "tonyd", "P", 1254862911, "tonyd", "P", 1254862995, "tonyd", "P", 1254863131, "tonyd", "P", 1254863145, "tonyd", "P", 1254863201, "tonyd", "P", 1254863368, "tonyd", "P", 1254863455, "tonyd", "P", 1254863594, "tonyd", "P", 1254863644, "tonyd", "P", 1254863743, "tonyd", "P", 1254863924, "tonyd", "P", 1254863987, "tonyd", "P", 1254864070, "tonyd", "P", 1254864332, "tonyd", "P", 1254864469, "tonyd", "P", 1254864553, "tonyd", "P", 1254864784, "tonyd", "P", 1254864909, "tonyd", "P", 1254865024, "tonyd", "P", 1254865131, "tonyd", "P", 1254865299, "tonyd", "P", 1254865394, "tonyd", "P", 1254865465, "tonyd", "P", 1254865530, "tonyd", "P", 1254865580, "tonyd", "P", 1254865870, "tonyd", "P", 1254865942, "tonyd", "P", 1254865988, "tonyd", "P", 1254868070, "tonyd", "P", 1254868129, "tonyd", "P", 1254868504, "tonyd", "P", 1254869309, "tonyd", "P", 1254869358, "tonyd", "P", 1254869471, "tonyd", "P", 1254869589, "tonyd", "P", 1254869670, "tonyd", "P", 1254869754, "tonyd", "P", 1254870002, "tonyd", "P", 1254870513, "tonyd", "P", 1254873364, "tonyd", "P", 1254873376, "tonyd", "P", 1254873422, "tonyd", "P", 1254873445, "tonyd", "P", 1254873457, "tonyd", "P", 1254873512, "tonyd", "P", 1254873587, "tonyd", "P", 1254873599, "tonyd", "P", 1254873654, "tonyd", "P", 1254873697, "tonyd", "P", 1254873741, "tonyd", "P", 1254887243, "tonyd", "P", 1348452256, "jominey", "P", 1348452288, "jominey", "P", 1348452346, "jominey", "P", 1348452563, "jominey", "P", 1386489536, "tonyd", "R", 1386489680, "tonyd", "P", 1386489721, "tonyd", "P", 1386490291, "tonyd", "P", 1386490353, "tonyd", "P", 1386490388, "tonyd", "P", 1386490658, "tonyd", "P", 1386491016, "tonyd", "P", 1386491099, "tonyd", "P", 1386491133, "tonyd", "P", 1386491145, "tonyd", "P", 1386491154, "tonyd", "P", 1386491162, "tonyd", "P", 1386491248, "tonyd", "P", 1386491383, "tonyd", "P", 1386491973, "tonyd", "P", 1386492060, "tonyd", "P", 1386492267, "tonyd", "P", 1386492307, "tonyd", "P", 1386492327, "tonyd", "P", 1386492365, "tonyd", "P", 1386492383, "tonyd", "P", 1386492416, "tonyd", "P", 1386492442, "tonyd", "P", 1386492465, "tonyd", "P", 1386492602, "tonyd", "P", 1386493238, "tonyd", "P", 1386493254, "tonyd", "P", 1386493396, "tonyd", "P", 1386493414, "tonyd", "P", 1386493434, "tonyd", "P", 1386493477, "tonyd", "P", 1386493681, "tonyd", "P", 1386493708, "tonyd", "P", 1386493962, "tonyd", "P", 1386493987, "tonyd", "P", 1386494105, "tonyd", "P", 1386494295, "tonyd", "P", 1386494318, "tonyd", "P", 1386494576, "tonyd", "P", 1386494590, "tonyd", "P", 1386494948, "tonyd", "P", 1386494966, "tonyd", "P", 1386495203, "tonyd", "P", 1386495211, "tonyd", "P", 1386636752, "tonyd", "P", 1420352684, "tonyd", "P", 1420352891, "tonyd", "P", 1420353016, "tonyd", "P", 1420353076, "tonyd", "P", 1420353081, "tonyd", "P", 1571709006, "jominey", "E", 1571709021, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,1043 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:check_price">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_price instead! */
+/* Check the price of an item */
+/* \$price = Call(\$\{Ironclaw:Lib:Economy:TradingLib\}, "check_price", \$inventory: \$par["item"][0], \$item: \$par["item"][1], \$buyer:\$actor, \$stocklisting: FALSE); */
+
+int i, j, found;
+mixed info;
+string *indices;
+info = Get(\$inventory, \$item);
+
+/* Is this item hidden? */
+if(info["hidden"] \&\& \$stocklisting) return nil;
+
+/* Check there is enough stock */
+if(!info["stock"] \&\& info["stock"] != nil) return nil;
+
+\$price = 0;
+if(info["price"]) \{
+  \$price = info["price"];
+\} else if(info["object"]."nip:item:cost") \{
+  \$price = info["object"]."nip:item:cost";
+\}
+
+/* Modify price for the current economy */
+if(\$price \> 0) \{
+  \$multiplier = 1.0/Flt(\$\{Ironclaw:Lib:Economy:economy\}."economy:balance:income_multiplier");
+  \$price = Int(Flt(\$price)*\$multiplier);
+  if(\$price \< 1) \$price = 1;
+\}
+
+/* Check if they have the right skills to buy this item */
+if(info["skill-level"] \&\& info["skill-level"] \> 0) \{
+  \$skill = 0;
+  for(i=0;i\<sizeof(Arr(info["skill"]));i++) \{
+    \$skill += Int(Get(\$buyer, info["skill"][i]));
+    \$skill += Int(Get(\$buyer, "skill:"+info["skill"][i]));
+    \$skill += Int(Get(\$buyer, "career:"+info["skill"][i]));
+  \}
+  if(\$skill \< info["skill-level"]) return nil;
+\}
+
+/* Is this item off limits to players blacklisted by a specific guild? */
+if(info["blacklist"]) \{
+    if(\$actor.blacklistedby) \{
+        if(member(info["blacklist"], \$actor.blacklistedby)) return nil;
+    \}
+
+    if(\$actor.guild) \{
+        if(\$actor.guild.blacklistedby) \{
+            if(member(info["blacklist"], \$actor.guild.blacklistedby)) return nil;
+        \}
+    \}
+\}
+
+/* Is this item restricted to PCs with certain properties? */
+if(info["restricted"] \&\& sizeof(info["restricted"])) \{
+  for(i=0;i\<sizeof(info["restricted"]);i++) \{
+    if(sizeof(info["restricted"][i]) \>= 1 \&\& typeof(info["restricted"][i][1]) == T_ARRAY) \{
+      /* Doing a "OR" check - we need one of these properties to be set */
+      found = FALSE;
+      for(j=0;j\<sizeof(info["restricted"][i]);j++) \{
+        /* Does the PC have this property set? */
+        if(typeof(info["restricted"][i][j][1]) == T_INT) \{
+          /* Need equal or higher than this number */
+          if(Int(Get(\$buyer, info["restricted"][i][j][0])) \>= info["restricted"][i][j][1])
+            found = TRUE;
+        \} else \{
+          /* Need this exact value */
+          if(member(Get(\$buyer, info["restricted"][i][j][0]), info["restricted"][i][j]))
+            found = TRUE;
+        \}
+
+      \}
+      if(!found) return nil;
+
+    \} else if(sizeof(info["restricted"][i]) \> 1) \{
+      /* Doing an "AND" check - we need all these properties to be set */
+      /* Does the PC have this property set? */
+      if(typeof(info["restricted"][i][1]) == T_INT) \{
+        /* Need equal or higher than this number */
+        if(Int(Get(\$buyer, info["restricted"][i][0])) \< info["restricted"][i][1])
+          return nil;
+      \} else \{
+        /* Need this exact value */
+        if(!member(Get(\$buyer, info["restricted"][i][0]), info["restricted"][i]))
+          return nil;
+      \}
+    \}
+  \}
+\}
+
+/* Is there an influence cost for this? */
+\$extra_cost = "";
+if(info["influence"] \&\& sizeof(map_indices(info["influence"]))) \{
+  /* Do they have enough influence? */
+  indices = map_indices(info["influence"]);
+  for(i=0;i\<sizeof(indices);i++) \{
+    if(Int(Get(\$buyer, "influence:"+indices[i])) \< Int(info["influence"][indices[i]]))
+      return nil;
+  \}
+  if(sizeof(indices))
+    \$extra_cost = "["+indices[0]+" influence]";
+\}
+if(\$extra_cost != "" \&\& \$stocklisting) \{
+    \$price = (\{ \$price, \$extra_cost \});
+    return \$price;
+\}
+
+
+/* Is there a token cost for this? */
+\$extra_cost = "";
+if(info["token_cost"] \&\& sizeof(info["token_cost"])) \{
+    \$tokenAmount = info["token_cost"][0];
+    \$tokenType = info["token_cost"][1];
+    \$extra_cost = "[OR " + \$tokenAmount + " " + \$tokenType + " tokens" + "]";
+\}
+if(\$extra_cost != "" \&\& \$stocklisting) \$price = (\{ \$price, \$extra_cost \});
+return \$price;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_price_for_offer">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:check_price_for_offer instead! */
+/* Check the price of an item */
+/* \$price = Call(\$\{Ironclaw:Lib:Economy:TradingLib\}, "check_price", \$inventory: \$par["item"][0], \$item: \$par["item"][1], \$buyer:\$actor, \$stocklisting: FALSE); */
+
+int i, j, k, payment;
+object obj;
+
+\$accepts = (\{ \});
+payment = 0;
+
+\$trading_lists = \$buyer."trading:lists";
+if(!sizeof(Arr(\$trading_lists))) return ([ "accepts":\$accepts, "payment":payment ]);
+for(i=0;i\<sizeof(\$trading_lists);i++) \{
+
+  /* Is this the actual trade, or just a price check? */
+  if(\$do_trade_now)
+    \$data = prefixed_map(Get(\$trading_lists[i], "*"), "tradingitem:");
+  else
+    \$data = copy(prefixed_map(Get(\$trading_lists[i], "*"), "tradingitem:")); /* For the price check, we make a copy so that we don't update the genuine list's stock amount */
+  
+  for(j=0;j\<sizeof(\$items);j++) \{
+    obj = NRefOb(\$items[j]);
+  
+    for(k=0;k\<sizeof(map_indices(\$data));k++) \{
+      \$entry = \$data[map_indices(\$data)[k]];
+      /* Does this item match? */
+      if(typeof(\$entry["buying"]) == T_INT \&\& obj."core:ur:parent" == \$entry["object"]) \{
+        /* Object parent matches */
+        
+        /* ADD CODE HERE FOR OTHER PROPERTY CHECKING */
+        
+        /* Have we hit the max stock they will buy? */
+        if(typeof(\$entry["maxstock"]) == T_INT \&\& \$entry["stock"] != -1) \{
+          if(\$entry["stock"] \>= \$entry["maxstock"]) continue;
+          /* They haven't hit max. Increase their stock count (assuming they'll buy this item) in case multiple items are offered and the player offers enough to hit the max */
+          \$entry["stock"]++;
+        \}
+        
+        \$accepts += (\{ obj \});
+        payment += \$entry["buying"];
+        break;
+      \}
+    \}
+  \}
+\}
+
+return ([ "accepts":\$accepts, "payment":payment ]);
+      </Core:Property>
+      <Core:Property property="merry:lib:do_personal_token_trade">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:do_trade instead! */
+/* Give the PC an item that they are buying */
+mixed info;
+int i;
+string *indices;
+
+\$buyer = \$par["buyer"];
+\$seller = \$par["seller"];
+info = Get(\$par["item"][0], \$par["item"][1]);
+\$tCost = \$par["tCost"];
+\$tType = \$par["tType"];
+\$pAmount = \$par["pAmount"];
+\$quantity = \$par["quantity"];
+\$tCost2 = \$tCost/\$quantity;
+\$color = \$par["color"];
+\$material = \$par["material"];
+\$type = \$par["type"];
+
+if(\$tCost \> \$pAmount) \{
+/* Can the buyer afford the item? */
+  EmitTo(\$buyer, "That costs " + Str(\$tCost) + " " + \$tType + " tokens, and you only have " + Str(\$pAmount) + ".");
+  return FALSE;
+\}
+
+/* Do a haggling roll, to see how much discount the PC gets */
+\$original_price = \$tCost;
+\$haggle_roll = ironclaw::roll(\$roller: \$buyer, \$skills: (\{"haggle"\}), \$bonus: 0);
+if(\$tCost2 \> 0) \{
+  \$tCost2 = \$tCost2 * (100-\$haggle_roll)/100;
+  if(\$tCost2 \< 1) \$tCost2 = 1;
+  \$tCost2 = \$tCost2 * \$quantity;
+\}
+
+if(\$tCost2 \< \$original_price) \{
+  EmitTo(\$buyer, "You manage to haggle " + Describe(\$seller) + " down from " + Str(\$tCost) + " " + \$tType + " to " + Str(\$tCost2) + ".");
+  \$tCost = \$tCost2;
+\} else \{
+  EmitTo(\$buyer, "You pay " + Describe(\$seller) + " " + Str(\$tCost) + " " + \$tType + " tokens.");
+\}
+
+Call(\$\{Allegory:Lib:Economy:TradingLib\}, "give_item", \$buyer: \$buyer, \$seller: \$seller, \$info: info, \$quantity: \$quantity, \$type: \$type, \$color: \$color, \$material: \$material);
+
+\$pAmount = Int(Get(\$actor, "tokens:" + \$tType)) - \$tCost;
+Set(\$actor, "tokens:" + \$tType, \$pAmount);
+
+/* Do we need to pay a cut to any PCs or guilds? */
+if(info["payto"]) \{
+  \$multiplier = 0.1; /* Currently we always pay 10% of the cost (after haggling) */
+  \$amount = Int(Flt(\$tCost) * \$multiplier);
+  if(Get(info["payto"], "tokens:" + \$tType)) \{
+    \$amt = Int(Get(info["payto"], "tokens:" + \$tType)) + \$amount;
+    Set(info["payto"], "tokens:" + \$tType, \$amt);
+  \} else \{
+    Set(info["payto"], "tokens:" + \$tType, \$amount);
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_token_trade">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:do_trade instead! */
+/* Give the PC an item that they are buying */
+mixed info;
+int i;
+string *indices;
+
+\$buyer = \$par["buyer"];
+\$seller = \$par["seller"];
+info = Get(\$par["item"][0], \$par["item"][1]);
+\$tCost = \$par["tCost"];
+\$tType = \$par["tType"];
+\$gAmount = \$par["gAmount"];
+\$quantity = \$par["quantity"];
+\$tCost2 = \$tCost/\$quantity;
+\$color = \$par["color"];
+\$material = \$par["material"];
+
+if(\$tCost \> \$gAmount) \{
+/* Can the guild afford the item? */
+  EmitTo(\$buyer, "That costs " + Str(\$tCost) + " " + \$tType + " tokens, and your guild only has " + Str(\$gAmount) + ".");
+  return FALSE;
+\}
+
+/* Do a haggling roll, to see how much discount the PC gets */
+\$original_price = \$tCost;
+\$haggle_roll = ironclaw::roll(\$roller: \$buyer, \$skills: (\{"haggle"\}), \$bonus: 0);
+if(\$tCost2 \> 0) \{
+  \$tCost2 = \$tCost2 * (100-\$haggle_roll)/100;
+  if(\$tCost2 \< 1) \$tCost2 = 1;
+  \$tCost2 = \$tCost2 * \$quantity;
+\}
+
+if(\$tCost2 \< \$original_price) \{
+  EmitTo(\$buyer, "You manage to haggle " + Describe(\$seller) + " down from " + Str(\$tCost) + " " + \$tType + " to " + Str(\$tCost2) + ".");
+  \$tCost = \$tCost2;
+\} else \{
+  EmitTo(\$buyer, "You pay " + Describe(\$seller) + " " + Str(\$tCost) + " " + \$tType + " tokens from your guild.");
+\}
+
+Call(\$\{Allegory:Lib:Economy:TradingLib\}, "give_item", \$buyer: \$buyer, \$seller: \$seller, \$info: info, \$quantity: \$quantity, \$color: \$color);
+
+\$gAmount = Int(Get(Get(\$actor, "guild"), "tokens:" + \$tType)) - \$tCost;
+Set(Get(\$actor, "guild"), "tokens:" + \$tType, \$gAmount);
+
+/* Do we need to pay a cut to any PCs or guilds? */
+if(info["payto"]) \{
+  \$multiplier = 0.1; /* Currently we always pay 10% of the cost (after haggling) */
+  \$amount = Int(Flt(\$tCost) * \$multiplier);
+  if(Get(info["payto"], "tokens:" + \$tType)) \{
+    \$amt = Int(Get(info["payto"], "tokens:" + \$tType)) + \$amount;
+    Set(info["payto"], "tokens:" + \$tType, \$amt);
+  \} else \{
+    Set(info["payto"], "tokens:" + \$tType, \$amount);
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_trade">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:do_trade instead! */
+/* Give the PC an item that they are buying */
+mixed info;
+int i;
+string *indices;
+
+\$buyer = \$par["buyer"];
+\$seller = \$par["seller"];
+info = Get(\$par["item"][0], \$par["item"][1]);
+\$price = Call(\$\{Allegory:Lib:Economy:TradingLib\}, "check_price", \$inventory: \$par["item"][0], \$item: \$par["item"][1], \$buyer: \$actor, \$stocklisting: FALSE);
+\$quantity = \$par["quantity"];
+\$price = \$price * \$quantity;
+\$color = \$par["color"];
+\$material = \$par["material"];
+\$type = \$par["type"];
+\$grip = \$par["grip"];
+
+/* Can they afford the item? */
+if(Int(\$price) \> Int(\$buyer."trait:money")) \{
+  EmitTo(\$buyer, "That costs "+ironclaw::describe_money(\$amount: \$price)+", and you only have "+ironclaw::describe_money(\$amount: \$buyer."trait:money")+".");
+  return FALSE;
+\}
+
+/* Do a haggling roll, to see how much discount the PC gets */
+\$original_price = \$price;
+\$haggle_roll = ironclaw::roll(\$roller: \$buyer, \$skills: (\{"haggle"\}), \$bonus: 0);
+if(\$price \> 0) \{
+  \$price = \$price * (100-\$haggle_roll)/100;
+  if(\$price \< 1) \$price = 1;
+\}
+
+if(info["object"]."trait:objecttype" == "key" \|\| info["object"]."base:urparent" == \$\{Allegory:Props:Keys:BoardHouse:UrRentingKey\}) \{
+    \$price = \$original_price;
+\}
+
+if(\$price \< \$original_price) \{
+  EmitTo(\$buyer, "You manage to haggle "+Describe(\$seller)+" down from "+ironclaw::describe_money(\$amount: \$original_price)+" to "+ironclaw::describe_money(\$amount: \$price)+".");
+\} else \{
+  EmitTo(\$buyer, "You pay "+Describe(\$seller)+" "+ironclaw::describe_money(\$amount: \$price)+".");
+\}
+
+/* Is there an influence cost for buying this item? */
+if(info["influence"] \&\& sizeof(map_indices(info["influence"]))) \{
+  indices = map_indices(info["influence"]);
+  \$influence_cost = Int(Get(\$buyer, "influence:"+indices[i]))-Int(info["influence"][indices[i]]);
+  for(i=0;i\<sizeof(indices);i++) \{
+    /* Reduce their influence */
+    Set(\$buyer, "influence:"+indices[i], Int(Get(\$buyer, "influence:"+indices[i]))-Int(info["influence"][indices[i]]));
+    /* Record spent influence */
+    \$spent = Int(Get(\$buyer, "spent:influence:"+indices[i]));
+    Set(\$buyer, "spent:influence:"+indices[i], \$spent+Int(info["influence"][indices[i]]));
+  \}
+\}
+
+Call(\$\{Allegory:Lib:Economy:TradingLib\}, "give_item", \$buyer: \$buyer, \$seller: \$seller, \$info: info, \$quantity: \$quantity, \$color: \$color);
+\$buyer."trait:money" -= \$price;
+
+if(info["object"]) \{
+    \$temp = info["object"];
+    if(\$temp."trait:editor") \{
+        \$editor = \$temp."trait:editor";
+ 
+        if(\$editor.guild) \{
+            \$editor.guild.kitty = Int(\$editor.guild.kitty) + \$price;
+        \} else \{
+            \$editor."trait:money" = Int(\$editor."trait:money") + \$price;
+        \}
+    \}
+\}
+
+/* Do we need to pay a cut to any PCs or guilds? */
+if(info["payto"]) \{
+  \$multiplier = 0.1; /* Currently we always pay 10% of the cost (after haggling) */
+  \$amount = Int(Flt(\$price) * \$multiplier);
+  if(info["payto"]."trait:money") \{
+    info["payto"]."trait:money" += \$amount;
+  \} else if(info["payto"].kitty) \{
+    info["payto"].kitty += \$amount;
+  \} else if(info["payto"].isguild) \{
+    info["payto"].kitty = \$amount;
+  \} else \{
+    info["payto"]."trait:money" = Int(info["payto"]."trait:money") + \$amount;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_item">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:give_item instead! */ 
+
+/* First, check to see if the merchant has a global inventory value */
+/* This is for the homeless vendors which need to be resupplied */
+
+if(\$seller."trait:global_stock" == 0)
+\{
+  /* Inform the buyer that the merchant is all out of inventory for now */
+  EmitTo(\$buyer, Describe(\$seller) + " apologizes to you, \\"I'm sorry, I'm all out clothing right now, but I'm accepting dyed fabric donations!\\"");
+  EmitIn(\$buyer."base:environment", Describe(\$seller) + " apologizes to " + Describe(\$buyer) + ", \\"I'm sorry, I'm all out clothing right now, but I'm accepting dyed fabric donations!\\"", \$buyer);
+  return FALSE;
+\} 
+
+/* Hand an item over */ 
+\$quantity = Int(\$quantity); 
+if(!\$quantity) \$quantity = 1; 
+\$items = (\{ \}); 
+ 
+while(\$quantity \>= 1) \{ 
+  \$quantity--; 
+\$item = Spawn(\$info["object"]); 
+if(!\$item) return FALSE; 
+ 
+/* Set item properties */ 
+if(\$info["properties"]) \{ 
+  int i, index; 
+  for(i=0;i\<sizeof(\$info["properties"]);i++) \{ 
+    index = 1; 
+    if(sizeof(\$info["properties"][i]) \> 2) 
+      index = random(sizeof(\$info["properties"][i])-1)+1; 
+    Set(\$item, \$info["properties"][i][0], \$info["properties"][i][index]); 
+  \} 
+\} 
+ 
+/* Set the item quality */ 
+if(!\$info["properties"] \|\| !member("trait:quality", \$info["properties"])) 
+  \$item."trait:quality" = allegory::roll(\$roller: \$buyer, \$skills: (\{"skill:social:appraise"\}), \$bonus: 0); 
+
+/* Set the item color */
+if(\$color) Set(\$item, "trait:color", replace_strings(\$color, "-", " "));
+
+/* Set the material color */
+if(\$material) Set(\$item, "trait:material", \$material);
+
+if(\$type) Set(\$item, "trait:type", \$type);
+
+if(\$shape) Set(\$item, "trait:shape", \$shape);
+
+if(\$grip) Set(\$item, "trait:grip:material", replace_strings(\$grip, "-", " "));
+ 
+\$item."base:environment" = \$buyer; 
+if(\$item."base:environment" != \$buyer) \{ 
+  \$item."base:environment" = \$buyer."base:environment"; 
+  if(\$item."base:environment" == \$buyer."base:environment") \{
+    EmitTo(\$buyer, Describe(\$seller)+" places "+Describe(\$item, nil, nil, STYLE_NONPOSS)+" on the ground, as your arms are too full."); 
+    EmitIn(\$buyer."base:environment", Describe(\$seller)+" places "+Describe(\$item, nil, nil, STYLE_NONPOSS)+" on the ground, as "+Describe(\$buyer)+" is already holding too much.", \$buyer); 
+  \} else \{ 
+    EmitTo(\$buyer, Describe(\$seller)+" tries to hand "+Describe(\$item, nil, nil, STYLE_NONPOSS)+" to you, but you are already carrying too much."); 
+    Slay(\$item); 
+    return FALSE; 
+  \} 
+\} else \{ 
+  \$items += (\{ \$item \}); 
+\}
+ 
+/* Reduce remaining stock of this item */ 
+if(\$info["stock"] \&\& \$info["stock"] \> 0) \$info["stock"]--; 
+\}
+/* Also, if the merchant has a global inventory value, reduce it */
+if(\$seller."trait:global_stock") 
+\{ 
+  \$seller."trait:global_stock"--;
+\} 
+ 
+if(sizeof(\$items)) \{ 
+  EmitTo(\$buyer, Describe(\$seller)+" hands "+Describe(\$items, nil, nil, STYLE_NONPOSS)+" to you."); 
+  EmitIn(\$buyer."base:environment", Describe(\$seller)+" hands "+Describe(\$items, nil, nil, STYLE_NONPOSS)+" to "+Describe(\$buyer)+".", \$buyer); 
+\}
+
+/* Hook for items like mounts that need to register an owner upon rental/purchase */
+if(!sizeof(\$items)) \{
+    if(FindMerry(\$item, "lib", "start")) \{
+        Call(\$item, "start");
+    \}
+\}
+
+/* Hook for special code that triggers after purchasing an item */
+if(FindMerry(\$seller, "lib", "give_item")) \{
+    Call(\$seller, "give_item", \$item: \$item);
+\}
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:selling_accepted">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:selling_accepted instead! */
+/* Allows a merchant to buy items - player just accepted the trade */
+int i;
+
+if(!\$par) return TRUE;
+if(!\$par["items"]) return TRUE;
+if(!\$par["seller"]) return TRUE;
+if(!\$par["buyer"]) return TRUE;
+
+for(i=0;i\<sizeof(\$par["items"]);i++) \{
+  if(\$par["items"][i]."base:environment" != \$par["seller"]) \{
+    \$par["items"][i] = nil;
+    \$par["items"] -= (\{ nil \});
+  \}
+\}
+
+\$result = Call(\$\{Allegory:Lib:Economy:TradingLib\}, "check_price_for_offer", \$buyer: \$par["buyer"], \$seller: \$par["seller"], \$items: \$par["items"], \$do_trade_now: TRUE);
+
+
+if(!sizeof(\$result["accepts"])) \{
+  EmitTo(\$actor, Describe(\$par["buyer"])+" can't make that trade.");
+\} else \{
+  if(\$result["payment"] \> 0) \{
+    EmitTo(\$actor, Describe(\$par["buyer"])+" takes "+Describe(\$result["accepts"], nil, \$actor)+", and pays you "+ironclaw::describe_money(\$amount: \$result["payment"]));
+    \$actor."trait:money" = Int(\$actor."trait:money") + Int(\$result["payment"]);
+  \} else
+    EmitTo(\$actor, Describe(\$par["buyer"])+" takes "+Describe(\$result["accepts"], nil, \$actor)+".");
+
+  for(i=0;i\<sizeof(\$result["accepts"]);i++) \{
+    Slay(\$result["accepts"][i]);
+  \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:trade_cancel">
+         X[M] \$name = \$par["name"];
+
+EmitTo(\$actor, "You decide not to buy " + \$name + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:trade_expire">
+         X[M] \$name = \$par["name"];
+\$seller = \$par["seller"];
+
+EmitTo(\$actor, "Since you took so long to decide, " + Describe(\$seller) + " puts away "+\$name+".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:ask-dob%trading">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:react:ask-dob%trading instead! */
+/* Asking the merchant about their stocks */
+int i, j, jx, x, z;
+string *inv_ind;
+object *lists;
+mixed info;
+int free_item_delay;
+
+free_item_delay = 10; /* Make them wait 10 seconds between asking for free items */
+
+lists = Arr(this."trading:lists");
+if(!\$(about:words) \&\& !\$(for:words)) \{
+  /* They didn't specify what they are asking about. Is there a general message? */
+  for(i=0;i\<sizeof(lists);i++) \{
+    if(FindMerry(lists[i], "lib", "ask_message")) \{
+      if(!Call(lists[i], "ask_message", \$seller: this, \$buyer: \$actor)) return FALSE;
+      break;
+    \}
+  \}
+  \$groups = ([ ]);
+  \$items = ([ ]);
+  \$tokenItems = ([ ]);
+  \$itemsOb = ([ ]);
+  for(i=0;i\<sizeof(lists);i++) \{
+    inv_ind = map_indices(prefixed_map(lists[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      if(info = Get(lists[i], inv_ind[j])) \{
+        if(!info["object"]) continue; /* No object to trade. Object has probably been deleted */
+        \$price = Call(\$\{Allegory:Lib:Economy:TradingLib\}, "check_price", \$inventory: lists[i], \$item: inv_ind[j], \$buyer: \$actor, \$stocklisting: TRUE);
+        /* Handle items that cost something other than money */
+        \$additional_cost = "";
+        if(typeof(\$price) == T_ARRAY \&\& sizeof(\$price) \> 1) \{
+          \$additional_cost = " "+\$price[1];
+          \$price = \$price[0];
+        \}
+
+        if(\$price != nil) \{
+          \$item_name = info["name"] ? info["name"] : Describe(info["object"]);
+          \$item_name += \$additional_cost;
+          \$itemsOb[\$item_name] = info["object"];
+          if(\$items[\$item_name]) \{
+            if(\$items[\$item_name] \> \$price)
+              \$items[\$item_name] = \$price;
+          \} else \{
+            \$items[\$item_name] = \$price;
+          \}
+
+          if(info["group"]) \{
+              \$item_group = info["group"];
+          \} else \{
+              \$item_group = "miscellaneous";
+          \}
+
+          if(\$groups[\$item_group]) \{
+              if(\$groups[\$item_group][\$item_name]) \{
+                  if(\$groups[\$item_group][\$item_name] \> \$price) \{
+                      \$groups[\$item_group][\$item_name] = \$price;
+                  \}
+              \} else \{
+                  \$groups[\$item_group][\$item_name] = \$price;
+              \}
+          \} else \{
+              \$groups[\$item_group] = ([ \$item_name:\$price ]);
+          \}
+        \}
+
+/* ([ "object":\<Ironclaw:AAs:Props:Creatures:Leech\>, "price":200, "skill":(\{ "trading:swampmerchant:leech" \}), "skill-level":1, "stock":-1 ]) */
+
+      \}
+    \}
+  \}
+  if(!sizeof(map_indices(\$items))) EmitTo(\$actor, "Nothing is for sale at the moment."); else EmitTo(\$actor, "\\n" + capitalize(Describe(\$this)) + " has the following for sale:");
+
+  \$allGroups = map_indices(\$groups);
+
+  for(z = 0; z \< sizeof(\$allGroups); z++) \{
+    EmitTo(\$actor, "\\n" + upper_case(\$allGroups[z]));
+    \$items = \$groups[\$allGroups[z]];
+    \$items2 = map_indices(\$items);
+
+    for(i=0;i\<sizeof(map_indices(\$items));i++) \{
+      if(Int(\$items[\$items2[i]]) \<= 0) \{
+          if(\$itemsOb[\$items2[i]] \&\& \$itemsOb[\$items2[i]]."base:keycode" \&\& \$itemsOb[\$items2[i]].roomcost) \{
+              EmitTo(\$actor, ironclaw::describe_money(\$amount: \$itemsOb[\$items2[i]].roomcost)+"/day - "+map_indices(\$items)[i]);
+          \} else \{
+              EmitTo(\$actor, ironclaw::describe_money(\$amount: \$items[map_indices(\$items)[i]])+" - "+map_indices(\$items)[i]);
+          \}
+      \} else \{
+          if(\$itemsOb[\$items2[i]] \&\& \$itemsOb[\$items2[i]]."base:keycode" \&\& \$itemsOb[\$items2[i]].roomcost) \{
+              EmitTo(\$actor, ironclaw::describe_money(\$amount: \$items[map_indices(\$items)[i]]) + " upfront and " + ironclaw::describe_money(\$amount: \$itemsOb[\$items2[i]].roomcost)+"/day - "+map_indices(\$items)[i]);
+          \} else \{
+              EmitTo(\$actor, ironclaw::describe_money(\$amount: \$items[map_indices(\$items)[i]])+" - "+map_indices(\$items)[i]);
+          \}
+      \}
+    \}
+  \}
+  return FALSE;
+\}
+
+if(\$(for:words)) \{
+  /* They specified what they are asking for */
+  string word, *adjectives;
+  mixed *inv_matches, *last_matches;
+
+  /* Pick the LAST word from \$(for:words), as someone could be funny, */
+  /* and type 'ask cook for a deliciously prepared cookie' but keep the */
+  /* rest in case we need to go into adjective details. */
+  word = \$(for:words)[ sizeof( \$(for:words) )-1 ];
+
+  if( sizeof( \$(for:words) ) \> 1 )
+    adjectives = \$(for:words)[0 .. sizeof( \$(for:words) )-2 ];
+  else
+    adjectives = (\{ \});
+
+  /* Step through the items in the trading lists */
+  inv_matches = (\{ \});
+  for(i=0;i\<sizeof(lists);i++) \{
+    inv_ind = map_indices(prefixed_map(lists[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      if(info = Get(lists[i], inv_ind[j])) \{
+
+        if(!info["object"]) continue;
+
+        /* does this match? */
+        if(info["names"] \&\& !info["noselling"]) \{
+          if(member(word, Arr(info["names"]))) \{
+            \$price2 = Call(\$\{Allegory:Lib:Economy:TradingLib\}, "check_price", \$inventory: lists[i], \$item: inv_ind[j], \$buyer: \$actor, \$stocklisting: TRUE);
+            \$price = Call(\$\{Allegory:Lib:Economy:TradingLib\}, "check_price", \$inventory: lists[i], \$item: inv_ind[j], \$buyer: \$actor, \$stocklisting: FALSE);
+            if(\$price != nil)
+              inv_matches \|= (\{ (\{ lists[i], inv_ind[j], \$price\}) \});
+          \}
+        \}
+        if (!info["noselling"]) \{
+          /* check sname */
+          if(Get(info["object"], "details:default:sname:"+word)
+          \|\| Get(info["object"], "details:default:pname:"+word)) \{
+            \$price2 = Call(\$\{Allegory:Lib:Economy:TradingLib\}, "check_price", \$inventory: lists[i], \$item: inv_ind[j], \$buyer: \$actor, \$stocklisting: TRUE);
+            \$price = Call(\$\{Allegory:Lib:Economy:TradingLib\}, "check_price", \$inventory: lists[i], \$item: inv_ind[j], \$buyer: \$actor, \$stocklisting: FALSE);
+            if(\$price != nil)
+              inv_matches \|= (\{ (\{ lists[i], inv_ind[j], \$price, \$price2\}) \});
+          \}
+        \}
+      \}
+    \}
+  \}
+
+\$z = 0;
+  if(sizeof(inv_matches)) \{
+    /* We have at least one match */
+    /* if there is more than one item matched, try to work out which one based on adjectives */
+    while( sizeof(inv_matches) \> 1 \&\& adjectives \&\& sizeof(adjectives) \&\& \$z \< 20) \{
+      /* strip invalid choices from the inventories list */
+      for(j=sizeof(adjectives)-1;j\>=0\&\&sizeof(inv_matches)\>1;j--) \{
+        last_matches = copy(inv_matches);
+        for(i=0; i\<sizeof(inv_matches); i++) \{
+          info = Get(inv_matches[i][0], inv_matches[i][1]);
+          if(info["adjectives"]) \{
+            if(!member(adjectives[j], Arr(info["adjectives"])))
+              inv_matches[i] = nil;
+          \} else \{
+            /* no names provided. check adjectives */
+            if(!Get(info["object"], "details:default:adjective:"+adjectives[j]))
+              inv_matches[i] = nil;
+          \}
+        \}
+       /* adjectives[j] = nil;
+        adjectives -= (\{ nil \}); */
+        inv_matches -= (\{ nil \});
+      \}
+ 
+      \$z++;
+    \}
+  \}
+
+  /* If we have no matches, but had matches before the adjectives, take the last known match list */
+  if(!sizeof(inv_matches) \&\& sizeof(Arr(last_matches)))
+    inv_matches = last_matches;
+
+  if(sizeof(inv_matches) \> 1) \{
+    /* If there is still more than one match */
+    /* Choose one of the matches at random */
+    /* inv_matches = (\{ inv_matches[random( sizeof( inv_matches))] \}); */
+
+    /* Choose the cheapest item */
+    \$possibilities = inv_matches;
+    \$lowest_price = inv_matches[0][2]+1; /* Starting price slightly more expensive than the first item */
+    for(i=0; i\<sizeof(\$possibilities); i++) \{
+      if(\$possibilities[i][2] \< \$lowest_price) \{
+        inv_matches = (\{ \$possibilities[i] \});
+        \$lowest_price = \$possibilities[i][2];
+      \}
+    \}
+  \} else if(!sizeof(inv_matches)) \{
+    /* No matches were found */
+    EmitTo(\$actor, Describe(this)+" doesn't have that.");
+    return FALSE;
+  \}
+
+  /* OK, now we should have only one match */
+
+  /* Are there color variations? Make them specify. */
+  \$item = Get(inv_matches[0][0], inv_matches[0][1]);
+  if(\$item["trait:color"]) \{
+      \$color = nil;
+      \$colors = \$item["trait:color"];
+      for(x = 0; x \< sizeof(adjectives) \&\& !\$color; x++) \{
+          if(member(adjectives[x], \$colors)) \{
+              \$color = adjectives[x];
+          \}
+      \}
+
+      if(!\$color) \{
+          EmitTo(\$actor, TAG("That comes in the following colors: " + implode(\$colors, ", ") + ". Which did you want?", "imp"));
+          return FALSE;
+      \}
+  \}
+
+  /* Are there material variations? Make them specify. */
+  \$item = Get(inv_matches[0][0], inv_matches[0][1]);
+  if(\$item["trait:material"]) \{
+      \$material = nil;
+      \$materials = \$item["trait:material"];
+      for(x = 0; x \< sizeof(adjectives) \&\& !\$material; x++) \{
+          if(member(adjectives[x], \$materials)) \{
+              \$material = adjectives[x];
+          \}
+      \}
+
+      if(!\$material) \{
+          EmitTo(\$actor, TAG("That comes in the following materials: " + implode(\$materials, ", ") + ". Which did you want?", "imp"));
+          return FALSE;
+      \}
+  \}
+
+  /* Are there type variations? Make them specify. */
+  \$item = Get(inv_matches[0][0], inv_matches[0][1]);
+  if(\$item["trait:type"]) \{
+      \$type = nil;
+      \$types = \$item["trait:type"];
+      for(x = 0; x \< sizeof(adjectives) \&\& !\$type; x++) \{
+          if(member(adjectives[x], \$types)) \{
+              \$type = adjectives[x];
+          \}
+      \}
+
+      if(!\$type) \{
+          EmitTo(\$actor, TAG("That comes in the following types: " + implode(\$types, ", ") + ". Which did you want?", "imp"));
+          return FALSE;
+      \}
+  \}
+
+  /* Are there trait:grip:material variations? Make them specify. */
+  \$item = Get(inv_matches[0][0], inv_matches[0][1]);
+  if(\$item["trait:grip:material"]) \{
+      \$grip = nil;
+      \$grips = \$item["trait:grip:material"];
+      for(x = 0; x \< sizeof(adjectives) \&\& !\$grip; x++) \{
+          if(member(adjectives[x], \$grips)) \{
+              \$grip = adjectives[x];
+          \}
+      \}
+
+      if(!\$grip) \{
+          EmitTo(\$actor, TAG("That comes with the following grips: " + implode(\$grips, ", ") + ". Which did you want?", "imp"));
+          return FALSE;
+      \}
+  \}
+
+  /* Did they ask for more than one item? */
+  \$number_of_items = 1;
+  if(sscanf(\$(for:words)[0], "%d", \$number_of_items)) \{
+    /* Yes, they specified a number of items */
+    if(\$number_of_items \< 1) \$number_of_items = 1;
+    else if(\$number_of_items \> 20) \$number_of_items = 20;
+    if(\$item["one at a time"]) \$number_of_items = 1;
+  \}
+
+  inv_matches = inv_matches[0];
+  /* Is this free? */
+  if(!inv_matches[2]) \{
+    /* It is free! */
+    /* Have they already asked for a free item recently? */
+    if(\$actor."npc:spam:presents") \{
+      EmitTo( \$actor, "You just asked for something. Please ask again later." );
+      return FALSE;
+    \}
+    /* Give them the item */
+    Call(\$\{Allegory:Lib:Economy:TradingLib\}, "give_item", \$buyer: \$actor, \$seller: this, \$info: Get(inv_matches[0], inv_matches[1]), \$quantity: \$number_of_items);
+
+    /* And stop them asking for another free item for a short while */
+    ironclaw::set_prop(\$obj: \$actor, \$prop: "npc:spam:presents", \$value: TRUE, \$timer: free_item_delay);
+    return FALSE;
+  \} else \{
+    if(sizeof(inv_matches) \> 3) \$price2 = inv_matches[3]; else \$price2 = inv_matches[2];
+    if(typeof(\$price2) == T_ARRAY \&\& contains(\$price2[1], "tokens")) \{
+        info = Get(inv_matches[0], inv_matches[1]);
+        \$name = info["name"] ? info["name"] : Describe(info["object"]);
+        \$dCost = \$price2[0] * \$number_of_items;
+        \$tCost = Int(explode(\$price2[1], " ")[1]) * \$number_of_items;
+        \$tType = explode(\$price2[1], " ")[2];
+        if(\$actor.guild) \{
+            \$gAmount = Int(Get(Get(\$actor, "guild"), "tokens:" + \$tType));
+        \} else \{
+            \$gAmount = 0;
+        \}
+        \$pAmount = Int(Get(\$actor, "tokens:" + \$tType));
+
+	/* Not enough money, guild tokens, or personal tokens */
+        if(Int(\$dCost) \> Int(\$actor."trait:money") \&\& Int(\$tCost) \> Int(\$gAmount) \&\& Int(\$tCost) \> Int(\$pAmount)) \{
+            EmitTo(\$actor, "You do not have enough money or tokens to pay for " + \$name);
+            return FALSE;
+        \}
+
+	/* Not enough money or personal tokens. Pay with guild tokens if buyer is a guild trader. */
+        if(Int(\$dCost) \> Int(\$actor."trait:money") \&\& Int(\$tCost) \<= Int(\$gAmount) \&\& Int(\$tCost) \> Int(\$pAmount)) \{
+ 	    if(\$actor."guild:trader" \|\| \$actor."guild:rank" == 1) \{
+                \$question = "You do not have enough money to buy " + \$name + " but you can still pay with guild tokens. It will cost your guild " + Str(\$tCost) + " " + \$tType + " tokens and it currently has " + Str(\$gAmount) + ". Would you like to purchase " + \$name + " with guild tokens?";
+                \$yes_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$yes_fun = "do_token_trade";
+                \$no = "You decide not to buy " + \$name;
+    	    \} else \{
+                /* Not a guild trader */
+                EmitTo(\$actor, "You do not have enough money or tokens to pay for " + \$name);
+                return FALSE;
+            \}
+        \}
+
+	/* Not enough money or guild tokens. Pay with personal tokens. */
+        if(Int(\$dCost) \> Int(\$actor."trait:money") \&\& Int(\$tCost) \> Int(\$gAmount) \&\& Int(\$tCost) \<= Int(\$pAmount)) \{
+            \$question = "You do not have enough money to buy " + \$name + " but you can still pay with personal tokens. It will cost you " + Str(\$tCost) + " " + \$tType + " tokens and you currently have " + Str(\$pAmount) + ". Would you like to purchase " + \$name + " with personal tokens?";
+            \$yes_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+            \$yes_fun = "do_personal_token_trade";
+            \$no = "You decide not to buy " + \$name;
+        \}
+
+	/* Not enough guild or personal tokens. Pay with money. */
+        if(Int(\$dCost) \<= Int(\$actor."trait:money") \&\& Int(\$tCost) \> Int(\$gAmount) \&\& Int(\$tCost) \> Int(\$pAmount)) \{
+            \$question = "You do not have enough tokens to buy " + \$name + " but you can still pay with florins. It will cost you " + Str(ironclaw::describe_money(\$amount: \$dCost)) + " and you currently have " + Str(ironclaw::describe_money(\$amount: \$actor."trait:money")) + ". Would you like to purchase " + \$name + " with your money?";
+            \$yes_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+            \$yes_fun = "do_trade";
+            \$no = "You decide not to buy " + \$name;
+        \}
+
+	/* Not enough money. Pay with guild tokens or personal tokens. */
+        if(Int(\$dCost) \> Int(\$actor."trait:money") \&\& Int(\$tCost) \<= Int(\$gAmount) \&\& Int(\$tCost) \<= Int(\$pAmount)) \{
+            /* Does buyer have access to guild tokens? */
+            if(\$actor."guild:trader" \|\| \$actor."guild:rank" == 1) \{
+                \$question = "You do not have enough money to buy " + \$name + " but you can still pay with guild or personal tokens. How would you like to pay for " + Str(\$name) + " " + Str(\$quantity_string) + "?\\n";
+                \$question += "Guild tokens will cost you " + Str(\$tCost) + " " + \$tType + " tokens and your guild currently has " + Str(\$gAmount) + " " + \$tType + " tokens.\\n";
+	        \$question += "Personal tokens will cost you " + Str(\$tCost) + " " + \$tType + " tokens and you currently have " + Str(\$pAmount) + " " + \$tType + " tokens.";
+
+                \$a = "I would like to pay with guild tokens.";
+                \$a_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$a_fun = "do_token_trade";
+
+                \$b = "I would like to pay with personal tokens.";
+                \$b_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$b_fun = "do_personal_token_trade";
+
+                \$c = "I need more time to think.";
+                \$c_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$c_fun = "trade_cancel";
+            \} else \{
+                \$question = "You do not have enough money to buy " + \$name + " but you can still pay with personal tokens. It will cost you " + Str(\$tCost) + " " + \$tType + " tokens and you currently have " + Str(\$pAmount) + ". Would you like to purchase " + \$name + " with personal tokens?";
+                \$yes_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$yes_fun = "do_personal_token_trade";
+                \$no = "You decide not to buy " + \$name;
+            \}
+        \}
+
+        /* Not enough guild tokens. Pay with money or personal tokens */
+        if(Int(\$dCost) \< Int(\$actor."trait:money") \&\& Int(\$tCost) \> Int(\$gAmount) \&\& Int(\$tCost) \< Int(\$pAmount)) \{
+            \$question = "You do not have enough guild tokens to pay for " + \$name + " but you can still pay with florins or personal tokens. How would you like to pay for " + Str(\$name) + " " + Str(\$quantity_string) + "?\\n";
+            \$question += "Florins will cost you " + Str(ironclaw::describe_money(\$amount: \$dCost)) + " and you currently have " + Str(ironclaw::describe_money(\$amount: \$actor."trait:money")) + ".\\n";
+	    \$question += "Personal tokens will cost you " + Str(\$tCost) + " " + \$tType + " tokens and you currently have " + Str(\$pAmount) + " " + \$tType + " tokens.";
+
+            \$a = "I would like to pay in florins.";
+            \$a_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+            \$a_fun = "do_trade";
+
+            \$b = "I would like to pay with personal tokens.";
+            \$b_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+            \$b_fun = "do_personal_token_trade";
+
+            \$c = "I need more time to think.";
+            \$c_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+            \$c_fun = "trade_cancel";
+        \}
+
+        /* Not enough personal tokens. Pay with money or guild tokens */
+        if(Int(\$dCost) \<= Int(\$actor."trait:money") \&\& Int(\$tCost) \<= Int(\$gAmount) \&\& Int(\$tCost) \> Int(\$pAmount)) \{
+            /* Does buyer have access to guild tokens? */
+            if(\$actor."guild:trader" \|\| \$actor."guild:rank" == 1) \{
+                \$question = "You do not have enough personal tokens to pay for " + \$name + " but you can still pay with florins or guild tokens. How would you like to pay for " + Str(\$name) + " " + Str(\$quantity_string) + "?\\n";
+                \$question += "Florins will cost you " + Str(ironclaw::describe_money(\$amount: \$dCost)) + " and you currently have " + Str(ironclaw::describe_money(\$amount: \$actor."trait:money")) + ".\\n";
+                \$question += "Guild tokens will cost you " + Str(\$tCost) + " " + \$tType + " tokens and your guild currently has " + Str(\$gAmount) + " " + \$tType + " tokens.";
+
+                \$a = "I would like to pay with florins.";
+                \$a_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$a_fun = "do_trade";
+
+                \$b = "I would like to pay with guild tokens.";
+                \$b_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$b_fun = "do_token_trade";
+
+                \$c = "I need more time to think.";
+                \$c_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$c_fun = "trade_cancel";
+            \} else \{
+                \$question = "You do not have enough tokens to buy " + \$name + " but you can still pay with florins. It will cost you " + Str(ironclaw::describe_money(\$amount: \$dCost)) + " and you currently have " + Str(ironclaw::describe_money(\$amount: \$actor."trait:money")) + ". Would you like to purchase " + \$name + " with your money?";
+                \$yes_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$yes_fun = "do_trade";
+                \$no = "You decide not to buy " + \$name;
+            \}
+        \}
+
+        /* Enough for all payment methods */
+        if(Int(\$dCost) \<= Int(\$actor."trait:money") \&\& Int(\$tCost) \<= Int(\$gAmount) \&\& Int(\$tCost) \<= Int(\$pAmount)) \{
+            /* Does buyer have access to guild tokens? */
+	    if(\$actor."guild:trader" \|\| \$actor."guild:rank" == 1) \{
+                \$question = "How would you like to pay for " + Str(\$name) + " " + Str(\$quantity_string) + "?\\n";
+                \$question += "Florins will cost you " + Str(ironclaw::describe_money(\$amount: \$dCost)) + " and you currently have " + Str(ironclaw::describe_money(\$amount: \$actor."trait:money")) + ".\\n";
+                \$question += "Guild tokens will cost you " + Str(\$tCost) + " " + \$tType + " tokens and your guild currently has " + Str(\$gAmount) + " " + \$tType + " tokens.\\n";
+                \$question += "Personal tokens will cost you " + Str(\$tCost) + " " + \$tType + " tokens and you currently have " + Str(\$pAmount) + " " + \$tType + " tokens.";
+
+                \$a = "I would like to pay in florins.";
+                \$a_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$a_fun = "do_trade";
+
+                \$b = "I would like to pay with guild tokens.";
+                \$b_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$b_fun = "do_token_trade";
+
+                \$c = "I would like to pay with personal tokens.";
+                \$c_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$c_fun = "do_personal_token_trade";
+
+                \$d = "I need more time to think.";
+                \$d_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$d_fun = "trade_cancel";
+            \} else \{
+                \$question = "How would you like to pay for " + Str(\$name) + " " + Str(\$quantity_string) + "?\\n";
+                \$question += "Florins will cost you " + Str(ironclaw::describe_money(\$amount: \$dCost)) + " and you currently have " + Str(ironclaw::describe_money(\$amount: \$actor."trait:money")) + ".\\n";
+	        \$question += "Personal tokens will cost you " + Str(\$tCost) + " " + \$tType + " tokens and you currently have " + Str(\$pAmount) + " " + \$tType + " tokens.";
+
+                \$a = "I would like to pay in florins.";
+                \$a_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$a_fun = "do_trade";
+
+                \$b = "I would like to pay with personal tokens.";
+                \$b_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$b_fun = "do_personal_token_trade";
+
+                \$c = "I need more time to think.";
+                \$c_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+                \$c_fun = "trade_cancel";
+            \}
+        \}
+        \$expire_ob = \$\{Allegory:Lib:Economy:TradingLib\};
+        \$expire_fun = "trade_expire";
+        interaction::question(\$expires: 30, \$env: "TRUE", \$par: ([ "buyer":\$actor, "seller":this, "item":inv_matches, "price":\$dCost, "tCost":\$tCost, "tType":\$tType, "gAmount":\$gAmount, "quantity":\$number_of_items, "type":\$type, "color":\$color, "material":\$material, "name":\$name, "pAmount":\$pAmount ]));
+    \} else \{
+        /* This item costs money. Do they have enough money to pay for it? */
+        info = Get(inv_matches[0], inv_matches[1]);
+        \$name = info["name"] ? info["name"] : Describe(info["object"]);
+        \$price = inv_matches[2];
+        \$price = \$price * \$number_of_items;
+        if(Int(\$price) \> Int(\$actor."trait:money")) \{
+            EmitTo(\$actor, capitalize(\$name)+" costs "+ironclaw::describe_money(\$amount: \$price)+", and you only have "+ironclaw::describe_money(\$amount: \$actor."trait:money")+".");
+            return FALSE;
+        \}
+
+        \$quantity_string = \$number_of_items \> 1 ? " X"+Str(\$number_of_items)+" " : "";
+        interaction::question(\$question: "Would you like to buy " +\$name+\$quantity_string+" for "+ironclaw::describe_money(\$amount: \$price)+"? You currently have "+ironclaw::describe_money(\$amount: \$actor."trait:money")+".", \$expires: 30, \$env: "TRUE", \$yes_ob: \$\{Allegory:Lib:Economy:TradingLib\}, \$yes_fun: "do_trade", \$no: "You decide not to buy "+\$name+".", \$expire: "Since you took so long to decide, "+Describe(this)+" puts away "+\$name+".", \$par: ([ "buyer":\$actor, "seller":this, "item":inv_matches, "price":\$price, "quantity":\$number_of_items, "type":\$type, "color":\$color, "material":\$material, "grip":\$grip ]));
+    \}
+  \}
+
+  return FALSE;
+\}
+if(\$(for:words)) return FALSE;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:offer-who%trading">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:react:offer-who%trading instead! */
+/* Allows a merchant to buy items */
+int i;
+if(!\$what) return TRUE;
+
+/* remove the offer so the player doesn't have to revoke */
+Call(\$this, "base:removeoffer", \$from: \$actor);
+
+\$result = Call(\$\{Allegory:Lib:Economy:TradingLib\}, "check_price_for_offer", \$buyer: this, \$seller: \$actor, \$items: \$what);
+
+if(!sizeof(\$result["accepts"])) \{
+  EmitTo(\$actor, Describe(this)+" does not buy that.");
+\} else \{
+  if(\$result["payment"] \> 0)
+    EmitTo(\$actor, Describe(this)+" offers to buy "+Describe(\$result["accepts"], nil, \$actor)+" for "+ironclaw::describe_money(\$amount: \$result["payment"]));
+  else
+    EmitTo(\$actor, Describe(this)+" offers to take "+Describe(\$result["accepts"], nil, \$actor)+".");
+
+  interaction::question(\$question: "Do you wish to make this trade?", \$expires: 80, \$env: "TRUE", \$yes_ob: \$\{Allegory:Lib:Economy:TradingLib\}, \$yes_fun: "selling_accepted", \$no: "OK!", \$expire: "OK! Maybe we can trade later?", \$par: ([ "seller":\$actor, "buyer": this, "items":\$result["accepts"] ]));
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1586972531, "jominey", "E", 1586973006, "jominey", "E", 1586973102, "jominey", "E", 1586973134, "jominey", "E", 1586973226, "jominey", "E", 1586973463, "jominey", "E", 1590271180, "jominey", "E", 1590271216, "jominey", "E", 1590286759, "jominey", "E", 1590286798, "jominey", "E", 1590286911, "jominey", "E", 1590286943, "jominey", "E", 1590286988, "jominey", "E", 1590287016, "jominey", "E", 1590287256, "jominey", "E", 1590287306, "jominey", "E", 1590287488, "jominey", "E", 1590287641, "jominey", "E", 1590287759, "jominey", "E", 1590287930, "jominey", "E", 1590288048, "jominey", "E", 1593265312, "jominey", "E", 1593265411, "jominey", "E", 1593265537, "jominey", "E", 1593289506, "jominey", "E", 1593289585, "jominey", "E", 1593982820, "jominey", "E", 1593982929, "jominey", "E", 1593983059, "jominey", "E", 1593983174, "jominey", "E", 1593983249, "jominey", "E", 1593983315, "jominey", "E", 1593983455, "jominey", "E", 1593983500, "jominey", "E", 1593983529, "jominey", "E", 1593983570, "jominey", "E", 1594854023, "jominey", "E", 1594854060, "jominey", "E", 1598548695, "jominey", "E", 1600637917, "jominey", "E", 1600637974, "jominey", "E", 1600638001, "jominey", "E", 1600638095, "jominey", "E", 1600638178, "jominey", "E", 1600638232, "jominey", "E", 1600638452, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

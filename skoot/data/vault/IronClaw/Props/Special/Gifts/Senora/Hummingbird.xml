@@ -1,0 +1,253 @@
+<object clone="/base/obj/thing" owner="tunk_bodin">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.05" density="10"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0" verb2="hold in your beak" verb3="holds in her beak"/>
+    <Base:Misc gender="female" volition="false" weapon="false" default_stance="standing" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="false" under="false" on="true" inside="false" near="true" over="false" behind="false" before="false" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="bird"/>
+            <Base:SName sname="hummingbird"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="birds"/>
+            <Base:PName pname="hummingbirds"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="billed"/>
+          <Base:Adjective adjective="broad"/>
+          <Base:Adjective adjective="broad-billed"/>
+          <Base:Adjective adjective="female"/>
+          <Base:Adjective adjective="green"/>
+          <Base:Adjective adjective="humming"/>
+          <Base:Adjective adjective="tiny"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.trait:name) | $(this.trait:name) broad-billed hummingbird | broad-billed hummingbird }
+          </Base:Description>
+          <Base:Description type="examine">
+             {? | $(this.trait:name) | $(this.trait:name) the broad-billed hummingbird | The broad-billed hummingbird } has a dark bill with reddish lower mandible, grayish throat, green body and wings. Her tail and wings have pale outer tips.
+          </Base:Description>
+          <Base:Description type="glance">
+             A tiny broad-billed hummingbird.
+          </Base:Description>
+          <Base:Description type="look">
+             {? | $(this.trait:name) | $(this.trait:name) the broad-billed hummingbird | The broad-billed hummingbird } is very tiny and mostly green.
+          </Base:Description>
+          <Base:Description type="worn">
+             {? | $(this.trait:name) | $(this.trait:name) the broad-billed hummingbird| broad-billed hummingbird}, perched on a shoulder
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="shoulder-right"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:act:start">
+         X[M] \$this."base:gait" = "flies";     
+Set(this, "trait:noise:tick_id", Every("tick", 50));                      
+  Set(this, "trait:noise:tick_cnt", 1);
+      </Core:Property>
+      <Core:Property property="merry:lib:commands">
+         X[M] /* If the actor gave a command */                  
+if(\$evoke) \{                  
+                  
+  /* Resolve any weird variables that might be used */                  
+  if(\$(iob-2) \&\& !\$iob)                  
+    \$iob = \$(iob-2);                  
+                  
+  /* remove the quote marks from the command */                  
+  \$command = lower_case(\$evoke[1..strlen(\$evoke)-2]);                  
+  /* If we have any punctuation at the end of the command, remove it */                  
+  if((\$command[strlen(\$command)-1] \< 97) \|\| (\$command[strlen(\$command)-1] \> 122))                  
+    \$command = \$command[0..strlen(\$command)-2];                  
+                  
+  if(\$command == "follow") \{                  
+    EmitTo(\$actor, Describe(this)+" will now follow you.");                  
+    this.follow = \$actor;                  
+    Social(this, "hop", nil, nil, "to", \$actor );                           
+  \} else if(\$command == "talk" \|\| \$command == "sing") \{                  
+    Social(this, "whistle", "musically" );                             
+  \} else if(\$command=="commands") \{                  
+    EmitTo(\$actor, "Valid controls for "+Describe(this)+" are: follow, sing and talk.");                  
+  \}                  
+\}                  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:command-dob">
+         X[M] if (\$actor == Get(this, "trait:master"))                  
+\{                  
+return Call(\$this, "commands");                  
+\} else \{                  
+  Social(this, "glance", "curiously", nil, "at", \$actor);                  
+\}                  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:name-dob">
+         X[M] if(!this."trait:master" \|\| (\$actor != this."trait:master"))                  
+  return TRUE;                  
+                  
+if(this."trait:name") \{                  
+  EmitTo(\$actor, Describe(this)+" already has a name. Sheesh.");                  
+  return TRUE;                  
+\}                  
+                  
+\$name = capitalize(\$evoke[1..strlen(\$evoke)-2]);                  
+/* If we have any punctuation at the end of the command, remove it */                  
+if(!((\$name[strlen(\$name)-1] \>= 97) \&\& (\$name[strlen(\$name)-1] \<= 122)) \&\& !((\$name[strlen(\$name)-1] \>= 65) \&\& (\$name[strlen(\$name)-1] \<= 90)))                  
+  \$name = \$name[0..strlen(\$name)-2];                  
+/* Only take the first word of the name */                  
+sscanf(\$name, "%s %*s", \$name);                  
+                  
+/* Tell the actor that this was successful */                  
+EmitTo(\$actor, Describe(this)+" will now respond to "+\$name+".");                  
+                  
+/* Set the name */                  
+this."trait:name" = \$name;                  
+/* set the sname */                  
+Set(this, "details:default:sname:"+lower_case(\$name), 1);                  
+this."details:default:definite:local" = 1;                  
+                  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:tame-dob">
+         X[M] if(!Get(this, "trait:master"))                                                                              
+\{                                                                              
+Social(this, "fly", "obediently", nil, "to", \$actor);                                                                              
+\$delay(1.0, TRUE, "93f9");                                                                              
+EmitTo(\$actor, "You have just domesticated " + Describe(this)+ ".");                                                                              
+this."trait:master" = \$actor;                                                                     
+EmitIn(\$this."base:environment", Describe(\$actor) + " just domesticated " +Describe(this)+ ".", \$actor);                                                                            
+\}                                                                              
+else                                                                              
+\{                                                                              
+EmitTo(\$actor, Describe(this) + " eyes you appraisingly.");                                                                   
+EmitIn(\$this."base:environment", Describe(this) + " eyes " +Describe(\$actor)+ " appraisingly.", \$actor);                                                                                            
+return FALSE;                                                                
+\}
+      </Core:Property>
+      <Core:Property property="merry:react-pre:control-dob">
+         X[M] if (\$actor == Get(this, "trait:master"))          
+\{          
+  if(\$evoke) \{          
+    return Call(\$this, "commands");          
+  \} else \{          
+    /* If the actor did NOT give a command */          
+     EmitTo(\$actor, "You must include a command you want followed. Such as: control "+Describe(\$this, nil, \$actor)+ " 'talk'. To see a list, use: control "+Describe(\$this, nil, \$actor)+ " 'commands'.");          
+  \}          
+\} else \{          
+  EmitTo(\$actor, "You cant command " + Describe(this));          
+  EmitIn(\$actor."base:environment", Describe(\$actor) + " tries to command " + Describe(this)+ " and fails.", \$actor);          
+  Social(this, "glance", "curiously", nil, "at", \$actor);          
+  return FALSE;          
+\}          
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] /* Record what room the actor is in */                           
+\$room = \$actor."Base:environment";                           
+                           
+/* Check if the actor is allowed to pick up the rat */                           
+  /* check if \$actor is the bird's owner */                           
+if (\$actor == Get(this, "trait:master")) \{                           
+  /* if the actor is allowed to pick up the bird */                           
+  /* tell the actor that they picked up the bird */                           
+  /* tell the room that the actor picked up the bird */                           
+  EmitTo(\$actor, "You pick up "+Describe(\$this)+".");                           
+  EmitIn(\$room, Describe(\$actor)+" picks up "+ Describe(\$this)+".", \$actor);                           
+  \$this."base:environment" = \$actor;                           
+                           
+\} else \{                           
+  /* the actor is not the birds owner */                           
+                           
+  /* if the bird is already being held by someone */                           
+  if(\$this."base:environment"."base:volition") \{                           
+    /* use the normal give/take/offer code */                           
+    return TRUE;                           
+  \} else \{                           
+    /* tell the actor that they can't take the bird */                           
+    /* tell the room that the actor is a kidnapper! */                           
+    EmitTo(\$actor, Describe(\$this)+ " is not yours!");                           
+    EmitIn(\$room, Describe(\$actor)+" attempts to kidnap "+ Describe(\$this)+". How dare "+ \$actor."base:objective" + "! Call the guards!", \$actor);                           
+  \}                           
+\}                           
+                           
+/* return false, so that the actor doesn't see a message about not being allowed to pick up the bird */                           
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:timer:tick">
+         X[M] object env; int tick; object act;                      
+   Set(this, "trait:noise:tick_cnt", tick);     
+if(\$this."base:environment") \{  
+if(\$this."base:environment"."base:volition" == 1) \{    
+env = (\$this."base:environment"."base:environment");    
+\} else \{    
+   env = (this."base:environment");           
+\}               
+   switch(random(5)) \{                      
+    case 0: \{                      
+            \{                      
+            EmitIn(env, Describe(\$this)+ " " +oneof("trills", "whistles", "sings", "croons")+ " " +oneof("melodically", "curiously", "lyrically", "lightly", "playfully", "happily", "joyfully")+ " at " +Describe(env)+ ".");                      
+            \}                      
+    \} break;                      
+    case 1: \{                      
+            \{                      
+            EmitIn(env, Describe(\$this)+ " " +oneof("cocks", "tilts", "drops", "raises")+ " " +\$this."base:possessive"+ " " +oneof("wings", "head", "beak", "eyes")+ ".");                      
+            \}                      
+    \} break;                      
+    case 2: \{                      
+            \{                      
+            EmitIn(env, Describe(\$this)+ " " +oneof("trills", "whistles", "sings", "croons")+ " " +oneof("melodically", "curiously", "lyrically", "lightly", "playfully", "happily", "joyfully")+ " at " +Describe(env)+ ".");                      
+            \}                      
+    \} break;                      
+    case 3: \{                      
+            \{                      
+            EmitIn(env, Describe(\$this)+ " " +oneof("cocks", "tilts", "drops", "raises")+ " " +\$this."base:possessive"+ " " +oneof("wings", "head", "beak", "eyes")+ ".");                      
+            \}                      
+   \} break;                      
+    case 4: \{                      
+            \{                      
+            EmitIn(env, Describe(\$this)+ " " +oneof("trills", "whistles", "sings", "croons")+ " " +oneof("melodically", "curiously", "lyrically", "lightly", "playfully", "happily", "joyfully")+ " at " +Describe(env)+ ".");                   
+            \}                      
+\} break;                                     
+\} \}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1149814087, "tunk_bodin", "X", 1149814364, "tunk_bodin", "X", 1149814531, "tunk_bodin", "X", 1149814688, "tunk_bodin", "X", 1149814769, "tunk_bodin", "X", 1149814933, "tunk_bodin", "X", 1149815107, "tunk_bodin", "X", 1149815701, "tunk_bodin", "X", 1149815885, "tunk_bodin", "X", 1149816325, "tunk_bodin", "X", 1149817140, "tunk_bodin", "X", 1149817282, "tunk_bodin", "X", 1149817440, "tunk_bodin", "E", 1150312333, "tunk_bodin", "X", 1150312393, "tunk_bodin", "X", 1150312901, "tunk_bodin", "X" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

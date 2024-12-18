@@ -1,0 +1,285 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Plants:Urs:Plant:UrCactus)"/>
+    <Base:Bulk immobile="false" mass="0.5" density="2"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="true"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="mature-plant" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:state) prickly pear cactus
+          </Base:Description>
+          <Base:Description type="examine">
+             The prickly pear cactus is a small plant with clusters of fine, tiny barbed spines along the stem and fruits.
+          </Base:Description>
+          <Base:Description type="look">
+             The prickly pear cactus is a small plant with clusters of fine, tiny barbed spines along the stem and fruits.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="100"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:plants:mature-plant:adjectives">
+         (\{ "mature", "prickly", "pear", "small" \})
+      </Core:Property>
+      <Core:Property property="export:plants:mature-plant:pnames">
+         (\{ "plants", "cacti" \})
+      </Core:Property>
+      <Core:Property property="export:plants:mature-plant:snames">
+         (\{ "plant", "cactus" \})
+      </Core:Property>
+      <Core:Property property="export:trait:barb:quantity:max">
+         6
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "nothing in particular"
+      </Core:Property>
+      <Core:Property property="export:trait:type">
+         "pricklypearcactus"
+      </Core:Property>
+      <Core:Property property="merry:lib:spawnzombie">
+         X[M] object zombie, skeleton, env;
+
+env = \$actor."base:environment";
+
+zombie = Spawn(\$\{Ironclaw:NPCs:Spawnpoints:catacombs_old:Zombie\});
+zombie."base:environment" = env;
+zombie.norespawn = 1;
+
+skeleton = Spawn(\$\{Ironclaw:NPCs:Spawnpoints:catacombs_old:Skeleton\});
+skeleton."base:environment" = env;
+skeleton.norespawn = 1;
+
+EmitIn(env, "A duet of guttural moans crescendos through the room, heralding the arrival of two undead.");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:clean-dob%infection">
+         X[M] object patient, healer;
+
+if(NRefDetail(\$dob[0]) != "cactus-barb") \{
+    return TRUE;
+\}
+
+patient = NRefOb(\$dob[0]);
+healer = \$actor;
+
+/* Barb hasn't been removed yet */
+if(FindMerry(patient, "react-post", "pick-what%infection")) \{
+    if(patient != healer) \{
+        EmitTo(healer, "You would be able to clean the wound more effectively if you picked out the barb first.");
+        EmitTo(patient, "The wound would feel cleaner if the barb was picked out first.");
+    \} else \{
+        EmitTo(healer, "You would be able to clean the wound more effectively if you picked out the barb first.");
+    \}
+    return FALSE;
+\}
+
+if(patient != healer) \{
+    EmitTo(healer, "The wound looks much cleaner.");
+    EmitTo(patient, "You feel much better.");
+\} else \{
+    EmitTo(patient, "You feel much better.");
+\}
+
+patient."details:cactus-barb:adjectives:dirty" = FALSE;
+patient."details:cactus-barb:adjectives:grimy" = FALSE;
+patient."details:cactus-barb:description:brief" = nil;
+patient."details:cactus-barb:description:look" = nil;
+patient."details:cactus-barb:description:examine" = nil;
+patient."details:cactus-barb:snames:barb" = FALSE;
+patient."details:cactus-barb:snames:wound" = FALSE;
+patient."details:cactus-barb:pnames:barbs" = FALSE;
+patient."details:cactus-barb:pnames:wounds" = FALSE;
+patient."details:cactus-barb:adjectives:cactus" = FALSE;
+Set(patient, "details:cactus-barb", FALSE);
+patient."merry:inherit:react-post:clean-dob%infection" = nil;
+
+Call(\$\{Ironclaw:Staff:Roo:Effects:infection\}, "external", \$signal: "cured", \$who: \$actor);
+Call(\$\{Ironclaw:Staff:Roo:Effects:infection\}, "remove", \$who: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:pick-what%infection">
+         X[M] int skill, severity, success, roll, lastattempt, timeleft;
+object patient, healer;
+
+if(NRefDetail(\$what[0]) != "cactus-barb") \{
+    return TRUE;
+\}
+
+patient = NRefOb(\$what[0]);
+healer = \$actor;
+
+/* Prevent people from spam removing */
+if(patient."cactus-barb:infection:lastattempt") \{
+    lastattempt = patient."cactus-barb:infection:lastattempt";
+    timeleft = 10800 - (time() - lastattempt);
+    
+    /* 10800 = 3 hours, 7200 = 2 hours, 3600 = 1 hour */
+    if(timeleft \< 3600) \{
+        EmitTo(healer, "The wound seems too inflamed to attempt that. Try waiting about an hour.");
+        return FALSE;
+    \} else if(timeleft \< 7200) \{
+        EmitTo(healer, "The wound seems too inflamed to attempt that. Try waiting a couple of hours.");
+        return FALSE;
+    \} else \{
+        EmitTo(healer, "The wound seems too inflamed to attempt that. Try waiting a few hours.");
+        return FALSE;
+    \}
+\}
+
+skill = Int(Get(healer, "skill:career:healer")) + Int(Get(healer, "skill:mental:first-aid"));
+
+severity = Int(Get(patient, "effect:infection:severity"));
+
+if(severity \> 288) \{
+    success = 16;
+\} else if(severity \> 192) \{
+    success = 8;
+\} else if(severity \> 96) \{
+    success = 4;
+\} else \{
+    success = 1;
+\}
+
+roll = random(skill);
+
+if(roll \>= success) \{
+    /* Success. Remove barb. */
+    if(patient != healer) \{
+        EmitTo(patient, Describe(healer) + " fishes around in your skin for an excruciating amount of time before successfully pulling the barb from the wound. Your finger throbs with pain.");
+        EmitTo(healer, "You fish around in " + Describe(patient) + "'s skin, eventually pulling the barb from the wound.");
+        EmitIn(patient."base:environment", Describe(healer) + " digs around in " + Describe(patient) + "'s skin, eventually retrieving the embedded barb.", patient, healer);
+    \} else \{
+        EmitTo(patient, "You dig into your skin, eventually removing the embedded barb.");
+        EmitIn(patient."base:environment", Describe(patient) + " digs around in " + patient."base:possessive" + " skin, eventually removing the embedded barb.", patient);
+    \}
+    patient."details:cactus-barb:adjectives:dirty" = TRUE;
+    patient."details:cactus-barb:adjectives:grimy" = TRUE;
+    patient."details:cactus-barb:description:brief" = "dirty wound";
+    patient."details:cactus-barb:description:look" = ParseXML("\$[return Get(\$\{IronClaw:Props:Flora:Harvestable:Plants:PricklyPearCactus\}, \\"sam:infection:look\\");]");
+    patient."details:cactus-barb:description:examine" = ParseXML("\$[return Get(\$\{IronClaw:Props:Flora:Harvestable:Plants:PricklyPearCactus\}, \\"sam:infection:exa\\");]");
+    patient."merry:inherit:react-pre:pick-what%infection" = nil;
+\} else \{
+    /* Failure. Cause pain. */
+    patient."cactus-barb:infection:lastattempt" = time();
+    if(patient != healer) \{
+        EmitTo(patient, Describe(healer) + " fishes around in your skin for an excruciating amount of time without any luck. Your finger throbs with pain.");
+        EmitTo(healer, "You fish around in " + Describe(patient) + "'s skin until it becomes swollen and red. You likely won't be able to reach the barb until the swelling goes down in a few hours.");
+        EmitIn(patient."base:environment", Describe(healer) + " digs around in " + Describe(patient) + "'s skin, failing to retrieve the embedded barb.", patient, healer);
+    \} else \{
+        EmitTo(patient, "You dig into your skin, attempting to retrieve the embedded barb without much luck. You likely won't be able to reach it until the swelling and pain die down.");
+        EmitIn(patient."base:environment", Describe(patient) + " digs around in " + patient."base:possessive" + " skin, failing to retrieve the embedded barb.", patient);
+    \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:pick-dob">
+         X[M] object ob;
+ob = \$\{Allegory:Props:Plants:P:PricklyPear:PricklyPearPlant\};
+
+/* check there are fruits available */       
+if(\$this."trait:quantity" \< 1) \{       
+  EmitTo(\$actor, "There are no harvestable fruits on "+Describe(\$this)+".");       
+  return FALSE;       
+\}
+       
+/* reduce the number of fruits on the plant */       
+\$this."trait:quantity" -= 1;       
+       
+/* create the fruit object and give it to the player */       
+\$object = Spawn(\$\{Allegory:Props:Plants:P:PricklyPear:PricklyPearFruit\}); \$object."base:environment" = \$actor;       
+       
+/* emit message to player and room */       
+EmitTo(\$actor, "You harvest "+Describe(\$object, nil, nil, STYLE_NONPOSS)+" from "+Describe(\$this, nil, nil, STYLE_NONPOSS)+".");       
+EmitIn(\$actor."base:environment", Describe(\$actor)+" harvests "+Describe(\$object, nil, nil, STYLE_NONPOSS)+" from "+Describe(\$this, nil, nil, STYLE_NONPOSS)+".", \$actor);   
+
+/* Start the infection process (only if chatter is not already infected) */
+if(!\$actor."effect:infection:severity") \{
+    EmitTo(\$actor, "You wince in pain as a barb gets lodged under your skin.");
+    EmitIn(\$actor."base:environment", Describe(\$actor) + " winces in pain.", \$actor);
+
+    
+    Call(\$\{Ironclaw:Staff:Roo:Effects:infection\}, "apply", \$who: \$actor, \$severity: 1);
+    
+
+    Set(\$actor, "details:cactus-barb", TRUE);
+    \$actor."details:cactus-barb:snames:barb" = TRUE;
+    \$actor."details:cactus-barb:snames:wound" = TRUE;
+    \$actor."details:cactus-barb:pnames:barbs" = TRUE;
+    \$actor."details:cactus-barb:pnames:wounds" = TRUE;
+    \$actor."details:cactus-barb:adjectives:cactus" = TRUE;
+    \$actor."details:cactus-barb:description:brief" = "embedded barb";
+    \$actor."details:cactus-barb:description:look" = ParseXML("\$[return Get(\$\{IronClaw:Props:Flora:Harvestable:Plants:PricklyPearCactus\}, \\"sam:barb:look\\");]");
+    \$actor."details:cactus-barb:description:examine" = ParseXML("\$[return Get(\$\{IronClaw:Props:Flora:Harvestable:Plants:PricklyPearCactus\}, \\"sam:barb:exa\\");]");
+
+    \$actor."merry:inherit:react-post:clean-dob%infection" = ob;
+    \$actor."merry:inherit:react-pre:pick-what%infection" = ob;
+\}
+
+::spawnzombie(\$actor: \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1418279168, "jominey", "E", 1418279180, "jominey", "E", 1418279190, "jominey", "E", 1418279190, "jominey", "E", 1418279203, "jominey", "E", 1418279208, "jominey", "E", 1418279212, "jominey", "E", 1418541359, "jominey", "R", 1418594774, "jominey", "R", 1418595316, "jominey", "R", 1418595491, "jominey", "R", 1418601030, "jominey", "K", 1418601081, "jominey", "E", 1418601087, "jominey", "E", 1418601136, "jominey", "E", 1528307422, "jominey", "E", 1575996829, "sendnoodlez", "R" \})
+      </Core:Property>
+      <Core:Property property="sam:barb:exa">
+         X[S] A small barb has been embedded under the skin. \$[\$severity = Int(this."effect:infection:severity"); \$skill = Int(\$looker."skill:career:healer") + Int(\$looker."skill:mental:first-aid"); if(\$severity \< 96 \&\& \$skill \> 1) \{ return "You know that it should be removed now before infection starts to set in."; \} else if(\$severity \< 192 \&\& \$skill \> 4) \{ return "You recognize this as an early stage of infection."; \} else if(\$severity \< 288 \&\& \$skill \> 8) \{ return "You know infection caused by the barb is getting to be pretty bad."; \} else if(\$severity \>= 288 \&\& \$skill \> 16) \{ return "You are without doubt that the barb is causing an infection and that it should be removed and the wound cleaned immediately."; \}]
+      </Core:Property>
+      <Core:Property property="sam:barb:look">
+         X[S] A small barb has been embedded under the skin.
+      </Core:Property>
+      <Core:Property property="sam:infection:exa">
+         X[S] A grimy wound. \$[\$severity = Int(this."effect:infection:severity"); \$skill = Int(\$looker."skill:career:healer") + Int(\$looker."skill:mental:first-aid"); if(\$severity \< 96 \&\& \$skill \> 1) \{ return "You know that it should be cleaned now before infection starts to set in."; \} else if(\$severity \< 192 \&\& \$skill \> 4) \{ return "You recognize that the wound is in an early stage of infection."; \} else if(\$severity \< 288 \&\& \$skill \> 8) \{ return "You know infection caused by the dirt is getting to be pretty bad."; \} else if(\$severity \>= 288 \&\& \$skill \> 16) \{ return "You are without doubt that this wound is dangerously infected and should be cleaned immediately."; \}]
+      </Core:Property>
+      <Core:Property property="sam:infection:look">
+         X[S] A grimy wound.
+      </Core:Property>
+      <Core:Property property="skill:fatigue">100.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes>
+      <Notes:Category cat="QA" catstate="Open">
+        <Notes:Note ix="1418601087" state="Open" user="jominey">
+           Special plant object for catacombs plot
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Base:Thing>
+</object>

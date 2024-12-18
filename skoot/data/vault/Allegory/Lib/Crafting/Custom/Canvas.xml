@@ -1,0 +1,262 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:canvas">
+         X[S] \<zform actor="\$(actor)" canvas="\$(canvas)" paint="\$(action)" using="\$(using)" error="\$(error)" brief1="\$(brief1)" examine1="\$(examine1)"\>
+\$[\$canvas = Obj(\$canvas);                  
+    \$actor = Obj(\$actor);         
+    \$paint = \$paint;           
+    \$words = (Int(\$actor."skill:academic:art")+1) * 15;]
+\<input type="hidden" name="paint" value="\$(paint)"/\>
+\<input type="hidden" name="words" value="\$(words)"/\>
+\<input type="hidden" name="error" value="\$(error)"/\>
+\<table\>
+\{? \| \$(error) \| \<font color="red"\>\<b\>You have exceeded your allotted word limit by \$(error) words.\</b\>\</font\> \}
+\<tr\>
+        \<td colspan="3"\>\<font size="2"\>\<i\>You have \$[Str(Int(\$actor."skill:academic:art"))] levels of art. You are allowed \$(words) words to describe your painting.\</i\>\</font\>\</td\>
+\</tr\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td\>\<b\>Title:\</b\>\</td\>
+        \<td\>a \$(paint)ing of \<input type="text" name="brief" style="width:350px" value="\$(brief1)"\>\</input\>\</td\>
+        \<td\>("a painting of a tall man")\</td\>
+\</tr\>
+\<tr\>
+        \<td valign="top"\>\<b\>Description:\</b\>\</td\>
+        \<td colspan="2"\>\<textarea name="examine" style="height:350px; width:100%"\>\$(examine1)\</textarea\>\</td\>
+\</tr\>
+\<tr\>
+        \<td colspan="3" align="right"\>(Note: By clicking "Finish" you agree to the rules outlined below.) \<input type="submit" name="update" value="Finish" style="height:30px"/\>\</td\>
+\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>Rules:\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>1. Submissions can have magical/supernatural themes but cannot be magical/supernatural themselves (ie. a painting of a figure that moves around the canvas).\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>2. Vulgar/sexually explicit material is forbidden--if the content is not acceptable for a minor, do not submit it! When in doubt, contact staff.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>3. Avoid phrasing that forces the viewer to think or feel a certain way (ie 'this painting is so beautiful you can't help but cry').\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>4. Do not reference details of the canvas that do not actually exist, such as a frame.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>5. I understand if I violate these rules, access to this command will be revoked.\</font\>\</td\>\</tr\>
+\</table\>
+    \<action\>
+        \$["";           
+          \$counter = sizeof(explode(\$examine, " "));           
+          if(\$counter \< Int(\$words)) \{           
+              Call(\$this, \$paint, \$title: \$brief, \$description: \$examine, \$actor: \$actor, \$canvas: \$canvas);       
+              \$error = nil;       
+          \} else \{           
+              \$error = \$counter - Int(\$words);           
+          \}]
+        \{? \| \$(error) \| \<redirect propob="\$(this)" prop="index" actor="\$(actor)" action="\$(paint)" canvas="\$(canvas)" using="\$(using)" error="\$(error)" brief1="\$(brief)" examine1="\$(examine)"/\> \| \<redirect propob="\$(this)" prop="finish" actor="\$(actor)" action="\$(paint)" canvas="\$(canvas)" using="\$(using)" error="\$(error)" brief1="\$(brief)" examine1="\$(examine)"/\> \}
+    \</action\>
+\</zform\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" actor="\$(actor)" action="\$(action)" canvas="\$(canvas)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+    \<title\>A Blank Canvas\</title\>
+    \<meta http-equiv="content-type" content="text/html; charset=UTF-8"/\>
+\</head\>
+   \<body\>
+      \$(this.xtra:header)
+      \<div id="main"\>
+        \<div id="textareafull"\>
+        \$[::popup_initialize();     
+            \$actor = Obj(\$actor);]
+            \$(this.html:canvas)
+        \</div\>
+        \<span id="bottombox"\>
+          \<div id="footer"\>\\\&nbsp;\</div\>
+        \</span\>
+      \</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="merry:lib:draw">
+         X[M] int i;
+
+\$adjectives = (\{ "drawn" \});
+\$snames = (\{ "drawing" \});
+\$pnames = (\{ "drawings" \});
+
+\$title = explode(\$brief, " ");
+\$description = \$examine;
+
+/* Something was targeted to draw onto the canvas */
+if(\$dob \&\& (sizeof(\$dob) == 1)) \{
+  \$target = NRefOb(\$dob[0]);
+  if(\$target."base:volition" \&\& (\$target."base:volition" != 0)) \{
+    \$canvas."trait:brief" = "sketching of "+Describe(\$target);
+    \$adjectives += (\{ "sketching", "of" \});
+    \$snames += (\{ "sketching" \});
+    \$pnames += (\{ "sketchings" \});
+  \} else \{
+    \$canvas."trait:brief" = "drawing of "+Describe(\$target);
+    \$adjectives += (\{ "drawing", "of" \});
+    \$snames += (\{ "drawing" \});
+    \$pnames += (\{ "drawings" \});
+  \}
+  \$canvas."trait:look" = UnSAM(\$"\<describe-view view=\\"\$(target)\\" type=\\"look\\"/\>");
+  \$canvas."trait:examine" = UnSAM(\$"\<describe-view view=\\"\$(target)\\" type=\\"examine\\"/\>");
+  \$title = explode(Describe(\$target), " ");
+\} else \{
+  /* Freeform */
+  \$canvas."trait:brief" = "drawing of " + \$brief;
+  \$canvas."trait:look" = \$description;
+  \$canvas."trait:examine" = \$description;
+  \$text = "! DRAWING ! " + \$canvas."trait:brief" + ". " + \$canvas."trait:examine" + " (\<" + Str(\$canvas) + "\>)";
+  assist::dofileassist(\$data: Obj("Data:DB:assist:AssistGeneralDB"), \$char: Str(\$actor), \$queue: "custom", \$assisttext: \$text, \$log: "[TAS]"); 
+\}
+
+if(\$using \&\& (sizeof(\$using) == 1)) \{
+  \$pencil = NRefOb(\$using[0]);
+  \$canvas."trait:pencils" = \$pencil."trait:pencils";
+  \$adjectives += (\{ \$pencil."trait:material", \$pencil."trait:pencils" \});
+  \$snames += (\{ \$pencil."trait:material" \});
+  \$pnames += (\{ \$pencil."trait:pencils" \});
+\}
+
+/* Replace snames and adjectives */
+\$adjectives += \$title;
+\$snames += \$title;
+\$pnames += \$title;
+if(\$target) \$snames -= (\{ \$target."trait:superbrief" \});
+
+for(i = 0; i \< sizeof(\$adjectives); i++) \{
+    Set(\$canvas, "details:default:adjective:" + \$adjectives[i], 1);
+\}
+
+for(i = 0; i \< sizeof(\$snames); i++) \{
+    Set(\$canvas, "details:default:sname:" + \$snames[i], 1);
+\}
+
+for(i = 0; i \< sizeof(\$pnames); i++) \{
+    Set(\$canvas, "details:default:pname:" + \$pnames[i], 1);
+\}
+
+Set(\$canvas, "details:default:adjective:blank", nil);
+
+/* Set the painting quality */
+\$canvas."trait:painting:quality" = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "social:painting" \}), \$bonus: (\{ "trait:mind" \}));
+/* \$canvas.signed = capitalize(\$actor."skotos:charname"); */
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:paint">
+         X[M] int i;
+
+\$adjectives = (\{ "painted" \});
+\$snames = (\{ "painting" \});
+\$pnames = (\{ "paintings" \});
+
+\$title = explode(\$brief, " ");
+\$description = \$examine;
+
+/* Something was targeted to draw onto the canvas */
+if(\$dob \&\& (sizeof(\$dob) == 1)) \{
+  \$target = NRefOb(\$dob[0]);
+  if(\$target."base:volition" \&\& (\$target."base:volition" != 0)) \{
+    \$canvas."trait:brief" = "portrait of "+Describe(\$target);
+    \$adjectives += (\{ "portrait", "of" \});
+    \$snames += (\{ "portrait" \});
+    \$pnames += (\{ "portraits" \});
+  \} else \{
+    \$canvas."trait:brief" = "painting of "+Describe(\$target);
+    \$adjectives += (\{ "painting", "of" \});
+    \$snames += (\{ "painting" \});
+    \$pnames += (\{ "paintings" \});
+  \}
+  \$canvas."trait:look" = UnSAM(\$"\<describe-view view=\\"\$(target)\\" type=\\"look\\"/\>");
+  \$canvas."trait:examine" = UnSAM(\$"\<describe-view view=\\"\$(target)\\" type=\\"examine\\"/\>");
+  \$title = explode(Describe(\$target), " ");
+\} else \{
+  /* Freeform */
+  \$canvas."trait:brief" = "painting of " + \$brief;
+  \$canvas."trait:look" = \$description;
+  \$canvas."trait:examine" = \$description;
+  \$text = "! PAINTING ! " + \$canvas."trait:brief" + ". " + \$canvas."trait:examine" + " (\<" + Str(\$canvas) + "\>)";
+  assist::dofileassist(\$data: Obj("Data:DB:assist:AssistGeneralDB"), \$char: Str(\$actor), \$queue: "custom", \$assisttext: \$text, \$log: "[TAS]");  
+\}
+
+if(\$using \&\& (sizeof(\$using) == 1)) \{
+    \$paint = NRefOb(\$using[0]);
+    \$canvas."trait:paints" = \$paint."trait:paints";
+    \$adjectives += (\{ \$paint."trait:material", \$paint."trait:paints" \});
+    \$snames += (\{ \$paint."trait:material" \});
+    \$pnames += (\{ \$paint."trait:paints" \});
+\}
+
+/* Replace snames and adjectives */
+\$adjectives += \$title;
+\$snames += \$title;
+\$pnames += \$title;
+if(\$target) \$snames -= (\{ \$target."trait:superbrief" \});
+
+for(i = 0; i \< sizeof(\$adjectives); i++) \{
+    Set(\$canvas, "details:default:adjective:" + \$adjectives[i], 1);
+\}
+
+for(i = 0; i \< sizeof(\$snames); i++) \{
+    Set(\$canvas, "details:default:sname:" + \$snames[i], 1);
+\}
+
+for(i = 0; i \< sizeof(\$pnames); i++) \{
+    Set(\$canvas, "details:default:pname:" + \$pnames[i], 1);
+\}
+
+Set(\$canvas, "details:default:adjective:blank", nil);
+
+/* Set the painting quality */
+\$canvas."trait:painting:quality" = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "social:painting" \}), \$bonus: (\{ "trait:mind" \}));
+/* \$canvas.signed = capitalize(\$actor."skotos:charname"); */
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] if(\$dat == nil) \{
+    error("page reached without a udat");
+\}
+if(\$name == nil) \{
+    error("page reached without a name");
+\}
+if(\$actor == nil) \{
+    error("page reached without an actor");
+\}
+if(!Obj(\$actor)) \{
+    error("page reached without a valid actor");
+\}
+\$actor = Obj(\$actor);
+
+if(!Obj(\$canvas)) \{
+    error("page reached without a valid canvas");
+\}
+\$canvas = Obj(\$canvas);
+
+if(\$canvas."trait:brief") \{
+    error("canvas has already been used");
+\}
+
+if(\$canvas."base:environment" != \$actor) \{
+    error("you  must be holding the canvas");
+\}
+
+/* Check the player isn't trying to access someone elses body */
+/* Check if the players roster of characters */
+\$bodies = Udat::query_bodies_in_roster(\$user: \$name);
+
+/*
+if(!member(\$actor, \$bodies)) \{
+    error(dump_value(\$actor)+" body not found in "+dump_value(\$name)+" character roster");
+\}
+*/
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1502934130, "jominey", "E", 1502934270, "jominey", "E", 1502934474, "jominey", "E", 1502935277, "jominey", "E", 1502935379, "jominey", "E", 1502935482, "jominey", "E", 1502936770, "jominey", "E", 1502936785, "jominey", "E", 1503019225, "jominey", "R", 1503100205, "jominey", "E", 1503100373, "jominey", "E", 1504058157, "jominey", "E", 1570294679, "jominey", "R", 1572303374, "jominey", "E", 1572303548, "jominey", "E", 1572304427, "jominey", "E", 1585355170, "sendnoodlez", "E", 1585355184, "sendnoodlez", "E", 1642028709, "sendnoodlez", "E", 1643222466, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

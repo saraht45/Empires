@@ -1,0 +1,81 @@
+<object clone="/usr/SkotOS/obj/verb" owner="librarysage">
+  <Socials:Verb imp="holster" second="holster" third="holsters" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject urobject="OBJ(MOVED:20080918-114107:Neoct:Base:Verbs:put)"/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="where" direct="false" single="false" raw="false" requirement="optional" distance="owned">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="in"/>
+          <Socials:SocObPrep prep="inside"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* check that this is an item that can be holstered */
+
+/* fix the weirdness with prepositions that happens when this script exists */
+if(!member(\$(where:preposition), (\{ "in", "inside" \})) )
+  \$(where:preposition) = "in";
+\$obprep = PREP_INSIDE;
+
+/* sanity checking */
+if(!\$what) return TRUE;
+if(\$where \&\& sizeof(\$where) \> 1) return TRUE;
+
+/* are we holstering somewhere? */
+if(\$where) \{
+  if(!NRefOb(\$where[0])."trait:holsteraccepts") \{
+    EmitTo(\$actor, "You cannot holster anything in "+Describe(\$where, nil, \$actor)+".");
+    return FALSE;
+  \}
+  return TRUE;
+\} else \{
+  /* search for somewhere to holster this */
+  object weapon, *clothing;
+  string holstertype, *indices;
+  int i, sz;
+
+  if(sizeof(\$what) \> 1) \{
+    EmitTo(\$actor, "Either you can't holster this many things at once, or you'll have to specify where you are holstering them.");
+    return FALSE;
+  \}
+  weapon = NRefOb(\$what[0]);
+  if(!weapon."trait:holstertype") \{
+    EmitTo(\$actor, "You wouldn't know where to start looking for a holster for "+Describe(\$what, nil, \$actor)+".");
+    return FALSE;
+  \}
+
+  holstertype = weapon."trait:holstertype";
+  /* get a list of clothes */
+  clothing = (\{ \});
+  indices = map_indices(\$actor."base:clothes-worn");
+  sz = sizeof(indices);
+  for(i=0;i\<sz;i++) \{
+    clothing \|= \$actor."base:clothes-worn"[indices[i]];
+  \}
+  /* now check if the weapon will holster in any of this clothing */
+  sz = sizeof(clothing);
+  for(i=0;i\<sz;i++) \{
+    if(clothing[i]."trait:holsteraccepts") \{
+      if(member(holstertype, Arr(clothing[i]."trait:holsteraccepts"))) \{
+        \$where = (\{ NewNRef(clothing[i], "default") \});
+        \$roles \|= (\{ "where" \});
+        return TRUE;
+      \}
+    \}
+  \}
+  
+  /* didn't find anything */
+  EmitTo(\$actor, "You aren't wearing a holster for "+Describe(\$what, nil, \$actor)+".");
+  return FALSE;
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1073607538, "sorcha", "E", 1073607591, "sorcha", "E", 1081346433, "tangerine", "E", 1081346452, "tangerine", "E", 1081346462, "tangerine", "E", 1081346477, "tangerine", "E", 1081346489, "tangerine", "E", 1202954917, "librarysage", "E", 1214010841, "tonyd", "E", 1214010859, "tonyd", "E", 1214010862, "tonyd", "E", 1214010864, "tonyd", "E", 1214010928, "tonyd", "E", 1214011120, "tonyd", "P", 1214011268, "tonyd", "P", 1214011304, "tonyd", "P", 1214011435, "tonyd", "E", 1214011457, "tonyd", "E", 1214011570, "tonyd", "P", 1214011917, "tonyd", "E", 1214011950, "tonyd", "P", 1214012018, "tonyd", "E", 1214012039, "tonyd", "E", 1214012043, "tonyd", "E", 1214012054, "tonyd", "E", 1214012091, "tonyd", "E", 1214012098, "tonyd", "E", 1214012105, "tonyd", "E", 1214012108, "tonyd", "E", 1214012257, "tonyd", "P", 1214012281, "tonyd", "P", 1214012323, "tonyd", "P", 1214012354, "tonyd", "P", 1214012447, "tonyd", "P", 1214012513, "tonyd", "P", 1214012542, "tonyd", "P", 1214012741, "tonyd", "P", 1214012838, "tonyd", "P", 1214012846, "tonyd", "P", 1214012906, "tonyd", "P", 1214012935, "tonyd", "P", 1214012942, "tonyd", "P", 1214013029, "tonyd", "P", 1214013088, "tonyd", "P", 1214013146, "tonyd", "P", 1214013155, "tonyd", "P", 1214013257, "tonyd", "P", 1214013617, "tonyd", "P", 1214013780, "tonyd", "P", 1214013796, "tonyd", "P", 1214013871, "tonyd", "P", 1214013926, "tonyd", "P", 1214013943, "tonyd", "P", 1214013987, "tonyd", "P", 1214014031, "tonyd", "P", 1214014072, "tonyd", "P", 1214014127, "tonyd", "P" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

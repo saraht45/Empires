@@ -1,0 +1,724 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="cost:lang">10</Core:Property>
+      <Core:Property property="cost:skill">10</Core:Property>
+      <Core:Property property="merry:lib:get_skill_cap">
+         X[M] /* 
+** \$skill
+** \$char
+*/
+
+\$db = \$\{Allegory:Data:SkillsDB\};
+
+if(\$subclass == "general") return 48;
+
+if(\$subclass == "lang") return 24;
+
+if(\$char."trait:class1") \{
+    \$class1 = \$char."trait:class1";
+    \$skillMap = Call(\$db, "get-skillmap", \$subclass: \$class1);
+\} else \{
+    \$skillMap = ([ ]);
+\}
+
+if(\$char."trait:class2") \{
+    \$class2 = \$char."trait:class2";
+    \$skillMap = Call(\$db, "get-skillmap", \$subclass: \$class2, \$skillMap: \$skillMap);
+\}
+
+if(\$skillMap[\$skill]) return \$skillMap[\$skill];
+
+return 0;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_skill_cost">
+         X[M] if(!\$level) return -1;
+
+\$cost = 10*\$level;
+if(\$cost \> 100) \$cost = 100;
+return \$cost;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_accept">
+         X[M] /* accept the lesson */
+
+/* can they accept the lesson? */
+\$teacher = \$par["teacher"];
+\$topic = \$par["topic"];
+\$topicname = \$par["topicname"];
+\$level = \$par["level"];
+\$student = \$par["student"];
+\$learnclass = \$par["learnclass"];
+
+if(\$par["npc"]) \{
+    \$npc = \$par["npc"];
+    \$cost2 = \$par["cost2"]; /* florins cost */
+    \$cost = \$par["cost"]; /* learning point cost */
+    \$teachtime = \$par["teachtime"];
+\}
+
+if(\$par["guild_lesson"]) \$guild_lesson = \$par["guild_lesson"];
+
+if(!\$actor) \$actor = \$student;
+
+/* are they already busy? */
+if((\$teacher != \$actor) \&\& (\$message = ironclaw::busy_check(\$character: \$actor))) \{
+    EmitTo(\$actor, "You can't accept a lesson while you are already busy "+\$message+".");
+    ::teaching_decline();
+    return FALSE;
+\}
+
+/* is the teacher still offering? */
+if(!\$npc \&\& \$teacher."busy:id" != \$par["id"]) \{
+    EmitTo(\$actor, capitalize(Describe(\$teacher))+" has stopped offering a lesson.");
+    return FALSE;
+\}
+
+if(\$learnclass) \{
+    if(\$cost \> Int(\$actor."student:learningpoints")) \{
+        EmitTo(\$actor, "You cannot afford to learn " + Str(\$learnclass) + " as that will cost "+Str(\$cost)+" learning points, and you only have "+Str(Int(\$actor."student:learningpoints"))+".");
+        ::teaching_decline();
+        return FALSE;
+    \}
+
+    if(\$cost2) \{
+        if(\$guild_lesson) \{
+            if(\$cost2 \> Int(\$actor.guild.kitty)) \{
+                EmitTo(\$actor, "You cannot afford to learn " + Str(\$learnclass) + " as that will cost "+Str(\$cost2/100)+" florins, and your guild kitty only has "+Str(Int(\$actor.guild.kitty)/100)+".");
+                ::teaching_decline();
+                return FALSE;
+            \} else \{
+                \$student.guild.kitty -= \$cost2;
+            \}
+        \} else \{
+            if(\$cost2 \> Int(\$actor."trait:money")) \{
+                EmitTo(\$actor, "You cannot afford to learn " + Str(\$learnclass) + " as that will cost "+Str(\$cost2/100)+" florins, and you only have "+Str(Int(\$actor."trait:money")/100)+".");
+                ::teaching_decline();
+                return FALSE;
+            \} else \{
+                \$student."trait:money" -= \$cost2;
+            \}
+        \}
+    \}
+
+    EmitTo(\$actor, Describe(\$teacher) + " will now teach you all skills associated with " + Str(\$learnclass) + ".");
+    \$student."student:learningpoints" -= \$cost;
+
+    if(!\$student."trait:class1") \$student."trait:class1" = \$learnclass;
+    if(!\$student."trait:class2") \$student."trait:class2" = \$learnclass;
+    ironclaw::busy_stop(\$character: \$actor, \$id: \$sid);
+    ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+
+    return FALSE;
+\}
+
+/* check if the student should be learning this level */
+if(Int(Get(\$actor, \$topicname)) != \$level-1) \{
+    EmitTo(\$actor, "Something went wrong. It seems you must have just learned a level of this skill suddenly, or something weird. Oh well, try the lesson again.");
+    ::teaching_decline();
+    return FALSE;
+\}
+
+/* what is the cost to the student? */
+if(!\$cost) \{
+    \$category = explode(\$topicname, ":")[1];
+    \$cost = Call(\$\{Allegory:Lib:Teaching:TeachingLib\}, "get_skill_cost", \$category: \$category, \$level: \$level);
+    /* Check if they are teaching themselves or an alt */
+    if(!\$actor.storyhost \&\& \$actor."udat:object" \&\& \$teacher."udat:object" \&\& \$actor."udat:object" == \$teacher."udat:object") \{
+        if(\$actor == \$teacher) \{
+            \$cost = Int(Flt(\$cost)*1.1);
+        \} else \{
+            EmitTo(\$teacher, "You cannot teach an alt.");
+            return FALSE;
+        \}
+    \}
+\}
+
+if(\$cost \< 0) \{
+    EmitTo(\$actor, "Something went wrong. Please @bug this, and let us know what you were learning and who from.");
+    ::teaching_decline();
+    return FALSE;
+\}
+
+if(\$cost \> Int(\$actor."student:learningpoints")) \{
+    EmitTo(\$actor, "You cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost "+Str(\$cost)+" learning points, and you only have "+Str(Int(\$actor."student:learningpoints"))+".");
+    ::teaching_decline();
+    return FALSE;
+\}
+
+if(\$cost2) \{
+  if(\$guild_lesson) \{
+      if(\$cost2 \> Int(\$actor.guild.kitty)) \{
+            EmitTo(\$actor, "You cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost "+Str(\$cost2/100)+" florins, and your guild kitty only has "+Str(Int(\$actor.guild.kitty)/100)+".");
+            ::teaching_decline();
+            return FALSE;
+        \}
+    \} else \{
+    if(\$cost2 \> Int(\$actor."trait:money")) \{
+            EmitTo(\$actor, "You cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost "+Str(\$cost2/100)+" florins, and you only have "+Str(Int(\$actor."trait:money")/100)+".");
+            ::teaching_decline();
+            return FALSE;
+        \}
+    \}
+\}
+
+/* check they are in the same room */
+if(!\$actor."base:environment" \|\| !\$teacher."base:environment" \|\| \$actor."base:environment" != \$teacher."base:environment") \{
+    EmitTo(\$actor, "You must be in the same room as the teacher to accept a lesson.");
+    EmitTo(\$teacher, "Your student must be in the same room as you to accept a lesson.");
+    ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+    return FALSE;
+\}
+
+/* emit about the lesson starting */
+EmitTo(\$teacher, "You begin to teach "+Describe(\$actor, \$teacher, \$teacher)+" about "+\$topic+".");
+if(\$teacher != \$actor) \{
+    EmitTo(\$actor, Describe(\$teacher)+" begins to teach you about "+\$topic+".");
+    EmitIn(\$actor."base:environment", Describe(\$teacher)+" begins to teach "+Describe(\$actor)+" about "+\$topic+".", \$actor, \$teacher);
+\} else \{
+    EmitIn(\$actor."base:environment", Describe(\$teacher)+" begins to teach "+\$actor."base:objective"+"self about "+\$topic+".", \$actor);
+\}
+
+/* mark the student as busy */
+if(\$teacher != \$actor) \{
+    \$sid = ironclaw::busy_start(\$character: \$actor, \$action: "learning from "+Describe(\$teacher, \$actor, \$actor));
+\} else \{
+    \$sid = 0;
+\}
+
+if(\$npc) \$student."teaching:npc:lesson_end_time" = \$sid;
+
+\$student."teaching:teacher" = \$teacher;
+
+/* delay */
+if(!\$actor."crafting:override") \{
+    if(!\$teachtime) \{
+        \$delay(3*60, TRUE, "f8c5");
+    \} else \{
+        for(\$l = 0; \$l \< 14; \$l++) \{
+            /* are they both still doing the lesson? */
+            /* is the teacher still teaching? */
+            if(\$teacher."busy:id" != \$par["id"]) \{
+                if(\$teacher != \$actor) \{
+                    ironclaw::busy_stop(\$character: \$actor, \$id: \$sid);
+                \}
+                return FALSE;
+            \}
+
+            /* is the student still learning? */
+            if(\$teacher != \$actor \&\& \$actor."busy:id" != \$sid) \{
+                ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+                return FALSE;
+            \}
+
+            \$delay(\$teachtime, FALSE, "73d9");
+            /* are they both still doing the lesson? */
+            /* is the teacher still teaching? */
+            if(\$teacher."busy:id" != \$par["id"]) \{
+                if(\$teacher != \$actor) \{
+                    ironclaw::busy_stop(\$character: \$actor, \$id: \$sid);
+                \}
+                return FALSE;
+            \}
+
+            /* is the student still learning? */
+            if(\$teacher != \$actor \&\& \$actor."busy:id" != \$sid) \{
+                ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+                return FALSE;
+            \}
+
+            if(\$teacher."teaching:emits") \{
+                EmitTo(\$actor, replace_strings(UnSAM(\$teacher."teaching:emits"), "THIS", capitalize(Describe(\$teacher)), "HERE", Describe(\$teacher."base:environment")));
+            \} else \{
+                EmitTo(\$actor, Describe(\$teacher) + " continues to teach you about " + capitalize(Str(\$topic)) + ".");
+            \}
+        \}
+    \}
+
+    \$delay(120, FALSE, "e820");
+\}
+
+if(\$npc) \$student."teaching:npc:lesson_end_time" = nil;
+\$student."teaching:teacher" = nil;
+
+/* are they both still doing the lesson? */
+/* is the teacher still teaching? */
+if(\$teacher."busy:id" != \$par["id"]) \{
+    if(\$teacher != \$actor) \{
+        ironclaw::busy_stop(\$character: \$actor, \$id: \$sid);
+        EmitTo(\$actor, capitalize(Describe(\$teacher))+" has stopped teaching the lesson.");
+    \}
+    return FALSE;
+\}
+
+/* is the student still learning? */
+if(\$teacher != \$actor \&\& \$actor."busy:id" != \$sid) \{
+    ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+    EmitTo(\$teacher, capitalize(Describe(\$actor))+" has stopped studying your lesson.");
+    return FALSE;
+\}
+
+/* mark the student and teacher as back */
+ironclaw::busy_stop(\$character: \$actor, \$id: \$sid);
+ironclaw::busy_stop(\$character: \$teacher, \$id: \$par["id"]);
+
+/* re-check skill level */
+if(Int(Get(\$actor, \$topicname)) != \$level-1) \{
+    EmitTo(\$actor, "Something went wrong with your lesson. It seems you must have just learned a level of this skill suddenly, or something weird. Oh well, try the lesson again.");
+    EmitTo(\$teacher, "Something went wrong with your student's lesson. It seems they must have just learned a level of the skill suddenly, or something weird. Oh well, try the lesson again.");
+    return FALSE;
+\}
+
+/* re-check learning points */
+if(\$cost \> Int(\$actor."student:learningpoints")) \{
+    EmitTo(\$actor, "You cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost "+Str(\$cost)+" learning points, and you only have "+Str(Int(\$actor."student:learningpoints"))+".");
+    EmitTo(\$teacher, Describe(\$actor)+" cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost too many learning points.");
+    return FALSE;
+\}
+
+if(\$cost2) \{
+    if(\$guild_lesson) \{
+        if(\$cost2 \> Int(\$actor.guild.kitty)) \{
+            EmitTo(\$actor, "You cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost "+Str(\$cost2)+" florins, and your guild kitty only has "+Str(Int(\$actor.guild.kitty))+".");
+            ::teaching_decline();
+            return FALSE;
+        \}
+    \} else \{
+        if(\$cost2 \> Int(\$actor."trait:money")) \{
+            EmitTo(\$actor, "You cannot afford to raise "+\$par["topic"]+" to "+Str(\$level)+" as that will cost "+Str(\$cost2)+" florins, and you only have "+Str(Int(\$actor."trait:money"))+".");
+            ::teaching_decline();
+            return FALSE;
+        \}
+    \}
+\}
+
+/* emit about the lesson ending */
+/* pass or fail? */
+/* EXTENSION: Make a skill roll so they can fail the lesson */
+if(TRUE) \{
+    /* pass */
+    EmitTo(\$teacher, "You finish teaching "+Describe(\$actor, \$teacher, \$teacher)+" about "+\$topic+".");
+    if(\$teacher != \$actor) \{
+        EmitTo(\$actor, Describe(\$teacher)+" finishes teaching you about "+\$topic+".");
+        EmitIn(\$actor."base:environment", Describe(\$teacher)+" finishes teaching "+Describe(\$actor)+" about "+\$topic+".", \$actor, \$teacher);
+    \} else \{
+        EmitIn(\$actor."base:environment", Describe(\$teacher)+" finishes teaching " + Str(\$actor."base:objective") + "self about "+\$topic+".", \$actor);
+    \}
+
+    /* grant skill level and subtract learning points */
+    Set(\$actor, \$topicname, \$level);
+    \$actor."student:learningpoints" -= \$cost;
+    if(\$cost2) \{
+        if(\$guild_lesson) \{
+            if(\$cost2) \{
+                \$actor.guild.kitty -= \$cost2;
+
+                \$guild = \$actor.guild;
+
+                \$lessonData = (\{ \$actor, \$topic, \$cost2, time() \});
+
+                if(\$actor.guild.lessons) \{
+                    \$actor.guild.lessons += (\{ \$lessonData \});
+                \} else \{
+                    \$actor.guild.lessons = (\{ \$lessonData \});
+                \}
+            \}
+        \} else \{
+            if(\$cost2) \$actor."trait:money" -= \$cost2;
+        \}
+    \}
+\} else \{
+    /* fail */
+    /* NOT FINISHED YET */
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_accept_guild">
+         X[M] \$par["guild_lesson"] = TRUE;
+
+::teaching_accept(\$par: \$par);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_decline">
+         X[M] /* decide not to accept the lesson */ 
+if(\$par["teacher"] == \$actor) \{ 
+ ironclaw::busy_stop(\$character: \$par["teacher"], \$id: \$par["id"]); 
+ EmitTo(\$par["teacher"], "You decide not to study "+\$par["topic"]+"."); 
+ return FALSE; 
+\} 
+ 
+ 
+EmitTo(\$actor, "You decline "+Describe(\$par["teacher"])+"'s offer to teach you "+\$par["topic"]+"."); 
+ 
+if(\$par["teacher"]."busy:id" != \$par["id"]) 
+ return FALSE; 
+ironclaw::busy_stop(\$character: \$par["teacher"], \$id: \$par["id"]); 
+ 
+EmitTo(\$par["teacher"], Describe(\$actor)+" declines your offer to teach "+\$par["topic"]+"."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_expire">
+         X[M] /* they took too long to decide if they want this lesson */ 
+if(\$par["teacher"] == \$actor) \{ 
+ if(\$par["teacher"]."busy:id" != \$par["id"]) 
+  return FALSE; 
+ ironclaw::busy_stop(\$character: \$par["teacher"], \$id: \$par["id"]); 
+ EmitTo(\$par["teacher"], "Your offer to teach yourself "+\$par["topic"]+" has expired."); 
+ return FALSE; 
+\} 
+ 
+EmitTo(\$actor, Describe(\$par["teacher"])+"'s offer to teach you "+\$par["topic"]+" has expired."); 
+ 
+if(\$par["teacher"]."busy:id" != \$par["id"]) 
+ return FALSE; 
+ironclaw::busy_stop(\$character: \$par["teacher"], \$id: \$par["id"]); 
+ 
+EmitTo(\$par["teacher"], "Your offer to teach "+Describe(\$actor)+" "+\$par["topic"]+" has expired."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_offer">
+         X[M] /* teach another character a skill or career */
+mapping map;
+object ob;
+int counter;
+
+/* are they already busy? */
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+    EmitTo(\$actor, "You can't teach a new student while you are already busy "+\$message+".");
+    return FALSE;
+\}
+
+if(sizeof(\$dob) \> 1) \{
+    EmitTo(\$actor, "Please only teach one person at a time.");
+    return FALSE;
+\}
+\$student = NRefOb(\$dob[0]);
+if(!\$student."base:volition") \{
+    EmitTo(\$actor, "You cannot teach "+Describe(\$student, nil, \$actor)+" anything.");
+    return FALSE;
+\}
+
+if(!\$(about:words)) \{
+    EmitTo(\$actor, "What skill would you like to teach "+Describe(\$student, \$actor, \$actor)+" about?");
+    return FALSE;
+\}
+
+/* set the topic */
+\$topic = implode(\$(about:words), " ");
+map = ([ ]);
+map += prefixed_map(\$actor."*", "skill:");
+for (ob = \$actor."core:ur:parent"; ob; ob = ob."core:ur:parent") \{
+    map = prefixed_map(ob."*", "export:skill:") + map;
+\}
+
+\$list = map_indices(map);
+
+/* Search through for this skill */
+for (counter = 0; counter \< sizeof(\$list); counter++)\{
+    if(sscanf(\$list[counter], "skill:%s:"+\$topic+"%s", \$category, \$extra) == 2 \&\& \$extra==""
+     \|\| sscanf(\$list[counter], "export:skill:%s:"+\$topic+"%s", \$category, \$extra) == 2 \&\& \$extra=="")
+    break;
+\}
+
+if(!\$category) \{
+    EmitTo(\$actor, "Unknown skill.");
+    EmitTo(\$actor, "Format: Teach \<pc\> about \<skill\>");
+    EmitTo(\$actor, "E.g. \\"Teach bob about sword\\"");
+    return FALSE;
+\}
+
+\$topicname = "skill:"+\$category+":"+\$topic;
+
+if(\$actor."teaching:forbidden" \&\& sizeof(\$actor."teaching:forbidden")) \{
+    for(\$i = 0; \$i \< sizeof(\$actor."teaching:forbidden"); \$i++) \{
+        if(\$topic == \$actor."teaching:forbidden"[\$i]) \{
+            EmitTo(\$actor, "You are not allowed to teach that.");
+            return FALSE;
+        \}
+    \}
+\}
+
+\$value = Int(Get(\$actor, "career:"+\$category+":"+\$topic));
+if(Int(Get(\$actor, \$topicname)) \> \$value)
+    \$value = Int(Get(\$actor, \$topicname));
+
+/* check if the student can learn anything */
+/* Get max value student can learn */
+if(\$category == "lang") \$subclass = "lang";
+if(\$category == "general") \$subclass = "general";
+if(!(\$max = Call(\$\{Allegory:Lib:Teaching:TeachingLib\}, "get_skill_cap", \$subclass: \$subclass, \$char: \$student, \$skill: \$category + ":" + \$topic))) \{
+    EmitTo(\$actor, "You cannot teach " + Describe(\$student, \$actor, \$actor) + " about " + \$topic + ".");
+    return FALSE;
+\}
+
+if(Int(Get(\$student, \$topicname)) \>= \$value \|\| Int(Get(\$student, \$topicname)) \>= \$max) \{
+    EmitTo(\$actor, "There is nothing you can teach "+Describe(\$student, \$actor, \$actor)+" about "+\$topic+".");
+    return FALSE;
+\}
+
+\$value = Int(Get(\$student, \$topicname))+1;
+/* what is the cost to the student? */
+\$cost = Call(\$\{Allegory:Lib:Teaching:TeachingLib\}, "get_skill_cost", \$category: \$category, \$level: \$value);
+
+if(!\$actor.storyhost \&\& \$actor."udat:object" \&\& \$student."udat:object" \&\& \$actor."udat:object" == \$student."udat:object") \{
+    EmitTo(\$actor, "You cannot teach yourself or an alt.");
+    return FALSE;
+\}
+
+/* offer the lesson to the student */
+\$message = Describe(\$actor)+" offers to teach you "+\$topic+". This will cost "+Str(\$cost)+" learning points.\\nDo you wish to learn "+\$topic+"?";
+
+/* if we are teaching ourselves, give a different message */
+if(\$student == \$actor) \{
+    \$message = "To learn "+\$topic+" will cost "+Str(\$cost)+" learning points. Because you are teaching yourself, the lesson may cost slightly more than if you studied by practicing with another PC.\\nDo you wish to learn "+\$topic+"?";
+\} else \{
+    EmitTo(\$actor, "You offer to teach "+Describe(\$student)+" level "+Str(\$value)+" in "+\$topic+".");
+\}
+
+/* mark them as busy */
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "teaching "+Describe(\$student, \$actor, \$actor));
+
+/* Request consent to teach the skill */
+interaction::question(\$actor: \$student, \$question: \$message, \$expires: 60, \$env: "TRUE", \$yes_ob: \$\{Allegory:Lib:Teaching:TeachingLib\}, \$no_ob: \$\{Allegory:Lib:Teaching:TeachingLib\}, \$expire_ob: \$\{Allegory:Lib:Teaching:TeachingLib\}, \$yes_fun: "teaching_accept", \$no_fun: "teaching_decline", \$expire_fun: "teaching_expire", \$par: ([ "student":\$student, "teacher": \$actor, "topic": \$topic, "topicname":\$topicname, "level":\$value, "id":\$id ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:ask-dob%teaching">
+         X[M] int i, j, k, cost, skillLevel, lpcost;
+string rstr, levelDesc, keyword, category, billing;
+string *topics, *gtopics, *ltopics;
+mapping skillMap;
+string * skillList;
+
+if(!this."teaching:classes" \&\& !this."teaching:general" \&\& !this."teaching:languages") return TRUE;
+if(\$(for:description)) return TRUE;
+
+rstr = "";
+
+topics = (\{ \});
+
+if(\$this."teaching:classes") topics = \$this."teaching:classes";
+if(\$this."teaching:general") gtopics = \$this."teaching:general";
+if(\$this."teaching:languages") ltopics = \$this."teaching:languages";
+
+if(\$actor."trait:class1" \&\& \$actor."trait:class2" \&\& !member(Str(\$actor."trait:class1"), topics) \&\& !member(Str(\$actor."trait:class2"), topics) \&\& !\$this."teaching:general" \&\& !\$this."teaching:languages") \{
+     if(!FindMerry(\$actor, "react", "ask-dob%trading")) \{
+         return TRUE;
+     \}
+     return FALSE;
+\}
+
+\$chatterSkillMap = Call(\$\{Allegory:Data:SkillsDB\}, "get-skillmap", \$subclass: \$actor."trait:class1");
+if(\$actor."trait:class2") \$chatterSkillMap += Call(\$\{Allegory:Data:SkillsDB\}, "get-skillmap", \$subclass: \$actor."trait:class2", \$skillMap: \$chatterSkillMap);
+\$chatterSkillMap += Call(\$\{Allegory:Data:SkillsDB\}, "get-skillmap", \$subclass: "general", \$skillMap: \$chatterSkillMap);
+\$chatterSkillMap += Call(\$\{Allegory:Data:SkillsDB\}, "get-skillmap", \$subclass: "languages", \$skillMap: \$chatterSkillMap);
+
+if(!\$(about:words)) \{
+    rstr += "\\n" + capitalize(Describe(\$this)) + " can teach you about the following classes and skills: \\n";
+    for(i = 0; i \< sizeof(topics); i++) \{
+        if(Str(\$actor."trait:class1") == topics[i] \|\| Str(\$actor."trait:class2") == topics[i] \|\| !\$actor."trait:class1" \|\| !\$actor."trait:class2") \{
+            rstr += "\\n" + TAG(upper_case(topics[i]), "imp") + "\\n";
+            skillMap = Call(\$\{Allegory:Data:SkillsDB\}, "get-skillmap", \$subclass: replace_strings(topics[i], " ", "-"));
+            skillList = map_indices(skillMap);
+            skillList -= (\{ "starting_skills" \});
+            for(j = 0; j \< sizeof(skillList); j++) \{
+                skillLevel = Int(Get(\$actor, "skill:" + skillList[j])) + 1;
+                if(\$chatterSkillMap[skillList[j]] \&\& skillLevel \> \$chatterSkillMap[skillList[j]]) levelDesc = " (CAPPED) "; else levelDesc = " (Level " + Str(skillLevel) + ") ";
+                cost = skillLevel * 1000;
+                lpcost = Int(skillLevel * 11);
+                if(lpcost \> 110) lpcost = 110;
+
+                rstr += Str(cost/100) + " florins and " + Str(lpcost) + " learning points - " + capitalize(explode(skillList[j], ":")[1]) + levelDesc + "\\n";
+            \}
+            rstr += "\\n";
+        \}
+
+    \}
+
+    if(gtopics \&\& sizeof(gtopics)) rstr += "\\n" + TAG("GENERAL SKILLS", "imp") + "\\n";
+    for(i = 0; gtopics \&\& i \< sizeof(gtopics); i++) \{
+        skillLevel = Int(Get(\$actor, "skill:general:" + gtopics[i])) + 1;
+        if(skillLevel \> 48) levelDesc = " (CAPPED) "; else levelDesc = " (Level " + Str(skillLevel) + ") ";
+        cost = skillLevel * 1000;
+        lpcost = Int(skillLevel * 11);
+        if(lpcost \> 110) lpcost = 110;
+
+        rstr += Str(cost/100) + " florins and " + Str(lpcost) + " learning points - " + gtopics[i] + levelDesc + "\\n";
+    \}
+    if(gtopics \&\& sizeof(gtopics)) rstr += "\\n";
+
+    if(ltopics \&\& sizeof(ltopics)) rstr += "\\n" + TAG("LANGUAGES", "imp") + "\\n";
+    for(i = 0; ltopics \&\& i \< sizeof(ltopics); i++) \{
+        skillLevel = Int(Get(\$actor, "skill:lang:" + ltopics[i])) + 1;
+        if(skillLevel \> 24) levelDesc = " (CAPPED) "; else levelDesc = " (Level " + Str(skillLevel) + ") ";
+        cost = skillLevel * 1000;
+        lpcost = Int(skillLevel * 11);
+        if(lpcost \> 110) lpcost = 110;
+
+        rstr += Str(cost/100) + " florins and " + Str(lpcost) + " learning points - " + capitalize(ltopics[i]) + levelDesc + "\\n";
+    \}
+    if(ltopics \&\& sizeof(ltopics)) rstr += "\\n";
+
+    \$rstr = rstr;
+
+    \$delay(0.1, FALSE, "3d45");
+
+    EmitTo(\$actor, \$rstr);
+    return TRUE;
+\}
+
+\$match = nil;
+for(i = 0; !\$match \&\& i \< sizeof(\$(about:words)); i++) \{
+    keyword = \$(about:words)[i];
+
+    /*
+    if(member(keyword, topics)) \{
+        ::startquest();
+    \}
+    */
+
+    if(member(keyword, topics)) \{
+        if(\$actor."trait:class1" \&\& !\$actor."trait:class2") \{
+            \$lps = Call(\$\{Allegory:Data:SkillsDB\}, "calculate-lps-new", \$actbody: \$actor);
+            if(\$actor."chargen:lang") \$lps -= 2125;
+
+            if(\$lps \>= 1850) \{
+                \$match = keyword;
+                \$learnclass = 1;
+            \} else \{
+                EmitTo(\$actor, "You are not experienced enough to learn a second class. You must spend " + Str(1850 - \$lps) + " more learning points on other skills.");
+                return FALSE;
+            \}
+        \} else if(\$actor."trait:class1" \&\& \$actor."trait:class2") \{
+                EmitTo(\$actor, "You have already learned two classes. You must @unlearn one before learning another.");
+                return FALSE;
+        \} else if(!\$actor."trait:class1") \{
+            \$match = keyword;
+            \$learnclass = 1;
+        \}
+    \}
+
+    for(j = 0; !\$match \&\& j \< sizeof(topics); j++) \{
+        skillMap = Call(\$\{Allegory:Data:SkillsDB\}, "get-skillmap", \$subclass: replace_strings(topics[j], " ", "-"));
+        skillList = map_indices(skillMap);
+        skillList -= (\{ "starting_skills" \});
+        for(k = 0; k \< sizeof(skillList); k++) \{
+            skillLevel = Int(Get(\$actor, "skill:" + skillList[k])) + 1;
+            cost = skillLevel * 1000;
+            lpcost = Int(skillLevel * 11);
+            if(lpcost \> 110) lpcost = 110;
+
+            if(keyword == explode(skillList[k], ":")[1]) \{
+                if(Str(\$actor."trait:class1") == topics[j] \|\| Str(\$actor."trait:class2") == topics[j]) \{
+                    if(\$chatterSkillMap[skillList[k]] \&\& skillLevel \> \$chatterSkillMap[skillList[k]]) \{
+                        EmitTo(\$actor, "You cannot learn " + implode(\$(about:words), " ") + " higher than level " + Str(\$chatterSkillMap[skillList[k]]) + ".");
+                        return TRUE;
+                    \} else \{
+                        \$match = skillList[k];
+                    \}
+                \}
+            \}
+        \}
+    \}
+
+    for(j = 0; !\$match \&\& gtopics \&\& j \< sizeof(gtopics); j++) \{
+        if(keyword == gtopics[j]) \{
+            skillLevel = Int(Get(\$actor, "skill:general:" + gtopics[j])) + 1;
+            cost = skillLevel * 1000;
+            lpcost = Int(skillLevel * 11);
+            if(lpcost \> 110) lpcost = 110;
+
+            if(skillLevel \> 48) \{
+                EmitTo(\$actor, "You cannot learn " + implode(\$(about:words), " ") + " higher than level 48.");
+                return TRUE;
+            \} else \{
+                \$match = "general:" + gtopics[j];
+            \}
+        \}
+    \}
+
+    for(j = 0; !\$match \&\& ltopics \&\& j \< sizeof(ltopics); j++) \{
+        if(keyword == ltopics[j]) \{
+            skillLevel = Int(Get(\$actor, "skill:lang:" + ltopics[j])) + 1;
+            cost = skillLevel * 1000;
+            lpcost = Int(skillLevel * 11);
+            if(lpcost \> 110) lpcost = 110;
+EmitTo(\$actor, dump_value(skillLevel));
+            if(skillLevel \> 24) \{
+                EmitTo(\$actor, "You cannot learn " + implode(\$(about:words), " ") + " higher than level 24.");
+                return TRUE;
+            \} else \{
+                \$match = "lang:" + ltopics[j];
+            \}
+        \}
+    \}
+\}
+
+if(!\$match) \{
+    EmitTo(\$actor, capitalize(Describe(\$this)) + " cannot teach you anything about " + implode(\$(about:words), " ") + ".");
+    return FALSE;
+\}
+
+/* is the teacher already busy? */
+if(\$message = ironclaw::busy_check(\$character: \$this)) \{
+    EmitTo(\$actor, capitalize(Describe(\$this)) + " is already busy " + \$message + ".");
+    return FALSE;
+\}
+
+\$id = ironclaw::busy_start(\$character: \$this, \$action: "teaching "+Describe(\$actor));
+
+if(\$learnclass) \{
+    \$matchedtopic = \$match;
+    cost = 40000;
+    lpcost = 200;
+
+    \$question = "Do you want to learn " + \$match + " as your second class? It will cost " + Str(cost/100) + " florins and " + Str(lpcost) + " learning points.";
+\} else \{
+    \$matchedtopic = explode(\$match, ":")[1];
+    skillLevel = Int(Get(\$actor, "skill:" + \$match)) + 1;
+    cost = skillLevel * 1000;
+    lpcost = skillLevel * 11;
+
+    if(lpcost \> 110) lpcost = 110;
+
+    \$question = "Do you want to learn " + explode(\$match, ":")[1] + " level " + Str(skillLevel) + " from " + Describe(\$this) + "? It will cost " + Str(cost/100) + " florins and " + Str(lpcost) + " learning points. The lesson will last approximately 30 minutes.";
+\}
+
+\$a = "Yes, pay from my bank account";
+\$a_ob = \$\{Allegory:Lib:Teaching:TeachingLib\};
+\$a_fun = "teaching_accept";
+
+if(\$actor.guild \&\& (\$actor."guild:guild_lessons" \|\| \$actor."guild:rank" == 1)) \{
+    \$b = "Yes, pay from my guild's kitty";
+    \$b_ob = \$\{Allegory:Lib:Teaching:TeachingLib\};
+    \$b_fun = "teaching_accept_guild";
+
+    \$c = "No, I've changed my mind";
+    \$c_ob = \$\{Allegory:Lib:Teaching:TeachingLib\};
+    \$c_fun = "teaching_decline";
+\} else \{
+    \$b = "No, I've changed my mind";
+    \$b_ob = \$\{Allegory:Lib:Teaching:TeachingLib\};
+    \$b_fun = "teaching_decline";
+\}
+
+\$expire_ob = \$\{Allegory:Lib:Teaching:TeachingLib\};
+\$expire_fun = "teaching_decline";
+
+if(\$learnclass) \{
+    interaction::question(\$expires: 30, \$env: "TRUE", \$par: ([ "student":\$actor, "teacher":this, "topicname":"skill:" + \$match, "topic":\$matchedtopic, "category":category, "cost2":cost, "cost":lpcost, "teachtime":120, "npc":TRUE, "level":skillLevel, "id":\$id, "learnclass":\$match ]));
+\} else \{
+    interaction::question(\$expires: 30, \$env: "TRUE", \$par: ([ "student":\$actor, "teacher":this, "topicname":"skill:" + \$match, "topic":\$matchedtopic, "category":category, "cost2":cost, "cost":lpcost, "teachtime":120, "npc":TRUE, "level":skillLevel, "id":\$id ]));
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1583426216, "jominey", "E", 1583426749, "jominey", "E", 1583427210, "jominey", "E", 1583427248, "jominey", "E", 1583427830, "jominey", "E", 1583428134, "jominey", "E", 1583428196, "jominey", "P", 1583428263, "jominey", "P", 1583428369, "jominey", "P", 1583428398, "jominey", "P", 1583428466, "jominey", "P", 1583428508, "jominey", "P", 1583428578, "jominey", "P", 1583430366, "jominey", "P", 1583430418, "jominey", "P", 1583430969, "jominey", "P", 1583433649, "jominey", "P", 1583433812, "jominey", "P", 1583433847, "jominey", "P", 1583433886, "jominey", "P", 1583433939, "jominey", "P", 1583434019, "jominey", "P", 1583434219, "jominey", "P", 1583434249, "jominey", "P", 1583434282, "jominey", "P", 1583638924, "jominey", "E", 1583638982, "jominey", "E", 1583639194, "jominey", "E", 1583639644, "jominey", "E", 1583639739, "jominey", "E", 1585279399, "jominey", "E", 1585279565, "jominey", "E", 1585279642, "jominey", "E", 1585279756, "jominey", "E", 1585280176, "jominey", "E", 1585281509, "jominey", "E", 1585281569, "jominey", "E", 1588898761, "jominey", "E", 1588899006, "jominey", "P", 1588899029, "jominey", "P", 1588899062, "jominey", "E", 1588899102, "jominey", "E", 1588899137, "jominey", "E", 1588899195, "jominey", "E", 1588899661, "jominey", "E", 1588899698, "jominey", "E", 1588899804, "jominey", "P", 1588899917, "jominey", "E", 1588967400, "jominey", "E", 1588967507, "jominey", "E", 1588967622, "jominey", "E", 1589293395, "jominey", "E", 1589306585, "jominey", "E", 1593261684, "jominey", "E", 1597067863, "jominey", "E", 1597068026, "jominey", "E", 1597069314, "jominey", "E", 1597069398, "jominey", "E", 1597069590, "jominey", "E", 1597081963, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

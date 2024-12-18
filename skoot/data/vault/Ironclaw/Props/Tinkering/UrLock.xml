@@ -1,0 +1,181 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCraftingContainer)"/>
+    <Base:Bulk immobile="false" mass="0.5" density="2"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1.5" verb2="hold" verb3="holds"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="lock"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="locks"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:size) $(this.trait:color) $(this.trait:material) $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="examine">
+             A {? | $(this.trait:size) | $(this.trait:size) | average-sized } $(this.trait:color) $(this.trait:material) $(this.trait:brief). $(this.trait:examine) <br/><quality-full/>
+          </Base:Description>
+          <Base:Description type="look">
+             A {? | $(this.trait:size) | $(this.trait:size) | average-sized } $(this.trait:color) $(this.trait:material) $(this.trait:brief).
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="true" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="true" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "lock"
+      </Core:Property>
+      <Core:Property property="export:trait:lockpicking">
+         1
+      </Core:Property>
+      <Core:Property property="export:trait:material">
+         "metal"
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "lock"
+      </Core:Property>
+      <Core:Property property="export:trait:quality">
+         1
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] /* Spawn key and set keycodes */ 
+ 
+\$key = \$\{Ironclaw:Props:Tinkering:UrKey\}; 
+if(\$this."trait:key") \{ 
+    if(typeof(\$this."trait:key") == 4) \{ 
+        \$key = \$this."trait:key"; 
+    \} else if(typeof(\$this."trait:key") == 3 \&\& Obj(\$this."trait:key")) \{ 
+        \$key = Obj(\$this."trait:key"); 
+    \} 
+\} 
+ 
+\$newkey = Spawn(\$key); 
+\$newkey."trait:material" = \$this."trait:material"; 
+\$newkey."trait:color" = \$this."trait:color"; 
+\$newkey."trait:size" = \$this."trait:size"; 
+\$newkey."base:environment" = \$this; 
+ 
+if(!\$newkey."base:environment") \{ 
+    \$this."trait:spawnedkey" = "none"; 
+    Slay(\$newkey); 
+    return TRUE; 
+\} 
+ 
+\$this."trait:spawnedkey" = \$newkey; 
+ 
+\$code = \$this."base:objectname"; 
+ 
+\$this."details:default:exit:keycode" = \$code; 
+\$newkey."base:keycode" = \$code; 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:add-dob%lock">
+         X[M] if(\$this.isbusy) \{ 
+    EmitTo(\$actor, Describe(\$this.isbusy) + " is using that right now."); 
+    return FALSE; 
+\} 
+ 
+if(\$this."details:default:exit:locked") \{ 
+    EmitTo(\$actor, "You should unlock it first."); 
+    return FALSE; 
+\} 
+ 
+if(\$this."base:inventory" \&\& sizeof(\$this."base:inventory")) \{ 
+    EmitTo(\$actor, "You should remove the key first."); 
+    return FALSE; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:close-what">
+         X[M] if(sizeof(\$this."base:inventory")) \{ 
+    EmitTo(\$actor, "You should remove the key first."); 
+    return FALSE; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:place-where">
+         X[M] if(!\$what) \{ 
+    return TRUE; 
+\} 
+ 
+if(!sizeof(\$what)) \{ 
+    return TRUE; 
+\} 
+ 
+if(\$(where:preposition) != "in") \{ 
+    return FALSE; 
+\} 
+ 
+if(sizeof(\$what) \> 1) \{ 
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " can only hold one key."); 
+    return FALSE; 
+\} 
+ 
+\$key = NRefOb(\$what[0]); 
+ 
+if(\$key."trait:objecttype" != "key") \{ 
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " can only hold keys."); 
+    return FALSE; 
+\} 
+ 
+if(sizeof(\$this."base:inventory")) \{ 
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " already holds a key."); 
+    return FALSE; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unlock-what">
+         X[M] if(\$this.isbusy) \{ 
+    EmitTo(\$actor, Describe(\$this.isbusy) + " is using that right now."); 
+    return FALSE; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1304899017, "morwenlorelie", "K", 1304899034, "morwenlorelie", "E", 1304899041, "morwenlorelie", "E", 1304899058, "morwenlorelie", "X", 1304899889, "morwenlorelie", "R", 1304899900, "morwenlorelie", "X", 1304899917, "morwenlorelie", "X", 1304901388, "jominey", "E", 1304901432, "jominey", "K", 1304901468, "jominey", "K", 1304901510, "jominey", "E", 1304901590, "jominey", "K", 1304902256, "jominey", "E", 1304902427, "jominey", "E", 1304903841, "jominey", "E", 1304904044, "jominey", "E", 1304904343, "jominey", "E", 1304904635, "jominey", "E", 1304905749, "jominey", "E", 1304905876, "jominey", "E", 1304905887, "jominey", "E", 1304907858, "jominey", "K", 1304908212, "jominey", "K", 1304908328, "jominey", "E", 1304908378, "jominey", "E", 1304908513, "jominey", "E", 1304908789, "jominey", "E", 1304913867, "jominey", "E", 1304913953, "jominey", "E", 1304914103, "jominey", "E", 1304919818, "jominey", "E", 1304996749, "jominey", "E", 1304997667, "jominey", "E", 1304998102, "jominey", "E", 1304998156, "jominey", "K", 1304998201, "jominey", "K", 1305174655, "jominey", "E", 1305174699, "jominey", "E", 1305174901, "jominey", "E", 1305174945, "jominey", "E", 1421944747, "pp74", "X", 1426730925, "slurpeeslurp", "K", 1511831906, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

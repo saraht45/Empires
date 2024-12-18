@@ -1,0 +1,145 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="tricorder"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="tricorders"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             tricorder
+          </Base:Description>
+          <Base:Description type="look">
+             It's a tricorder. What did you think it was, dumbass?
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:checkparents">
+         X[M] if(!\$object) return FALSE;
+if(\$object."base:urparent")
+\{
+  if((sscanf(name(\$tmp), "%*sIronClaw%*s") \< 1)
+  \&\& (sscanf(name(\$tmp), "%*sChatters:IC%*s") \< 1)
+  \&\& (sscanf(name(\$tmp), "[Generic:%*s") \< 1)
+  \&\& (sscanf(name(\$tmp), "[S7-Generic:%*s") \< 1))
+  \{
+    return TRUE;
+  \}
+  return Call(this, "checkparents", \$object: \$object."base:urparent");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:press-dob">
+         X[M] EmitIn(\$actor."base:environment", "Beep beep, searching for alien technology.");
+\$list = (\{ \$\{IronClaw:Rooms:UrInside\}, \$\{IronClaw:Rooms:UrOutside\}, \$\{IronClaw:Races:Bodies:Mainbody\} \});
+
+for(\$index=0;\$index\<sizeof(\$list);\$index++)
+\{
+  \$delay(0.01, FALSE, "f746");
+  if((\$index%100) == 0) EmitTo(\$actor, "Scan continuing...");
+  /* for this object or room */
+  \$tmp = \$list[\$index];
+
+  /* Check if this object is alien */
+  if((sscanf(name(\$tmp), "%*sIronClaw%*s") \< 1)
+  \&\& (sscanf(name(\$tmp), "%*sChatters:IC%*s") \< 1)
+  \&\& (sscanf(name(\$tmp), "[Generic:%*s") \< 1)
+  \&\& (sscanf(name(\$tmp), "[S7-Generic:%*s") \< 1))
+  \{
+    EmitTo(\$actor, "ALIEN technology found: "+name(\$tmp));
+  \} else \{
+    if(Call(this, "checkparents", \$object: \$tmp)) \{
+      EmitTo(\$actor, "ALIEN parent technology found: "+name(\$tmp));
+    \}
+  \}
+
+  /* scan the room inventory */
+  for(\$index2=0;\$index2\<sizeof(\$tmp."base:inventory");\$index2++) \{
+    \$delay(0.01, FALSE, "43da");
+    /* if this object has an inventory, add it to the list */
+    if(sizeof(\$tmp."base:inventory"[\$index2]."base:inventory") != 0)
+      \$list += (\{ \$tmp."base:inventory"[\$index2] \});
+    /* Check if this object is alien */
+    if((sscanf(name(\$tmp."base:inventory"[\$index2]), "%*sIronClaw%*s") \< 1)
+    \&\& (sscanf(name(\$tmp."base:inventory"[\$index2]), "%*sChatters:IC%*s") \< 1)
+    \&\& (sscanf(name(\$tmp."base:inventory"[\$index2]), "[Generic:%*s") \< 1)
+    \&\& (sscanf(name(\$tmp."base:inventory"[\$index2]), "[S7-Generic:%*s") \< 1))
+    \{
+      EmitTo(\$actor, name(\$tmp."base:inventory"[\$index2]."base:environment")+" - "+name(\$tmp."base:inventory"[\$index2]));
+    \} else \{
+      if(Call(this, "checkparents", \$object: \$tmp."base:inventory"[\$index2])) \{
+        EmitTo(\$actor, name(\$tmp."base:inventory"[\$index2]."base:environment")+" - "+name(\$tmp."base:inventory"[\$index2]));
+      \}
+    \}
+  \}
+
+  /* Get a list of children */
+  if(\$tmp."base:firsturchild") \{
+    \$firstchild = \$tmp."base:firsturchild";
+    if(\$firstchild."base:nextursibling") \{
+      \$child = \$firstchild."base:nextursibling";
+    \} else \{
+      \$child = \$firstchild;
+    \}
+/*  EmitTo(\$actor, "Child of "+name(\$firstchild));*/
+    \$list += (\{ \$firstchild \});
+    while(\$child != \$firstchild) \{
+/*    EmitTo(\$actor, "Child of "+name(\$child));*/
+      \$list += (\{ \$child \});
+      \$child = \$child."base:nextursibling";
+    \}
+  \}
+\}
+EmitIn(\$actor."base:environment", "Beep beep, scan complete.");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1107209474, "zwoc", "E", 1135037398, "tonyd", "E", 1135037422, "tonyd", "E", 1135037578, "tonyd", "P", 1135037614, "tonyd", "P", 1135038080, "tonyd", "P", 1135038156, "tonyd", "P", 1135038243, "tonyd", "P", 1135038746, "tonyd", "P", 1135038777, "tonyd", "P", 1135038801, "tonyd", "P", 1135041499, "tonyd", "P", 1135041540, "tonyd", "P", 1135041622, "tonyd", "P", 1135041686, "tonyd", "P", 1135041788, "tonyd", "P", 1135042483, "tonyd", "P", 1135042549, "tonyd", "P", 1135042605, "tonyd", "P", 1135042663, "tonyd", "P", 1135042696, "tonyd", "P", 1135042769, "tonyd", "P", 1135042823, "tonyd", "P", 1135042903, "tonyd", "P", 1135043003, "tonyd", "P", 1135043413, "lunamoon", "E", 1135043456, "lunamoon", "E", 1135043480, "tonyd", "P", 1135043773, "tonyd", "P", 1135043812, "tonyd", "P", 1135061838, "tonyd", "P", 1135061916, "tonyd", "P", 1135061969, "tonyd", "P", 1135062019, "tonyd", "P", 1135062092, "tonyd", "P", 1135122859, "tonyd", "P", 1135122891, "tonyd", "P", 1135122937, "tonyd", "P", 1135122954, "tonyd", "P", 1135122968, "tonyd", "P", 1135122994, "tonyd", "P", 1135123507, "tonyd", "P", 1135123703, "tonyd", "P", 1135123749, "tonyd", "P", 1135123790, "tonyd", "P", 1135123875, "tonyd", "P", 1135123938, "tonyd", "P", 1135124013, "tonyd", "P", 1135124043, "tonyd", "P", 1135124088, "???", "P", 1135124164, "tonyd", "P", 1135124207, "tonyd", "P", 1135124227, "tonyd", "P", 1135124235, "tonyd", "P", 1135124255, "tonyd", "P", 1135150778, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

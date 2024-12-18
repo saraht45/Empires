@@ -1,0 +1,1562 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:add">
+         X[M] int counter;
+/* EmitTo(\$actor, "Args = " + dump_value(args)); */
+
+/* We should have already checked that we have two valid objects that can be added */
+/* Make sure that the react-pre:add-iob is there, it does the checking */
+
+
+/* Check again anyway */
+if(!\$addition) return TRUE;
+
+if(NRefOb(\$addition[0])."trait:objecttype" \&\& NRefOb(\$addition[0])."trait:objecttype" == "polish") return TRUE;
+if(NRefOb(\$addition[0])."trait:objecttype" \&\& NRefOb(\$addition[0])."trait:objecttype" == "solution") return TRUE;
+
+if(!Call(this, "valid-check", \$addition: \$addition, \$object: \$target))
+\{ return FALSE; \}
+
+\$addition = NRefOb(\$addition[0]);
+
+/* Check if we are allowed to add the addition to the object */
+/*EmitTo(\$actor, "Adding " + Describe(\$addition) + " to " + Describe(\$target));*/
+if(!(\$addlist = Get(NRefOb(\$target[0]), "alteration:add:" + NRefDetail(\$target[0]) + ":" + Str(\$addition."trait:objecttype"))))
+\{
+  if(NRefOb(\$target[0])."trait:accepts") return TRUE;
+  EmitTo(\$actor, "You can't combine these objects");
+  return FALSE;
+\}
+
+/* We can combine the objects */
+
+/* Check that this modification hasn't already been made */
+if(\$addlist["stopvalue"]) \{
+  /* We have a stopvalue. Check if we are allowed to continue */
+  /* If this property exists in the object, then we need to stop, unless it matches the value */
+  if(Get(NRefOb(\$target[0]), \$addlist["stopvalue"][0])) \{
+    /* if stopvalue doesn't match the property, then exit with message*/
+    if((sizeof(\$addlist["stopvalue"]) \> 1) \&\& (Get(NRefOb(\$target[0]), \$addlist["stopvalue"][0]) != \$addlist["stopvalue"][1])) \{
+      /* Stopvalue doesn't match. Output error message */
+      if(sizeof(\$addlist["stopvalue"]) \> 2) \{
+        EmitTo(\$actor, \$addlist["stopvalue"][2]);
+      \} else \{
+        EmitTo(\$actor, Describe(\$target[0], nil, \$actor) + " already has a modification of that type.");
+      \}
+      return FALSE;
+    \}
+  \}
+\}
+
+
+/* Check if the actor is carrying any necessary tools */
+if(\$tmp = \$addlist["requiredtools"])
+\{
+  /*We require tools*/
+  for(counter=1; counter\<sizeof(\$tmp); counter++)
+  \{
+    /*We need a tool*/
+    \$found = nil;
+    for(\$i = 0; (\$i \< sizeof(\$tmp[counter]))\&\&(!\$found); \$i++)
+    \{
+      /*We need a tool of type \$tmp[counter][\$i] */
+      for(\$j = 0; (\$j \< sizeof(\$actor."base:inventory"))\&\&(!\$found); \$j++)
+      \{
+        if(\$actor."base:inventory"[\$j]."trait:objecttype" == \$tmp[counter][\$i])
+        \{
+          /*We found the tool!*/
+          \$found = 1;
+        \}
+      \}
+
+      /* We didn't find the tool in our inventory. Is the player "using" the tool? */
+      if(!\$found \&\& \$using)
+      \{
+        for(\$j=0; (\$j \< sizeof(\$using))\&\&(!\$found); \$j++)
+        \{
+          if(NRefOb(\$using[\$j])."trait:objecttype" == \$tmp[counter][\$i])
+          \{
+            /*We found the tool!*/
+            /* make sure someone else isn't holding it */
+            if(NRefOb(\$using[\$j])."base:environment"."base:volition")
+            \{
+              EmitTo(\$actor, "You can't use a tool that's being held by someone else.");
+              return FALSE;
+            \} else \{
+              \$found = 1;
+            \}
+          \}
+        \}
+      \}
+    \}
+    /* If we are missing a tool we need */
+    if(!\$found)
+    \{
+      EmitTo(\$actor, "You can't combine "+Describe(\$target[0], nil, \$actor)+" and "+Describe(\$addition, nil, \$actor)+" without "+\$tmp[0]+".");
+      return FALSE;
+    \}
+  \}
+\}
+
+
+/* Check if these two combined creates a new object */
+/* set whichever is the updated object to be \$object */
+if(\$addlist["newobject"])
+\{
+  \$target = NRefOb(\$target[0]);
+  \$object = Spawn(\$addlist["newobject"]);
+  \$object."base:environment" = \$target."base:environment";
+  \$object."trait:madeby" = capitalize(\$actor."skotos:charname");
+  \$object."trait:madeby:object" = \$actor;
+  \$object."trait:madeby:account" = Str(\$actor."udat:name");
+
+\} else \{
+  \$object = NRefOb(\$target[0]);
+  \$target = NRefOb(\$target[0]);
+
+  /* If this is going to the existing object */
+  /* Check if we already have this object type added
+  (i.e. adding lace to a shirt that already has lace) */
+  /* what if this detail doesn't exist in the target? */
+  if(sizeof(Get(\$object, "details:" + \$addition."trait:objecttype" + ":snames")) \> 0)
+  \{
+    /* The object already has snames for this detail, so we assume it has already been added previously */
+    EmitTo(\$actor, "You cannot combine these, " + Describe(\$object, nil, \$actor) + " already has " + Describe(NewNRef(\$object, \$addition."trait:objecttype"), \$actor, nil, STYLE_NONPOSS) + ".");
+    return FALSE;
+  \}
+
+\}
+
+/* Check which new details need to be added to the new object */
+  /* add detail snames/pnames and adjectives */
+if(\$addlist["names"])
+\{
+  for(\$i = 0; \$i \< sizeof(\$addlist["names"]); \$i++)
+  \{
+    if(sizeof(\$addlist["names"][\$i]) == 2)
+    \{
+      Set(\$object, "details:" + \$addition."trait:objecttype" + ":" + \$addlist["names"][\$i][0] + ":" + \$addlist["names"][\$i][1], 1);
+    \} else if(sizeof(\$addlist["names"][\$i]) \> 2)
+    \{
+      for(\$j = 1; \$j \< sizeof(\$addlist["names"][\$i]); \$j++)
+      \{
+        Set(\$object, "details:" + \$addition."trait:objecttype" + ":" + \$addlist["names"][\$i][0] + ":" + \$addlist["names"][\$i][\$j], 1);
+      \}
+    \}
+  \}
+\}
+
+/* Adjectives to be removed from the detail. E.g. removing the current colour of an object when adding a new colour */
+/* This should be in the object as a setprop-post trigger */
+
+/* Check which new adjectives need to be added to the object */
+/* This should probably also be set as a setprop post. But it's useful, so I've got both options */
+/* Adjectives for the detail, copied from a property */
+if(\$addlist["adj-prop"])
+\{
+  for(\$i=0;\$i\<sizeof(\$addlist["adj-prop"]);\$i++)
+  \{
+    if(Get(\$addition, \$addlist["adj-prop"][\$i]) \&\& typeof(Get(\$addition, \$addlist["adj-prop"][\$i])) == 3)
+    \{
+      Set(\$object, "details:" + \$addition."trait:objecttype" + ":adjective:" + Get(\$addition, \$addlist["adj-prop"][\$i]), 1);
+    \}
+  \}
+\}
+
+/* Adjectives for the default, copied from a property */
+if(\$addlist["adj-prop-default"])
+\{
+  for(\$i=0;\$i\<sizeof(\$addlist["adj-prop-default"]);\$i++)
+  \{
+    Set(\$object, "details:default:adjective:" + Get(\$addition, \$addlist["adj-prop-default"][\$i]), 1);
+  \}
+\}
+
+/* Adjectives for the default, copied from a list */
+if(\$addlist["adj-list-default"])
+\{
+  for(\$i=0;\$i\<sizeof(\$addlist["adj-list-default"]);\$i++)
+  \{
+    Set(\$object, "details:default:adjective:" + \$addlist["adj-list-default"][\$i], 1);
+  \}
+\}
+
+/* Check which properties should be copied to the new object */
+if(\$addlist["properties"])
+\{
+  for(\$i=0;\$i\<sizeof(\$addlist["properties"]);\$i++)
+  \{
+    if((sizeof(\$addlist["properties"][\$i]) == 2) \&\& Get(\$addition, \$addlist["properties"][\$i][0]))
+    \{
+      \$thing = \$addition;
+      Set(\$object, \$addlist["properties"][\$i][1], UnSAM(Get(\$addition, \$addlist["properties"][\$i][0])));
+    \}
+  \}
+\}
+
+/* Check which properties should be copied to the new object */
+if(\$addlist["properties-this"])
+\{
+  for(\$i=0;\$i\<sizeof(\$addlist["properties-this"]);\$i++)
+  \{
+    if((sizeof(\$addlist["properties-this"][\$i]) == 2) \&\& Get(\$target, \$addlist["properties-this"][\$i][0]))
+    \{
+      Set(\$object, \$addlist["properties-this"][\$i][1], Get(\$target, \$addlist["properties-this"][\$i][0]));
+    \}
+  \}
+\}
+
+/* Check which properties should be copied to the new object */
+if(\$addlist["properties-list"])
+\{
+  for(\$i=0;\$i\<sizeof(\$addlist["properties-list"]);\$i++)
+  \{
+    if(sizeof(\$addlist["properties-list"][\$i]) == 2)
+    \{
+      Set(\$object, \$addlist["properties-list"][\$i][0], \$addlist["properties-list"][\$i][1]);
+    \}
+  \}
+\}
+
+/* Check if we should make a skill roll, to see if the quality changes */
+if(\$addlist["skill"])
+\{
+  \$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "alteration:"+\$addlist["skill"] \}), \$bonus: (\{ "trait:intelligence" \}));
+  if(!\$addition."trait:quality") \$addition."trait:quality" = 4;
+  if(!\$target."trait:quality") \$target."trait:quality" = 4;
+
+  if(\$addlist["noskillroll"] \&\& \$addlist["noskillroll"] == "true") \{
+    \$object."trait:quality" = \$target."trait:quality" + 1;
+  \} else \{
+    if(\$addition."trait:quality" \> \$target."trait:quality")
+    \{
+      \$max = \$addition."trait:quality";
+      \$min = \$target."trait:quality";
+    \} else \{
+      \$max = \$target."trait:quality";
+      \$min = \$addition."trait:quality";
+    \}
+    if(\$result \> \$max \|\| (\$addlist["noskillroll"] \&\& \$addlist["noskillroll"] == "true")) \{
+      \$object."trait:quality" = \$max+1;
+    \} else if(\$result \< \$min) \{
+      \$object."trait:quality" = \$min-1;
+    \} else \{
+      \$object."trait:quality" = \$result;
+    \}
+  \}
+\}
+
+/* Slay the original object(s) */
+if(!\$addlist["noslay"])
+\{
+  Slay(\$addition);
+  if(\$addlist["newobject"])
+  \{
+    Slay(\$target);
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:charge_cost">
+         X[M] /* Check if we should decrease the quantity of our original object */
+if(\$cost1) \{
+  \$cost = \$cost1[0];
+\} else if(\$cost2) \{
+  \$cost = \$cost2[0];
+\}
+
+if(\$cost == 0) \$cost = nil;
+
+if(\$cost) \{
+  if(NRefOb(\$object)."trait:quantity" \&\& NRefOb(\$object)."trait:quantity" \>= \$cost) \{
+    if(!\$nocost) NRefOb(\$object)."trait:quantity" -= \$cost;
+    \$cost = nil;
+  \}
+\}
+
+
+if(\$cost)
+\{
+  if(\$cost1 \&\& (sizeof(\$cost1) \> 1)) \{
+    \$message = \$cost1[1];
+  \} else if(\$cost2 \&\& (sizeof(\$cost2) \> 1)) \{
+    \$message = \$cost2[1];
+  \} else \{
+    \$message = "You haven't got enough remaining of "+Describe(\$object, nil, \$actor)+" to make this.";
+  \}
+
+  \$message = replace_strings(\$message, "ORIGINAL_OBJECT", Describe(\$object, nil, \$actor));
+  return \$message;
+\}
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:checktools">
+         X[M] /* check that the actor is carrying the right tools */
+int counter;
+
+/* Check if the actor is carrying any necessary tools */
+if(!\$requiredtools) return nil;
+/*We require tools*/
+for(counter=1; counter\<sizeof(\$requiredtools); counter++)\{
+  /*We need a tool*/
+  \$found = nil;
+  for(\$i = 0; (\$i \< sizeof(\$requiredtools[counter]))\&\&(!\$found); \$i++)\{
+    /*We need a tool of type \$requiredtools[counter][\$i] */
+    for(\$j = 0; (\$j \< sizeof(\$actor."base:inventory"))\&\&(!\$found); \$j++)\{
+      if(\$actor."base:inventory"[\$j]."trait:objecttype" == \$requiredtools[counter][\$i])\{
+        /*We found the tool!*/
+        \$found = 1;
+      \}
+    \}
+    /* We didn't find the tool in our inventory. Is the player "using" the tool? */
+    if(!\$found \&\& \$using)\{
+      for(\$j=0; (\$j \< sizeof(\$using))\&\&(!\$found); \$j++)\{
+        if(NRefOb(\$using[\$j])."trait:objecttype" == \$requiredtools[counter][\$i])\{
+          /*We found the tool!*/
+          /* make sure someone else isn't holding it */
+          if(NRefOb(\$using[\$j])."base:environment"."base:volition")\{
+            return "You can't use a tool that's being held by someone else.";
+          \} else \{
+            \$found = 1;
+          \}
+        \}
+      \}
+    \}
+  \}
+  /* If we are missing a tool we need */
+  if(!\$found)
+    return "You can't "+\$modification+" "+Describe(\$target[0], nil, \$actor)+" without "+\$requiredtools[0]+".";
+\}
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:create">
+         X[M] /*Check if we have a target to alter the object to*/
+string * blocklist;
+mapping cProperties;
+string input_words;
+int counter, counter2;
+/*mapping \$changemap;
+
+mapping \$changemap2;*/
+object new_object;
+string * valid_options;
+string tmp_string;
+string output;
+
+if (\$actor.dbg) EmitTo(\$actor, "Entering lib:create");
+
+if(\$actor."combat:state") return FALSE;
+
+if(NRefOb(\$target[0])."temp:exploitprevention") return FALSE;
+
+if(\$modification != "style" \&\& \$modification != "cut" \&\& \$modification != "texturize" \&\& \$modification != "file" \&\& NRefOb(\$target[0])."base:environment" != \$actor \&\& NRefOb(\$target[0])."export:sys:shared:consumable:vessel") return TRUE;
+
+\$target[0]."temp:exploitprevention" = 1;
+\$delay(0.1, FALSE, "8087");
+
+blocklist = (\{ "input-list", "input-list-actor", "input-list-actor-remote", "requiredtools", "temporary", "description", "newobject", "newobject-properties", "object-properties", "noslay", "properties", "stopvalue", "skill", "fixed", "noskillroll", "cost", "modification", "finished", "requirement-object", "requirement-actor", "delay", "thug", "priest", "healer", "seamstress", "tailor", "pirate", "milliner", "career" \});
+
+cProperties = ([ "blacksmith":"skill:alteration:metalworking", "bookbinder":"skill:alteration:bookbinding", "carpenter":"skill:alteration:woodcarving", "dyer":"skill:alteration:dyeing", "jeweler":"skill:alteration:jewelcrafting", "miner":"skill:alteration:mining", "seamstress":"skill:alteration:tailoring", "stonemason":"skill:alteration:stonemasonry", "weaver":"skill:alteration:weaving", "woodcutter":"skill:alteration:woodcutting", "gardener":"skill:general:gardening", "body-servant":"skill:social:hairstyling", "healer":"skill:academic:healing", "herbalism":"skill:alteration:herbalism", "cooking":"skill:general:cooking" ]);
+
+/* if they are in a crafting delay */
+if(\$actor."crafting:actordelay") \{
+  EmitTo(\$actor, "You are already in the process of crafting something. Patience, grasshopper.");
+  return FALSE;
+\}
+
+if(!\$actor."crafting:override" \&\& Int(\$actor."effect:energy:severity") \> 95) \{
+  EmitTo(\$actor, "You are too tired to craft anything right now.");
+  return FALSE;
+\}
+
+/* check we were only given one direct object */
+if(!\$target \|\| sizeof(\$target) \> 1) \{
+  EmitTo(\$actor, "You can only alter one object at a time.");
+  return FALSE;
+\}
+
+\$object = \$target[0];
+\$object_ob = NRefOb(\$target[0]);
+
+/* check this item isn't already being crafted */
+if(Get(\$object_ob, "crafting:delay")) \{
+  EmitTo(\$actor, "You cannot craft "+Describe(\$target, nil, \$actor)+" at this time.");
+  \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\}
+
+if(!\$words) \{
+  if(\$words_string) \{
+    input_words = \$words_string;
+    sscanf(input_words, "\\"%s\\"", input_words);
+  \} else \{
+    input_words = "default";
+  \}
+\} else \{
+  /* We have a target to alter the object to */
+  input_words = implode(\$words, " ");
+\}
+
+/* Remove any "a" "the" "an" etc. from the targetwords */
+sscanf(input_words, "a %s", input_words);
+sscanf(input_words, "an %s", input_words);
+sscanf(input_words, "the %s", input_words);
+
+/* Replace any apostrophes. Players are too erratic in their use */
+input_words = replace_strings(input_words, "'", "");
+
+/* Check that input_words isn't included in the blocklist */
+for(counter = 0; counter \< sizeof(blocklist); counter++)
+\{
+  if(input_words == blocklist[counter])
+  \{
+    EmitTo(\$actor, "Invalid input.");
+
+    \$object_ob."temp:exploitprevention" = nil;
+    return FALSE;
+  \}
+\}
+
+if(input_words == "extract") \{
+    \$vesselRequired = TRUE;
+
+    if(!\$using) \{
+        EmitTo(\$actor, "You need some sort of vial to hold the extract in.");
+        return FALSE;
+    \}
+
+    if(!sizeof(\$using)) \{
+        EmitTo(\$actor, "You need some sort of vial to hold the extract in.");
+        return FALSE;
+    \}
+
+    if(sizeof(\$using) \> 1) \{
+        EmitTo(\$actor, "You must specify a single vial to hold the extract.");
+        return FALSE;
+    \}
+
+    \$vessel = NRefOb(\$using[0]);
+
+    if(\$vessel."base:urparent" != \$\{Allegory:Props:Poisons:UrVial\}) \{
+        EmitTo(\$actor, "You need a vial of some sort to hold the extract.");
+        return FALSE;
+    \}
+
+    if(sizeof(\$vessel."base:inventory")) \{
+        EmitTo(\$actor, "The vial needs to be emptied before you can use it to hold the extract.");
+        return FALSE;
+    \}
+
+    if(\$vessel."temp:exploitprevention") \{
+        EmitTo(\$actor, Describe(\$vessel, nil, nil, STYLE_NONPOSS) + " is already in use.");
+        return FALSE;
+    \}
+
+    \$vessel."temp:exploitprevention" = 1;
+\}
+
+if(input_words == "juice") \{
+    \$vesselRequired = TRUE;
+
+    if(!\$using) \{
+        EmitTo(\$actor, "You need some sort of vessel to hold the juice in.");
+        return FALSE;
+    \}
+
+    if(!sizeof(\$using)) \{
+        EmitTo(\$actor, "You need some sort of vessel to hold the juice in.");
+        return FALSE;
+    \}
+
+    if(sizeof(\$using) \> 1) \{
+        EmitTo(\$actor, "You must specify a single vessel to hold the juice.");
+        return FALSE;
+    \}
+
+    \$vessel = NRefOb(\$using[0]);
+
+    if(!\$vessel."sys:shared:consumable:vessel") \{
+        EmitTo(\$actor, "You need a vessel of some sort to hold the juice.");
+        return FALSE;
+    \}
+
+    if(sizeof(\$vessel."base:inventory")) \{
+        EmitTo(\$actor, "The vessel needs to be emptied before you can use it to hold the juice.");
+        return FALSE;
+    \}
+
+    if(\$vessel."temp:exploitprevention") \{
+        EmitTo(\$actor, Describe(\$vessel, nil, nil, STYLE_NONPOSS) + " is already in use.");
+        return FALSE;
+    \}
+
+    \$vessel."temp:exploitprevention" = 1;
+\}
+
+/* Check what modification is being made */
+/* E.g. A symbol being sewn onto a shirt, or iron being forged into something new */
+if(!\$modification) \{
+  EmitTo(\$actor, "Unknown modification.");
+    \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\}
+
+/* verify this is a valid modification */
+if(!(\$changemap = Get(\$object_ob, "alteration:create:" + NRefDetail(\$object) + ":" + \$modification))) \{
+  EmitTo(\$actor, "You can't " + \$modification + " " + Describe(\$object, nil, \$actor) + ".");
+    \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\}
+
+/* Check if there are any requirements on making this modification */
+if(\$changemap["requirement-object"])
+\{
+  \$tmp = \$changemap["requirement-object"];
+  for(counter = 0; counter \< sizeof(\$tmp); counter++) \{
+    if(!member(Get(\$object_ob, \$tmp[counter][0]), Arr(\$tmp[counter][2]))) \{
+      EmitTo(\$actor, replace_strings(Str(\$tmp[counter][1]), "OBJECT", Describe(\$object, nil, \$actor)));
+    \$object_ob."temp:exploitprevention" = nil;
+      return FALSE;
+    \}
+  \}
+\}
+if(\$changemap["requirement-actor"])
+\{
+  \$tmp = \$changemap["requirement-actor"];
+  for(counter = 0; counter \< sizeof(\$tmp); counter++) \{
+    if(!member(Get(\$actor, \$tmp[counter][0]), Arr(\$tmp[counter][2]))) \{
+      EmitTo(\$actor, replace_strings(Str(\$tmp[counter][1]), "OBJECT", Describe(\$object, nil, \$actor)));
+    \$object_ob."temp:exploitprevention" = nil;
+      return FALSE;
+    \}
+  \}
+\}
+
+/* Check that we are holding the object we are modifying */
+  /* Unless we are allowed to modify without holding */
+if(!\$changemap["fixed"])
+\{
+  if(\$object_ob."base:environment" != \$actor)
+  \{
+    EmitTo(\$actor, "You can't " + \$modification + " " + Describe(\$object, nil, \$actor) + " if you are not holding it.");
+    \$object_ob."temp:exploitprevention" = nil;
+    return FALSE;
+  \}
+\}
+
+/* Check if the actor is carrying any necessary tools */
+if(output = ::checktools(\$requiredtools: \$changemap["requiredtools"]))\{
+  EmitTo(\$actor, output);
+    \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\}
+
+/* Check that the character isn't wearing the object */
+if(\$object_ob."base:clothing:worn")\{
+  EmitTo(\$actor, "You can't "+\$modification+" "+Describe(\$object, nil, \$actor)+" while you are wearing it.");
+    \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\}
+
+/* Check if we were passed the input, and if so, if it's valid */
+/* Get details for the modification */
+if(!(\$changemap2 = \$changemap[input_words]))
+\{
+
+  /* if property set, check in the actor for valid input */
+  if(\$changemap["input-list-actor"])
+  \{
+    for(counter = 0; counter \< sizeof(\$changemap["input-list-actor"]); counter++)
+    \{
+      if(Get(\$actor, \$changemap["input-list-actor"][counter]) \&\& (\$changemap2 = Get(\$actor, \$changemap["input-list-actor"][counter])[input_words])) break;
+    \}
+  \}
+  /* if property set, check the remote lists for valid input */
+  if(!\$changemap2 \&\& \$changemap["input-list-actor-remote"])
+  \{
+    for(counter = 0; counter \< sizeof(\$changemap["input-list-actor-remote"]); counter++)
+    \{
+      if(Get(\$actor, \$changemap["input-list-actor-remote"][counter])) \{
+        \$list = Get(\$actor, \$changemap["input-list-actor-remote"][counter]);
+        for(counter2 = 0; counter2 \< sizeof(\$list); counter2++) \{
+          if(Get(\$\{Ironclaw:Lib:Crafting:Old:CraftingDB\}, \$list[counter2]) \&\& (\$changemap2 = Get(\$\{Ironclaw:Lib:Crafting:Old:CraftingDB\}, \$list[counter2])[input_words])) break;
+        \}
+      \}
+    \}
+  \}
+
+  /* if not found, and property set, search other places for valid input */
+  if(!\$changemap2 \&\& \$changemap["input-list"])
+  \{
+
+       if(Get(\$actor, "guild")) \{
+          \$guild = Get(\$actor, "guild");
+          \$sguild = lower_case(explode(Str(\$guild), ":")[2]);
+      \}
+
+    for(counter = 0; counter \< sizeof(\$changemap["input-list"]); counter++)
+    \{
+          \$tprop = \$changemap["input-list"][counter][1] ;
+
+          \$tprop = replace_strings(\$tprop, "PLANT", Str(\$object_ob."trait:type"), "PART", Str(\$object_ob."trait:part:type"));
+      /* Check if the object exists, and if we can retrieve the property */
+      if(\$changemap["input-list"][counter][0] \&\& Get(\$changemap["input-list"][counter][0], \$tprop ) \&\& (\$changemap2 = Get(\$changemap["input-list"][counter][0], \$tprop )[input_words])) break;
+
+      if(\$guild \&\& \$changemap["input-list"][counter][0] \&\& Get(\$changemap["input-list"][counter][0], \$tprop  + ":" + \$sguild) \&\& (\$changemap2 = Get(\$changemap["input-list"][counter][0], \$tprop  + ":" + \$sguild)[input_words])) break;
+
+    \}
+
+    if(!\$changemap2) \{
+      /* Check for alterations that each of the careers can make */
+      /* \$careers = Get(\$actor, "*"); */
+      /* \$careers = map_indices(prefixed_map(\$careers, "skill:career:")); */
+
+      \$careers = (\{ \});
+      \$commands = (\{ \});
+      if(\$actor."trait:class1") \{
+          if(cProperties[\$actor."trait:class1"]) \{
+              \$careers += (\{ \$actor."trait:class1" \});
+              \$commands += (\{ cProperties[\$actor."trait:class1"] \});
+          \}
+      \}
+
+      if(\$actor."trait:class2") \{
+          if(cProperties[\$actor."trait:class2"]) \{
+              \$careers += (\{ \$actor."trait:class2" \});
+              \$commands += (\{ cProperties[\$actor."trait:class2"] \});
+          \}
+      \}
+
+      if(\$actor."skill:general:gardening") \{
+          \$careers += (\{ "gardener" \});
+          \$commands += (\{ cProperties["gardener"] \});
+      \}
+
+      if(\$actor."skill:general:cooking") \{
+          \$careers += (\{ "cooking" \});
+          \$commands += (\{ cProperties["cooking"] \});
+      \}
+
+      if(\$actor."crafting:override") \{
+          \$careers += map_indices(cProperties);
+          \$commands += map_values(cProperties);
+      \}
+
+      if(Get(\$actor, "guild")) \{
+          \$guild = Get(\$actor, "guild");
+          \$sguild = lower_case(explode(Str(\$guild), ":")[2]);
+      \}
+
+      for(\$i=0;(\$i\<sizeof(\$careers))\&\&!\$changemap2;\$i++) \{
+        \$careercount = Int(Get(\$actor, \$commands[\$i]));
+        \$career = \$careers[\$i];
+
+        if(\$actor."crafting:override") \{
+            \$careercount = 24;
+        \}
+
+        if(\$careers[\$i] == "cooking" \|\| \$careers[\$i] == "gardening") \{
+            \$generalskill = \$careers[\$i];
+        \} else \{
+            \$generalskill = nil;
+        \}
+
+        for(counter = 0; (counter \< sizeof(\$changemap["input-list"]))\&\&!\$changemap2; counter++) \{
+          for(\$carcount=1;\$carcount \<= \$careercount;\$carcount++) \{
+
+          \$tprop = \$changemap["input-list"][counter][1] ;
+
+          \$tprop = replace_strings(\$tprop, "PLANT", Str(\$object_ob."trait:type"), "PART", Str(\$object_ob."trait:part:type"));
+
+          if(\$this."patterns:enabled" \&\& !\$actor."crafting:override") \{
+            if(\$changemap["input-list"][counter][0] \&\& Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount)) \&\& (Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount))[input_words]) \&\& Get(\$changemap["input-list"][counter][0], \$tprop + ":" + \$career + ":" + Str(\$carcount))[input_words]["pattern"]) \{
+                if(\$actor."crafting:patterns" \&\& \$actor."crafting:patterns"[explode(\$tprop, ":")[2]] \&\& member(input_words, \$actor."crafting:patterns"[explode(\$tprop, ":")[2]])) \{
+                  if((\$changemap2 = Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount))[input_words]))\{
+                    break;
+                  \}
+                \}
+            \} else if(\$changemap["input-list"][counter][0] \&\& Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount)) \&\& (\$changemap2 = Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount))[input_words]))\{
+              break;
+            \}
+          \} else \{
+            if(\$changemap["input-list"][counter][0] \&\& Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount)) \&\& (\$changemap2 = Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount))[input_words]))\{
+              break;
+            \}
+          \}
+
+
+            /* Check for alterations that the chatter's guild can make */
+            if(\$guild \&\& \$changemap["input-list"][counter][0] \&\& Get(\$changemap["input-list"][counter][0], \$tprop +":"+ \$sguild + ":" + \$career+":"+Str(\$carcount)) \&\& (\$changemap2 = Get(\$changemap["input-list"][counter][0], \$tprop +":"+ \$sguild + ":" + \$career+":"+Str(\$carcount))[input_words]))\{
+              break;
+            \}
+          \}
+        \}
+      \}
+    \}
+  \}
+
+  /* If we don't have valid input to modify the object */
+  /* Output valid options, then exit */
+  if(!\$changemap2)
+  \{
+    /* Check if we are allowed to continue, or if there is a stopvalue */
+    if(\$changemap["stopvalue"]) \{
+      /* We have a stopvalue. Check if we are allowed to continue */
+      /* If this property exists in the object, then we need to stop, unless it matches the value */
+      if(Get(\$object_ob, \$changemap["stopvalue"][0])) \{
+        /* if stopvalue doesn't match the property, then we have no tailoring options*/
+        if((sizeof(\$changemap["stopvalue"]) \> 1) \&\& (Get(\$object_ob, \$changemap["stopvalue"][0]) != \$changemap["stopvalue"][1])) \{
+          /* Stopvalue doesn't match. Output error message */
+          if(sizeof(\$changemap["stopvalue"]) \> 2) \{
+            EmitTo(\$actor, \$changemap["stopvalue"][2]);
+          \} else \{
+            EmitTo(\$actor, Describe(\$object, nil, \$actor) + " already has a modification of that type.");
+          \}
+          \$object_ob."temp:exploitprevention" = nil;
+          return FALSE;
+        \}
+      \}
+    \}
+
+    /* Output valid options */
+    valid_options = map_indices(\$changemap);
+    if(\$changemap["input-list-actor"])
+    \{
+      for(counter = 0; counter \< sizeof(\$changemap["input-list-actor"]); counter++)
+      \{
+        if(Get(\$actor, \$changemap["input-list-actor"][counter]) \&\& map_indices(Get(\$actor, \$changemap["input-list-actor"][counter])))
+        \{
+          valid_options += map_indices(Get(\$actor, \$changemap["input-list-actor"][counter]));
+        \}
+      \}
+    \}
+
+    /* if property set, check the remote lists for valid input */
+    if(\$changemap["input-list-actor-remote"])
+    \{
+      for(counter = 0; counter \< sizeof(\$changemap["input-list-actor-remote"]); counter++)
+      \{
+        if(Get(\$actor, \$changemap["input-list-actor-remote"][counter])) \{
+          \$list = Get(\$actor, \$changemap["input-list-actor-remote"][counter]);
+          for(counter2 = 0; counter2 \< sizeof(\$list); counter2++) \{
+            if(Get(\$\{Ironclaw:Lib:Crafting:Old:CraftingDB\}, \$list[counter2])) valid_options += map_indices(Get(\$\{Ironclaw:Lib:Crafting:Old:CraftingDB\}, \$list[counter2]));
+          \}
+        \}
+      \}
+    \}
+
+    if(\$changemap["input-list"])
+    \{
+      if(Get(\$actor, "guild")) \{
+          \$guild = Get(\$actor, "guild");
+          \$sguild = lower_case(explode(Str(\$guild), ":")[2]);
+      \} 
+
+      for(counter = 0; counter \< sizeof(\$changemap["input-list"]); counter++)
+      \{
+          \$tprop = \$changemap["input-list"][counter][1] ;
+          \$tprop = replace_strings(\$tprop, "PLANT", Str(\$object_ob."trait:type"), "PART", Str(\$object_ob."trait:part:type"));
+        if(Get(\$changemap["input-list"][counter][0], \$tprop ) \&\& map_indices(Get(\$changemap["input-list"][counter][0], \$tprop )))
+        \{
+          valid_options += map_indices(Get(\$changemap["input-list"][counter][0], \$tprop ));
+        \}
+
+        /* Check for alterations th at the guild can make */
+        if(\$guild \&\& Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$sguild) \&\& map_indices(Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$sguild)))
+        \{
+          valid_options += map_indices(Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$sguild));
+        \}
+      \}
+
+      /* Check for alterations that each of the careers can make */
+      /* \$careers = Get(\$actor, "*"); */
+      /* \$careers = map_indices(prefixed_map(\$careers, "skill:career:")); */
+
+      \$careers = (\{ \});
+      \$commands = (\{ \});
+      if(\$actor."trait:class1") \{
+          if(cProperties[\$actor."trait:class1"]) \{
+              \$careers += (\{ \$actor."trait:class1" \});
+              \$commands += (\{ cProperties[\$actor."trait:class1"] \});
+          \}
+      \}
+
+      if(\$actor."trait:class2") \{
+          if(cProperties[\$actor."trait:class2"]) \{
+              \$careers += (\{ \$actor."trait:class2" \});
+              \$commands += (\{ cProperties[\$actor."trait:class2"] \});
+          \}
+      \}
+
+      if(\$actor."skill:general:gardening") \{
+          \$careers += (\{ "gardener" \});
+          \$commands += (\{ cProperties["gardener"] \});
+      \}
+
+      if(\$actor."skill:general:cooking") \{
+          \$careers += (\{ "cooking" \});
+          \$commands += (\{ cProperties["cooking"] \});
+      \}
+
+      if(\$actor."crafting:override") \{
+          \$careers += map_indices(cProperties);
+          \$commands += map_values(cProperties);
+      \}
+
+      for(\$i=0;\$i\<sizeof(\$careers);\$i++) \{
+        \$careercount = Int(Get(\$actor, \$commands[\$i]));
+        \$career = \$careers[\$i];
+
+        if(\$actor."crafting:override") \{
+            \$careercount = 24;
+        \}
+
+        for(counter = 0; counter \< sizeof(\$changemap["input-list"]); counter++) \{
+          \$tprop = \$changemap["input-list"][counter][1] ;
+          \$tprop = replace_strings(\$tprop, "PLANT", Str(\$object_ob."trait:type"), "PART", Str(\$object_ob."trait:part:type"));
+          for(\$carcount=1;\$carcount \<= \$careercount;\$carcount++) \{
+            if(Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount)) \&\& map_indices(Get(\$changemap["input-list"][counter][0], \$tprop +":"+\$career+":"+Str(\$carcount)))) \{
+              \$opts = map_indices(Get(\$changemap["input-list"][counter][0], \$tprop+":"+\$career+":"+Str(\$carcount)));
+
+              for(\$q = 0; \$q \< sizeof(\$opts); \$q++) \{
+                if(\$this."patterns:enabled" \&\& !\$actor."crafting:override") \{
+                  if(Get(\$changemap["input-list"][counter][0], \$tprop+":"+\$career+":"+Str(\$carcount))[\$opts[\$q]]["pattern"]) \{ 
+                    if(\$actor."crafting:patterns" \&\& \$actor."crafting:patterns"[explode(\$tprop, ":")[2]] \&\& member(\$opts[\$q], \$actor."crafting:patterns"[explode(\$tprop, ":")[2]])) \{
+                      valid_options += (\{ \$opts[\$q] \});
+                    \}
+                  \} else \{
+                    valid_options += (\{ \$opts[\$q] \});
+                  \}
+                \} else \{
+                    valid_options += (\{ \$opts[\$q] \});
+                \}
+              \}
+            \}
+
+            /* Check for alterations that the guild can make */
+            if(\$guild \&\& Get(\$changemap["input-list"][counter][0], \$tprop +":"+ \$sguild + ":" + \$career+":"+Str(\$carcount)) \&\& map_indices(Get(\$changemap["input-list"][counter][0], \$tprop +":"+ \$sguild + ":" + \$career+":"+Str(\$carcount))))
+            \{
+              valid_options += map_indices(Get(\$changemap["input-list"][counter][0], \$tprop +":"+ \$sguild + ":" + \$career+":"+Str(\$carcount)));
+            \}
+          \}
+        \}
+      \}
+    \}
+
+    /* Remove results that aren't options */
+    valid_options -= blocklist;
+
+    /* Put options in alphabetical order */
+    valid_options = map_indices(arr_to_set(valid_options));
+
+    if(sizeof(valid_options)) \{
+      tmp_string = "Valid options are: ";
+      for(counter = 0; counter \< sizeof(valid_options); counter++)
+      \{
+        tmp_string += "\\"" + valid_options[counter] + "\\" ";
+      \}
+    \} else \{
+      tmp_string = "You have no valid options available.";
+    \}
+    EmitTo(\$actor, "That is not valid input to " + \$modification + " " + Describe(\$object, nil, \$actor));
+    EmitTo(\$actor, tmp_string);
+    \$object_ob."temp:exploitprevention" = nil;
+    return FALSE;
+  \}
+\}
+
+/* We have valid input for this modification */
+
+/* Check that this modification hasn't already been made */
+if(\$changemap["stopvalue"]) \{
+  /* We have a stopvalue. Check if we are allowed to continue */
+  /* If this property exists in the object, then we need to stop, unless it matches the value */
+  if(Get(\$object_ob, \$changemap["stopvalue"][0])) \{
+    /* if stopvalue doesn't match the property, then exit with message*/
+    if((sizeof(\$changemap["stopvalue"]) \> 1) \&\& (Get(\$object_ob, \$changemap["stopvalue"][0]) != \$changemap["stopvalue"][1])) \{
+      /* Stopvalue doesn't match. Output error message */
+      if(sizeof(\$changemap["stopvalue"]) \> 2) \{
+        EmitTo(\$actor, \$changemap["stopvalue"][2]);
+      \} else \{
+        EmitTo(\$actor, Describe(\$object, nil, \$actor) + " already has a modification of that type.");
+      \}
+    \$object_ob."temp:exploitprevention" = nil;
+      return FALSE;
+    \}
+  \}
+\}
+
+/* Check if the actor is carrying any necessary tools */
+if(output = ::checktools(\$requiredtools: \$changemap2["requiredtools"])) \{
+  EmitTo(\$actor, output);
+    \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\}
+
+/* Check if we should decrease the quantity of our original object */
+if(output = ::charge_cost(\$cost1: \$changemap2["cost"], \$cost2: \$changemap["cost"], \$object: \$object, \$nocost: 1)) \{
+  EmitTo(\$actor, output);
+    \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\}
+
+/* When modifying facialhair, hair, fur, or tails, make sure they are valid length first. */
+/*
+if(\$changemap2["invalid_lengths"]) \{
+    \$invalid_lengths = \$changemap2["invalid_lengths"];
+
+    if(NRefDetail(\$dob[0]) == "hair") \{
+        \$currlength = Get(NRefOb(\$dob[0]), "appearance:hairlength");
+    \} else if(NRefDetail(\$dob[0]) == "facialhair") \{
+        \$currlength = Get(NRefOb(\$dob[0]), "appearance:faciallength");
+    \}
+
+    if(member(\$currlength, \$invalid_lengths)) \{
+        EmitTo(\$actor, Describe(\$dob[0]) + " is an invalid length.");
+    \$object_ob."temp:exploitprevention" = nil;
+        return FALSE;
+    \}
+\}*/
+
+/* -------------------------------------------------------------------------*/
+/* -------------------------------------------------------------------------*/
+/* -------------------------------------------------------------------------*/ 
+
+/* Start crafting the item */
+
+/* is there a delay in this crafting? */
+\$delay = nil;
+if(\$changemap2["delay"]) \{
+  \$delay = \$changemap2["delay"];
+  if(\$changemap2["delayinterval"]) \{
+    \$delayinterval = \$changemap2["delayinterval"];
+  \} else \{
+    \$delayinterval = \$delay;
+  \}
+\} else if(\$changemap["delay"]) \{
+  \$delay = \$changemap["delay"];
+  if(\$changemap["delayinterval"]) \{
+    \$delayinterval = \$changemap["delayinterval"];
+  \} else \{
+    \$delayinterval = \$delay;
+  \}
+\}
+
+/* run any scripts at the start of the delay */
+if(\$changemap2["scripts-begin"])\{
+  \$scripts = \$changemap2["scripts-begin"];
+  for(\$i=0;\$i\<sizeof(\$scripts);\$i++) \{
+    /* is this script in the object, actor, or external? */
+      /* assume external for now */
+    if(FindMerry(\$scripts[\$i][0], "lib", \$scripts[\$i][1])) \{
+      if(!Call(\$scripts[\$i][0], \$scripts[\$i][1], \$object: \$object, \$actor: \$actor))
+    \$object_ob."temp:exploitprevention" = nil; 
+        return FALSE;
+    \}
+  \}
+\}
+
+\$delay = 60;
+\$delayinterval = 60*5;
+
+if(\$actor."base:environment"."crafting:workshop") \{
+    if(\$generalskill \&\& member(\$generalskill, \$actor."base:environment"."crafting:workshop")) \{
+        \$inaworkshop = 1;
+    \} else \{
+        if(\$careers \&\& sizeof(\$careers)) \{
+          for(\$i = 0; \$i \< sizeof(\$careers); \$i++) \{ 
+            if(\$actor.guild \&\& member(\$careers[\$i], \$actor."base:environment"."crafting:workshop") \&\& \$actor.guild.type == "tradesman") \{
+                \$inaworkshop = 1;
+            \}
+          \}
+        \}
+    \}
+\}
+
+if(\$generalskill \&\& (\$actor."base:environment".homeowner \|\| \$actor."base:environment".owner)) \{
+    \$inaworkshop = 1;
+\}
+
+if(\$delay \&\& !\$inaworkshop \&\& !\$actor."crafting:override") \{
+  /* Delay with this */
+  EmitTo(\$actor, "You begin to "+\$modification+" "+Describe(\$object, nil, \$actor)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" begins to "+\$modification+" "+Describe(\$object, \$actor)+".", \$actor);
+  \$id = random(10000);
+  Set(\$object_ob, "crafting:delay", (\{ time()+\$delay, \$id, \$delayinterval \}));
+  Set(\$actor, "crafting:actordelay", (\{ \$id, \$object_ob \}));
+
+  /* \$details = Get(\$object_ob, "crafting:delay"); */
+
+  \$delay(\$delayinterval, FALSE, "9b6a");
+ /* while(\$details \&\& time() \< \$details[0] \&\& \$details[1] == \$id) \{ */
+    /* run any scripts at the intervals of the delay */
+/*    if(\$changemap2["scripts-interval"])\{
+      \$scripts = \$changemap2["scripts-interval"];
+      for(\$i=0;\$i\<sizeof(\$scripts);\$i++) \{ */
+        /* is this script in the object, actor, or external? */
+          /* assume external for now */
+ /*       if(FindMerry(\$scripts[\$i][0], "lib", \$scripts[\$i][1])) \{
+          if(!Call(\$scripts[\$i][0], \$scripts[\$i][1], \$object: \$object, \$actor: \$actor)) \{
+            if(\$actor."crafting:actordelay" \&\& \$actor."crafting:actordelay"[0] == \$id)
+              \$actor."crafting:actordelay" = nil;
+    \$object_ob."temp:exploitprevention" = nil;
+            return FALSE; */
+      /*    \}
+        \}
+      \}
+    \}
+    status::change_status(\$char: \$actor, \$type: "energy", \$amount: 5);
+    \$delay(\$delayinterval, FALSE, "fe92");
+    \$details = Get(\$object_ob, "crafting:delay");
+    \$delayinterval = \$details[2];
+  \} */
+
+/*  status::change_status(\$char: \$actor, \$type: "energy", \$amount: 5); */ 
+  if(\$actor."crafting:actordelay" \&\& \$actor."crafting:actordelay"[0] == \$id)
+    \$actor."crafting:actordelay" = nil;
+
+
+  /* if they've begun another crafting on this, exit */
+/*  if(\$details[1] != \$id) \{
+          \$object_ob."temp:exploitprevention" = nil;
+          return FALSE;
+  \} */
+
+  Set(\$object_ob, "crafting:delay", nil);
+\}
+/* run any scripts at the end of the delay */ 
+if(\$changemap2["scripts-end"])\{
+  \$scripts = \$changemap2["scripts-end"];
+  for(\$i=0;\$i\<sizeof(\$scripts);\$i++) \{
+    /* is this script in the object, actor, or external? */
+      /* assume external for now */
+    if(FindMerry(\$scripts[\$i][0], "lib", \$scripts[\$i][1])) \{
+      if(!Call(\$scripts[\$i][0], \$scripts[\$i][1], \$object: \$object, \$actor: \$actor)) \{
+    \$object_ob."temp:exploitprevention" = nil;
+        return FALSE;
+      \}
+    \}
+  \}
+\} else \{
+    if(!\$actor."crafting:override") status::change_status(\$char: \$actor, \$type: "energy", \$amount: 2);
+\}
+
+/* Check if we should decrease the quantity of our original object */
+if(output = ::charge_cost(\$cost1: \$changemap2["cost"], \$cost2: \$changemap["cost"], \$object: \$object)) \{
+  EmitTo(\$actor, output);
+    \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\}
+
+/* -------------------------------------------------------------------------*/
+/* -------------------------------------------------------------------------*/
+/* -------------------------------------------------------------------------*/
+
+/* Check if this turns the object into a new object */
+\$dropped = nil; 
+
+if(((\$changemap2["newobject"]) \&\& (new_object = Spawn(\$changemap2["newobject"]))) \|\| ((\$changemap["newobject"]) \&\& (new_object = Spawn(\$changemap["newobject"]))))
+\{
+
+  if(\$vesselRequired) \{
+      EmitTo(\$actor, "You fill " + Describe(\$vessel, nil, nil, STYLE_NONPOSS) + " with extract from " + Describe(\$object, nil, nil, STYLE_NONPOSS) + ".");
+      EmitIn(\$actor."base:environment", Describe(\$actor) + " fills " + Describe(\$vessel, nil, nil, STYLE_NONPOSS) + " with extract from " + Describe(\$object, nil, nil, STYLE_NONPOSS) + ".", \$actor);
+      shared_consumable::consumable_add(\$what: \$changemap2["newobject"], \$where: \$vessel);
+      \$vessel."temp:exploitprevention" = nil;
+      \$vessel."consumable:effects" = \$changemap2["newobject"]."consumable:effects";
+      \$vessel."trait:liquid" = nil;
+      Slay(new_object);
+      new_object = \$vessel."base:inventory"[0];
+  \} else \{
+      new_object."base:environment" = Get(\$object_ob, "base:environment");
+      if(new_object."base:environment" != Get(\$object_ob, "base:environment")) \{
+        if(Get(\$object_ob, "base:environment")."base:environment") \{
+          new_object."base:environment" = Get(\$object_ob, "base:environment")."base:environment";
+          \$dropped = TRUE;
+        \} else \{
+          EmitTo(\$actor, "ERROR: Something went wrong in the crafting lib. Please @bug this.");
+          Slay(new_object);
+          \$object_ob."temp:exploitprevention" = nil;
+          return FALSE;
+        \}
+      \}
+  \}
+
+/* If this is a new object, check what properties we should copy from the existing object */
+  if(\$changemap["newobject-properties"]) \{
+    /* loop through the properties, adding each one */
+    for(counter = 0; counter \< sizeof(\$changemap["newobject-properties"]); counter++) \{
+      Set(new_object, \$changemap["newobject-properties"][counter][1], Get(\$object_ob, \$changemap["newobject-properties"][counter][0]));
+    \}
+  \}
+  /* And again for \$changemap 2 */
+  if(\$changemap2["newobject-properties"]) \{
+    /* loop through the properties, adding each one */
+    for(counter = 0; counter \< sizeof(\$changemap2["newobject-properties"]); counter++) \{
+      Set(new_object, \$changemap2["newobject-properties"][counter][1], Get(\$object_ob, \$changemap2["newobject-properties"][counter][0]));
+    \}
+  \}
+
+\} else \{
+  new_object = \$object_ob;
+
+  if(\$changemap["object-properties"]) \{
+    /* loop through the properties, adding each one */
+    for(counter = 0; counter \< sizeof(\$changemap["object-properties"]); counter++) \{
+      Set(new_object, \$changemap["object-properties"][counter][1], Get(\$object_ob, \$changemap["object-properties"][counter][0]));
+    \}
+  \}
+  /* And again for \$changemap 2 */
+  if(\$changemap2["object-properties"]) \{
+    /* loop through the properties, adding each one */
+    for(counter = 0; counter \< sizeof(\$changemap2["object-properties"]); counter++) \{
+      Set(new_object, \$changemap2["object-properties"][counter][1], Get(\$object_ob, \$changemap2["object-properties"][counter][0]));
+    \}
+  \}
+\}
+
+/* Store information about who crafted this */
+new_object."trait:madeby" = capitalize(\$actor."skotos:charname");
+new_object."trait:madeby:object" = \$actor;
+new_object."trait:madeby:account" = Str(\$actor."udat:name");
+
+/* record the name of the original object, for the output description */
+\$orig_desc = (\{ Describe(\$object, nil, \$actor), Describe(\$object, \$actor) \});
+
+/* Check if we need to copy new properties to the object */
+if(\$changemap["properties"]) \{
+  /* loop through the properties, adding each one */
+  for(counter = 0; counter \< sizeof(\$changemap["properties"]); counter++) \{
+    /* Do we have a value specified? */
+    if(sizeof(\$changemap["properties"][counter]) \> 1)
+    \{
+      if(\$changemap["temporary"]) \{
+           ironclaw::set_prop(\$obj: new_object, \$prop: \$changemap["properties"][counter][0], \$value: \$changemap["properties"][counter][1], \$timer: \$changemap["temporary"]);
+      \} else \{
+          Set(new_object, \$changemap["properties"][counter][0], \$changemap["properties"][counter][1]);
+      \}
+    \} else \{
+      /* Otherwise, use the modification description */
+      if(\$changemap2["value"]) \{
+        Set(new_object, \$changemap["properties"][counter][0], \$changemap2["value"]);
+      \} else if(\$changemap2["brief"]) \{
+        Set(new_object, \$changemap["properties"][counter][0], \$changemap2["brief"]);
+      \}
+    \}
+  \}
+\}
+/* And again for \$changemap 2 */
+if(\$changemap2["properties"]) \{
+  /* loop through the properties, adding each one */
+  for(counter = 0; counter \< sizeof(\$changemap2["properties"]); counter++) \{
+    /* Do we have a value specified? */
+    if(sizeof(\$changemap2["properties"][counter]) \> 1)
+    \{
+      if(\$changemap["temporary"]) \{
+           ironclaw::set_prop(\$obj: new_object, \$prop: \$changemap2["properties"][counter][0], \$value: \$changemap2["properties"][counter][1], \$timer: \$changemap["temporary"]);
+      \} else \{
+          Set(new_object, \$changemap2["properties"][counter][0], \$changemap2["properties"][counter][1]);
+      \}
+    \} else \{
+      /* Otherwise, use the modification description */
+      if(\$changemap2["value"]) \{
+        Set(new_object, \$changemap2["properties"][counter][0], \$changemap2["value"]);
+      \} else if(\$changemap2["brief"]) \{
+        Set(new_object, \$changemap2["properties"][counter][0], \$changemap2["brief"]);
+      \}
+    \}
+  \}
+\}
+
+/* Check which new details need to be added to the new object */
+  /* add detail snames/pnames and adjectives */
+if(\$changemap["names"])
+\{
+  for(\$i = 0; \$i \< sizeof(\$changemap["names"]); \$i++)
+  \{
+    if(sizeof(\$changemap["names"][\$i]) == 2)
+    \{
+      Set(new_object, "details:default:" + \$changemap["names"][\$i][0] + ":" + \$changemap["names"][\$i][1], 1);
+    \} else if(sizeof(\$changemap["names"][\$i]) \> 2)
+    \{
+      for(\$j = 1; \$j \< sizeof(\$changemap["names"][\$i]); \$j++)
+      \{
+        Set(\$object, "details:default:" + \$changemap["names"][\$i][0] + ":" + \$changemap["names"][\$i][\$j], 1);
+      \}
+    \}
+  \}
+\}
+/* again for \$changemap2 */
+if(\$changemap2["names"])
+\{
+  for(\$i = 0; \$i \< sizeof(\$changemap2["names"]); \$i++)
+  \{
+    if(sizeof(\$changemap2["names"][\$i]) == 2)
+    \{
+      Set(new_object, "details:default:" + \$changemap2["names"][\$i][0] + ":" + \$changemap2["names"][\$i][1], 1);
+    \} else if(sizeof(\$changemap2["names"][\$i]) \> 2)
+    \{
+      for(\$j = 1; \$j \< sizeof(\$changemap2["names"][\$i]); \$j++)
+      \{
+        Set(\$object, "details:default:" + \$changemap2["names"][\$i][0] + ":" + \$changemap2["names"][\$i][\$j], 1);
+      \}
+    \}
+  \}
+\}
+
+
+/* Check if we should make a skill roll, to see if the quality changes */
+if((tmp_string = \$changemap2["skill"]) \|\| (tmp_string = \$changemap["skill"]))
+\{
+  counter =
+  ironclaw::roll(\$roller: \$actor, \$skills: (\{ "alteration:"+tmp_string \}), \$bonus: (\{ "trait:intelligence" \}));
+  if(!\$object_ob."trait:quality")\{
+    new_object."trait:quality" = 4;
+  \} else \{
+    /* set quality anyway, in case it was an inherited value */
+    new_object."trait:quality" = \$object_ob."trait:quality";
+  \}
+
+  if(Int(new_object."trait:quality") == 0) new_object."trait:quality" = 4; else new_object."trait:quality" = Int(new_object."trait:quality");
+
+EmitTo(\$\{Chatters:AE:ro:roo\}, dump_value(counter) + " VS " + dump_value(new_object."trait:quality"));
+
+  if(counter \> Int(new_object."trait:quality")) \{
+    new_object."trait:quality"++;
+  \} else if(counter \< Int(new_object."trait:quality")) \{
+    new_object."trait:quality"--;
+  \}
+\}
+
+/* Check if the item gets used up */
+if(\$changemap["finished"] \&\& (\$object_ob."trait:quantity" == 0)) \{
+
+  /* Should we slay this object? */
+  if((!(\$changemap["noslay"]) \|\| (\$changemap["noslay"] == "false")) \&\& (!(\$changemap2["noslay"]) \|\| (\$changemap2["noslay"] == "false"))) \{
+    \$finished = TRUE;
+  \}
+
+  if((sizeof(Arr(\$changemap["finished"])) \> 2) \&\& \$changemap["finished"][2]) \{
+    \$replacement = Spawn(\$changemap["finished"][2]);
+    \$replacement."base:environment" = \$object_ob."base:environment";
+    if(sizeof(Arr(\$changemap["finished"])) \> 3) \{
+      for(counter=0;counter\<sizeof(\$changemap["finished"][3]);counter++) \{
+        Set(\$replacement, \$changemap["finished"][3][counter], Get(\$object_ob, \$changemap["finished"][3][counter]));
+      \}
+    \}
+  \}
+  if(sizeof(Arr(\$changemap["finished"])) \> 1) \{
+    \$finddesc = (\{ \$changemap["finished"][0], \$changemap["finished"][1] \});
+    /* make replacements */
+    \$finddesc[0] = replace_strings(\$finddesc[0], "ACTOR", "you");
+    \$finddesc[0] = replace_strings(\$finddesc[0], "ORIGINAL_OBJECT", \$orig_desc[0]);
+    \$finddesc[0] = replace_strings(\$finddesc[0], "NEW_OBJECT", Describe(new_object, nil, \$actor, STYLE_NONPOSS));
+    \$finddesc[0] = replace_strings(\$finddesc[0], "PRONOUN", \$actor."base:pronoun");
+    \$finddesc[0] = replace_strings(\$finddesc[0], "POSSESSIVE", \$actor."base:possessive");
+
+    \$finddesc[1] = replace_strings(\$finddesc[1], "ACTOR", Describe(\$actor));
+    \$finddesc[1] = replace_strings(\$finddesc[1], "ORIGINAL_OBJECT", \$orig_desc[1]);
+    \$finddesc[1] = replace_strings(\$finddesc[1], "NEW_OBJECT", Describe(new_object, \$actor, nil, STYLE_NONPOSS));
+    \$finddesc[1] = replace_strings(\$finddesc[1], "PRONOUN", \$actor."base:pronoun");
+    \$finddesc[1] = replace_strings(\$finddesc[1], "POSSESSIVE", \$actor."base:possessive");
+
+    if((sizeof(Arr(\$changemap["finished"])) \> 2) \&\& \$changemap["finished"][2]) \{
+      \$finddesc[0] = replace_strings(\$finddesc[0], "REPLACEMENT", Describe(\$replacement, nil, nil, STYLE_NONPOSS));
+      \$finddesc[1] = replace_strings(\$finddesc[1], "REPLACEMENT", Describe(\$replacement, nil, nil, STYLE_NONPOSS));
+    \}
+  \}
+\}
+
+/* Output an appropriate description of the action */
+
+/* Generate the descriptions */
+if((\$changemap["description"] \&\& sizeof(\$changemap["description"]) \> 1) \|\| (\$changemap2["description"] \&\& sizeof(\$changemap2["description"]) \> 1)) \{
+  /* properties for the 1st person and 3rd person description */
+  string description1;
+  string description3;
+
+  if(\$changemap2["description"] \&\& (sizeof(\$changemap2["description"]) \> 1)) \{
+    description1 = \$changemap2["description"][0];
+    description3 = Describe(\$actor) +" "+ \$changemap2["description"][1];
+  \} else \{
+    description1 = \$changemap["description"][0];
+    description3 = Describe(\$actor) +" "+ \$changemap["description"][1];
+  \}
+
+  /* replace keywords */
+  if(\$changemap2["brief"])
+  \{
+    description1 = replace_strings(description1, "BRIEF", \$changemap2["brief"]);
+    description3 = replace_strings(description3, "BRIEF", \$changemap2["brief"]);
+  \}
+
+/*  description1 = replace_strings(description1, "ORIGINAL_OBJECT", Describe(\$target, nil, \$actor));*/
+  description1 = replace_strings(description1, "ORIGINAL_OBJECT", \$orig_desc[0]);
+  description1 = replace_strings(description1, "NEW_OBJECT", Describe(new_object, nil, \$actor, STYLE_NONPOSS));
+  description1 = replace_strings(description1, "PRONOUN", \$actor."base:pronoun");
+  description1 = replace_strings(description1, "POSSESSIVE", \$actor."base:possessive");
+
+/*  description3 = replace_strings(description3, "ORIGINAL_OBJECT", Describe(\$target, \$actor));*/
+  description3 = replace_strings(description3, "ORIGINAL_OBJECT", \$orig_desc[1]);
+  description3 = replace_strings(description3, "NEW_OBJECT", Describe(new_object, \$actor, nil, STYLE_NONPOSS));
+  description3 = replace_strings(description3, "PRONOUN", \$actor."base:pronoun");
+  description3 = replace_strings(description3, "POSSESSIVE", \$actor."base:possessive");
+
+  /* Check what the modification is, for the description */
+  if(\$changemap2["modification"])
+  \{
+    description1 = replace_strings(description1, "MODIFICATION", \$changemap2["modification"]);
+    description3 = replace_strings(description3, "MODIFICATION", \$changemap2["modification"]);
+  \} else if(\$changemap["modification"]) \{
+    description1 = replace_strings(description1, "MODIFICATION", \$changemap["modification"]);
+    description3 = replace_strings(description3, "MODIFICATION", \$changemap["modification"]);
+  \}
+
+  /* Should add an evoke, if any, to the end of the description */
+  if(\$evoke) \{
+    description1 += ", " + \$evoke;
+    description3 += ", " + \$evoke;
+  \} else \{
+    description1 += ".";
+    description3 += ".";
+  \}
+
+  EmitTo(\$actor, description1);
+  EmitIn(\$actor."base:environment", description3, \$actor);
+  if(\$dropped \&\& !\$changemap["fixed"]) \{
+    EmitTo(\$actor, "You drop "+Describe(new_object)+".");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" drops "+Describe(new_object)+".", \$actor);
+  \}
+
+  /* Display a message if the raw materials are used up */
+  if(\$finddesc \&\& (sizeof(\$finddesc) == 2)) \{
+    EmitTo(\$actor, \$finddesc[0]);
+    EmitIn(\$actor."base:environment", \$finddesc[1], \$actor);
+  \}
+
+
+  /* Slay the original object, if appropriate */
+  if(\$finished \|\| (!\$changemap["cost"] \&\& !\$changemap2["cost"] \&\& (\$changemap["newobject"] \|\| \$changemap2["newobject"]) \&\& (!(\$changemap["noslay"]) \|\| (\$changemap["noslay"] == "false")) \&\& (!(\$changemap2["noslay"]) \|\| (\$changemap2["noslay"] == "false"))))
+  \{
+    Slay(\$object_ob);
+  \}
+
+  if(\$object_ob)   \$object_ob."temp:exploitprevention" = nil;
+  return FALSE;
+\} else \{
+  /* Slay the original object, if appropriate */
+  if(\$finished \|\| (!\$changemap["cost"] \&\& !\$changemap2["cost"] \&\& (\$changemap["newobject"] \|\| \$changemap2["newobject"]) \&\& (!(\$changemap["noslay"]) \|\| (\$changemap["noslay"] == "false")) \&\& (!(\$changemap2["noslay"]) \|\| (\$changemap2["noslay"] == "false"))))
+  \{
+    Slay(\$object_ob);
+  \}
+
+  /* Display a message if the raw materials are used up */
+  \$delay(1, TRUE, "67f3");
+  if(\$finddesc \&\& (sizeof(\$finddesc) == 2)) \{
+    EmitTo(\$actor, \$finddesc[0]);
+    EmitIn(\$actor."base:environment", \$finddesc[1], \$actor);
+  \}
+
+  if(\$object_ob)   \$object_ob."temp:exploitprevention" = nil;
+  return TRUE;
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:replaceadj">
+         X[M] string * words;
+int i;
+if(!\$object) return FALSE;
+if(!\$detail) \$detail = "default";
+
+\$object = NRefOb(\$object);
+
+/* remove plain as an adjective */
+\$object."details:default:adjective:plain" = nil;
+
+/* remove old adjective */
+if(\$(hook-oldvalue)) \{
+  if(typeof(\$(hook-oldvalue)) == 3) \{
+      words = explode(\$(hook-oldvalue), " ");
+      for(i = 0; i \< sizeof(words); i++)
+      \{
+        Set(\$object, "details:"+\$detail+":adjective:" + words[i], nil);
+      \}
+  \}
+\}
+
+/* add new adjective */
+if(!Get(\$object, \$(hook-property))) return TRUE;
+
+if(typeof(Get(\$object, \$(hook-property))) == 3) \{
+    words = explode(Get(\$object, \$(hook-property)), " ");
+    for(i = 0; i \< sizeof(words); i++)
+    \{
+      Set(\$object, "details:"+\$detail+":adjective:" + lower_case(words[i])+":local", 1);
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:replacenames">
+         X[M] string * words;
+int i;
+
+if(!\$object) return FALSE;
+if(!\$detail) \$detail = "default";
+
+/* remove old sname */
+if(\$(hook-oldvalue)) \{
+  words = explode(\$(hook-oldvalue), " ");
+  for(i = 0; i \< sizeof(words); i++)
+  \{
+    Set(\$object, "details:"+\$detail+":sname:" + words[i], nil);
+    Set(\$object, "details:"+\$detail+":pname:" + words[i]+"s", nil);
+  \}
+  /* remove adjectives too */
+  for(i = 0; i \< sizeof(words)-1; i++)
+  \{
+    Set(\$object, "details:"+\$detail+":adjective:" + words[i], nil);
+  \}
+\}
+/* add new sname */
+if(!\$(hook-property)) return TRUE;
+if(!Get(\$object, \$(hook-property))) return TRUE;
+words = explode(Get(\$object, \$(hook-property)), " ");
+for(i = 0; i \< sizeof(words); i++)
+\{
+  Set(\$object, "details:"+\$detail+":sname:" + words[i], 1);
+  Set(\$object, "details:"+\$detail+":pname:" + words[i]+"s", 1);
+\}
+/* add adjectives too */
+for(i = 0; i \< sizeof(words)-1; i++)
+\{
+  Set(\$object, "details:"+\$detail+":adjective:" + words[i], 1);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:replacepname">
+         X[M] string * words;
+int i;
+
+if(!\$object) return FALSE;
+if(!\$detail) \$detail = "default";
+
+/* remove old pname */
+if(\$(hook-oldvalue)) \{
+  words = explode(\$(hook-oldvalue), " ");
+  for(i = 0; i \< sizeof(words); i++)
+  \{
+    Set(\$object, "details:"+\$detail+":pname:" + words[i], nil);
+  \}
+  /* remove adjectives too */
+  for(i = 0; i \< sizeof(words)-1; i++)
+  \{
+    Set(\$object, "details:"+\$detail+":adjective:" + words[i], nil);
+  \}
+\}
+/* add new pname */
+if(!\$(hook-property)) return TRUE;
+if(!Get(\$object, \$(hook-property))) return TRUE;
+words = explode(Get(\$object, \$(hook-property)), " ");
+for(i = 0; i \< sizeof(words); i++)
+\{
+  Set(\$object, "details:"+\$detail+":pname:" + words[i], 1);
+\}
+/* add adjectives too */
+for(i = 0; i \< sizeof(words)-1; i++)
+\{
+  Set(\$object, "details:"+\$detail+":adjective:" + words[i], 1);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:replacesname">
+         X[M] string * words;
+int i;
+
+if(!\$object) return FALSE;
+if(!\$detail) \$detail = "default";
+
+/* remove old sname */
+if(\$(hook-oldvalue)) \{
+  words = explode(\$(hook-oldvalue), " ");
+  for(i = 0; i \< sizeof(words); i++)
+  \{
+    Set(\$object, "details:"+\$detail+":sname:" + words[i], nil);
+  \}
+  /* remove adjectives too */
+  for(i = 0; i \< sizeof(words)-1; i++)
+  \{
+    Set(\$object, "details:"+\$detail+":adjective:" + words[i], nil);
+  \}
+\}
+/* add new sname */
+if(!\$(hook-property)) return TRUE;
+if(!Get(\$object, \$(hook-property))) return TRUE;
+words = explode(Get(\$object, \$(hook-property)), " ");
+for(i = 0; i \< sizeof(words); i++)
+\{
+  Set(\$object, "details:"+\$detail+":sname:" + words[i], 1);
+\}
+/* add adjectives too */
+for(i = 0; i \< sizeof(words)-1; i++)
+\{
+  Set(\$object, "details:"+\$detail+":adjective:" + words[i], 1);
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:valid-check">
+         X[M] /*EmitTo(\$actor, "Args = " + dump_value(args));*/
+/* Check if we were given a direct object to add to the indirect object */
+/* Check if we were given a \$addition to add to the \$object */
+
+
+if(!\$addition) \{
+return TRUE;
+\}
+if(NRefOb(\$addition[0])."trait:objecttype" \&\& NRefOb(\$addition[0])."trait:objecttype" == "polish") return TRUE;
+if(NRefOb(\$addition[0])."trait:objecttype" \&\& NRefOb(\$addition[0])."trait:objecttype" == "solution") return TRUE;
+
+if(!\$object[0])
+\{
+  return FALSE;
+\}
+
+/* check we were only given one direct object */
+if(sizeof(\$addition) \> 1) \{
+  EmitTo(\$actor, "You can only add one object at a time");
+  return FALSE;
+\}
+
+/* this check should also be in the object being added */
+if(sizeof(\$object) \> 1) \{
+  EmitTo(\$actor, "You can only add to one object at a time");
+  return FALSE;
+\}
+
+/* Check if we are allowed to add the addition to the object */
+/*EmitTo(\$actor, "Adding " + Describe(\$addition) + " to " + Describe(\$object));*/
+if(!(Get(NRefOb(\$object[0]), "alteration:add:" + NRefDetail(\$object[0]) + ":" + Str(Get(NRefOb(\$addition[0]), "trait:objecttype")))))
+\{
+  if(NRefOb(\$object[0])."trait:accepts") return TRUE;
+    EmitTo(\$actor, "You can't combine these objects");
+  return FALSE;
+\}
+
+/* We can combine the objects */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="patterns:enabled">1</Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1561494889, "jominey", "E", 1561494904, "jominey", "E", 1561833748, "jominey", "P", 1561833800, "jominey", "P", 1561833861, "jominey", "P", 1561833940, "jominey", "P", 1566565383, "jominey", "E", 1566567051, "jominey", "E", 1566567201, "jominey", "E", 1566567413, "jominey", "P", 1566567553, "jominey", "E", 1566567707, "jominey", "E", 1566568054, "jominey", "E", 1566568099, "jominey", "E", 1566568181, "jominey", "E", 1566568346, "jominey", "E", 1566582825, "jominey", "E", 1566582868, "jominey", "E", 1566582903, "jominey", "E", 1567197234, "jominey", "E", 1567197541, "jominey", "E", 1567197641, "jominey", "E", 1567197782, "jominey", "E", 1567197882, "jominey", "E", 1571935571, "jominey", "P", 1571940002, "jominey", "E", 1571940335, "jominey", "E", 1571940517, "jominey", "E", 1571940756, "jominey", "E", 1571942514, "jominey", "E", 1571945730, "jominey", "P", 1571946219, "jominey", "P", 1571946464, "jominey", "P", 1571946593, "jominey", "P", 1571946750, "jominey", "P", 1571946796, "jominey", "P", 1571946858, "jominey", "P", 1571946995, "jominey", "P", 1571947083, "jominey", "P", 1571947148, "jominey", "P", 1572234438, "jominey", "P", 1572306356, "jominey", "E", 1572306776, "jominey", "E", 1572307089, "jominey", "E", 1572307229, "jominey", "E", 1572307263, "jominey", "E", 1572307335, "jominey", "E", 1572307383, "jominey", "E", 1572307427, "jominey", "E", 1572307519, "jominey", "E", 1572409615, "jominey", "E", 1572409702, "jominey", "E", 1572836125, "jominey", "E", 1572836425, "jominey", "E", 1572836448, "jominey", "E", 1572836496, "jominey", "E", 1572910782, "jominey", "E", 1572913593, "jominey", "E", 1572913695, "jominey", "E", 1572914195, "jominey", "E", 1573513990, "jominey", "E", 1573526702, "jominey", "E", 1574869920, "jominey", "E", 1574869989, "jominey", "E", 1574870102, "jominey", "E", 1579796645, "jominey", "E", 1579797158, "jominey", "E", 1579797191, "jominey", "E", 1579797236, "jominey", "E", 1579797733, "jominey", "E", 1579798417, "jominey", "E", 1579798526, "jominey", "E", 1579798609, "jominey", "E", 1579798717, "jominey", "E", 1579798785, "jominey", "E", 1579798892, "jominey", "E", 1579798923, "jominey", "E", 1579798947, "jominey", "E", 1587669073, "jominey", "E", 1587669641, "jominey", "E", 1587670408, "jominey", "E", 1587670460, "jominey", "E", 1587670570, "jominey", "E", 1587670648, "jominey", "E", 1587670914, "jominey", "E", 1587671114, "jominey", "E", 1587671727, "jominey", "E", 1587672076, "jominey", "E", 1589927492, "jominey", "E", 1593374642, "jominey", "E", 1594342215, "jominey", "E", 1594342368, "jominey", "E", 1594342394, "jominey", "E", 1594342437, "jominey", "E", 1594342458, "jominey", "E", 1594342669, "jominey", "E", 1594602308, "jominey", "E", 1594603038, "jominey", "E", 1594603057, "jominey", "E", 1594603364, "jominey", "E", 1594603561, "jominey", "E", 1594603805, "jominey", "E", 1594604548, "jominey", "E", 1594843404, "jominey", "P", 1594843492, "jominey", "P", 1594843509, "jominey", "P", 1594843519, "jominey", "P", 1594843536, "jominey", "P", 1594844029, "jominey", "P", 1594853236, "jominey", "E", 1594853575, "jominey", "E", 1595292645, "jominey", "E", 1595292691, "jominey", "E", 1595293274, "jominey", "E", 1595293394, "jominey", "E", 1595293515, "jominey", "E", 1595459266, "jominey", "E", 1595459392, "jominey", "E", 1595469747, "jominey", "E", 1596074586, "jominey", "P", 1596074595, "jominey", "P", 1596074685, "jominey", "P", 1596074770, "jominey", "P", 1597103462, "jominey", "E", 1597103575, "jominey", "E", 1597103679, "jominey", "E", 1597103866, "jominey", "E", 1597103912, "jominey", "E", 1597104021, "jominey", "E", 1600906713, "jominey", "E", 1600906900, "jominey", "E", 1601513605, "jominey", "P", 1601513625, "jominey", "P", 1601513753, "jominey", "P", 1601513796, "jominey", "P", 1603031639, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

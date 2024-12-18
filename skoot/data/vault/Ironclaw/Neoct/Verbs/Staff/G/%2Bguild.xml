@@ -1,0 +1,252 @@
+<object clone="/usr/SkotOS/obj/verb" owner="necate">
+  <Socials:Verb imp="+guild" evoke="optional" audible="true" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* guild searches by character name, guild short name, guild long name, and guild object */ 
+ 
+/* setup placeholder msgs */ 
+\$msg_char = "There is no character by that name."; 
+\$msg_guild = "No guild data available."; 
+ 
+/* Help Notes */ 
+\$h1 = "Command Usage: \\n"; 
+\$h2 = "\| +guild "+TAG("\<shortname\>", "who")+"  \| Retrieve guild data based on short name of guild.   \| \\n"; 
+\$h3 = "\| +guild "+TAG("\<fullname\>", "who")+"   \| Retrieve guild data based on full name of guild.    \| \\n"; 
+\$h4 = "\| +guild "+TAG("\<woe:object\>", "who")+" \| Retrieve guild data based on woe name of guild.     \| \\n"; 
+\$h5 = "\| +guild "+TAG("\<character\>", "who")+"  \| Retrieve guild data specific to a single character. \| \\n"; 
+\$h6 = "\| +guild "+TAG("list", "who")+"         \| Lists all guilds by short name.                     \|"; 
+\$help = PRE(\$h1+\$h2+\$h3+\$h4+\$h5+\$h6); 
+ 
+/* Without any words, we display the help file */ 
+if(!\$(dob:words)) \{ 
+  EmitTo(\$actor, \$help); 
+  return FALSE; 
+\} 
+ 
+/* implode the variable */ 
+\$search = implode(\$(dob:words), " "); 
+ 
+/* quick check for woe:name style variables */ 
+if(contains(\$search, ":")) \$woe = 1; 
+ 
+/* all searches except woe will utilize a lower_case variable */ 
+if(!\$woe) \$search = lower_case(\$search); 
+ 
+/* see if they want a list of all guilds */ 
+if(sizeof(\$(dob:words)) == 1 \&\& \$(dob:words)[0] == "list") \$list = 1; 
+ 
+ 
+if(!\$list) \{ 
+/* do a character search */ 
+/* all character searches are single word only */ 
+if(sizeof(\$(dob:words)) == 1 \&\& !\$woe) \$char = common::lookup(\$name: \$search); 
+if(!\$char) \{ 
+\$nochar = 1; 
+\} else \{ 
+if(\$char.guild) \{ 
+\$msg_char = Describe(\$char)+" belongs to the "+TAG(Str(\$char.guild.shortname), "who")+" guild."; 
+if(\$char."guild:job") \$msg_char += "\\n They are listed as " +TAG(\$char."guild:job", "who")+ "."; 
+if(\$char."guild:trader" == 1) \$msg_char += "\\n They are considered a " +TAG("Trader", "who")+ "."; 
+/* 
+if(\$char."guild:betrayed") \{ 
+if(sizeof(\$char."guild:betrayed") \> 0) \{ 
+\$bad2 = (\{ \}); 
+\$sz_b = sizeof(\$char."guild:betrayed"); 
+\$msg_char += "\\n They have " +TAG("Betrayed", "who")+ " the following guilds: "; 
+for(\$b=0;\$b\<\$sz_b;\$b++) \{ 
+   if(\$char."guild:betrayed"[\$b] != nil) \{  
+      \$bad = Obj(\$char."guild:betrayed"[\$b]); 
+      \$bad2 += (\{ \$bad.shortname \}); 
+      \$betrayed = implode(\$bad2, ", "); 
+   \} 
+\}  
+\$msg_char += \$betrayed+ "."; 
+\} 
+\}*/ 
+if(\$char."guild:tokens") \{ 
+\$msg_char += "\\n Player-specific "+TAG("Guild Tokens", "who")+ ": \\n"; 
+\$tokens = map_indices(\$char."guild:tokens"); 
+\$sz_t = sizeof(\$tokens); 
+for(\$t=0;\$t\<\$sz_t;\$t++) \{ 
+\$tok = \$tokens[\$t]; 
+\$value = \$char."guild:tokens"[\$tok]; 
+\$msg_char += TAG(\$tok, "who")+ ": " +\$value+ "\\n"; 
+\} 
+ 
+ 
+ 
+\} 
+\$object = \$char.guild; 
+\} else \{ 
+\$msg_char = Describe(\$char)+" doesn't belong to any guild."; 
+\} 
+\} 
+ 
+/* search by woe:name */ 
+if(\$woe) \{ 
+/* dob:words seems to lowercase automatically, this is a hacky fix */  
+\$splod = explode(\$search, ":"); 
+\$snag = "Ironclaw:Guilds:"+\$splod[2]; 
+if(Obj(\$snag)) \$object = Obj(\$snag); 
+\} 
+ 
+/* search by short name, if no guild object has been found yet */ 
+if(!\$object) \{ 
+\$folder = "Ironclaw:Guilds"; 
+\$guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects"); 
+for(\$i=0; \$i \< sizeof(\$guilds); \$i++) \{ 
+if(Get(Obj("Ironclaw:Guilds:"+\$guilds[\$i]), "shortname")) \$short = Get(Obj("Ironclaw:Guilds:"+\$guilds[\$i]), "shortname"); 
+if(\$short \&\& lower_case(\$short) == \$search) \$object = Obj("Ironclaw:Guilds:"+\$guilds[\$i]); 
+\} 
+\} 
+ 
+/* search by long name, if no guild object has been found yet */ 
+if(!\$object) \{ 
+\$folder = "Ironclaw:Guilds"; 
+\$guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects"); 
+for(\$i=0; \$i \< sizeof(\$guilds); \$i++) \{ 
+if(Get(Obj("Ironclaw:Guilds:"+\$guilds[\$i]), "fullname")) \$full = Get(Obj("Ironclaw:Guilds:"+\$guilds[\$i]), "fullname"); 
+if(\$full \&\& lower_case(\$full) == \$search) \$object = Obj("Ironclaw:Guilds:"+\$guilds[\$i]); 
+\} 
+\} 
+ 
+/* gather data, if there is an object to use */ 
+if(\$object) \{ 
+/* if we do have a guild, we want to display as much data as possible */ 
+/*start msg */ 
+\$msg_guild = TAG("_________________________________________", "who")+ " \\n Full Guild Data is as follows: \\n \\n"; 
+/* add to msg */ 
+if(\$object.shortname) \$msg_guild += "The " +TAG("short name", "who")+ " is: " +\$object.shortname+ ". \\n"; 
+if(\$object.fullname) \$msg_guild += "The " +TAG("full name", "who")+ " is: " +\$object.fullname+ ". \\n"; 
+if(\$object.leader) \$msg_guild += "The " +TAG("current leader", "who")+ " is: " +Describe(\$object.leader)+ ". \\n"; 
+if(\$object.kitty) \{ 
+\$kitty = Flt(Get(\$object, "kitty"))*0.01; 
+\$msg_guild += "The " +TAG("kitty", "who")+ " holds " +Str(\$kitty)+ " florins. \\n"; 
+\} 
+if(\$object.crest) \$msg_guild += "The " +TAG("crest", "who")+ " is: " +\$object.crest+ ". \\n"; 
+if(\$object.manifesto) \$msg_guild += "The " +TAG("manifesto", "who")+ " is: " +\$object.manifesto+ "\\n"; 
+if(\$object.members) \{ 
+\$members = Get(\$object, "members");  
+\$sz = sizeof(\$members); 
+\$msg_guild += "\\n There are a total of " +TAG(Str(\$sz), "who")+ " members in the guild. \\n"; 
+\$active = (\{ \}); 
+\$inactive = (\{ \}); 
+for(\$m=0;\$m\<\$sz;\$m++) \{ 
+if(Obj(\$members[\$m])) \{ 
+ 
+\$named = capitalize(Str(\$members[\$m]."skotos:charname")); 
+if(\$members[\$m]."cdat:lastlogin") \{ 
+\$timing = Int(\$members[\$m]."cdat:lastlogin")+60*60*24*5; 
+\} else \{ 
+\$timing = time(); 
+\} 
+\$time = time(); 
+if(Int(\$time) \< Int(\$timing)) \{ 
+\$active += (\{ \$named \}); 
+\} else \{ 
+\$inactive += (\{ \$named \}); 
+\} 
+ 
+\} 
+\} 
+\$sz_a = sizeof(\$active); 
+\$sz_i = sizeof(\$inactive); 
+if(\$sz_a \> 0) \{ 
+\$msg_guild += "\\n There are " +TAG(Str(\$sz_a)+ " Active Members", "who")+ " which include: \\n"; 
+\$msg_guild += implode(\$active, ", "); 
+\$msg_guild += " \\n"; 
+\} 
+if(\$sz_i \> 0) \{ 
+\$msg_guild += "\\n There are " +TAG(Str(\$sz_i)+ " Inactive Members", "who")+ " which include: \\n"; 
+\$msg_guild += implode(\$inactive, ", "); 
+\$msg_guild += " \\n"; 
+\} 
+ 
+\$msg_guild += " \\n \\n"; 
+\} 
+ 
+/* TRYING TO GRAB TOKEN DATA - ALL ELSE WORKS */ 
+\$cats = (\{ (\{ "academic", "academic" \}), (\{ "martial", "martial" \}), (\{ "promotion", "promotion" \}), (\{ "subterfuge", "subterfuge" \}), (\{ "working", "working" \}), (\{ "society", "society" \}), (\{ "trade", "trade" \}) \}); 
+\$map = ([ ]); 
+\$map += prefixed_map(\$object."*", "tokens:"); 
+if(sizeof(map_indices(\$map)) == 0) \$nomap = 1; 
+if(!\$nomap) \{ 
+for(\$j=0; \$j\<sizeof(\$cats); \$j++) \{ 
+\$tmp = ([ ]); 
+\$tmp += prefixed_map(\$map, "tokens:"+\$cats[\$j][0]+":", TRUE); 
+\$list = map_indices(\$tmp); 
+\$map -= map_indices(prefixed_map(\$map, "tokens:"+\$cats[\$j][0]+":")); 
+if(sizeof(\$list) \> 0) \$msg_guild += TAG(capitalize(\$cats[\$j][1])+" Token ", "who")+"Data: \\n"; 
+for(\$d=0;\$d\<sizeof(\$list);\$d++) \{ 
+\$msg_guild += \$list[\$d]+": "; 
+if(Get(\$object, "tokens:"+\$cats[\$j][0]+":"+\$list[\$d])) \{ 
+\$msg_guild += Get(\$object, "tokens:"+\$cats[\$j][0]+":"+\$list[\$d]); 
+\} else \{ 
+\$msg_guild += "0"; 
+\} 
+\$msg_guild += " \\n"; 
+\} 
+\} 
+\$tmp = ([ ]); 
+\$tmp += prefixed_map(\$map, "tokens:", TRUE); 
+\$list = map_indices(\$tmp); 
+if(sizeof(\$list) \> 0) \$msg_guild += TAG("Other Token ", "who")+"Data: \\n"; 
+for (\$i = 0; \$i \< sizeof(\$list); \$i++) 
+\{ 
+if(sscanf(\$list[\$i], "%s", \$name) == 1)\{ 
+\$msg_guild += \$name+": "; 
+if(Get(\$object, "tokens:"+\$list[\$i])) \{ 
+\$msg_guild += Get(\$object, "tokens:"+\$list[\$i]); 
+\} else \{ 
+\$msg_guild += "0"; 
+\} 
+\$msg_guild += " \\n"; 
+\} 
+\} 
+\} 
+/* END OF TOKEN ATTEMPT - SEEMS TO WORK */ 
+/* end msg */ 
+\$msg_guild += TAG("_________________________________________", "who"); 
+\} else \{ 
+\$noguild = 1; 
+\} 
+ 
+/* create all messages accordingly */ 
+if(\$noguild \&\& \$nochar) \$msg = "No data has been found in regards to characters or guilds using the term(s): " +\$search+"."; 
+if(\$noguild \&\& !\$nochar) \$msg = \$msg_char; 
+if(!\$noguild \&\& \$nochar) \$msg = \$msg_guild; 
+if(!\$msg) \$msg = "Character Data is: \\n" +\$msg_char+"\\n" +\$msg_guild; 
+\} else \{ 
+\$listing = (\{ \}); 
+\$folder = "Ironclaw:Guilds"; 
+\$guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects"); 
+for(\$i=0; \$i \< sizeof(\$guilds); \$i++) \{ 
+if(Get(Obj("Ironclaw:Guilds:"+\$guilds[\$i]), "shortname")) \$short = Get(Obj("Ironclaw:Guilds:"+\$guilds[\$i]), "shortname"); 
+\$listing += (\{ \$short \}); 
+\} 
+\$msg = "There are " +TAG(Str(sizeof(\$listing)), "who")+ " known guilds: \\n"; 
+for(\$l=0;\$l\<sizeof(\$listing);\$l++) \{ 
+\$msg += \$listing[\$l]+ "\\n"; 
+\} 
+\} 
+ 
+EmitTo(\$actor, \$msg); 
+ 
+/* return false to hide the action */ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1176112799, "mqqwa", "E", 1176112839, "mqqwa", "E", 1176113489, "mqqwa", "E", 1176113641, "mqqwa", "E", 1176113723, "mqqwa", "E", 1176113856, "mqqwa", "E", 1176113911, "mqqwa", "P", 1176114192, "mqqwa", "E", 1176114244, "mqqwa", "E", 1176114304, "mqqwa", "E", 1176114400, "mqqwa", "P", 1176114548, "mqqwa", "E", 1176141305, "mqqwa", "P", 1176202681, "mqqwa", "E", 1176202764, "mqqwa", "P", 1176202908, "mqqwa", "E", 1176203084, "mqqwa", "E", 1176203748, "mqqwa", "E", 1176203784, "mqqwa", "E", 1176203840, "mqqwa", "P", 1176203895, "mqqwa", "P", 1176203975, "mqqwa", "P", 1176204051, "mqqwa", "P", 1176204129, "mqqwa", "P", 1176204189, "mqqwa", "P", 1176204593, "mqqwa", "P", 1176204663, "mqqwa", "P", 1176204696, "mqqwa", "P", 1176204932, "mqqwa", "P", 1176204961, "mqqwa", "P", 1176205092, "mqqwa", "P", 1176205211, "mqqwa", "P", 1176205252, "mqqwa", "P", 1176205271, "mqqwa", "P", 1176205302, "mqqwa", "P", 1176205350, "mqqwa", "P", 1176205394, "mqqwa", "E", 1176205437, "mqqwa", "P", 1176205445, "mqqwa", "P", 1176205461, "mqqwa", "P", 1176205477, "mqqwa", "P", 1176205589, "mqqwa", "E", 1176205597, "mqqwa", "R", 1177614914, "tonyd", "E", 1177614983, "tonyd", "P", 1177623965, "tonyd", "P", 1177624544, "tonyd", "P", 1177624862, "tonyd", "P", 1177624892, "tonyd", "P", 1177624919, "tonyd", "P", 1177624992, "tonyd", "P", 1177625175, "tonyd", "P", 1177625532, "tonyd", "P", 1177625766, "tonyd", "P", 1177626033, "tonyd", "P", 1177700936, "tonyd", "P", 1177700975, "tonyd", "P", 1177705487, "tonyd", "P", 1177705691, "tonyd", "P", 1177705705, "tonyd", "P", 1177705802, "tonyd", "P", 1177705990, "tonyd", "P", 1177706492, "tonyd", "P", 1177706567, "tonyd", "P", 1177707135, "tonyd", "P", 1178521312, "necate", "P", 1178522517, "necate", "P", 1178522548, "necate", "P", 1179181189, "necate", "P", 1179181663, "necate", "P", 1179181811, "necate", "P", 1179181852, "necate", "P", 1179181912, "necate", "E", 1179182007, "necate", "P", 1179182292, "necate", "P", 1179182308, "necate", "P", 1179182485, "necate", "P", 1179182666, "necate", "P", 1179182787, "necate", "P", 1179183408, "necate", "P", 1179183426, "necate", "P", 1179183474, "necate", "P", 1179646296, "tonyd", "E", 1179646384, "tonyd", "E", 1179646403, "tonyd", "E", 1261509345, "necate", "E", 1261509361, "necate", "E", 1261509505, "necate", "E", 1261509534, "necate", "E", 1261518262, "necate", "P", 1261518371, "necate", "P", 1261975941, "tonyd", "P", 1296264712, "tunk_bodin", "P", 1296264773, "tunk_bodin", "P", 1296264856, "tunk_bodin", "P", 1296264931, "tunk_bodin", "P", 1296264964, "tunk_bodin", "P", 1296265553, "tunk_bodin", "P", 1296265581, "tunk_bodin", "P", 1296265900, "tunk_bodin", "P", 1296265955, "tunk_bodin", "P", 1296266002, "tunk_bodin", "P", 1296266409, "tunk_bodin", "P", 1296266437, "tunk_bodin", "P", 1296267381, "tunk_bodin", "P", 1296268158, "tunk_bodin", "P", 1296268312, "tunk_bodin", "P", 1296268615, "tunk_bodin", "P", 1296268657, "tunk_bodin", "P", 1296269098, "tunk_bodin", "P", 1296269285, "tunk_bodin", "P", 1296269345, "tunk_bodin", "P", 1296269404, "tunk_bodin", "P", 1296269483, "tunk_bodin", "P", 1296269559, "tunk_bodin", "P", 1296269884, "tunk_bodin", "P", 1296269944, "tunk_bodin", "P", 1296270029, "tunk_bodin", "P", 1296270042, "tunk_bodin", "P", 1296270413, "tunk_bodin", "P", 1296270413, "tunk_bodin", "P", 1296270497, "tunk_bodin", "P", 1296270607, "tunk_bodin", "P", 1296270647, "tunk_bodin", "P", 1296270819, "tunk_bodin", "P", 1296270877, "tunk_bodin", "P", 1296270919, "tunk_bodin", "P", 1296271175, "tunk_bodin", "P", 1296271218, "tunk_bodin", "P", 1296271233, "tunk_bodin", "P", 1296271279, "tunk_bodin", "P", 1296271369, "tunk_bodin", "P", 1296271442, "tunk_bodin", "P", 1296271526, "tunk_bodin", "P", 1296271740, "tunk_bodin", "P", 1296271790, "tunk_bodin", "P", 1296271854, "tunk_bodin", "P", 1296271925, "tunk_bodin", "P", 1296272852, "tunk_bodin", "P", 1296273019, "tunk_bodin", "P", 1296273046, "tunk_bodin", "P", 1296273391, "tunk_bodin", "P", 1296273634, "tunk_bodin", "P", 1296273762, "tunk_bodin", "P", 1296273801, "tunk_bodin", "P", 1296274764, "tunk_bodin", "P", 1296274990, "tunk_bodin", "P", 1296275043, "tunk_bodin", "P", 1296275141, "tunk_bodin", "P", 1296275259, "tunk_bodin", "P", 1296275478, "tunk_bodin", "P", 1296275573, "tunk_bodin", "P", 1296275598, "tunk_bodin", "P", 1296275722, "tunk_bodin", "P", 1296275833, "tunk_bodin", "P", 1296275903, "tunk_bodin", "P", 1296275976, "tunk_bodin", "P", 1296276094, "tunk_bodin", "P", 1296281867, "tunk_bodin", "P", 1296282516, "tunk_bodin", "P", 1296282572, "tunk_bodin", "P", 1296282632, "tunk_bodin", "P", 1296282674, "tunk_bodin", "P", 1296282706, "tunk_bodin", "P", 1296282737, "tunk_bodin", "P", 1296282813, "tunk_bodin", "P", 1296283055, "tunk_bodin", "P", 1296283095, "tunk_bodin", "P", 1296283184, "tunk_bodin", "P", 1296283243, "tunk_bodin", "P", 1296283295, "tunk_bodin", "P", 1296283395, "tunk_bodin", "P", 1296284079, "tunk_bodin", "P", 1296284116, "tunk_bodin", "P", 1296284331, "tunk_bodin", "P", 1296284366, "tunk_bodin", "P", 1296284453, "tunk_bodin", "P", 1296284537, "tunk_bodin", "P", 1296284626, "tunk_bodin", "P", 1296284779, "tunk_bodin", "P", 1296284959, "tunk_bodin", "P", 1296284980, "tunk_bodin", "P", 1296285003, "tunk_bodin", "P", 1296285016, "tunk_bodin", "P", 1296285532, "tunk_bodin", "P", 1296285710, "tunk_bodin", "P", 1296285804, "tunk_bodin", "P", 1296285921, "tunk_bodin", "P", 1296285975, "tunk_bodin", "P", 1297546122, "tunk_bodin", "X", 1297546285, "tunk_bodin", "X", 1297546470, "tunk_bodin", "X", 1310606306, "tunk_bodin", "X", 1572011923, "sendnoodlez", "E", 1598106006, "jominey", "P", 1719008718, "annemairi", "E", 1719033460, "annemairi", "X", 1719099433, "annemairi", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

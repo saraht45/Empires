@@ -1,0 +1,779 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:veep:add_char">
+         X[M] /* set the database */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+
+/* set temporary values for generic variables */
+\$title = "none";
+\$breed = "none, this is odd.";
+\$guild = "none";
+\$created = "none, this is odd.";
+\$goals = "Undetermined; use +veep edit goals for \<name\> \\'\<evoke\>.";
+\$backstory = "Undetermined; use +veep edit backstory for \<name\> \\'\<evoke\>.";
+/* adding a placeholder to link destination */
+\$link_val = "blank";
+/* adding code to links variable */
+\$links = " " + LINK("Click here to make a VP sheet!", "+to me ex Call(\$\{Ironclaw:Lib:Characters:Veep:Lib\}, \\"veep:link_popup\\", \$actor: \$actor);", "imp") + "\\n ";
+\$links += "Then add the link here via +veep edit links for \<name\> \\'\<evoke\>.";
+
+/* get true values for variables */
+/* set a minimum rank (in case they have none) then search for true rank */
+\$rank = 1;
+if(Get(\$who, "rank:rank")) \$rank = Get(\$who, "rank:rank");
+/* set social status based on rank */
+if(\$rank \<= 2) \$social = "slavery";
+if(\$rank \> 2 \&\& \$rank \< 8) \$social = "commoner";
+if(\$rank == 8) \$social = "gentry";
+if(\$rank \> 8 \&\& \$rank \< 11) \$social = "knight";
+if(\$rank \> 10 \&\& \$rank \< 18) \$social = "peer";
+if(\$rank \> 17) \$social = "royalty";
+
+\$account = Get(\$who, "skotos:creator");
+\$approved = Get(\$actor, "skotos:charname");
+if(Get(\$who, "trait:title")) \$title = Get(\$who, "trait:title");
+if(Get(\$who, "trait:animal")) \$breed = Get(\$who, "trait:animal");
+
+if(Get(\$who, "guild")) \{
+\$g1 = Get(\$who, "guild");
+\$guild = Get(\$g1, "shortname");
+\}
+
+\$c1 = Get(\$who, "skotos:creation_time");
+\$created = ctime(\$c1);
+
+/* gather data into mapping */
+\$data = ([ "name" : \$name, "account" : \$account, "title" : \$title, "breed" : \$breed, "social" : \$social, "house" : \$guild, "rank" : \$rank, "approved" : \$approved, "created" : \$created, "goals" : \$goals, "backstory" : \$backstory, "links" : \$links, "link_val": \$link_val ]);
+
+/* gather current roster map */
+\$map = Get(\$db, "veep:roster");
+/* add VP to map */
+\$map[\$name] = \$data;
+/* replace roster with edited map */
+Set(\$db, "veep:roster", \$map);
+
+/* build and send a message */
+\$msg = "You successfully added " +capitalize(\$name)+ " as a VP. \\n";
+\$msg += "To see their current data, use: ";
+\$msg += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_inactive"), "NAME", \$name)))+ ".";
+EmitTo(\$actor, \$msg);
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:append_char">
+         X[M] /* snag the db */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+
+/* set the data based on status */
+if(\$name_v == "active") \$db."veep:roster"[\$name][\$cat] += ", " +\$evoke;
+if(\$name_v == "inactive") \$db."veep:inactive"[\$name][\$cat] += ", " +\$evoke;
+
+/* build a message and send it */
+\$msg = "You successfully appended the " +capitalize(\$cat)+ " data for " +capitalize(\$name)+ ". \\n";
+\$msg += "To review their current data, use: ";
+\$msg += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_inactive"), "NAME", \$name)))+ ".";
+EmitTo(\$actor, \$msg);
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:check_category">
+         X[M] /* to verify that the category is valid, */
+/* what ways the category may be altered, */
+/* and send them to the correct script afterward. */
+
+/* snag the category from the line */
+\$cat = \$line_arr[1];
+
+/* grab the possible categories */
+\$cats = \$this."veep:categories";
+
+/* implode these for use later */
+\$list = implode(\$cats, ", ");
+
+/* make sure it belongs */
+if(!member(\$cat, \$cats)) \{
+\$msg = "There is no valid category labeled: " +\$cat+ ". \\n";
+\$msg += "Valid categories include: " +\$list+ ".";
+EmitTo(\$actor, \$msg);
+return FALSE;
+\}
+
+/* list categories that can be altered at this time */
+\$cats2 = (\{ "goals", "backstory", "links" \});
+\$list2 = implode(\$cats2, ", ");
+
+/* send a message about categories which may not be altered right now */
+if(!member(\$cat, \$cats2)) \{
+\$msg = "That particular category may not be altered in this manner. \\n";
+\$msg += "Any changes will be updated automatically as the roster refreshes using data directly from the chatter. \\n";
+\$msg += "You may alter only these categories: " +\$list2+ ".";
+EmitTo(\$actor, \$msg);
+return FALSE;
+\}
+
+/* in the future, we might allow multiple links */
+/* for now, we may only edit (replace) the links category data */
+if(\$command == "append" \&\& \$cat == "links" ) \{
+\$msg = "In the future, we may allow for multiple links attached to a character. \\n";
+\$msg += "The only viable option now is to edit (replace) the current link. \\n Use: ";
+\$msg += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_edit"), "NAME", \$name, "CAT", \$cat, "EVOKE", \$evoke)));
+EmitTo(\$actor, \$msg);
+return FALSE;
+\}
+
+/* make the correct call */
+if(\$command == "edit") return Call(\$this, "veep:edit_char", \$name: \$name, \$who: \$who, \$cat: \$cat, \$name_v: \$name_v, \$evoke: \$evoke);
+if(\$command == "append") return Call(\$this, "veep:append_char", \$name: \$name, \$who: \$who, \$cat: \$cat, \$name_v: \$name_v, \$evoke: \$evoke);
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:check_roster">
+         X[M] /* if no status passed, set to all */
+if(!\$status) \$status = "all";
+
+if(!\$char) \$char = \$actor;
+
+if(typeof(\$char) != T_OBJECT \&\& typeof(\$char) != T_STRING) \{
+  EmitTo(\$actor, "Bad type on \$char. Send the characters shortname or object.");
+  return FALSE;
+\}
+
+\$name = (typeof(\$char) == T_OBJECT) ? lower_case(Str(\$char."skotos:charname")) : lower_case(\$char);
+
+/* snag the database */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+
+/* be wary of blank or missing maps */
+if(!Get(\$db, "veep:roster")) Set(\$db, "veep:roster", ([ ]));
+if(!Get(\$db, "veep:inactive")) Set(\$db, "veep:inactive", ([ ]));
+
+/* check status of character */
+\$name_v = "nonexistent";
+\$roster = map_indices(\$db."veep:roster");
+\$roster_bak = map_indices(\$db."veep:inactive");
+if(member(\$name, \$roster)) \$name_v = "active";
+if(member(\$name, \$roster_bak)) \$name_v = "inactive";
+
+/* alter variable based on all status */
+if(\$status == "all") \{
+  if(\$name_v == "active" \|\| \$name_v == "inactive") \{
+    \$name_v = "all";
+  \}
+\}
+
+/* return appropriately */
+if(\$status == \$name_v) \{
+  if(\$msg_true) EmitTo(\$actor, \$msg_true);
+  return TRUE;
+\} else \{
+  if(\$msg_false) EmitTo(\$actor, \$msg_false);
+  return FALSE;
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:display_char">
+         X[M] /* snag the headers */
+\$hdrs = \$this."veep:categories";
+/* set the size */
+\$hd_sz = sizeof(\$hdrs);
+
+/* set the database */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+
+
+/* set data source based on active status */
+if(\$name_v == "active") \{
+\$prop = "veep:roster";
+\} else \{
+\$prop = "veep:inactive";
+\}
+
+for(\$a=0; \$a\<\$hd_sz; ++\$a) \{
+\$label = \$hdrs[\$a];
+\$map = Get(\$db, \$prop);
+\$value = \$map[\$name][\$label];
+EmitTo(\$actor, \$label+": "+TAG(capitalize(Str(\$value)), "who"));
+\}
+/* put a prop in the actor so the vp link works - hacky code */
+\$setprop = (\{ \$name, \$name_v \});
+Set(\$actor, "veep:lastviewed", \$setprop);
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:display_lists">
+         X[M] /* snag the headers */
+\$hdrs = \$this."veep:headers";
+
+/* set the database */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+
+/* set data based on active list */
+if(\$line_sz == 1) \{
+\$main = "veep:roster";
+\$spare = "veep:inactive";
+\$other_type = "inactive";
+\} else \{
+/* set data based on inactive list */
+\$main = "veep:inactive";
+\$spare = "veep:roster";
+\$other_type = "active";
+\}
+
+/* arrays for each roster */
+if(Get(\$db, \$main)) \{
+\$tmp = Get(\$db, \$main);
+\$ref = map_indices(\$tmp);
+\} else \{
+\$ref = (\{  \});
+\}
+if(Get(\$db, \$spare)) \{
+\$tmp = Get(\$db, \$spare);
+\$ref_bk = map_indices(\$tmp);
+\} else \{
+\$ref_bk = (\{  \});
+\}
+
+/* size of arrays */
+\$hdr_sz = sizeof(\$hdrs);
+\$ref_sz = sizeof(\$ref);
+\$ref_bk_sz = sizeof(\$ref_bk);
+
+/* stop script here is there is no data to display */
+if(\$ref_sz == 0) \{
+EmitTo(\$actor, "No data to display in this roster.");
+return FALSE;
+\}
+
+/* determine padding for table */
+\$table = 0;
+for(\$a=0; \$a\<\$ref_sz; ++\$a) \{
+\$name = \$ref[\$a];
+for(\$b=0; \$b\<\$hdr_sz; \$b++) \{
+if(strlen(\$hdrs[\$b]) \> \$table) \$table = strlen(\$hdrs[\$b]);
+\$temp = \$hdrs[\$b];
+/* \$value = Get(\$db, \$main[\$name][\$temp]); FAILS Non-numeric string index */
+/* \$value = \$db."veep:roster"[\$name][\$temp]; WORKS BUT CAN'T CHANGE ROSTER */
+/* \$value = get_by_str(\$db, \$main[\$name][\$temp]); FAILS Non-numeric string index */
+/* \$value = get_by_ob(\$db, \$main[\$name][\$temp]); FAILS Non-numeric string index */
+/* here is the hack */
+\$map = Get(\$db, \$main);
+\$value = \$map[\$name][\$temp];
+\$value = Str(\$value);
+if(strlen(\$value) \> \$table) \$table = strlen(\$value);
+\}
+\}
+\$table += 2;
+/* start building the table and add headers */
+\$build = "\| ";
+for(\$c=0; \$c\<\$hdr_sz; \$c++) \{
+\$label = \$hdrs[\$c];
+\$build += TAG(pad_right(upper_case(\$label), \$table), "imp")+ " \| ";
+\}
+
+/* new line */
+\$build += "\\n\| ";
+
+/* add lines of character data */
+for(\$d=0; \$d\<\$ref_sz; \$d++) \{
+\$name = \$ref[\$d];
+for(\$e=0; \$e\<\$hdr_sz; \$e++) \{
+\$map2 = Get(\$db, \$main);
+\$map = \$map2[\$name];
+\$label = \$hdrs[\$e];
+\$data = \$map[\$label];
+
+/* an if statement here to make names clickable */
+if(\$data == \$name) \{
+/* fixing padding */
+\$n_sz = strlen(\$name);
+\$t_sz = \$table - \$n_sz;
+/* add name */
+\$build += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_name"), "NAME", \$name)))+pad_right("", \$t_sz)+" \| ";
+\} else \{
+/* add normal data */
+\$build += pad_right(capitalize(Str(\$data)), \$table)+" \| ";
+\}
+\}
+/* add new line only if there is more data */
+if(\$d != \$ref_sz-1) \{
+\$build += "\\n\| ";
+\}
+\}
+
+/* create a top and bottom border */
+\$bd_len = 105;
+\$border = "_";
+for(\$f=0; \$f\<\$bd_len; \$f++) \{
+\$border += "_";
+\}
+
+/* create extra messages */
+\$note_1 = "NOTE: There are " +Str(\$ref_bk_sz)+ " characters listed in the " +\$other_type+ " roster. \\n";
+\$note_1 += "They may be viewed using: ";
+if(\$other_type = "inactive") \{
+\$note_1 += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_inactive"), "NAME", \$other_type)));
+\} else \{
+\$note_1 += UnSAM(ParseXML(UnSAM(\$this."veep:click_active")));
+\}
+\$note_2 = "For full data on a single character, use +veep display \<name\> or just click on their name in the list.";
+
+/* create final message */
+\$msg = PRE(\$border+ "\\n" +\$build+ "\\n" +\$border+ "\\n" +\$note_1+ "\\n" +\$note_2+ "\\n" +\$border);
+/* send it */
+EmitTo(\$actor, \$msg);
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:edit_char">
+         X[M] /* snag the db */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+
+/* set the data based on status */
+if(\$name_v == "active") \{
+if(\$cat == "links") \{
+\$link_val = \$evoke;
+\$db."veep:roster"[\$name]["link_val"] = \$link_val;
+\$links = " " + LINK("Go to VPC sheet!", "+to me ex Call(\$\{Ironclaw:Lib:Characters:Veep:Lib\}, \\"veep:link_popup\\", \$actor: \$actor);", "imp") + "";
+\$db."veep:roster"[\$name][\$cat] = \$links;
+\} else \{
+\$db."veep:roster"[\$name][\$cat] = \$evoke;
+\}
+\}
+if(\$name_v == "inactive") \{
+if(\$cat == "links") \{
+\$link_val = \$evoke;
+\$db."veep:inactive"[\$name]["link_val"] = \$link_val;
+\$links = " " + LINK("Go to VPC sheet!", "+to me ex Call(\$\{Ironclaw:Lib:Characters:Veep:Lib\}, \\"veep:link_popup\\", \$actor: \$actor);", "imp") + "";
+\$db."veep:inactive"[\$name][\$cat] = \$links;
+\} else \{
+\$db."veep:inactive"[\$name][\$cat] = \$evoke;
+\}
+\}
+
+/* build a message and send it */
+\$msg = "You successfully edited the " +capitalize(\$cat)+ " data for " +capitalize(\$name)+ ". \\n";
+\$msg += "To review their current data, use: ";
+\$msg += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_inactive"), "NAME", \$name)))+ ".";
+EmitTo(\$actor, \$msg);
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:help_pages">
+         X[M] /* by default, show all */  
+\$show = "all";  
+/* otherwise, find what specific info they want */  
+if(\$line_arr \&\& sizeof(\$line_arr) \>= 2) \{  
+if(\$line_arr[1] == "add") \$show = "add";  
+if(\$line_arr[1] == "remove") \$show = "remove";  
+if(\$line_arr[1] == "display") \$show = "display";  
+if(\$line_arr[1] == "reactivate") \$show = "reactivate";  
+if(\$line_arr[1] == "help") \$show = "help";  
+if(\$line_arr[1] == "edit") \$show = "edit";  
+if(\$line_arr[1] == "append") \$show = "append";  
+if(\$line_arr[1] == "categories" \|\| \$line_arr[1] == "category") \$show = "categories";  
+\}  
+/* preset the verb and generic variables for use in emits */  
+\$v = "+veep ";  
+\$n = "\<name\>";  
+\$e = " \\'\<evoke\>";  
+\$c = "\<category\>";  
+\$ca = TAG("Category: ", "imp");  
+\$co = TAG("Command: ", "imp");  
+\$d = TAG(" \| Description: ", "imp");  
+/* start a blank emit */  
+\$msg = "";  
+/* create a border */  
+\$border = "_";  
+/* adjust length of border */  
+for(\$b=0; \$b\<100; \$b++) \{  
+\$border += "_";  
+\}  
+  
+/* add the top border to the msg */  
+\$msg += \$border+ "\\n";  
+  
+/* if add or all */  
+if(\$show == "all" \|\| \$show == "add") \{  
+/* add a header to the section */  
+\$msg += "HOW TO ADD A VP \\n";  
+/* show the command */  
+\$comm = TAG(\$v+"add "+\$n, "who");  
+/* show the description */  
+\$de = "Adds " +\$n+ " to the active VP roster list.";  
+/* add to the message */  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+/* add border under each section */  
+\$msg += \$border+ "\\n";  
+\}  
+/* if remove or all */  
+if(\$show == "all" \|\| \$show == "remove") \{  
+\$msg += "HOW TO REMOVE A VP \\n";  
+\$comm = TAG(\$v+"remove "+\$n, "who");  
+\$de = "Removes " +\$n+ " from the active VP roster list and places them on the inactive roster.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$msg += \$border+ "\\n";  
+\}  
+/* if display or all */  
+if(\$show == "all" \|\| \$show == "display") \{  
+\$msg += "HOW TO USE THE DISPLAY COMMANDS \\n";  
+\$msg += "There are three types of displays: \\n";  
+\$comm = TAG(\$v+"display ", "who");  
+\$de = "By itself, the display command will show the active roster list and data for major categories.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"display inactive ", "who");  
+\$de = "Shows the inactive roster list and data for major categories.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"display " +\$n, "who");  
+\$de = "Shows just the data for " +\$n+ " using all available categories.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$msg += \$border+ "\\n";  
+\}  
+/* if reactivate of all */  
+if(\$show == "all" \|\| \$show == "reactivate") \{  
+\$msg += "HOW TO REACTIVATE A VP \\n";  
+\$comm = TAG(\$v+"reactivate "+\$n, "who");  
+\$de = "Reactivates " +\$n+ " by moving them from the inactive roster to the active VP roster.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$msg += \$border+ "\\n";  
+\}  
+/* if help or all */  
+if(\$show == "all" \|\| \$show == "help") \{  
+\$msg += "HOW TO USE THE HELP COMMANDS \\n";  
+\$msg += "There are several methods of using the help command as described below. \\n";  
+\$comm = TAG(\$v+"help help", "who");  
+\$de = "Lists this help information.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"help add", "who");  
+\$de = "Instructs on the usage of the add command.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"help remove", "who");  
+\$de = "Instructs on the usage of the remove command.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"help display", "who");  
+\$de = "Instructs on the usage of the display command.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"help reactivate", "who");  
+\$de = "Instructs on the usage of the reactivate command.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"help edit", "who");  
+\$de = "Instructs on the usage of the edit command.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"help categories", "who");  
+\$de = "A simple list of all available categories and which may be edited or appended.";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$msg += \$border+ "\\n";  
+\}  
+/* if edit or all" */  
+if(\$show == "all" \|\| \$show == "edit") \{  
+\$msg += "HOW TO EDIT A VP \\n";  
+\$comm = TAG(\$v+"edit "+\$c+ " for "+\$n+\$e, "who");  
+\$de = "Edits (completely replaces) current data in " +\$c+ " for "+\$n+" with" +\$e+ ".";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"help append", "who");  
+\$msg += "Also see: " +\$comm+ "\\n";  
+\$msg += \$border+ "\\n";  
+\}  
+/* if append or all */  
+if(\$show == "all" \|\| \$show == "append") \{  
+\$msg += "HOW TO APPEND VP DATA \\n";  
+\$comm = TAG(\$v+"append "+\$c+ " for "+\$n+\$e, "who");  
+\$de = "Appends (adds to the end of) current data in " +\$c+ " for "+\$n+" with" +\$e+ ".";  
+\$msg += \$co + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG(\$v+"help edit", "who");  
+\$msg += "Also see: " +\$comm+ "\\n";  
+\$msg += \$border+ "\\n";  
+\}  
+/* if categories or all */  
+if(\$show == "all" \|\| \$show == "categories") \{  
+\$msg += "CATEGORIES LIST \\n";  
+\$comm = TAG("Name", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Account", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Title", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Breed", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Social", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("House", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Rank", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Approved", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Created", "who");  
+\$de = "Generated upon addition of a new VP. It may not be edited or altered.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Goals", "who");  
+\$de = "These can be edited to replace the existing data or appended to add to it.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Backstory", "who");  
+\$de = "This may be edited to replace the existing data or appended to add to it.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$comm = TAG("Links", "who");  
+\$de = "These can be edited to replace the existing data or appended to add to it.";  
+\$msg += \$ca + \$comm + \$d + \$de + "\\n";  
+\$msg += "\\n More information on how to alter data within categories may be found using: \\n";  
+\$comm = TAG(\$v+"help edit", "who");  
+\$msg += \$comm+ ", or within \\n";  
+\$comm = TAG(\$v+"help append", "who");  
+\$msg += \$comm+"\\n";  
+\$msg += \$border+ "\\n";  
+\}  
+/* display all possible help topics for reference */  
+if(\$show != "all" \&\& \$show != "help") \{  
+\$msg += \$border+ "\\n";  
+\$msg += "Also see: " +\$v+ " help [help\|add\|remove\|display\|reactivate\|edit\|append] \\n";  
+\$msg += \$border+ "\\n";  
+\}  
+/* send the final product */  
+EmitTo(\$actor, \$msg);  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:link_popup">
+         X[M] \$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+\$link_val = "blank";
+if(Get(\$actor, "veep:lastviewed")) \{ 
+\$data = Get(\$actor, "veep:lastviewed");
+\$name = \$data[0];
+\$name_v = \$data[1];
+if(\$name_v == "active") \$link_val = \$db."veep:roster"[\$name]["link_val"];
+if(\$name_v == "inactive") \$link_val = \$db."veep:inactive"[\$name]["link_val"];
+\}
+
+if(\$name_v == "active") \$link_val = \$db."veep:roster"[\$name]["link_val"];
+if(\$name_v == "inactive") \$link_val = \$db."veep:inactive"[\$name]["link_val"];
+
+if(\$link_val == "blank") \{
+\$link_val = "https://twiki.skotos.net/twiki/bin/view/Ironclaw/PlotterVCSheets";
+\}
+Act(\$actor, "client_control", \$id: SKOOT_ANYURL, \$val: \$link_val);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:reactivate_char">
+         X[M] /* snag the inactive db */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+
+/* snag or create the active roster */
+if(!Get(\$db, "veep:roster")) \{
+\$transfer = ([ ]);
+\} else \{
+\$transfer = Get(\$db, "veep:roster");
+\}
+
+/* grab characters current data */
+\$data = \$db."veep:inactive"[\$name];
+
+/* transfer the data */
+\$transfer[\$name] = \$data;
+Set(\$db, "veep:roster", \$transfer);
+
+/* kill the old data */
+\$db."veep:inactive"[\$name] = nil;
+
+/* send a message */
+\$msg = "You successfully reactivated " +capitalize(\$name)+ " as a VP. \\n";
+\$msg += "To see their current data, use: ";
+\$msg += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_inactive"), "NAME", \$name)))+ ".";
+EmitTo(\$actor, \$msg);
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:remove_char">
+         X[M] /* snag the db */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+
+/* snag or create the inactive roster */
+if(!Get(\$db, "veep:inactive")) \{
+\$transfer = ([ ]);
+\} else \{
+\$transfer = Get(\$db, "veep:inactive");
+\}
+
+/* grab characters current data */
+\$data = \$db."veep:roster"[\$name];
+
+/* transfer the data */
+\$transfer[\$name] = \$data;
+Set(\$db, "veep:inactive", \$transfer);
+
+/* kill the old data */
+\$db."veep:roster"[\$name] = nil;
+
+/* send a message */
+\$msg = "You successfully removed " +capitalize(\$name)+ " as a VP and stored them as inactive. \\n";
+\$msg += "To see their current data, use: ";
+\$msg += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_inactive"), "NAME", \$name)))+ ".";
+EmitTo(\$actor, \$msg);
+      </Core:Property>
+      <Core:Property property="merry:lib:veep:start_script">
+         X[M] /* verify a line was passed */
+if(!\$line) return Call(\$this, "veep:help_pages", \$actor: \$actor);
+
+/* set the verb to a variable so it's easily changeable in the emits */
+\$v = "+veep";
+
+/* make sure the databases exist or add blank data so we do not error out later */
+\$db = \$\{Ironclaw:Lib:Characters:Veep:Logs\};
+if(!Get(\$db, "veep:roster")) Set(\$db, "veep:roster", ([ ]));
+if(!Get(\$db, "veep:inactive")) Set(\$db, "veep:inactive", ([ ]));
+
+/* start breaking down the line */
+/* see if they wanted to pass an evoke and separate it from the line */
+if(contains(\$line, "\\'")) \{
+\$split_ln = explode(\$line, "\\'");
+\$line = \$split_ln[0];
+\$split_ln -= (\{ \$line \});
+\$evoke = \$split_ln;
+\$evoke = implode(\$evoke, " ");
+\}
+/* lower case it for easy matching */
+\$line = lower_case(\$line);
+
+/* split line into pieces */
+\$line_arr = explode(\$line, " ");
+/* grab the number of words used */
+\$line_sz = sizeof(\$line_arr);
+
+/* 1st word is always the command */
+\$command = \$line_arr[0];
+/* grab viable commands */
+\$com_arr = \$this."veep:commands";
+if(!member(\$command, Arr(\$com_arr))) \{
+/* bad command - show viable command list */
+\$commands = implode(\$com_arr, ", ");
+EmitTo(\$actor, "Invalid command detected! \\n Viable commands include: " +\$commands+ ".");
+return FALSE;
+\}
+
+/* discover names in the line */
+/* add, reactivate and remove commands require a name and line_sz of 2 */
+if(\$command == "add" \|\| \$command == "remove" \|\| \$command == "reactivate") \{
+if(\$line_sz != 2) \{
+EmitTo(\$actor, "The " +\$command+ " command is used thusly: \\n " +\$v+ " " +\$command+ " \<name\>. No titles, no surnames.");
+return FALSE;
+\} else \{
+\$name = \$line_arr[1];
+\}
+\}
+/* display only requires a name, if desired and the second word is not inactive */
+if(\$command == "display" \&\& \$line_sz == 2 \&\& \$line_arr[1] != "inactive") \$name = \$line_arr[1];
+/* category changes use the commands edit and append. they also require a name fourth and an evoke */
+if(\$command == "edit" \|\| \$command == "append") \{
+if(\$line_sz != 4 \|\| !\$evoke) \{
+EmitTo(\$actor, "Improper use of the " +\$command+ " command. Correct usage includes: \\n " +\$v+ " " +\$command+ " \<category\> for \<name\> \\'\<evoke\>.");
+return FALSE;
+\} else \{
+\$name = \$line_arr[3];
+\}
+\}
+
+/* if we were granted a name, make sure it is a real character */
+if(\$name \&\& !common::lookup(\$name: \$name)) \{
+EmitTo(\$actor, "There is no existing chatter by the name of: " +\$name+ ".");
+return FALSE;
+\} else \{
+/* grab the named object */
+\$who = common::lookup(\$name: \$name);
+\}
+
+/* check that we have a name for all commands which require one */
+if(\$command != "display" \&\& \$command != "help") \{
+if(!\$name) \{
+EmitTo(\$actor, "The " +\$command+ " command requires a name.");
+return FALSE;
+\}
+\}
+
+/* if we were granted a name, verify data is attached to it (except for the add command) */
+if(\$name) \{
+/* reset the valid name variable */
+\$name_v = "nonexistent";
+\$roster = map_indices(\$db."veep:roster");
+\$roster_bak = map_indices(\$db."veep:inactive");
+if(member(\$name, \$roster)) \$name_v = "active";
+if(member(\$name, \$roster_bak)) \$name_v = "inactive";
+\}
+
+/* if the name is inactive, we want to tell them that no matter what their intent is */
+/* we also want to offer it as a clickable command */
+if(\$name_v \&\& \$name_v == "inactive") \{
+\$msg_inactive = "NOTE: " +capitalize(\$name)+ " is listed as an inactive VP. Reactivate via: \\n ";
+\$msg_inactive += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_reactivate"), "NAME", \$name)));
+EmitTo(\$actor, \$msg_inactive);
+\}
+
+/* if we have a name that is not in either roster, tell them so (except for adding) */
+/* also, offer a clickable command to add them */
+if(\$name_v == "nonexistent" \&\& \$command != "add") \{
+\$msg_nonexist = "There is no VP named " +capitalize(\$name)+ " listed as active or inactive. Add a new VP via: \\n ";
+\$msg_nonexist += UnSAM(ParseXML(replace_strings(UnSAM(\$this."veep:click_add"), "NAME", \$name)));
+EmitTo(\$actor, \$msg_nonexist);
+/* return false as only add would allow for a character not in any roster */
+return FALSE;
+\}
+
+/* if the command is remove but the character is already inactive, stop them here */
+if(\$command == "remove" \&\& \$name_v == "inactive") \{
+EmitTo(\$actor, capitalize(\$name)+ " is already listed as an inactive VP.");
+return FALSE;
+\}
+
+/* if command is reactivate but the character is already active, stop them here */
+if(\$command == "reactivate" \&\& \$name_v == "active") \{
+EmitTo(\$actor, capitalize(\$name)+ " is already listed as an active VP.");
+return FALSE;
+\}
+
+/* if the command is add but the character is already listed in one of the rosters, let them know and stop here */
+if(\$command == "add") \{
+if(\$name_v == "active" \|\| \$name_v == "inactive") \{
+EmitTo(\$actor, "You may not add " +\$name+ " as they are already listed as: " +\$name_v+ ".");
+return FALSE;
+\}
+\}
+
+/* I think we have all we need to start calling the other modules */
+if(\$command == "add") return Call(\$this, "veep:add_char", \$actor: \$actor, \$name: \$name, \$who: \$who);
+if(\$command == "remove") return Call(\$this, "veep:remove_char", \$actor: \$actor, \$name: \$name);
+if(\$command == "help") return Call(\$this, "veep:help_pages", \$actor: \$actor, \$line: \$line, \$line_arr: \$line_arr);
+if(\$command == "reactivate") return Call(\$this, "veep:reactivate_char", \$actor: \$actor, \$name: \$name);
+if(\$command == "display") \{
+if(\$name) \{
+return Call(\$this, "veep:display_char", \$actor: \$actor, \$name: \$name, \$name_v: \$name_v);
+\} else \{
+return Call(\$this, "veep:display_lists", \$actor: \$actor, \$line_sz: \$line_sz);
+\}
+\}
+if(\$command == "edit" \|\| \$command == "append") return Call(\$this, "veep:check_category", \$actor: \$actor, \$name: \$name, \$line_arr: \$line_arr, \$command: \$command, \$evoke: \$evoke, \$name_v: \$name_v, \$who: \$who);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1293999924, "tunk_bodin", "E", 1294000571, "tunk_bodin", "P", 1294000860, "tunk_bodin", "P", 1294000980, "tunk_bodin", "P", 1294001084, "tunk_bodin", "P", 1294001113, "tunk_bodin", "P", 1294001259, "tunk_bodin", "P", 1294002172, "tunk_bodin", "P", 1294002203, "tunk_bodin", "P", 1294002354, "tunk_bodin", "P", 1294002621, "tunk_bodin", "P", 1294002676, "tunk_bodin", "P", 1294002741, "tunk_bodin", "P", 1294002865, "tunk_bodin", "P", 1294003541, "tunk_bodin", "P", 1294013448, "tunk_bodin", "X", 1294714681, "tunk_bodin", "X", 1294715170, "tunk_bodin", "X", 1294715798, "tunk_bodin", "X", 1294715914, "tunk_bodin", "X", 1294716050, "tunk_bodin", "X", 1294716333, "tunk_bodin", "X", 1304987234, "tonyd", "P", 1304987289, "tonyd", "P", 1304988120, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="veep:categories">
+         (\{ "name", "account", "title", "breed", "social", "house", "rank", "approved", "created", "goals", "backstory", "links" \})
+      </Core:Property>
+      <Core:Property property="veep:click_active">
+         X[S] \<acmd cmd="+veep display"\>+veep display\</acmd\>
+      </Core:Property>
+      <Core:Property property="veep:click_add">
+         X[S] \<acmd cmd="+veep add NAME"\>+veep add NAME\</acmd\>
+      </Core:Property>
+      <Core:Property property="veep:click_edit">
+         X[S] \<acmd cmd="+veep edit CAT for NAME EVOKE"\>+veep edit CAT for NAME EVOKE\</acmd\>
+      </Core:Property>
+      <Core:Property property="veep:click_inactive">
+         X[S] \<acmd cmd="+veep display NAME"\>+veep display NAME\</acmd\>
+      </Core:Property>
+      <Core:Property property="veep:click_name">
+         X[S] \<acmd cmd="+veep display NAME"\>NAME\</acmd\>
+      </Core:Property>
+      <Core:Property property="veep:click_reactivate">
+         X[S] \<acmd cmd="+veep reactivate NAME"\>+veep reactivate NAME\</acmd\>
+      </Core:Property>
+      <Core:Property property="veep:commands">
+         (\{ "add", "remove", "display", "reactivate", "edit", "append", "help" \})
+      </Core:Property>
+      <Core:Property property="veep:headers">
+         (\{ "name", "title", "breed", "social", "house", "account" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

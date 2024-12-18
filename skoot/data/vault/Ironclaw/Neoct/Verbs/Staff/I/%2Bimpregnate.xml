@@ -1,0 +1,128 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+impregnate" second="impregnate" third="impregnates" evoke="optional" audible="false" private="false" secret="true" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="false" requirement="required" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="gimli:callback:mark_as_pregnant_stp">
+         "E[G]\\nint *temp_mods_arr;\\n// Charges storypoints, and sets a PC as pregnant\\n\$char = \$par[\\"char\\"];\\nif(Int(\$par[\\"stp_cost\\"]) \> \$value) \{\\n  EmitTo(\$actor, Describe(\$char)+\\" only has \\"+\$value+\\" storypoints, but requires \\"+\$par[\\"stp_cost\\"]+\\".\\");\\n  return FALSE;\\n\}\\n\\n// Delays\\n\$first_delay = 60*60*24*61; // 2 months\\n\$second_delay = 60*60*24*122; // 4 months\\n\$third_delay = 60*60*24*183; // 6 months\\n\$birth_start = 60*60*24*169; // 6 months - 2 weeks\\n\$birth_end = 60*60*24*197; // 6 months + 2 weeks\\n\\n\$announce = \\"Due date is \\"+short_time(time()+\$third_delay)+\\", you will be able to trigger a birth between \\"+short_time(time()+\$birth_start)+\\" and \\"+short_time(time()+\$birth_end)+\\".\\";\\n\\nEmitTo(\$actor, \$announce);\\n// Give the mods\\ntemp_mods_arr = (\{ \});\\ntemp_mods_arr += (\{ ironclaw::set_prop(\$obj:\$char, \$prop:\\"appearance:fingers\\", \$value:\\"skeletal\\", \$timer:60) \});\\n\\n\\n\\nEmitTo(\$actor, dump_value(temp_mods_arr));\\nreturn FALSE;\\n\\n\$account_name = ironclaw::get_udat(\$char:\$par[\\"char\\"], \$output:\\"udat_name\\");\\nEmitTo(\$actor, dump_value(\$account_name));\\n\\nCall(\$\{SkotOS:API\}, \\"query_storypoints\\", \$name: \$account_name, \$call_obj: this, \$call_func: \\"mark_as_pregnant_stp\\");\\n// The code continues in the callback function callback:mark_as_pregnant_stp!\\nreturn FALSE;\\n\\n\\ninteraction::question(\$question: \\"Do you want to mark \\"+Describe(\$char)+\\" as pregnant, with \\"+Describe(\$father)+\\" as the father?\\", \$expires: 30, \$env: FALSE,\\n\$expire:\\"+impregnate question has expired.\\", \$yes_ob:\$this, \$yes_fun:\\"mark_as_pregnant\\", \$no:\\"OK, no pregnancy just yet!\\", \$par:([\\n\\"char\\":\$char,\\n\\"father\\":\$father,\\n\\"stp_cost\\":\$stp_cost\\n]));\\n\\n\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="gimli:global:command">
+         "E[G]\\n// Charges storypoints, and sets a PC as pregnant\\n\$stp_cost = 30;\\n\\n\$char = NRefOb(\$dob[0]);\\n\$evoke_input = ironclaw::evoke_to_array(\$evoke: \$evoke);\\n\\nif(\$evoke_input \&\& sizeof(\$evoke_input)) \{\\n  \$father = lower_case( \$evoke_input[0] );\\n  \$father = common::lookup(\$name: \$father);\\n  if(!\$father) \{\\n    EmitTo(\$actor, \\"Unknown father. No PC found named \\"+\$evoke_input[0]+\\".\\");\\n    \$evoke_input = nil;\\n  \} else \{\\n    if(\$char.\\"base:gender\\" != 2) \{\\n      EmitTo(\$actor, \\"Mother must be female... duh?\\");\\n      \$evoke_input = nil;\\n    \}\\n    if(\$father.\\"base:gender\\" != 1) \{\\n      EmitTo(\$actor, \\"Father must be male... duh?\\");\\n      \$evoke_input = nil;\\n    \}\\n  \\n  \}\\n\}\\n\\nif(!\$evoke_input \|\| !sizeof(\$evoke_input)) \{\\n  EmitTo(\$actor, \\"Format: +impregnate \<mother PC\> '\<father PC\>\\");\\n  EmitTo(\$actor, \\"(This will charge the mother \\"+\$stp_cost+\\" storypoints)\\");\\n  return FALSE;\\n\}\\n\\ninteraction::question(\$question: \\"Do you want to mark \\"+Describe(\$char)+\\" as pregnant, with \\"+Describe(\$father)+\\" as the father?\\", \$expires: 30, \$env: FALSE,\\n\$expire:\\"+impregnate question has expired.\\", \$yes_ob:\$this, \$yes_fun:\\"mark_as_pregnant\\", \$no:\\"OK, no pregnancy just yet!\\", \$par:([\\n\\"char\\":\$char,\\n\\"father\\":\$father,\\n\\"stp_cost\\":\$stp_cost\\n]));\\n\\n\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:mark_as_pregnant">
+         "E[G]\\n// Charges storypoints, and sets a PC as pregnant\\n\$account_name = ironclaw::get_udat(\$char:\$par[\\"char\\"], \$output:\\"udat_name\\");\\nEmitTo(\$actor, dump_value(\$account_name));\\n\\nCall(\$\{SkotOS:API\}, \\"query_storypoints\\", \$name: \$account_name, \$call_obj: this, \$call_func: \\"mark_as_pregnant_stp\\");\\n// The code continues in the callback function callback:mark_as_pregnant_stp!\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="merry:callback:mark_as_pregnant_stp">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:callback:mark_as_pregnant_stp instead! */
+int *temp_mods_arr;
+/* Charges storypoints, and sets a PC as pregnant */
+\$char = \$par["char"];
+if(Int(\$par["stp_cost"]) \> \$value) \{
+  EmitTo(\$actor, Describe(\$char)+" only has "+\$value+" storypoints, but requires "+\$par["stp_cost"]+".");
+  return FALSE;
+\}
+
+/* Delays */
+\$first_delay = 60*60*24*61; /* 2 months */
+\$second_delay = 60*60*24*122; /* 4 months */
+\$third_delay = 60*60*24*183; /* 6 months */
+\$birth_start = 60*60*24*169; /* 6 months - 2 weeks */
+\$birth_end = 60*60*24*197; /* 6 months + 2 weeks */
+
+\$announce = "Due date is "+short_time(time()+\$third_delay)+", you will be able to trigger a birth between "+short_time(time()+\$birth_start)+" and "+short_time(time()+\$birth_end)+".";
+
+EmitTo(\$actor, \$announce);
+/* Give the mods */
+temp_mods_arr = (\{ \});
+temp_mods_arr += (\{ ironclaw::set_prop(\$obj: \$char, \$prop: "appearance:fingers", \$value: "skeletal", \$timer: 60) \});
+
+
+
+EmitTo(\$actor, dump_value(temp_mods_arr));
+return FALSE;
+
+\$account_name = ironclaw::get_udat(\$char: \$par["char"], \$output: "udat_name");
+EmitTo(\$actor, dump_value(\$account_name));
+
+Call(\$\{SkotOS:API\}, "query_storypoints", \$name: \$account_name, \$call_obj: this, \$call_func: "mark_as_pregnant_stp");
+/* The code continues in the callback function callback:mark_as_pregnant_stp! */
+return FALSE;
+
+
+interaction::question(\$question: "Do you want to mark "+Describe(\$char)+" as pregnant, with "+Describe(\$father)+" as the father?", \$expires: 30, \$env: FALSE, \$expire: "+impregnate question has expired.", \$yes_ob: \$this, \$yes_fun: "mark_as_pregnant", \$no: "OK, no pregnancy just yet!", \$par: ([
+"char":\$char,
+"father":\$father,
+"stp_cost":\$stp_cost
+]));
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:global:command instead! */
+/* Charges storypoints, and sets a PC as pregnant */
+\$stp_cost = 30;
+
+\$char = NRefOb(\$dob[0]);
+\$evoke_input = ironclaw::evoke_to_array(\$evoke: \$evoke);
+
+if(\$evoke_input \&\& sizeof(\$evoke_input)) \{
+  \$father = lower_case( \$evoke_input[0] );
+  \$father = common::lookup(\$name: \$father);
+  if(!\$father) \{
+    EmitTo(\$actor, "Unknown father. No PC found named "+\$evoke_input[0]+".");
+    \$evoke_input = nil;
+  \} else \{
+    if(\$char."base:gender" != 2) \{
+      EmitTo(\$actor, "Mother must be female... duh?");
+      \$evoke_input = nil;
+    \}
+    if(\$father."base:gender" != 1) \{
+      EmitTo(\$actor, "Father must be male... duh?");
+      \$evoke_input = nil;
+    \}
+  
+  \}
+\}
+
+if(!\$evoke_input \|\| !sizeof(\$evoke_input)) \{
+  EmitTo(\$actor, "Format: +impregnate \<mother PC\> '\<father PC\>");
+  EmitTo(\$actor, "(This will charge the mother "+\$stp_cost+" storypoints)");
+  return FALSE;
+\}
+
+interaction::question(\$question: "Do you want to mark "+Describe(\$char)+" as pregnant, with "+Describe(\$father)+" as the father?", \$expires: 30, \$env: FALSE, \$expire: "+impregnate question has expired.", \$yes_ob: \$this, \$yes_fun: "mark_as_pregnant", \$no: "OK, no pregnancy just yet!", \$par: ([
+"char":\$char,
+"father":\$father,
+"stp_cost":\$stp_cost
+]));
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:mark_as_pregnant">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:mark_as_pregnant instead! */
+/* Charges storypoints, and sets a PC as pregnant */
+\$account_name = ironclaw::get_udat(\$char: \$par["char"], \$output: "udat_name");
+EmitTo(\$actor, dump_value(\$account_name));
+
+Call(\$\{SkotOS:API\}, "query_storypoints", \$name: \$account_name, \$call_obj: this, \$call_func: "mark_as_pregnant_stp");
+/* The code continues in the callback function callback:mark_as_pregnant_stp! */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1437898125, "tonyd", "E", 1437898315, "tonyd", "P", 1437898328, "tonyd", "P", 1437898360, "tonyd", "P", 1437899552, "tonyd", "P", 1437900026, "tonyd", "P", 1437900237, "tonyd", "P", 1437900247, "tonyd", "E", 1437900263, "tonyd", "P", 1437900367, "tonyd", "P", 1437900378, "tonyd", "P", 1437900394, "tonyd", "E", 1437900404, "tonyd", "P", 1437900419, "tonyd", "E", 1437901159, "tonyd", "P", 1437901172, "tonyd", "P", 1437901185, "tonyd", "P", 1437902029, "tonyd", "P", 1437902030, "tonyd", "P", 1437903015, "tonyd", "P", 1437903091, "tonyd", "P", 1437903095, "tonyd", "P", 1437903175, "tonyd", "P", 1437903189, "tonyd", "P", 1437903217, "tonyd", "P", 1437903230, "tonyd", "P", 1437903264, "tonyd", "P", 1437903322, "tonyd", "P", 1437903368, "tonyd", "P", 1437903544, "tonyd", "P", 1437903598, "tonyd", "P", 1437903608, "tonyd", "P", 1437903650, "tonyd", "P", 1437909047, "tonyd", "P", 1437909085, "tonyd", "P", 1437909146, "tonyd", "P", 1437909187, "tonyd", "P", 1437909261, "tonyd", "P", 1437909936, "tonyd", "P", 1437909966, "tonyd", "P", 1437909975, "tonyd", "P", 1437910095, "tonyd", "P", 1437910181, "tonyd", "P", 1437910206, "tonyd", "P", 1437910229, "tonyd", "P", 1437910249, "tonyd", "P", 1437910262, "tonyd", "P", 1437910320, "tonyd", "P", 1437910395, "tonyd", "P", 1437910506, "tonyd", "P", 1437910548, "tonyd", "P", 1437910623, "tonyd", "P", 1437910837, "tonyd", "P", 1437910899, "tonyd", "P", 1438254554, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

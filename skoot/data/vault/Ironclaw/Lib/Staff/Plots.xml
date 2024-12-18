@@ -1,0 +1,312 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="approvers">
+         (\{ "barbra18", "tonyd_dis", "tunk_bodin" \})
+      </Core:Property>
+      <Core:Property property="html:popup">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/*Check if we are allowed to view this page */
+if(member(\$name, this.plotters)) \{
+  \$isplotter = TRUE;
+\} else \{
+  \$isplotter = nil;
+\}
+if(member(\$name, this.approvers)) \{
+  \$isapprover = TRUE;
+\} else \{
+  \$isapprover = nil;
+\}
+return nil;]
+\<html lang="en"\>
+\<head\>
+    \<title\>Plotting Page\</title\>
+    \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+    \$(Ironclaw:Theatre:CreateCharacter.xtra:stylesheet)
+\</head\>
+   \<body\>
+      \$(this.xtra:header)
+      \<div id="main"\>
+        \<table width="98%" background="http://www.skotos.net/IronclawGame/images/skin/parch-d2.jpg" style="margin-top: 8px; margin-left: 1%; margin-right: 1%;"\>\<tr\>\<td\>
+\<center\>\<h1\>Plotting!\</h1\>\</center\>
+\<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup"\>Refresh page\</zlink\>]\</p\>
+\{? \| \$(deleteplot) \|
+  \{? \| \$[/* are they allowed to delete this plot? */
+    \$details = Get(this, \$deleteplot);
+    if(\$details \&\& (\$isapprover \|\| member(\$name, \$details[5])))
+    return TRUE;
+    return FALSE;] \|
+    \$[/* delete the plot */
+    Set(this, \$deleteplot, nil);
+    return nil;]
+    \<p\>\<font color="red"\>Plot deleted\</font\>\</p\>
+  \|\}
+\|\}
+\{? \| \$(propose) \|
+  \<h2\>Proposing a plot\</h2\>
+  \<p\>
+  \{? \| \$(error) \| \<font color="red" size="3"\>\$(error)\</font\>\<br/\>\<sbr/\> \|\}
+  \<zform name="\$(name)"\>
+    Plot Title: \<input name="title" style="width:350px; height:27px"/\>
+    \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 80px" name="outline"\>Brief outline of plot\</textarea\>
+    \<input type="submit" value="Submit" class="submit-button"/\>
+    \<action\>
+      \$[\$error = nil;
+      \$id=Str(time());
+      if(\$title == "") \{
+        \$error = "No title was submitted.";
+        return nil;
+      \}
+      /* does the plot already exist? */
+      if(Get(this, "plot:current:"+\$id) \|\| Get(this, "plot:proposed:"+\$id) \|\| Get(this, "plot:archived:"+\$id)) \{
+        \$error = "An error happened. Please try again.";
+        return nil;
+      \}
+      /* set the plot */
+      \$id = "plot:proposed:"+\$id;
+      Set(this, \$id, (\{ \$title, \$outline, (\{ \}), (\{ \}), \$name, (\{ \$name \}), (\{ \}) \}));
+      return nil;]
+      \{? \| \$(error) \|
+        \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" propose="TRUE" error="\$(error)"/\>
+      \|
+        \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(id)"/\>
+      \}
+    \</action\>
+  \</zform\>
+  \</p\>
+\}
+\{? \| \$(movetocurrent) \|
+  \$[/* move the proposed plot to the current plots list */
+  /* first check that they are allowed to */
+  if(!\$isapprover) return nil;
+  \$newname = "plot:current:"+\$checkplot[14..strlen(\$checkplot)-1];
+  Set(this, \$newname, copy(Get(this, \$checkplot)));
+  Set(this, \$checkplot, nil);
+  \$checkplot = \$newname;
+  return nil;]
+\}
+\{? \| \$[/* are they allowed to view this plot? */
+if(\$checkplot \&\& (\$isplotter \|\| member(\$name, \$checkplot[5])))
+  return TRUE;
+return FALSE;] \|
+  \$[\$details = Get(this, \$checkplot);
+  /* if we didn't find it, try with the others */
+  if(!\$details) \{
+    if(Get(this, "plot:current:"+\$checkplot[14..strlen(\$checkplot)-1]))
+      \$details = Get(this, "plot:current:"+\$checkplot[14..strlen(\$checkplot)-1]);
+  \}
+  return nil;]
+  \{? \| \$(delcomment) \|
+    \$[/* check if we are allowed to delete this */
+    if(!\$isplotter \&\& \$name != \$details[4]) return nil;
+    /* delete the comment */
+    \$details[3][\$delcomment-1] = nil;
+    \$details[3] -= (\{ nil \});
+    Set(this, \$checkplot, \$details);
+    return nil;]
+  \|\}
+  \{? \| \$(approvestep) \|
+    \{? \| \$(isapprover) \|
+      \$[/* approve the step */
+      \$details[2][\$approvestep-1][3] = \$name;
+      return nil;]
+    \|\}
+  \|\}
+  \{? \| \$(deletestep) \|
+    \{? \| \$(isapprover) \|
+      \$[/* delete the step */
+      \$details[2][\$deletestep-1] = nil;
+      \$details[2] -=  (\{ nil \});
+      return nil;]
+    \|\}
+  \|\}
+  \<h3\>\$(details.0)\</h3\>
+  \<p\>\$(details.1)\</p\>
+  \{? \| \$[if(\$details[2] \&\& sizeof(\$details[2])) return TRUE; return FALSE;] \|
+    \<for var="step" val="\$(details.2)"\>
+      \<table width="100%" border="1"\>\<tr\>\<td\>
+      \<h4\>\$(step.0) - Approved:
+      \{? \| \$(step.3) \| Yes \| No \}
+      \</h4\>
+      \<p\>\$(step.1)\</p\>
+      \<p\>\$(step.2)
+      \{? \| \$[if(\$isapprover \&\& !\$details[2][\$iteration-1][3]) return TRUE; return FALSE;] \|
+        \<sbr/\>\\\&nbsp;\<sbr/\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(checkplot)" deletestep="\$(iteration)"\>Delete Step\</zlink\>]
+      \|\}
+      \{? \| \$[if(\$isapprover \&\& !\$details[2][\$iteration-1][3]) return TRUE; return FALSE;] \|
+        \<sbr/\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(checkplot)" approvestep="\$(iteration)"\>Approve Step\</zlink\>]
+      \|\}
+      \</p\>
+      \</td\>\</tr\>\</table\>
+    \</for\>
+  \|\}
+  \{? \| \$[if(\$details[3] \&\& sizeof(\$details[3])) return TRUE; return FALSE;] \|
+    \<table width="100%" border="1"\>
+    \<for var="comment" val="\$(details.3)"\>
+      \<tr\>\<td\>
+      \<p\>\$(comment.0.0) - \$(comment.1)
+      \{? \| \$[/* can we delete this? */
+      return TRUE;] \|
+        \<sbr/\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(checkplot)" delcomment="\$(iteration)"\>Delete Comment\</zlink\>]
+      \}
+      \</p\>
+      \</td\>\</tr\>
+    \</for\>
+    \</table\>
+  \|\}
+  \{? \| \$(addstep) \|
+    \<p\>
+    \<zform checkplot="\$(checkplot)"\>
+    Name of this step: \<input name="title" style="width:160px; height:27px"/\>
+    \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 80px" name="outline"\>Brief outline of how PCs are involved at this stage of the plot\</textarea\>
+    \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 80px" name="props"\>List of required props or code\</textarea\>
+    \<input type="submit" value="Submit" class="submit-button"/\>
+    \<action\>
+      \$[\$error = nil;
+      if(\$title == "") \{
+        \$error = "No name for this step.";
+        return nil;
+      \}
+      /* set the plot */
+      \$tmp = Get(this, \$checkplot);
+      \$tmp[2] += (\{ (\{ \$title, \$outline, \$props, nil \}) \});
+      Set(this, \$checkplot, \$tmp);
+      return nil;]
+      \{? \| \$(error) \|
+        \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" propose="TRUE" error="\$(error)"/\>
+      \|
+        \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(checkplot)" error="\$(error)"/\>
+      \}
+      \</action\>
+    \</zform\>
+    \</p\>
+  \|
+    \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(checkplot)" addstep="TRUE"\>Add step\</zlink\>]\</p\>
+  \}
+  \{? \| \$(addcomment) \|
+    \<p\>
+    \<zform checkplot="\$(checkplot)" name="\$(name)"\>
+    Your name: \<input name="myname" style="width:160px; height:27px"/\>
+    \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 80px" name="comment"\>Write your comment here\</textarea\>
+    \<input type="submit" value="Submit" class="submit-button"/\>
+    \<action\>
+      \$[\$error = nil;
+      if(\$myname == "")
+        \$myname = "Anon.";
+      /* set the comment */
+      \$tmp = Get(this, \$checkplot);
+      \$tmp[3] += (\{ (\{ (\{ \$myname, \$name \}), \$comment \}) \});
+      Set(this, \$checkplot, \$tmp);
+      return nil;]
+      \<redirect base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(checkplot)" error="\$(error)"/\>
+    \</action\>
+    \</zform\>
+    \</p\>
+  \|
+    \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(checkplot)" addcomment="TRUE"\>Add comment\</zlink\>]\</p\>
+  \}
+  \{? \| \$[if(\$checkplot[0..12] == "plot:proposed" \&\& !\$movetocurrent \&\& \$isapprover) return TRUE; return FALSE;] \|
+    [\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(checkplot)" movetocurrent="TRUE"\>Approve plot\</zlink\>]
+  \|\}
+\}
+\<h2\>Current Plots\</h2\>
+\$[\$plots = map_indices(prefixed_map(this."*", "plot:current:")); return nil;]
+\<for var="plot" val="\$(plots)"\>
+  \$[\$details = Get(this, \$plot); return nil;]
+  \{? \| \$[/* are they allowed to view this plot? */
+if(\$details \&\& (\$isplotter \|\| member(\$name, \$details[5])))
+  return TRUE;
+return FALSE;] \|
+    \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(plot)"\>details\</zlink\>]
+    \$(details.0)\</p\>
+  \}
+\</for\>
+\<h2\>Proposed Plots\</h2\>
+  \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" propose="TRUE"\>Propose a plot\</zlink\>]\</p\>
+\$[\$plots = map_indices(prefixed_map(this."*", "plot:proposed:")); return nil;]
+\<for var="plot" val="\$(plots)"\>
+  \$[\$details = Get(this, \$plot); return nil;]
+  \{? \| \$[/* are they allowed to view this plot? */
+if(\$details \&\& (\$isplotter \|\| member(\$name, \$details[5])))
+  return TRUE;
+return FALSE;] \|
+    \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(plot)"\>details\</zlink\>]
+    \$(details.0)
+    \{? \| \$[/* are they allowed to delete this plot? */
+      if(\$details \&\& (\$isapprover \|\| member(\$name, \$details[5])))
+      return TRUE;
+      return FALSE;] \|
+      [\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" deleteplot="\$(plot)"\>delete\</zlink\>]
+    \|\}
+    \</p\>
+  \}
+\</for\>
+\<h2\>Plot Archives\</h2\>
+\$[\$plots = map_indices(prefixed_map(this."*", "plot:archived:")); return nil;]
+\<for var="plot" val="\$(plots)"\>
+  \$[\$details = Get(this, \$plot); return nil;]
+  \<p\>[\<zlink base="/SAM/Prop/Ironclaw:Lib:Staff:Plots/popup" checkplot="\$(plot)"\>details\</zlink\>]
+  \$(details.0)\</p\>
+\</for\>
+      \</td\>\</tr\>\</table\>
+        \<span id="bottombox"\>
+          \<div id="footer"\>\\\&nbsp;\</div\>
+        \</span\>
+\</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="plot:current:1171359069">
+         (\{ "Sir Lyam's Quests", "The plot consists of Vanya making a stink about the wolves, and the wlves refucing to let Lyam be stripped of his title, and instead proposing a serioes of quests (to be defined later) which he employs the help of 3 different PCs each time and a final battle against the opponent of the Rinaldi's choosing. The point of the battle is not to win/lose but to show extreme honor in fighting.", (\{  \}), (\{  \}), "thyenehyas", (\{ "thyenehyas" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:current:alestrial">
+         (\{ "Alessa's Trial", "The outline is very simple. Give players the chance to either save, or kill off Alessa, who now leads the Sailors Guild.", (\{ (\{ "The Arrest", "Having been informed, Joshua seeks to arrest Alessa for various crimes, including: Murder, Kidnapping, Theft and Aiding in the Escape of Chinco. Joshua wants the other PC Guards to be with him when he makes the arrest, in case the Black decide to kick off.", "List of required props or code", nil \}), (\{ "The Evidence", "PC Guards, and anyone that have a problem with Alessa are asked to attempt to find evidence to indicate that she performed this acts of crime. Each piece of evidence can, of course, have a tiny mini-plot surrounding it to make it fun for the players seeking it. For those that are allied with Alessa, they are asked to find ways to get her off these charges.", "Evidence (Will be edited later)", nil \}), (\{ "The Trial", "The trial of Alessa will be a public affair, allowing any players interested to come forward and watch the proceedings. Depending on evidence shown depends on what will happen to her. Should she come out on top, she will be released to get caught another day. Should she not... well, then the decision of her punishment is left to the players to decide, with the help of our wonderful magistrate.", "", nil \}) \}), (\{  \}), nil, (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:current:arrestjosh">
+         (\{ "Arrest the Guard!", "Joshua (an upstanding and respected Guard) has found himself on the wronf side of the law when one of his deputies lets a criminal free without due process. This came up during the trial of one of the accomplices (to the freed prisoner). During the trial, Joshua was charged with the offense and a court date will be set.", (\{ (\{ "The Trial", "Joshua will face the very law he has sworn to uphold in this drama-filled event complete with a noble magistrate, witnesses, the offending criminal and apples from heaven! Stay tuned.", "A better courtroom, a better gavel, one of the wigs with the white hair. Heavenly apples.", nil \}) \}), (\{  \}), nil, (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:current:belltower">
+         (\{ "Building an emergency belltower", "The guard wish to build an emergency belltower that can be heard across the city, which can be rung to signal the guards or citizens.", (\{ (\{ "Gather materials", "PCs should gather materials to build the clocktower. Optionally, the Bisclavret house can agree to send the wood.", "lumber and scaffolding to add the lumber to", "barbra18" \}), (\{ "Build the clocktower", "Once the materials are gathered, the clocktower will be built. Perhaps a guild with enough worker tokens can donate them to get it \\"built\\"", "Final clock tower. Needs code so that it can be rung, and an alert heard through the city.", "barbra18" \}), (\{ "test", "Brief outline of how PCs are involved at this stage of the plot", "List of required props or code", "barbra18" \}) \}), (\{  \}), nil, (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:current:guildrecord">
+         (\{ "Spy amongst the wolves", "A new member joins the Bisclavret, and is discovered to be a spy for the Doloreaux", (\{ (\{ "Check guild record", "A PC is sent to check the guild record of this new member. The guild record reveals that years ago they used to work for the Avoirdupois, and then vanished.", "Code to allow PCs to get guild charters about other characters.", nil \}), (\{ "Deal with the spy", "The Bisclavret PCs can decide what to do with the spy. Since it will be a VP, they can make whatever decisions they want (such as kill him)", "none, unless PCs request something specific.", nil \}), (\{ "Secret discovery", "Secretly the spy has been working for Sir Burcet, as an inside agent. PCs may or may not discover this through their RP.", "None.", nil \}) \}), (\{  \}), nil, (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:1170556593">
+         (\{ "A Carnival of Slaves", "Harken Zeiss, the slave trader attempting to set up business in\\r\\nTriskellian, has been awaiting a shipment of slaves from one of his\\r\\nother branches for some time, as it has been delayed by unpredictable\\r\\nstorms at the port from which the ships are attempting to leave. Now,\\r\\nfinally, this shipment is on its way!\\r\\n\\r\\nThe plot begins when Zeiss gets word that his ships are on their way\\r\\n(when I get a predetermined number of slave-character players waiting\\r\\nto enter the game), and begins advertising and other preperations to\\r\\nreceive them. He has planned a carnival to show of his new products,\\r\\nand to give himself good PR in the city.\\r\\n\\r\\nThe first thing I see actually -happening- for the plot is the ship\\r\\npulling into port, and Zeiss receiving his slaves. This could be fun\\r\\nfor all the players, considering there would actually be a ship there,\\r\\nZeiss will (probably) be paying people to help him with the cargo,\\r\\netc. and it would get people psyched for the coming carnival.\\r\\n\\r\\nThen, the carnival itself. There would, of course, be an admissions\\r\\ncharge, to cover the cost of the provided food, and setting up\\r\\neverything (unless some arrangement was made with someone to provide\\r\\nthis for free or something like that, then it would be free for people\\r\\nto attend). At the carnival, there would be whatever forms of\\r\\nentertainment the city can come up with. (Maybe a play or a band for\\r\\nany Guild of Arts to perform, a little sword tourney for any martial\\r\\nguilds, stuff like that (of course the carpenters would be needed to\\r\\nset up tables and the stage and stuff like that) (not to mention there\\r\\nwould need to be guards and peacekeepers and stuff). And Zeiss' slaves\\r\\nwould be serving food to people (to show off the slaves, since this is\\r\\nessentially a big advertisement for Zeiss).\\r\\n\\r\\nThen, after that, all that would remain is the clean-up of everything\\r\\nthat was set-up for the carnival.", (\{  \}), (\{ (\{ (\{ "Quo", "barbra18" \}), "Love the writeup. Perhaps use steps to clearly define what your wanting to do. I know that I had a hard time readying it all. ;)" \}) \}), "random1377", (\{ "random1377" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:1170808288">
+         (\{ "No White Mages", "Plot Scale : Medium / City Wide\\r\\n\\r\\nTarget Characters : Clergy / VP (Holy See? Or Priest of S'allumer, noble houses at their wont)\\r\\nPotential Players : Any\\r\\n\\r\\nPlot Outline :\\r\\n\\r\\nPrelude : - Someone dies - (Yeah that won't be hard)\\r\\n\\r\\nPlot : Upon their death, since the Church has been taxing more and more, the Priests of S'Allumer get sicker and sicker from the ressurection, and well the frank lack of thanks, sactuary, respect of their Cathedreal, lack of ranks, etc? Deterorate slowly. Something goes horribly wrong (If involved other magics or just too much of a strain) The Cathedreal starts to deterorate if lasts too long. Priests / Clergy get sicker and sicker. (Maybe die) Players must find a solution. \\r\\n\\r\\nPlot Duration : A few days to one week\\r\\nPlot Solution : What the PCs decide is wrong. Geared toward the following...\\r\\n\\r\\na. Giving up their life essence to save clergy. (goose and gander) giving involved people something spiffy a 'mark' only seen by people involved in the plot (can be used for later plots) a mark visible to all, streak in their hair, or some other cool identifying mark. \|\| STAFF INVOLVMENT : High \|\| BUILDING COMMITMENT : Low / none \|\| CODING COMMITMENT : Average\\r\\n\\r\\nb. A scavanger hunt plot, where players are instead directed to a staff approved list of elements and things that will be placed throughout the game. Gathering these things will produce a nice ritual which the PCs can write up/Holy See can bring. Ritual is done, PCs must preform the parts. (If plot line fails defer to plot line a) STAFF INVOLVMENT : High \|\| BUILDING COMMITMENT : Moderate \|\| CODING COMMITMENT : Moderate\\r\\n\\r\\nc. Call for a sacrifice of things from different people (Like a Lent?) Where they have to give up what is most valueable to them for the period of days to a week durring a ritual. At which time you can turn off their skills, or voice, or abilities, or take their things, where they can RP a different aspect of their character (Or leave it to them until it 'wears off' with a guideline of up to a week, depending on character. STAFF INVOLVMENT : Moderate \|\| BUILDING COMMITMENT : Low / None \|\| CODING COMMITMENT : Low / None \\r\\n\\r\\nd. Other Resolutions may include PCs comging up with their own ideas not covered, which in that case you go with them and guide them if they get too outlandish. If PCs don't come up with a viable plot (Which happens a lot) Using the Priest of s'allumer or a VP / Holy See etc? Or perhaps even text documents that can be presented to the clergy / sent from an outside source -\> Guide to favored path above. I prefer the c -\> a but that's just me because it allows for more freedom of role play.\\r\\n\\r\\n----- PLOT PURPOSE -----\\r\\n\\r\\n1. Add drama / conflict of a -non enemy- enemy for PCs to over come (IE Not fighting against a person yet a thing).\\r\\n2. Enlighten players / characters on the strife of why it's difficult to ressurect people (Giving staff a definate lax in being able to delay the White Magic System for a bit)\\r\\n3. Role Playing opportunities \\r\\n4. Give a higher value to death in the game for all PCs\\r\\n5. Magical / Mystical aspect to the game vs. hack n slash\\r\\n6. More involvment of all pcs, by cross-grouping cliques.\\r\\n7. Give a viable reason why there are no White Mages in the game currently.\\r\\n\\r\\nDRAWBACKS :\\r\\n1. Players might not care\\r\\n2. Clergy may dislike plot / become discontent\\r\\n3. Anger from those who feel ousted by plot being targeted at a group of people.\\r\\n\\r\\n~ SP Banana", (\{  \}), (\{  \}), "thyenehyas", (\{ "thyenehyas" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:1171055551">
+         (\{ "The Three Generals", "This plot willd detail an escalating problem between the Dolos, Avo's and Bisc's. The three generals, Haruko (Avo), Granz (Bisc) and Lucina (Dolo) enter docktown.", (\{  \}), (\{  \}), "barbra18", (\{ "barbra18" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:1171920842">
+         (\{ "M'Fin' PIRATES!", "Basically a bunch of NIPPED Pirates invade Docktown, the leader of the Pirates would be a VP (Victim Player) that would be beyond the stero-type. Have another 'First Mate' VP? (Who is big and burly) Describe before the Captain VP How fearsome and horrid he is, (comedic releif being he's actually a short scrawny guy but can fight really well, very brainy) and have the PCs fend off the siege, comendere the ship, (Where cool new cloths, dyes, and other baubles can be had have it be a 'take one' code from each pile store randomly generated) for a reward in this case. Etc etc.\\r\\n", (\{  \}), (\{  \}), "thyenehyas", (\{ "thyenehyas" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:1171921047">
+         (\{ "Tidal Wave", "End of Beta plot, earthquake/tidal wave washes through docktown (blocked by Newtown's gates) to mark the end of Beta with a BANG baby. Yeah! Maps to change perhaps, (or it's rebuilt as it was) or have places inaccessable, have people flee, city is rebuilt another 5 year lapse and Gold occurs. ~ Banana", (\{  \}), (\{  \}), "thyenehyas", (\{ "thyenehyas" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:1172306321">
+         (\{ "Assassin on the loose", "Brief outline of plot\\r\\n\\r\\nAn assassin is loose on the streets, stealing away in the shadows and roof tops with arrows pointed at our good people. He appears to also have a taste for poison and harming children. So, please keep an eye on your children. He may be working with others. Lady Kimi and Aruthur have already suffered in his hands. --I leave it to the players to discover how to cure them. It is nothing that cannot be treated by healers ic and a little thought. I like to also have a minor character (normal pc character created) to be the assassin. The people may kill him if they catch him or the guards find him and place him under arrest. We have some characters out there, who would kill him on sight. The plot should be fairly short and have little to no lasting effects on future plots, unless we want to.  ---Maya", (\{ (\{ "test", "Brief outline of how PCs are involved at this stage of the plot", "List of required props or code", nil \}) \}), (\{  \}), "psinix", (\{ "psinix" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:1184319879">
+         (\{ "Attack on caravans", "In the AA's will be NPC/NIP bandits who'll attack the caravans heading to the city so the regular shipments of a certain kind (like stone, cloth, dye, fancy metals etc) will stop untill those bandits have been beat by a group of PC's.\\r\\nShortly put:\\r\\nAn AA contains a bunch of NPC/NIP bandits and the PC's have to gather a large enough army to go out and kill them in order to get the shipments back into the city again. Until it's done, there'll be no more of these sort of shipments.\\r\\nHopefully it'll encourage the guilds to pull some politics. As in, my gold can't get through the bandits area, please help our guild. And people push and pull in one or another direction to make this happen.\\r\\nCan easily be a reoccuring plot started everytime we want a bit of action on the trading front and want to give players a chance to play heroes.", (\{  \}), (\{  \}), "missk", (\{ "missk" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:1184798014">
+         (\{ "NIP thugs", "Combat NIPs who stand in dark alleys attacking people who're not careful who pass by. Groups of thugs set free on the city once in a while. Pirates rowing through causing trouble and so on. A lot of NIPs that PCs can fight and win over when things are too dull.", (\{  \}), (\{  \}), "missk", (\{ "missk" \}), (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plot:proposed:persiahorse">
+         (\{ "Persia and the Horse", "Inter-species marriages between nobles is severely frowned upon, and someone wants to make sure that things appear normal. They are willing to go to the lengths to have a mage make something to MAKE her a horse. ", (\{ (\{ "Plotting the deed", "Baroness Faye will be approached by someone with influence, who is also interested in keeping the Avoirdupois pure blooded. He will offer services, and see what she accepts. Depending on if she consults, or other ideas she may have, the plot could take a very different turn at this point.", "influential VP (clayton?)", "tonyd" \}) \}), (\{ (\{ (\{ "Quo", "barbra18" \}), "Don't mind using Clayton to do this. Perhaps explain each tree if the players choose one way over another? Thank ya" \}) \}), nil, (\{  \}) \})
+      </Core:Property>
+      <Core:Property property="plotters">
+         (\{ "barbra18", "tonyd", "tunk_bodin", "missk" \})
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1170477771, "tonyd", "P", 1170478074, "tonyd", "P", 1170478083, "tonyd", "P", 1170478102, "tonyd", "P", 1170478479, "tonyd", "P", 1170551692, "tonyd", "P", 1170554868, "tonyd", "P", 1170555034, "tonyd", "P", 1170555057, "tonyd", "P", 1170555066, "tonyd", "P", 1170555955, "tonyd", "P", 1170556189, "tonyd", "P", 1170556481, "tonyd", "P", 1170556660, "tonyd", "P", 1170556698, "tonyd", "P", 1170556989, "tonyd", "P", 1170557164, "tonyd", "P", 1170557253, "tonyd", "P", 1170557847, "tonyd", "P", 1170557869, "tonyd", "P", 1170557915, "tonyd", "P", 1170557939, "tonyd", "P", 1170558092, "tonyd", "P", 1170558363, "tonyd", "P", 1170558396, "tonyd", "P", 1170559055, "tonyd", "P", 1170559065, "tonyd", "P", 1170559117, "tonyd", "P", 1170559385, "tonyd", "P", 1170559418, "tonyd", "P", 1170559455, "tonyd", "P", 1174315179, "barbra18", "E", 1174315273, "barbra18", "E", 1174315304, "barbra18", "E", 1175517305, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

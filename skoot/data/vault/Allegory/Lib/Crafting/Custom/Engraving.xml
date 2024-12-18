@@ -1,0 +1,285 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:engrave">
+         X[S] \<zform actor="\$(actor)" item="\$(item)" error="\$(error)" examine1="\$(examine1)"\>
+\$[\$item= Obj(\$item);                            
+    \$actor = Obj(\$actor);                   
+    \$thread = \$thread;]
+\<input type="hidden" name="error" value="\$(error)"/\>
+\<table\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td colspan="3"\>\<font size="2"\>\<i\>Type the description of the engraving in the box below. Whatever you type will replace 'ENGRAVING_TEXT' in the sample description... pay special attention to periods.\</i\>\</font\>\</td\>
+\</tr\>
+\<tr\>
+        \<td\>\<b\>Description:\</b\>\</td\>
+        \<td colspan="2"\>\$[Set(\$item, "trait:engraving", "ENGRAVING_TEXT");              
+                          \$desc = UnSAM(ParseXML("\<describe-view view=\\"\$(item)\\" type=\\"examine\\"/\>"));            
+                          Set(\$item, "trait:engraving", nil);              
+                          if(!contains(\$desc, "ENGRAVING_TEXT")) error("This item cannot be engraved.");              
+                          return \$desc;]\</td\>
+\</tr\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td valign="top"\>\<b\>ENGRAVED_TEXT:\</b\>\</td\>
+        \<td colspan="2"\>\<textarea name="examine" style="height:350px; width:100%"\>\$(examine1)\</textarea\>\</td\>
+\</tr\>
+\<tr\>
+        \<td colspan="3" align="right"\>(Note: By clicking "Finish" you agree to the rules outlined below.) \<input type="submit" name="update" value="Finish" style="height:30px"/\>\</td\>
+\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>Rules:\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>1. Submissions can have magical/supernatural themes but cannot be magical/supernatural themselves (ie. a painting of a figure that moves around the canvas).\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>2. Vulgar/sexually explicit material is forbidden--if the content is not acceptable for a minor, do not submit it! When in doubt, contact staff.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>3. Avoid phrasing that forces the viewer to think or feel a certain way (ie 'this painting is so beautiful you can't help but cry').\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>4. Do not reference details of the canvas that do not actually exist, such as a frame.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>5. I understand if I violate these rules, access to this command will be revoked.\</font\>\</td\>\</tr\>
+\</table\>
+    \<action\>
+        \$["";                                             
+              Call(\$this, "engrave", \$design: \$examine, \$actor: \$actor, \$item: \$item, \$cost: 10);                 
+              \$error = nil;]
+        \{? \| \$(error) \| \<redirect propob="\$(this)" prop="index" actor="\$(actor)" item="\$(item)" error="\$(error)" examine1="\$(examine)"/\> \| \<redirect propob="\$(this)" prop="finish" actor="\$(actor)" item="\$(item)" error="\$(error)" examine1="\$(examine)"/\> \}
+    \</action\>
+\</zform\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" actor="\$(actor)" item="\$(item)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+    \<title\>Custom Engraving\</title\>
+    \<meta http-equiv="content-type" content="text/html; charset=UTF-8"/\>
+\</head\>
+   \<body\>
+      \$(this.xtra:header)
+      \<div id="main"\>
+        \<div id="textareafull"\>
+        \$[::popup_initialize();          
+            \$actor = Obj(\$actor);]
+            \$(this.html:engrave)
+        \</div\>
+        \<span id="bottombox"\>
+          \<div id="footer"\>\\\&nbsp;\</div\>
+        \</span\>
+      \</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="merry:lib:engrave">
+         X[M] /* engrave an item */   
+ 
+/* set the engraving */        
+\$item."trait:engraving" = \$design; 
+ 
+if(\$cost) \{ 
+    \$text = "! ENGRAVING ! " + Describe(\$item) + ":\<" + Str(\$item) + "\> -\> " + \$design; 
+    assist::dofileassist(\$data: Obj("Data:DB:assist:AssistGeneralDB"), \$char: Str(\$actor), \$queue: "custom", \$assisttext: \$text, \$log: "[TAS]");  
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] if(\$dat == nil) \{ 
+    error("page reached without a udat"); 
+\} 
+if(\$name == nil) \{ 
+    error("page reached without a name"); 
+\} 
+if(\$actor == nil) \{ 
+    error("page reached without an actor"); 
+\} 
+if(!Obj(\$actor)) \{ 
+    error("page reached without a valid actor"); 
+\} 
+\$actor = Obj(\$actor); 
+ 
+if(!Obj(\$item)) \{ 
+    error("page reached without a valid item"); 
+\} 
+\$item = Obj(\$item); 
+ 
+if(\$item."trait:engraving") \{ 
+    error("item has already been engraved"); 
+\} 
+ 
+if(\$item."base:environment" != \$actor) \{ 
+    error("you  must be holding the item"); 
+\} 
+ 
+/* Check the player isn't trying to access someone elses body */ 
+/* Check if the players roster of characters */ 
+\$bodies = Udat::query_bodies_in_roster(\$user: \$name); 
+ 
+if(!member(\$actor, \$bodies)) \{ 
+    error(dump_value(\$actor)+" body not found in "+dump_value(\$name)+" character roster"); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:engrave-dob">
+         X[M] object database;
+database = \$\{Allegory:Lib:Crafting:EngravingDB\}; /* defunct */;
+
+if(\$this."trait:engraving") \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " has already been engraved.");
+    return FALSE;
+\}
+
+Set(\$this, "trait:engraving", "ENGRAVE TEST");
+\$desc = UnSAM(ParseXML("\<describe-view view=\\"\$(this)\\" type=\\"examine\\"/\>"));
+Set(\$this, "trait:engraving", nil);
+if(!contains(\$desc, "ENGRAVE TEST")) \{
+    EmitTo(\$actor, "You cannot engrave that.");
+    return FALSE;
+\}
+
+/* sanity check */
+if(this."trait:engraving") \{
+ EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is already engraved.");
+ return FALSE;
+\}
+
+if(sizeof(\$dob) != 1) \{
+ EmitTo(\$actor, "Please only attempt to engrave one item at a time.");
+ return FALSE;
+\}
+
+if(this."base:worn-by") \{
+ EmitTo(\$actor, "How can you engrave " + Describe(this, nil, \$actor) + " while someone is wearing it?");
+ return FALSE;
+\}
+
+if(\$this."base:environment" != \$actor) \{
+ EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + " to engrave it.");
+ return FALSE;
+\} 
+
+/* How can we determine what skill to use? */
+/* Let's look at who made the item... */
+
+if(!\$this."trait:madeby:object") \{
+   EmitTo(\$actor, "You can only engrave crafted items.");
+   return FALSE;
+\}
+
+\$creator = \$this."trait:madeby:object";
+
+/* Look at the creator's crafting careers */
+if(Int(\$creator."skill:alteration:metalworking") \> 0) \$blacksmith = 1;
+if(Int(\$creator."skill:alteration:woodcarving") \> 0) \$carpenter = 1;
+if(Int(\$creator."skill:alteration:stonemasonry") \> 0) \$stonemason = 1;
+if(Int(\$creator."skill:alteration:jewelcrafting") \> 0) \$jeweler = 1;
+if(Int(\$creator."skill:alteration:bookbinding") \> 0) \$bookbinder = 1;
+
+/* Look at the actor's crafting careers */
+if(\$actor."trait:class1" == "blacksmith" \|\| \$actor."trait:class2" == "blacksmith") \$blacksmith2 = 1;
+if(\$actor."trait:class1" == "carpenter" \|\| \$actor."trait:class2" == "carpenter") \$carpenter2 = 1;
+if(\$actor."trait:class1" == "stonemason" \|\| \$actor."trait:class2" == "stonemason") \$stonemason2 = 1;
+if(\$actor."trait:class1" == "jeweler" \|\| \$actor."trait:class2" == "jeweler") \$jeweler2 = 1;
+if(\$actor."trait:class1" == "bookbinder" \|\| \$actor."trait:class2" == "bookbinder") \$bookbinder2 = 1;
+
+
+\$matched = 0;
+
+
+if(!\$blacksmith2 \&\& !\$carpenter2 \&\& !\$stonemason2 \&\& !\$jeweler2 \&\& !\$armorsmith2 \&\& !\$weaponsmith2 \&\& !\$bookbinder2 \&\& !\$actor."crafting:override") \{
+    EmitTo(\$actor, "You don't know how to engrave " + Describe(\$this, nil, \$actor) + ".");
+    return FALSE;
+\}
+
+if(!\$actor."crafting:override") \{
+    if( (!\$blacksmith \|\| (\$blacksmith \&\& !\$blacksmith2)) \&\&
+        (!\$carpenter \|\| (\$carpenter \&\& !\$carpenter2)) \&\&
+        (!\$stonemason \|\| \$stonemason \&\& !\$stonemason2) \&\&
+        (!\$jeweler \|\| (\$jeweler \&\& !\$jeweler2)) \&\&
+        (!\$bookbinder \|\| (\$bookbinder \&\& \$bookbinder2)) ) \{
+            EmitTo(\$actor, "You don't know how to engrave " + Describe(\$this, nil, \$actor) + ".");
+            return FALSE;
+    \}
+\}
+
+if(\$blacksmith2) \{
+    \$skill = Int(\$actor."skill:alteration:metalworking");
+\} else if(\$carpenter2) \{
+    \$skill = Int(\$actor."skill:alteration:woodcarving");
+\} else if(\$stonemason2) \{
+    \$skill = Int(\$actor."skill:alteration:stonemasonry");
+\} else if(\$jeweler2) \{
+    \$skill = Int(\$actor."skill:alteration:jewelcrafting");
+\} else if(\$bookbinder2) \{
+    \$skill = Int(\$actor."skill:alteration:bookbinding");
+\}
+
+if(\$actor."crafting:override") \$skill = 24;
+
+if(\$(raw-evoke)) \{
+    if(\$(raw-evoke) == "custom") \{
+        if(\$actor.mobimode) \{
+            EmitTo(\$actor, "POPUPURL::http://ironclaw.skotos.net/SAM/Prop/Ironclaw%3ALib%3ACrafting%3ACustom%3AEngraving/html:index?actor=" + url_encode(name(\$actor)));
+        \}
+
+
+        EmitTo(\$actor, "http://ironclaw.skotos.net/SAM/Prop/Ironclaw%3ALib%3ACrafting%3ACustom%3AEngraving/html:index?actor=" + url_encode(name(\$actor)) + "\&item=" + url_encode(name(\$this)));
+
+        \$delay(0.1, FALSE, "8e96");
+
+        Popup(\$actor, \$\{Allegory:Lib:Crafting:Custom:Engraving\}, "html:index", \$actor: \$actor, \$item: \$this);
+
+        return FALSE;
+    \} else \{
+        \$tmp = Get(database, \$(raw-evoke));
+        if(\$tmp) \{
+            /* found a change to make */
+            if(\$tmp["skill"] \&\& \$tmp["skill"] \> \$skill) \{
+                EmitTo(\$actor, "You don't have enough skill to engrave " + Describe(this, nil, \$actor) + " in that way.");
+                return FALSE;
+            \}
+
+            if(\$tmp["design"]) \{ 
+                \$design = \$tmp["design"];
+            \} else \{
+                \$design = "It has been engraved with a " + \$(raw-evoke) + " design.";
+            \}
+
+            /* no further objections. Make the change. */
+            EmitTo(\$actor, "You engrave " + Describe(this, nil, \$actor) + " with a "+\$(raw-evoke) + " pattern.");
+            EmitIn(\$actor."base:environment", Describe(\$actor) + " engraves " + Describe(this, \$actor) + " with a " + \$(raw-evoke) + " pattern.", \$actor);
+            Call(\$\{Allegory:Lib:Crafting:Custom:Engraving\}, "engrave", \$actor: \$actor, \$item: \$this, \$design: \$design);
+            return FALSE;
+        \}
+    \}
+\}
+
+/* list engraving options */
+\$options = (\{ \});
+\$tmp = Get(database, "*");
+\$indices = map_indices(\$tmp);
+\$indices -= (\{ "revisions" \}); 
+
+for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{
+ if(typeof(\$tmp[\$indices[\$i]]) == T_MAPPING \&\& (!\$tmp[\$indices[\$i]]["skill"] \|\| Int(\$tmp[\$indices[\$i]]["skill"]) \<= \$skill)) \{
+  \$options \|= (\{ \$indices[\$i] \});
+ \}
+\}
+/* No options for engraving yet */ 
+/*
+if(!sizeof(\$options)) \{
+ EmitTo(\$actor, "You don't know how to engrave " + Describe(this, nil, \$actor) + ".");
+ return FALSE;
+\} */
+
+EmitTo(\$actor, "To engrave an item, it must not be worn. Then the command is:");
+EmitTo(\$actor, "engrave " + Describe(this) + " 'PATTERN");
+EmitTo(\$actor, "Your pattern options are: " + implode(\$options, ", "));
+EmitTo(\$actor, "You can also do a custom engraving using the syntax: engrave my item 'custom'.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1562788359, "jominey", "E", 1562796808, "jominey", "E", 1562797143, "jominey", "E", 1563031504, "jominey", "E", 1570121609, "sendnoodlez", "X", 1570294704, "jominey", "R", 1572304099, "jominey", "E", 1572304130, "jominey", "E", 1573096196, "jominey", "E", 1573096339, "jominey", "E", 1573096416, "jominey", "E", 1573501312, "jominey", "E", 1576685912, "jominey", "E", 1591365264, "jominey", "E", 1591365465, "jominey", "E", 1598913944, "jominey", "E", 1598914075, "jominey", "E", 1598914096, "jominey", "E", 1598914246, "jominey", "E", 1600303550, "jominey", "E", 1600303636, "jominey", "E", 1600304281, "jominey", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

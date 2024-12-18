@@ -1,0 +1,241 @@
+<object clone="/base/obj/thing" owner="TextIF">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="true" transparent-container="false" public-container="true" tight="true" capacity="1" maxweight="1" verb2="contain" verb3="contains"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="true" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="true"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="vessel"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="vessels"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.detail:description:type){? | $(this.base:inventory.size) | of $(this.base:inventory.0.detail:description:name)|}
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.detail:description:type).
+          </Base:Description>
+          <Base:Description type="type">vessel</Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="#list#">
+         X[M] /*
+
+-----------------------------------
+ LIBRARY CONTENT (Merry/SAM)
+
+ Object:     Shared:drinks:UrVessel
+ Maintainer: Kalle Alm
+ Email:      kalle@mortalis.skotos.net
+ Rev:        1.1
+ Generated:  Sun Aug 13 03:14:52 2006
+ Last rev.:  Mon Aug  7 14:06:16 2006 by zwoc (EED)
+
+
+
+(Do not modify #list#. Automatically constructed property.)
+
+
+-----------------------------------------------------------------------------------------------------------------------
+ lib:drink                      (M) Relay for shared_drink::drink() which additionally checks if there IS a drink to 
+                                    drink, and such.
+ react-desc:act/drink/all-dob   (M) Attempt to drink it all. This is akin to (max) 10 gulps. If the character wants 
+                                    to truly empty the drink and it holds more than 10 gulps worth, they'd have to 
+                                    empty it, not finish it.
+ react-desc:act/drink/small-iob (M) Drink 1 unit.
+ react-desc:act/drink/std-from  (M) Drink 4 units.
+ react-desc:act/drink/std-iob   (M) Drink 4 units.
+ react-desc:act/drink/std-what  (M) Drink 4 units.
+ react-desc:empty-dob           (M) Turn cup upside down and run from mommy. Container/liquid-insensitive (same code 
+                                    for both liquid and vessel).
+ react-desc:refill-dob          (M) Refill container from appropriate container in room or in actor's inventory 
+                                    (e.g. wine glass from held wine bottle).  Container/liquid insensitive.
+-----------------------------------------------------------------------------------------------------------------------
+
+*/
+      </Core:Property>
+      <Core:Property property="export:potable:noslay">
+         1
+      </Core:Property>
+      <Core:Property property="merry:lib:drink">
+         X[M] /*
+ * D=Relay for shared_drink::drink() which additionally checks if there IS a drink to drink, and such.
+ */
+if (!sizeof(this."base:inventory")) \{
+    EmitTo(\$actor, Describe(this, nil, nil, STYLE_NONPOSS \| STYLE_DEFINITE) + " is empty.");
+    return FALSE;
+\}
+return shared_drink::drink(\$what: this."base:inventory"[0]);
+      </Core:Property>
+      <Core:Property property="merry:react-desc:act/drink/all-dob">
+         X[M] /*
+ * D=Attempt to drink it all. This is akin to (max) 10 gulps. If the character wants to truly empty the drink and it holds more than 10 gulps worth, they'd have to empty it, not finish it.
+ */
+::drink(\$amount: 40);
+      </Core:Property>
+      <Core:Property property="merry:react-desc:act/drink/small-iob">
+         X[M] /*
+ * D=Drink 1 unit.
+ */
+::drink(\$amount: 1);
+      </Core:Property>
+      <Core:Property property="merry:react-desc:act/drink/std-from">
+         X[M] /*
+ * D=Drink 4 units.
+ */
+::drink(\$amount: 4);
+      </Core:Property>
+      <Core:Property property="merry:react-desc:act/drink/std-iob">
+         X[M] /*
+ * D=Drink 4 units.
+ */
+::drink(\$amount: 4);
+      </Core:Property>
+      <Core:Property property="merry:react-desc:act/drink/std-what">
+         X[M] /*
+ * D=Drink 4 units.
+ */
+::drink(\$amount: 4);
+      </Core:Property>
+      <Core:Property property="merry:react-desc:empty-dob">
+         X[M] /*
+ * D=Turn cup upside down and run from mommy. Container/liquid-insensitive (same code for both liquid and vessel).
+ *
+ * Note that the empty code in shared_drink targets appropriately, so we don't have to care about that here.
+ */
+if (this."sys:shared:drink:closed" \&\& this."base:holder" != \$actor) \{
+    EmitTo(\$actor, "You cannot empty " + Describe(this, nil, nil, STYLE_NONPOSS \| STYLE_DEFINITE) + " because it is closed and you are not holding it in your hands.");
+    return nil;
+\}
+shared_drink::empty(\$what: this);
+      </Core:Property>
+      <Core:Property property="merry:react-desc:refill-dob">
+         X[M] /*
+ * D=Refill container from appropriate container in room or in actor's inventory (e.g. wine glass from held wine bottle).  Container/liquid insensitive.
+ */
+constant THE = STYLE_DEFINITE \| STYLE_NONPOSS;
+object liquid, container, refiller, holder;
+int    potential;
+
+if (this."sys:shared:drink") \{
+    liquid    = this;
+    container = this."base:environment";
+\} else \{
+    container = this;
+    if (sizeof(container."base:inventory")) \{
+        liquid = container."base:inventory"[0]."core:ur:parent";
+    \} else \{
+        liquid    = this."sys:shared:drink:last-content";
+        potential = TRUE;
+    \}
+    if (!liquid \&\& !\$iob) \{
+        EmitTo(\$actor, "I'm not sure what " + Describe(container) + " contained so I can't actually refill it. Try [ refill " + Describe(container) + " from PLACE ].");
+        return FALSE;
+    \}
+\}
+if (liquid \&\& !liquid."sys:shared:drink") \{
+    EmitTo(\$actor, "You can't refill " + Describe(liquid) + ".");
+    return FALSE;
+\}
+if (container."sys:shared:drink:closed") \{
+    EmitTo(\$actor, Describe(container) + " cannot be refilled because it is closed.");
+    return FALSE;
+\}
+
+if (\$iob) \{
+    /* A source was specified. */
+    refiller = NRefOb(\$iob[0]);
+\} else \{
+    refiller = shared_drink::find_source_for(\$what: liquid, \$where: \$actor."base:environment");
+    if (!refiller) \{
+        /* Let's try the actor's inventory then. */
+        refiller = shared_drink::find_source_for(\$what: liquid, \$where: \$actor);
+    \}
+    if (!refiller) \{
+        EmitTo(\$actor, "There is nothing in here (or in your hands) that can be used to refill " + Describe(container, nil, nil, THE) + ".");
+        return FALSE;
+    \}
+\}
+
+/* Make sure the refiller refills appropriately. */
+if (refiller == container) \{
+    EmitTo(\$actor, "You could theoretically do that, but it wouldn't be right of you to do so.");
+    return FALSE;
+\}
+if (!sizeof(refiller."base:inventory")) \{
+    EmitTo(\$actor, Describe(refiller, nil, nil, THE) + " does not contain anything that can be poured into " + Describe(container, nil, \$actor) + ".");
+    return FALSE;
+\}
+if (liquid \&\& !potential \&\& refiller."base:inventory"[0]."core:ur:parent" != liquid) \{
+    EmitTo(\$actor, Describe(refiller, nil, nil, THE) + " does not contain " + liquid."detail:description:name" + ".");
+    return FALSE;
+\}
+holder = refiller."base:holder";
+if (holder \&\& holder."base:volition" \&\& holder != \$actor) \{
+    if (\$actor."base:proximity" != holder \&\& holder."base:proximity" != \$actor) \{
+        EmitTo(\$actor, "You must approach " + Describe(holder) + " in order to do that.");
+        return FALSE;
+    \}
+\}
+
+if (shared_drink::liquid_transfer(\$from: refiller, \$into: container)) \{
+    /* Transfer was successful. */
+    EmitTo(\$actor, "You refill " + Describe(container, nil, \$actor) + " from " + Describe(refiller, nil, nil, THE) + "." + (\$emptied ? " " + capitalize(Describe(refiller, nil, nil, THE)) + " is now empty." : ""));
+    EmitIn(\$actor."base:environment", Describe(\$actor) + " refills " + Describe(container, \$actor) + " from " + Describe(refiller, \$actor) + "." + (\$emptied ? " " + capitalize(Describe(refiller, nil, nil, THE)) + " is now empty." : ""), \$actor);
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1154941017, "zwoc", "E", 1154941061, "zwoc", "E", 1154941381, "zwoc", "E", 1154954469, "zwoc", "EED", 1154954710, "zwoc", "EED", 1154954783, "zwoc", "EED", 1154954807, "zwoc", "EED", 1154955087, "zwoc", "EED", 1154955093, "zwoc", "EED", 1154955121, "zwoc", "EED", 1154956320, "zwoc", "EED", 1154956406, "zwoc", "EED", 1154957612, "zwoc", "EED", 1154957673, "zwoc", "EED", 1154958699, "zwoc", "E", 1154958715, "zwoc", "E", 1154958832, "zwoc", "E", 1154958889, "zwoc", "S", 1154959029, "zwoc", "EED", 1154959055, "zwoc", "EED", 1154959061, "zwoc", "EED", 1154959110, "zwoc", "EED", 1154959151, "zwoc", "EED", 1154959166, "zwoc", "EED", 1154966427, "zwoc", "EED", 1154966685, "zwoc", "E", 1154966713, "zwoc", "E", 1154966767, "zwoc", "E", 1154968745, "zwoc", "EED", 1154970234, "zwoc", "E", 1154970669, "zwoc", "E", 1154970795, "zwoc", "E", 1154970805, "zwoc", "E", 1154973315, "zwoc", "EED", 1154973363, "zwoc", "EED", 1154973754, "zwoc", "EED", 1154973769, "zwoc", "EED", 1154973902, "zwoc", "EED", 1154973976, "zwoc", "EED" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+      <Core:Property property="{author}">"Kalle Alm"</Core:Property>
+      <Core:Property property="{email}">
+         "kalle@mortalis.skotos.net"
+      </Core:Property>
+      <Core:Property property="{rev}">1</Core:Property>
+      <Core:Property property="{sub_rev_stamp}">
+         1154973976
+      </Core:Property>
+      <Core:Property property="{sub_rev}">1</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

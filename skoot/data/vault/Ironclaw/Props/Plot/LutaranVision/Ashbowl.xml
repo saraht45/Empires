@@ -1,0 +1,170 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Makeup:UrMakeup)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="false" under="false" on="true" inside="false" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="bowl"/>
+            <Base:SName sname="container"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="containers"/>
+            <Base:PName pname="bowls"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="ash"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:pattern) bowl filled with $(this.trait:ashcolor) ash
+          </Base:Description>
+          <Base:Description type="examine">
+             A decorative fist-size $(this.trait:pattern) $(this.trait:material) bowl filled with $(this.trait:ashcolor) ash. The ash contains {? | $(this.set:hasseed) | a seed planted within. You might want to water it to provide further growth. | nothing. It seems rich and earthy, ready to shelter a new life. Planting a seed into it seems to be a good idea. }
+          </Base:Description>
+          <Base:Description type="look">
+             A decorative fist-size $(this.trait:pattern) $(this.trait:material) bowl filled with $(this.trait:ashcolor) ash.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:makeupadj">
+         "ash-covered"
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] \$this."trait:pattern" = oneof( "hand-painted", "floral patterned", "leaf covered", "glossy", "earth-colored"); 
+\$this."trait:material" = oneof( "clay", "wooden", "ceramic"); 
+\$this."trait:ashcolor" = oneof( "dark gray", "light gray", "whitish", "almost black", "dusky", "powdery"); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:water-dob">
+         X[M] /* check if bowl has seed */
+ if(!\$this."set:hasseed") \{
+        EmitTo(\$actor, "The bowl only has ash in it. Water it if you already planted something within.");
+        return FALSE;
+  \}
+
+/*check if actor has water*/
+  if(!\$using) \{
+        EmitTo(\$actor, "If you want to water the plant you need something for it.");
+        return FALSE;
+  \}
+  if(sizeof(\$using) != 1) \{
+     EmitTo(\$actor, "You only need a single jack of water, or the seed won't be able to grow.");
+     return FALSE;
+  \}
+  \$item = NRefOb(\$using[0]);
+  if(\$item."core:ur:parent" != \$\{IronClaw:Props:Drinks:Potable:Water2\}) \{
+    EmitTo(\$actor, "The seeds only need water.");
+    return TRUE;
+  \}
+
+/*water bowl*/
+  EmitTo(\$actor, "You pour water from your"+Describe(\$item)+" into "+Describe(\$this)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" pours some water from "+Describe(\$item)+" into "+Describe(\$this)+".", \$actor);
+  
+/* mark the bowl watered */
+  \$this."trait:iswatered" = TRUE;
+
+  /* destroy the water*/
+  /* check if the jack says how much is left */
+  if(!\$item."trait:quantity") \{
+    /* if not set, set it */
+    \$item."trait:quantity" = 5;
+  \} else \{
+    /* reduce the number of uses left */
+    \$item."trait:quantity" -= 1;
+    /* if there is no water left, destroy the item */
+    if(!\$item."trait:quantity") \{
+      EmitTo(\$actor, "Having emptied it, you discard "+Describe(\$item)+".");
+      EmitIn(\$actor."base:environment", "Having emptied it, "+Describe(\$actor)+" discards "+Describe(\$item)+".", \$actor);
+      Slay(\$item);
+    \}
+  \}
+
+  /* stop the script so it doesn't continue on */
+  return FALSE;
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:bury-iob">
+         X[M] /* check if bowl has seed */
+ if(\$this."set:hasseed") \{
+        EmitTo(\$actor, "The bowl already has a seed panted within.");
+        return FALSE;
+  \}
+
+/*check if actor has seed*/
+  if(!\$dob) \{
+        EmitTo(\$actor, "You need something to plant in the bowl's ash.");
+        return FALSE;
+  \}
+  if(sizeof(\$dob) != 1) \{
+     EmitTo(\$actor, "You can only plant a single seed at a time.");
+     return FALSE;
+  \}
+  \$item = NRefOb(\$dob[0]);
+  if(\$item."core:ur:parent" != \$\{Allegory:Props:Plants:P:Pomegranate:PomegranateSeed\}) \{
+    EmitTo(\$actor, "A pomegranate seeds seems to be the perfect thing to be planted in this ash.");
+    return TRUE;
+  \}
+
+/*plant seed in ash*/
+  EmitTo(\$actor, "You form a small hole with your fingers in the ash and bury the "+Describe(\$item, nil, \$actor)+" into "+Describe(\$this, nil, \$actor)+" then brush some of the ash over it with your fingertips.");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" digs "+\$actor."base:possessive"+" finger into the "+Describe(\$this, \$actor)+"'s ash and buries the "+Describe(\$item, \$actor)+", brushing some of the ash over the seed.", \$actor);
+
+/* mark the bowl containing the seed */
+  \$this."set:hasseed" = 1;
+
+  /* destroy the seed*/
+      Slay(\$item);
+
+
+  /* stop the script so it doesn't continue on */
+  return FALSE;
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1225358201, "balkaar", "E", 1225358255, "balkaar", "E", 1225358335, "balkaar", "E", 1225358339, "balkaar", "E", 1225358346, "balkaar", "E", 1225358360, "balkaar", "E", 1225358375, "balkaar", "E", 1225358384, "balkaar", "E", 1225358388, "balkaar", "E", 1225358569, "balkaar", "E", 1225358927, "balkaar", "K", 1225360371, "balkaar", "E", 1225360403, "balkaar", "E", 1225361997, "balkaar", "E", 1225362358, "balkaar", "E", 1225363444, "balkaar", "E", 1225363607, "balkaar", "E", 1225363766, "balkaar", "E", 1225363774, "balkaar", "E", 1225363842, "balkaar", "E", 1225363899, "balkaar", "E", 1225366093, "balkaar", "R", 1225368352, "balkaar", "E", 1225369056, "balkaar", "E", 1225369145, "balkaar", "E", 1225369164, "balkaar", "E", 1225370346, "balkaar", "E", 1225370448, "balkaar", "E", 1225370468, "balkaar", "E", 1225370688, "balkaar", "E", 1225370938, "balkaar", "E", 1225371237, "balkaar", "E", 1225371316, "balkaar", "E", 1225371526, "balkaar", "E", 1225371701, "balkaar", "E", 1225371750, "balkaar", "E", 1225371821, "balkaar", "E", 1225372003, "balkaar", "E", 1225372009, "balkaar", "E", 1225372109, "balkaar", "E", 1225372441, "balkaar", "E", 1225372623, "balkaar", "E", 1225373111, "balkaar", "E", 1225375956, "balkaar", "E", 1225400922, "balkaar", "E", 1225401419, "balkaar", "E", 1225401459, "balkaar", "E", 1225401929, "balkaar", "E", 1225402043, "balkaar", "E", 1225402145, "balkaar", "E", 1225402229, "balkaar", "E", 1225402379, "balkaar", "E", 1225402480, "balkaar", "E", 1225402566, "balkaar", "E", 1225402818, "balkaar", "E", 1225402959, "balkaar", "E", 1225411285, "balkaar", "E", 1225411337, "balkaar", "E", 1225411597, "tonyd", "P", 1225411672, "tonyd", "P", 1225411734, "tonyd", "P", 1225411826, "tonyd", "P", 1225411863, "tonyd", "P", 1225419683, "balkaar", "E", 1225425591, "tonyd", "E", 1225425638, "tonyd", "E", 1225425669, "tonyd", "E", 1225425703, "tonyd", "E", 1311380454, "morwenlorelie", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

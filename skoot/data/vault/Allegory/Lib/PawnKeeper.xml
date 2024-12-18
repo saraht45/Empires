@@ -1,0 +1,203 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="craftinglists">
+         ([ "fabric":(\{ \<Allegory:Lib:Crafting:Bookbinder:Books\>, \<Allegory:Lib:Crafting:Clothing:EmbroideryDB\>, \<Allegory:Lib:Crafting:Clothing:FittingDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressAccessoriesDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressBodyBottomDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressBodyFullDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressBodyTopDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressDollsWingsDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressGuildDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressHandsFeetDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressHeadDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressHomeDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressMasksDB\>, \<Allegory:Lib:Crafting:Clothing:SeamstressOtherDB\>, \<Allegory:Lib:Crafting:Weaver:Fabric\>, \<Allegory:Lib:Crafting:Weaver:KnittingClothing\>, \<Allegory:Lib:Crafting:Weaver:Yarn\> \}), "gem":(\{ \<Allegory:Lib:Crafting:Jeweler:GemDB\> \}), "metal":(\{ \<Allegory:Lib:Crafting:Blacksmith:ArmorFittingDB\>, \<Allegory:Lib:Crafting:Blacksmith:ArmourDB\>, \<Allegory:Lib:Crafting:Blacksmith:GuildDB\>, \<Allegory:Lib:Crafting:Blacksmith:MetalRodDB\>, \<Allegory:Lib:Crafting:Blacksmith:OtherDB\>, \<Allegory:Lib:Crafting:Blacksmith:WeaponsDB\>, \<Allegory:Lib:Crafting:Bookbinder:Books\>, \<Allegory:Lib:Crafting:Jeweler:BandsDB\>, \<Allegory:Lib:Crafting:Jeweler:BeadsCharmsDB\>, \<Allegory:Lib:Crafting:Jeweler:BroochPinDB\>, \<Allegory:Lib:Crafting:Jeweler:ChainDB\>, \<Allegory:Lib:Crafting:Jeweler:CrestDB\>, \<Allegory:Lib:Crafting:Jeweler:EarringPendantDB\>, \<Allegory:Lib:Crafting:Jeweler:EtchingDB\>, \<Allegory:Lib:Crafting:Jeweler:GuildDB\>, \<Allegory:Lib:Crafting:Jeweler:JewelryDB\>, \<Allegory:Lib:Crafting:Jeweler:OtherDB\> \}), "paper":(\{ \<Allegory:Lib:Crafting:Bookbinder:Books\>, \<Allegory:Lib:Crafting:Bookbinder:EmbossDB\>, \<Allegory:Lib:Crafting:Bookbinder:Paper\> \}), "plants":(\{ \<Allegory:Lib:Crafting:Gardening:PlantDB\>, \<Allegory:Lib:Crafting:Plants:Herbalism\> \}), "stone":(\{ \<Allegory:Lib:Crafting:Stone:StoneDBNew\> \}), "wood":(\{ \<Allegory:Lib:Crafting:Wood:FigurineDB\>, \<Allegory:Lib:Crafting:Wood:FurnitureDB\>, \<Allegory:Lib:Crafting:Wood:GuildDB\>, \<Allegory:Lib:Crafting:Wood:LumberDB\>, \<Allegory:Lib:Crafting:Wood:MasksDB\>, \<Allegory:Lib:Crafting:Wood:OtherDB\>, \<Allegory:Lib:Crafting:Wood:RoomModDB\>, \<Allegory:Lib:Crafting:Wood:WeaponsDB\> \}) ])
+      </Core:Property>
+      <Core:Property property="merry:lib:accept_offer">
+         X[M] \$seller = \$par["seller"];
+\$amount = \$par["amount"];
+\$item = \$par["item"];
+
+EmitTo(\$actor, TAG("You hand " + Describe(\$item, nil, \$actor) + " to " + Describe(\$seller) + ".", "social:first"));
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " hands " + Describe(\$item, \$actor) + " to " + Describe(\$seller) + ".", "social:third"), \$actor);
+
+EmitTo(\$actor, TAG(capitalize(Describe(\$seller)) + " pays you " + Str(\$amount) + " florins.", "imp"));
+
+\$amount = Int(\$amount * 100.0);
+\$actor."trait:money" = Int(\$actor."trait:money") + \$amount;
+
+if(!\$this."trade:log") \$this."trade:log" = (\{ \});
+
+\$this."trade:log" += (\{ (\{ capitalize(Str(\$actor."skotos:charname")), time(), Describe(\$item, nil, nil, STYLE_NONPOSS), \$amount \}) \});
+
+Slay(\$item);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:decline_offer">
+         X[M] EmitTo(\$actor, "You decline the offer.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:show-iob">
+         X[M] /* List all the trading lists here */
+\$tradingListsMap = \$\{Allegory:Lib:PawnKeeper\}.tradinglists;
+\$tradingLists = map_indices(\$tradingListsMap);
+
+/* List all the crafting lists here */
+\$craftingListsMap = \$\{Allegory:Lib:PawnKeeper\}.craftinglists;
+\$craftingLists = map_indices(\$craftingListsMap);
+
+/* Base payout */
+\$cost = 1;        /* The number of units it costs to make this item */
+\$value = 10;      /* The value of the raw material */
+\$quantity = 10;   /* The number of units this raw material contains */
+
+if(!\$dob) return TRUE;
+if(!sizeof(\$dob)) return TRUE;
+
+\$item = NRefOb(\$dob[0]);
+
+if(\$item."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You must be holding the item you want to sell.");
+    return FALSE;
+\}
+
+if(\$item."trait:objecttype" == "cape" ) \{
+    EmitTo(\$actor, "I am not interested in that.");
+    return FALSE;
+\}
+
+if(\$item."base:worn-by") \{
+    EmitTo(\$actor, "You can't sell something that you are wearing.");
+    return FALSE;
+\}
+
+if(sizeof(\$item."base:inventory")) \{
+    EmitTo(\$actor, "You should empty that first.");
+    return FALSE;
+\}
+
+\$type = \$item."trait:brief";
+
+/* Does the item exist on one of the crafting lists? */
+\$found = ([ ]);
+for(\$i = 0; \$i \< sizeof(\$craftingLists); \$i++) \{
+    \$tempCraftingList = \$craftingListsMap[\$craftingLists[\$i]];
+    for(\$j = 0; \$j \< sizeof(\$tempCraftingList); \$j++) \{
+        \$db = copy(\$tempCraftingList[\$j]."*");
+        \$temp = map_indices(\$db);
+        for(\$k = 0; \$k \< sizeof(\$temp); \$k++) \{
+            if(typeof(\$db[\$temp[\$k]]) == 6) \{
+                \$temp2 = \$db[\$temp[\$k]];
+                if(\$temp2[\$type] \&\& \$temp2[\$type]["cost"]) \{
+                    \$cost = Flt(Flt(\$temp2[\$type]["cost"][0])/Flt(\$quantity));
+                    \$found[\$tempCraftingList[\$j]] = (\{ \$craftingLists[\$i], \$cost \});
+                \}
+            \}
+        \}
+    \}
+\}
+
+if(!map_sizeof(\$found)) \{
+  \$type = \$item."trait:objecttype";
+  /* Does the item exist on one of the crafting lists? */
+  \$found = ([ ]);
+  for(\$i = 0; \$i \< sizeof(\$craftingLists); \$i++) \{
+      \$tempCraftingList = \$craftingListsMap[\$craftingLists[\$i]];
+      for(\$j = 0; \$j \< sizeof(\$tempCraftingList); \$j++) \{
+          \$db = copy(\$tempCraftingList[\$j]."*");
+          \$temp = map_indices(\$db);
+          for(\$k = 0; \$k \< sizeof(\$temp); \$k++) \{
+              if(typeof(\$db[\$temp[\$k]]) == 6) \{
+                  \$temp2 = \$db[\$temp[\$k]];
+                  if(\$temp2[\$type] \&\& \$temp2[\$type]["cost"]) \{
+                      \$cost = Flt(Flt(\$temp2[\$type]["cost"][0])/Flt(\$quantity)); 
+                      \$found[\$tempCraftingList[\$j]] = (\{ \$craftingLists[\$i], \$cost \}); 
+                  \}
+              \}
+          \}
+      \}
+  \}
+\}
+
+\$foundCraftingLists = \$found;
+
+if(!map_sizeof(\$found)) \{
+    Social(\$this, "decline", nil, "I'm not interested in that!");
+    return FALSE;
+\}
+
+\$found = ([ ]);
+if(\$item."trait:material") \{
+  \$material = \$item."trait:material";
+  for(\$i = 0; \$i \< sizeof(\$tradingLists); \$i++) \{
+    \$tempList = \$tradingListsMap[\$tradingLists[\$i]];
+
+    for(\$j = 0; \$j \< sizeof(\$tempList); \$j++) \{
+        \$list = copy(\$tempList[\$j]."*");
+        \$temp = map_indices(\$list);
+        for(\$k = 0; \$k \< sizeof(\$temp); \$k++) \{
+            \$temp2 = \$list[\$temp[\$k]];
+            if(typeof(\$temp2) == 6) \{
+                if(\$temp2["object"]) \{
+                    \$ob = \$temp2["object"];
+                    if(\$ob."trait:material" == \$material \&\& Int(\$ob."trait:quantity") != 0) \{
+                        \$quantity = Flt(\$ob."trait:quantity")/10.0;
+                        \$value = Flt(Flt(\$ob."nip:item:cost")/100.0);
+                        \$found[\$tempList[\$j]] = (\{ \$tradingLists[\$i], (\$value/\$quantity) \});
+                    \}
+                \}
+            \}
+        \}
+    \}
+  \}
+\}
+
+\$foundTradingLists = \$found;
+
+\$temp = map_indices(\$foundCraftingLists);
+
+\$totalCost = 0.0;
+for(\$i = 0; \$i \< sizeof(\$temp); \$i++) \{
+    \$clist = \$temp[\$i];
+    \$materialType1 = \$foundCraftingLists[\$clist][0];
+    \$materialCost1 = Flt(\$foundCraftingLists[\$clist][1]);
+
+    \$temp2 = map_indices(\$foundTradingLists);
+
+    if(!sizeof(\$temp2)) \{
+        \$materialCost2 = 1.0;
+
+        if((Flt(\$materialCost1 * \$materialCost2) \< \$totalCost) \|\| \$totalCost == 0.0) \{
+            \$totalCost = \$materialCost1 * \$materialCost2;
+        \}
+    \}
+
+    for(\$j = 0; \$j \< sizeof(\$temp2); \$j++) \{
+        \$tlist = \$temp2[\$j];
+        \$materialType2 = \$foundTradingLists[\$tlist][0];
+        \$materialCost2 = Flt(\$foundTradingLists[\$tlist][1]);
+
+        if(\$materialType1 == \$materialType2) \{
+            if((Flt(\$materialCost1 * \$materialCost2) \< \$totalCost) \|\| \$totalCost == 0.0) \{
+                \$totalCost = \$materialCost1 * \$materialCost2;
+            \}
+        \}
+    \}
+\}
+
+\$totalCost = \$totalCost * 0.4;
+
+Social(\$this, "think", nil, "I'll give you " + Str(Flt(\$totalCost)) + " florins for that.");
+
+interaction::question(\$question: "Do you want to sell " + Describe(\$item, nil, \$actor) + " for " + Str(\$totalCost) + " florins? Remember: ALL SALES ARE FINAL!", \$actor: \$actor, \$expires: 30, \$env: "FALSE", \$yes_ob: \$\{Allegory:Lib:PawnKeeper\}, \$no_ob: \$\{Allegory:Lib:PawnKeeper\}, \$expire_ob: \$\{Allegory:Lib:PawnKeeper\}, \$yes_fun: "accept_offer", \$no_fun: "decline_offer", \$expire_fun: "decline_offer", \$par: ([ "seller": \$this, "item": \$item, "amount": \$totalCost ]));
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1587166645, "jominey", "E", 1587166948, "jominey", "E", 1587166976, "jominey", "E", 1587167003, "jominey", "E", 1587167032, "jominey", "E", 1587167216, "jominey", "E", 1587167259, "jominey", "E", 1587167344, "jominey", "E", 1587167405, "jominey", "E", 1587167583, "jominey", "E", 1587167615, "jominey", "E", 1587167760, "jominey", "E", 1587167822, "jominey", "E", 1587167872, "jominey", "E", 1587168456, "jominey", "E", 1587168501, "jominey", "E", 1587168658, "jominey", "P", 1587168685, "jominey", "P", 1587168746, "jominey", "P", 1587168864, "jominey", "P", 1587168913, "jominey", "P", 1587168984, "jominey", "P", 1587169056, "jominey", "P", 1587169123, "jominey", "P", 1587170051, "jominey", "P", 1587170090, "jominey", "P", 1587170113, "jominey", "P", 1587170145, "jominey", "P", 1587170163, "jominey", "P", 1587170222, "jominey", "P", 1587170300, "jominey", "P", 1618641109, "ezralee", "E", 1618641227, "ezralee", "E", 1618641294, "ezralee", "E", 1618641361, "ezralee", "E", 1618641433, "ezralee", "E", 1621125967, "ezralee", "E", 1651718789, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="trade:log">
+         (\{ (\{ "Thierry", 1650560604, "a pair of black damp leather boots", 400 \}), (\{ "Luca", 1651596603, "a pair of brown waterlogged wool boots", 400 \}), (\{ "Luca", 1651766793, "a pair of black muddy wool boots", 400 \}), (\{ "Luca", 1651766797, "a pair of tan waterlogged wool boots", 400 \}), (\{ "Thierry", 1651772533, "a pair of pink dirty leather boots", 400 \}), (\{ "Thierry", 1651772537, "a pair of grey salty wool boots", 400 \}), (\{ "Thierry", 1651772541, "a pair of black wet canvas boots", 360 \}), (\{ "Thierry", 1651861699, "a pair of tan sopping wool boots", 400 \}), (\{ "Thierry", 1651861706, "a pair of brown soiled canvas boots", 360 \}), (\{ "Luca", 1651941249, "a pair of brown sopping canvas boots", 360 \}), (\{ "Luca", 1651941254, "a pair of black muddy leather boots", 400 \}), (\{ "Luca", 1651941257, "a pair of pink muddy canvas boots", 360 \}), (\{ "Luca", 1651941259, "a pair of black soiled wool boots", 400 \}), (\{ "Thierry", 1651951951, "a pair of tan damp canvas boots", 360 \}), (\{ "Thierry", 1651951955, "a pair of brown wet canvas boots", 360 \}), (\{ "Thierry", 1651951960, "a pair of black dripping leather boots", 400 \}), (\{ "Luca", 1652026193, "a pair of tan salty leather boots", 400 \}), (\{ "Luca", 1652026196, "a pair of olive grungy canvas boots", 360 \}), (\{ "Mara", 1652051295, "an ecru muslin dress", 1600 \}), (\{ "Mara", 1652051301, "a beige homespun dress", 160 \}), (\{ "Mara", 1652051364, "a cream whipcord waist cord", 560 \}), (\{ "Luca", 1652112261, "a pair of grey grungy leather boots", 400 \}), (\{ "Luca", 1652196993, "a pair of pink wet canvas boots", 360 \}), (\{ "Luca", 1652196999, "a pair of tan waterlogged wool boots", 400 \}), (\{ "Luca", 1652288716, "a pair of tan wet leather boots", 400 \}), (\{ "Luca", 1652288720, "a pair of grey wet canvas boots", 360 \}), (\{ "Luca", 1652288724, "a pair of olive damp leather boots", 400 \}), (\{ "Luca", 1652288728, "a pair of grey dirty wool boots", 400 \}), (\{ "Luca", 1652365745, "a pair of grey soiled wool boots", 400 \}), (\{ "Luca", 1652365748, "a pair of olive dripping wool boots", 400 \}), (\{ "Luca", 1652556507, "a pair of brown damp canvas boots", 360 \}), (\{ "Luca", 1652556510, "a pair of olive soiled wool boots", 400 \}), (\{ "Luca", 1652556513, "a pair of olive grungy leather boots", 400 \}), (\{ "Luca", 1652556516, "a pair of olive salty wool boots", 400 \}), (\{ "Luca", 1652556518, "a pair of tan wet leather boots", 400 \}), (\{ "Luca", 1652627392, "a pair of olive waterlogged wool boots", 400 \}), (\{ "Luca", 1652627394, "a pair of tan sopping wool boots", 400 \}), (\{ "Luca", 1652627396, "a pair of grey wet wool boots", 400 \}), (\{ "Luca", 1652720534, "a pair of olive grungy canvas boots", 360 \}), (\{ "Luca", 1652720537, "a pair of tan wet canvas boots", 360 \}), (\{ "Luca", 1652720540, "a pair of black waterlogged leather boots", 400 \}), (\{ "Samuel", 1654797735, "a pair of pink dripping wool boots", 400 \}), (\{ "Samuel", 1654797741, "a pair of tan salty leather boots", 400 \}), (\{ "Samuel", 1654797746, "a pair of pink soiled leather boots", 400 \}), (\{ "Samuel", 1654797750, "a pair of black dirty canvas boots", 360 \}), (\{ "Samuel", 1654797754, "a pair of pink waterlogged canvas boots", 360 \}), (\{ "Samuel", 1654797758, "a pair of black grungy wool boots", 400 \}), (\{ "Ethan", 1669917496, "a pair of grey suede gloves", 720 \}), (\{ "Ethan", 1669917504, "a pair of cream batiste handwraps", 280 \}), (\{ "Ethan", 1669917539, "a pair of ecru homespun boots", 20 \}), (\{ "Ethan", 1669917686, "a pair of navy-blue woolsey upper arm gauntlets", 1760 \}), (\{ "Ethan", 1669917707, "a cream homespun shirt", 80 \}), (\{ "Ethan", 1669917720, "an ecru homespun cloak", 80 \}), (\{ "Rhol", 1687757951, "a sackcloth hooded long coat", 2240 \}), (\{ "Rhol", 1687757966, "a pair of sackcloth swordsman gloves", 280 \}), (\{ "Rhol", 1687757974, "a sackcloth decorative pillow", 560 \}), (\{ "Rhol", 1687757979, "a sackcloth waist sash", 560 \}), (\{ "Rhol", 1687757983, "a sackcloth cravat", 560 \}), (\{ "Rhol", 1687757987, "a pair of sackcloth breeches", 1120 \}), (\{ "Rhol", 1687757997, "a sackcloth zucchetto", 560 \}), (\{ "Rhol", 1687758001, "a sackcloth skullcap", 560 \}), (\{ "Rhol", 1687758007, "a sackcloth padded arming cap", 560 \}), (\{ "Rhol", 1687758012, "a sackcloth mitre", 560 \}), (\{ "Rhol", 1687758015, "a sackcloth hood", 560 \}), (\{ "Rhol", 1687758020, "a sackcloth biretta", 560 \}), (\{ "Rhol", 1687758024, "a sackcloth acorn hat", 560 \}), (\{ "Rhol", 1687758027, "a sackcloth bandana", 560 \}), (\{ "Rhol", 1687758031, "a sackcloth beret", 560 \}), (\{ "Rhol", 1687758035, "a sackcloth face bandana", 560 \}), (\{ "Rhol", 1687758039, "a sackcloth flat cap", 560 \}), (\{ "Rhol", 1687758042, "a pair of sackcloth leggings", 280 \}), (\{ "Rhol", 1687758047, "a pair of sackcloth kilt hose", 280 \}), (\{ "Rhol", 1687758050, "a sackcloth fez hat", 560 \}), (\{ "Rhol", 1687758054, "a pair of sackcloth spatterdashes", 280 \}), (\{ "Rhol", 1687758057, "a pair of sackcloth toeless socks", 280 \}), (\{ "Rhol", 1687758062, "a sackcloth jerkin", 2240 \}), (\{ "Rhol", 1687758066, "a sackcloth wide-brimmed hat", 560 \}), (\{ "Rhol", 1687758072, "a sackcloth capotain hat", 560 \}), (\{ "Rhol", 1687758076, "a sackcloth ruffled shirt", 1120 \}), (\{ "Rhol", 1687758079, "a sackcloth cap", 560 \}), (\{ "Rhol", 1687758082, "a pair of sackcloth pants", 1120 \}), (\{ "Rhol", 1687758085, "a sackcloth tie-neck shirt", 1120 \}), (\{ "Rhol", 1687758089, "a sackcloth short coat", 2240 \}), (\{ "Rhol", 1687758091, "a sackcloth sock hat", 560 \}), (\{ "Rhol", 1687758094, "a pair of sackcloth braccae", 1120 \}), (\{ "Rhol", 1687758098, "a sackcloth gladiator belt", 560 \}), (\{ "Rhol", 1687758102, "a pair of sackcloth doublet hose", 280 \}), (\{ "Rhol", 1687758104, "a pair of sackcloth bucket boots", 280 \}), (\{ "Rhol", 1687758139, "a sackcloth phrygian cap", 560 \}), (\{ "Rhol", 1687758143, "a pair of sackcloth hose", 280 \}), (\{ "Rhol", 1687758146, "a sackcloth fold-neck shirt", 1120 \}), (\{ "Rhol", 1687758149, "a sackcloth tie-neck tunic", 1120 \}), (\{ "Rhol", 1687758153, "a pair of sackcloth toggle boots", 280 \}), (\{ "Rhol", 1687758155, "a pair of sackcloth chaps", 1120 \}), (\{ "Rhol", 1687758158, "a pair of sackcloth braies", 1120 \}), (\{ "Rhol", 1687758163, "a rapier embroidered sackcloth padded shirt", 1120 \}), (\{ "Rhol", 1687758166, "a pair of sackcloth heeled boots", 280 \}), (\{ "Rhol", 1687758168, "a sackcloth pillow", 560 \}), (\{ "Rhol", 1687758171, "a sackcloth octagonal cushion", 560 \}), (\{ "Rhol", 1687758173, "a sackcloth tunic", 1120 \}), (\{ "Rhol", 1687758176, "a pair of sackcloth jodhpurs", 1120 \}), (\{ "Rhol", 1687758179, "a sackcloth stock", 560 \}), (\{ "Rhol", 1687758182, "a sackcloth hooded buckle jacket", 2240 \}), (\{ "Rhol", 1687758186, "a sackcloth riveted tunic", 1120 \}), (\{ "Esme", 1693354168, "a pair of cream felt slippers", 280 \}), (\{ "Esme", 1693354178, "a copper dagger", 10 \}), (\{ "Esme", 1693354196, "a cream muslin dress", 1600 \}), (\{ "Esme", 1693354205, "a white muslin chemise", 1200 \}), (\{ "Esme", 1693354218, "a beige wool purse", 800 \}), (\{ "Remi", 1693621628, "a beige cotton shirt", 1200 \}), (\{ "Remi", 1693621660, "a natural wool cloak", 1600 \}), (\{ "Remi", 1693621671, "a pair of cream leather shoes", 400 \}), (\{ "Remi", 1693621685, "a cream homespun pouch", 40 \}), (\{ "Catalina", 1697436208, "a pair of sackcloth underdrawers", 1120 \}), (\{ "Catalina", 1697436220, "a dark green linen satchel", 640 \}), (\{ "Catalina", 1697436232, "a pair of cream canvas work gloves", 360 \}), (\{ "Catalina", 1697436236, "a silver muslin ribbon", 200 \}), (\{ "Catalina", 1697436240, "a silver muslin ribbon", 200 \}), (\{ "Catalina", 1697436243, "a pair of brown muslin shoes", 200 \}), (\{ "Catalina", 1697436245, "a pair of dark brown muslin work gloves", 200 \}), (\{ "Catalina", 1697436248, "a bronze muslin ribbon", 200 \}), (\{ "Catalina", 1697436271, "a pair of cream homespun shoes", 20 \}), (\{ "Catalina", 1697436275, "a white homespun chemise", 120 \}), (\{ "Catalina", 1697436283, "a pair of brown felt slippers", 280 \}), (\{ "Catalina", 1697436300, "a beige hemp pouch", 560 \}), (\{ "Catalina", 1697436304, "a beige hemp sock hat", 560 \}), (\{ "Catalina", 1697436308, "a beige hemp sock hat", 560 \}), (\{ "Catalina", 1697436312, "a beige hemp sock hat", 560 \}), (\{ "Catalina", 1697436315, "a beige hemp sock hat", 560 \}), (\{ "Catalina", 1697436321, "a pair of beige wool pants", 1600 \}), (\{ "Catalina", 1697436325, "a pair of beige wool pants", 1600 \}), (\{ "Catalina", 1697436328, "a pair of beige homespun shoes", 20 \}), (\{ "Catalina", 1697436343, "a beige wool chemise", 2400 \}), (\{ "Catalina", 1697436381, "a black cotton bull mask", 600 \}), (\{ "Catalina", 1697436385, "a pair of brown leather shoes", 400 \}), (\{ "Catalina", 1697436389, "a cream cotton shirt", 1200 \}), (\{ "Catalina", 1697436391, "a pair of dark brown leather work gloves", 400 \}), (\{ "Catalina", 1697436405, "a grey wool cloak", 1600 \}), (\{ "Catalina", 1697436410, "an ecru cotton satchel", 600 \}), (\{ "Catalina", 1697436413, "a pair of ecru leather shoes", 400 \}), (\{ "Catalina", 1697436445, "a pair of brown felt slippers", 280 \}), (\{ "Catalina", 1697436448, "a beige homespun chemise", 120 \}), (\{ "Catalina", 1697436452, "a cream wool dress", 3200 \}), (\{ "Catalina", 1697436455, "an ecru wool purse", 800 \}), (\{ "Catalina", 1697436458, "a natural linen purse", 640 \}), (\{ "Catalina", 1697436467, "an earthy brown leather purse", 800 \}), (\{ "Catalina", 1697436471, "a cream linen dress", 2560 \}), (\{ "Catalina", 1697436475, "a beige cotton purse", 600 \}), (\{ "Catalina", 1697436478, "a natural muslin purse", 400 \}), (\{ "Catalina", 1697436480, "a cream cotton purse", 600 \}), (\{ "Catalina", 1697436483, "a pair of beige felt slippers", 280 \}), (\{ "Catalina", 1697436486, "a brown linen dress", 2560 \}), (\{ "Catalina", 1697436488, "a natural cotton purse", 600 \}), (\{ "Catalina", 1697436520, "a fir trestle table", 120 \}), (\{ "Mara", 1700091647, "a silk-trimmed hunter green muslin tunic", 800 \}), (\{ "Mara", 1700091670, "a tower embroidered hunter green leather satchel", 800 \}), (\{ "Mara", 1700091703, "a beige homespun gambeson", 80 \}), (\{ "Mara", 1700091712, "a pair of ecru homespun boots", 20 \}), (\{ "Mara", 1700091727, "a beige muslin belt", 400 \}), (\{ "Mara", 1700091737, "a beige wool satchel", 800 \}), (\{ "Ethan", 1700158281, "a brown wool belt", 800 \}), (\{ "Giada", 1700619460, "a dark green wool cloak", 1600 \}), (\{ "Giada", 1700619469, "a pair of cream white knit wool socks", 20 \}) \})
+      </Core:Property>
+      <Core:Property property="tradinglists">
+         ([ "fabric":(\{ \<Allegory:NPCs:NIPs:TradingLists:Northwest:SeamstressShop:Clerk\>, \<Allegory:NPCs:NIPs:TradingLists:Northeast:Tailors:Dyes\>, \<Allegory:NPCs:NIPs:TradingLists:Northeast:Tailors:FabricBasic\>, \<Allegory:NPCs:NIPs:TradingLists:Northeast:Weavers:Clerk\>, \<Allegory:NPCs:NIPs:TradingLists:ForteRicchezza:Seamstress:Clerk\> \}), "gem":(\{ \<Allegory:NPCs:NIPs:TradingLists:Northeast:Smithy:Jeweler\> \}), "metal":(\{ \<Allegory:NPCs:NIPs:TradingLists:Northeast:Smithy:Blacksmith\>, \<Allegory:NPCs:NIPs:TradingLists:Northeast:Smithy:Jeweler\>, \<Allegory:NPCs:NIPs:TradingLists:ForteRicchezza:Smithy:Smith\> \}), "paper":(\{ \<Allegory:NPCs:NIPs:TradingLists:Northwest:StationeryShop:Clerk\> \}), "stone":(\{ \<Allegory:NPCs:NIPs:TradingLists:Northeast:Stonemason:Mason\> \}), "wood":(\{ \<Allegory:NPCs:NIPs:TradingLists:Northeast:Carpenter:LumberBasic\>, \<Allegory:NPCs:NIPs:TradingLists:Northeast:Carpenter:LumberLuxury\> \}) ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

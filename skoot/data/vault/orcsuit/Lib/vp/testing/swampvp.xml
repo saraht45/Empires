@@ -1,0 +1,214 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(orcsuit:Lib:vp:main)"/>
+    <Core:PCProperties>
+      <Core:Property property="#id#">"TestSwampVP"</Core:Property>
+      <Core:Property property="data:exit:directions">
+         (\{ "north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest" \})
+      </Core:Property>
+      <Core:Property property="data:exit:pathadjectives">
+         (\{ "winding", "straight", "crooked", "twisted", "long", "short", "narrow", "wide", "faint", "animal", "cart" \})
+      </Core:Property>
+      <Core:Property property="data:exit:pathnames">
+         (\{ "path", "trail", "track", "pathway" \})
+      </Core:Property>
+      <Core:Property property="data:tree:agegroups">
+         ([ 0:"sprout", 1:"sapling", 10:"young", 30:"medium", 50:"mature", 100:"old", 200:"ancient" ])
+      </Core:Property>
+      <Core:Property property="data:tree:species">
+         (\{ "oak", "birch", "elm", "dutch elm", "English oak", "sycamore", "beech", "fir", "pine", "blackwood", "walnut", "pecan", "mulberry" \})
+      </Core:Property>
+      <Core:Property property="db:locationobjects">
+         ([ nil:\<[orcsuit:Lib:vp:testing:swamp_room]#236683\>, "-8,-1":\<[orcsuit:Lib:vp:testing:swamp_room]#243014\> ])
+      </Core:Property>
+      <Core:Property property="db:placeinventory">
+         ([  ])
+      </Core:Property>
+      <Core:Property property="errorlog">
+         (\{ (\{ 1268805822, "vp_change_place - Expected \$NewPlaceID is not a valid id", "nil", "([ \\"actor\\":\<Chatters:IC:sp:splunks\>, \\"body\\":\<Chatters:IC:sp:splunks\>, \\"errorwhat\\":\\"Expected \$NewPlaceID is not a valid id\\", \\"errorwhere\\":\\"vp_change_place\\", \\"here\\":\<[IronClaw:Rooms:Docktown:Central:Tavern:VirtualS]#243713\>, \\"looker\\":\<Chatters:IC:sp:splunks\>, \\"movers\\":(\{ \<Chatters:IC:sp:splunks\> \}), \\"newplaceid\\":(\{ 7, 10 \}), \\"this\\":\<orcsuit:Lib:vp:testing:swampvp\>, \\"vprocessid\\":0 ])" \}), (\{ 1268809292, "vp_queue - wait timeout", "(\{ 2, 0, 1 \})", "([ \\"actor\\":\<Chatters:IC:sp:splunks\>, \\"body\\":\<Chatters:IC:sp:splunks\>, \\"errordata\\":(\{ 2, 0, 1 \}), \\"errorwhat\\":\\"wait timeout\\", \\"errorwhere\\":\\"vp_queue\\", \\"function\\":\\"vp_change_place\\", \\"here\\":\<[IronClaw:Rooms:Docktown:Central:Tavern:VirtualS]#243713\>, \\"looker\\":\<Chatters:IC:sp:splunks\>, \\"movers\\":(\{ \<Chatters:IC:sp:splunks\> \}), \\"newplaceid\\":(\{ 7, 9 \}), \\"this\\":\<orcsuit:Lib:vp:testing:swampvp\>, \\"vpqueuei\\":10.6, \\"vprocessid\\":1 ])" \}) \})
+      </Core:Property>
+      <Core:Property property="errorstate">
+         "vp_queue - wait timeout"
+      </Core:Property>
+      <Core:Property property="merry:lib:vp_setup_place">
+         X[M] /*
+** Sets the details for a place in Orcsuit's Virtual Forest
+**
+** Arguments:
+**
+**  \$vpid - The object that is to be set up.  Should have virtualplace:id.
+*/
+
+/*This example is one that has a static (not randomly changing) area, that
+**derives all data about a place by doing some math on the location data.
+**This method allows for _huge_ worlds without having to set or store huge
+**amounts of data.  A disadvantage of this method is that one cannot set
+**individual details by this method alone.
+**
+**Another way to do the world would be to have data stored in a database, that
+**contains values that are used to determine information about each detail.
+**Like a value of 1 could mean 'tree', 2 could mean 'rock', and then as a
+**a subest for tree, 1 could mean 'oak', 2 could mean 'elm', etc, for different
+**properties.  One database holds the values for each place, a second contains
+**info that each value stands for.  This method allows people to set individual
+**details, but is limited in
+**
+**To combine the two methods detailed above, there would be default values
+**determined by doing math, but these could be overriden by values in a
+**database that does not contain data about every single place, but just those
+**that are customized.
+**
+**A third method would be to store actual values for each individual place.
+**This is not recommended, as it'll result in a very, very large database.
+**And if you store entire briefs, it can be difficult to have a widesweeping
+**change, such as seasons, or a sudden fire or a flooding, take place without
+**doing lots of individual setting of things.
+**
+**The above method might be combined with the two others -- maybe for a very
+**few places, you might want a unique detail (and not have the unique thing be
+**a full object).
+**
+**Whatever method(s) are used, it shouldn't be too hard to have implement a
+**large-scale change to many details; either a set values that this function
+**looks for, or modify this function itself.  Also, keep in mind that SAM for
+**descriptions can make some things much easier.
+*/
+
+int a,b,c,i,j;
+float f, x, y;
+string s,t;
+object what;
+string *d_trees, *d_exits;
+
+EmitTo(\$actor, "Setting up swamp");
+EmitTo(\$actor, "0");
+
+if (!\$vpid)\{
+ error("virtual place - " + Str(this) + "(set_details): Expected \$vpid");\}
+if (typeof(\$vpid) != T_ARRAY)\{
+ error("virtual place - " + Str(this) + "(set_details): \$vpid is not an array");\}
+
+what = Call(this, "vp_id_to_ob");
+
+if (typeof(what) != T_OBJECT)\{
+ error("virtual place - " + Str(this) + "(set_details): \$vpid does not have an object.");\}
+
+/*We use the coordinates for the math to determine what to put where.  Since
+**most merry math funtions require floats, we'll go ahead and work with them.*/
+x=Flt(\$vpid[0]);
+y=Flt(\$vpid[1]);
+
+/*How many trees are there?  This formula has more trees in the center, with 12
+**at (5,5) and 2 at the corners.*/
+a = 12 - Int( fabs(5.0-x) + fabs(5.0-y) );
+
+EmitTo(\$actor, "1");
+
+/*Create the trees*/
+d_trees = (\{\});
+for(i=0;i\<12;i++)
+\{
+ if(i\<a)
+ \{
+  /*This formula allows for both mixed areas and groves of similar species;
+  **these groupings go beyond just one room*/
+  b = Int( sin(x)+cos(y)+sin(tan(Flt(i))) )+3;
+  /*This randomizes tree age, with younger ones (0-61 years) at the corners and
+  **older ones (0-360 years) in the center, again allowing for groups and mixes*/
+  c = Int( (sin(y) + cos(x) + sin(tan(Flt(i))) + 3.0) * 5.0 * Flt(a) + 1.0);
+  Set(what, "details:vtree"+Str(i)+":snames:tree", "trees");
+  Set(what, "details:vtree"+Str(i)+":snames:" + this."data:tree:species"[b], Call(\$\{orcsuit:Lib:general\}, "pluralize", \$noun: this."data:tree:species"[b]));
+  j=c;
+  while(!this."data:tree:agegroups"[j] \&\& j\>=0)\{
+   j--;\}
+  Set(what, "details:vtree"+Str(i)+":snames:" + this."data:tree:agegroups"[j], Call(\$\{orcsuit:Lib:general\}, "pluralize", \$noun: this."data:tree:agegroups"[j]));
+  Set(what, "details:vtree"+Str(i)+":description:brief", this."data:tree:agegroups"[j] + " " + this."data:tree:species"[b] + " tree");
+  Set(what, "details:vtree"+Str(i)+":description:pbrief", this."data:tree:species"[b] + " trees");
+  Set(what, "details:vtree"+Str(i)+":description:look", "This tree is about " +Str(Int(log(x+1.0)+(x+4.0)/3.0))+ " feet tall; it looks to be about " +Str(c) + " years old.  There really should be a better description for " + Describe(NewNRef(what, "vtree"+Str(i))) + " here, but there isn't one yet.");
+  Set(what, "details:vtree"+Str(i)+":adjectives:"+ this."data:tree:species"[b], 1);
+  Set(what, "details:vtree"+Str(i)+":adjectives:"+ this."data:tree:agegroups"[j], 1);
+  Set(what, "details:vtree"+Str(i)+":hidden", 0);
+  d_trees += (\{NewNRef(what, "vtree"+Str(i))\});
+ \}
+ else
+ \{
+  Set(what, "details:vtree"+Str(i)+":hidden", 1);
+ \}
+\}
+if(j\<5)\{
+ Set(what, "details:default:description:brief", "sparse forest");\}
+if(j\>4\&\&j\<9)\{
+ Set(what, "details:default:description:brief", "dense forest");\}
+if(j\>8)\{
+ Set(what, "details:default:description:brief", "ancient forest");\}
+
+EmitTo(\$actor, "2");
+
+/*We need paths!*/
+d_exits=(\{\});
+for(i=0;i\<8;i++)
+\{
+EmitTo(\$actor, "2.1");
+ if(!( (x==0.0\&\&i\>4) \|\| (x==9.0\&\&(i\>0\&\&i\<4)) \|\| (y==0.0\&\&(i\>2\&\&i\<6)) \|\| (y==0.0\&\&(i\>2\&\&i\<6)) \|\| (y==9.0\&\&(i\<2\|\|i==7)) ) )
+ \{
+EmitTo(\$actor, "2.2");
+
+  /*Find out what kind of exit it is*/
+  b = Int(floor(fmod( x + y + Flt(i)*3.2, 4.0)));
+EmitTo(\$actor, "2.3");
+
+  /*And the adjective it gets*/
+  c = Int(floor(fmod(x*5.4 + y/1.1 + Flt(i*5), 11.0)));
+EmitTo(\$actor, "2.4");
+  Set(what, "details:vexit"+Str(i)+":snames:exit", "exits");
+EmitTo(\$actor, "2.4.1");
+EmitTo(\$actor, dump_value(this."data:exit:pathnames"));
+EmitTo(\$actor, dump_value(this."data:exit:pathnames"[b]));
+EmitTo(\$actor, dump_value( Call(\$\{orcsuit:Lib:general\}, "pluralize", \$noun: this."data:exit:pathnames"[b]) ));
+  Set(what, "details:vexit"+Str(i)+":snames:" + this."data:exit:pathnames"[b], Call(\$\{orcsuit:Lib:general\}, "pluralize", \$noun: this."data:exit:pathnames"[b]));
+EmitTo(\$actor, "2.4.2");
+  Set(what, "details:vexit"+Str(i)+":adjectives:"+ this."data:exit:pathadjectives"[c], 1);
+EmitTo(\$actor, "2.4.3");
+  Set(what, "details:vexit"+Str(i)+":description:brief", this."data:exit:pathadjectives"[c] + " " + this."data:exit:pathnames"[b]);
+EmitTo(\$actor, "2.4.4");
+  Set(what, "details:vexit"+Str(i)+":description:look", Describe(NewNRef(what, "vexit"+Str(i))) );
+EmitTo(\$actor, "2.4.5");
+  Set(what, "details:vexit"+Str(i)+":description:pbrief", this."data:exit:pathnames"[b]);
+EmitTo(\$actor, "2.4.6");
+  Set(what, "details:vexit"+Str(i)+":hidden", 0);
+EmitTo(\$actor, "2.5");
+
+  d_exits += (\{NewNRef(what, "vexit"+Str(i))\});
+EmitTo(\$actor, "2.6");
+
+ \} else \{
+  Set(what, "details:vexit"+Str(i)+":hidden", 1);
+ \}
+\}
+
+EmitTo(\$actor, "3");
+
+/*Create the place's look*/
+Set(what, "details:default:description:look", "There are " + Describe(d_trees) + " nearby.  You can leave by one of " + Describe(d_exits) + ".  There should be more to this place, but hasn't been implemented.");
+Set(what, "details:default:description:glance", "There are " + Describe(d_trees) + " nearby.  You can leave by one of " + Describe(d_exits) + ".");
+
+EmitTo(\$actor, "4");
+
+/*Is it the keepable (1,1)?*/
+if(x==1.0\&\&y==1.0)\{
+ what."virtualplace:permanantplace" = 1;\}
+
+ EmitTo(\$actor, "Swamp all set up");
+      </Core:Property>
+      <Core:Property property="nextprocess">2</Core:Property>
+      <Core:Property property="placeparent">
+         \<orcsuit:Lib:vp:testing:swamp_room\>
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1268375943, "orcsuit", "E", 1268376021, "orcsuit", "E", 1268376025, "orcsuit", "E", 1268376028, "orcsuit", "E", 1268376030, "orcsuit", "E", 1268376033, "orcsuit", "E", 1268376041, "orcsuit", "E", 1268377157, "orcsuit", "E", 1268378928, "orcsuit", "E", 1268805702, "orcsuit", "E", 1268805707, "orcsuit", "E", 1268805714, "orcsuit", "E", 1268805719, "orcsuit", "E" \})
+      </Core:Property>
+      <Core:Property property="runprocess">0</Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

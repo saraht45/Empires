@@ -1,0 +1,138 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Shared:Local:food/drinks:UrLiquid)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="cloudy potion"/>
+            <Base:SName sname="potion"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="potions"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="name">
+             cloudy potion
+          </Base:Description>
+          <Base:Description type="scent">
+             An unpleasant, musty aroma assaults your senses.
+          </Base:Description>
+          <Base:Description type="taste">
+             An unpleasant, musty taste assaults your senses.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:poison:dosage:multiplier">
+         1
+      </Core:Property>
+      <Core:Property property="export:poison:effect">
+         \<Ironclaw:Effects:Poison:BloodPoison\>
+      </Core:Property>
+      <Core:Property property="export:poison:severity:cap">
+         50
+      </Core:Property>
+      <Core:Property property="export:sys:trigger:consume">
+         "poison"
+      </Core:Property>
+      <Core:Property property="export:trait:cleanable">
+         "fluid"
+      </Core:Property>
+      <Core:Property property="merry:lib:poison">
+         X[M] object effect;
+string name;
+float amt, multiplier;
+int cap, dosage;
+
+if(!\$this."poison:effect") \{
+    return TRUE;
+\}
+
+/* Make sure the poison:effect property was set correctly. */
+if(typeof(\$this."poison:effect") != 4) \{
+    if(\$actor."udat:host") EmitTo(\$actor, "[Property \\"poison:effect\\" is not set to a valid object in " + name(\$this) + ".]");
+    return TRUE;
+\}
+
+/* What effect was set for this poison? */
+effect = \$this."poison:effect";
+
+/* Make sure the effect we set is actually an effect object. */
+if(!effect."base:urparent" \|\| effect."base:urparent" != \$\{Effects:UrEffect\}) \{
+    if(\$actor."udat:host") EmitTo(\$actor, "[Property \\"poison:effect\\" is not set to a valid effect object in " + name(\$this) + ".]");
+    return TRUE;
+\}
+
+/* Grab the name of the effect. */
+name = effect."effect:name";
+
+/* How much was consumed? */
+if(\$amount \> 1 \&\& \$consumes) \{
+    amt = 1.0;
+\} else \{
+    amt = Flt(\$amount);
+\}
+
+cap = Int(Flt(\$this."poison:severity:cap") * amt);
+multiplier = Flt(\$this."poison:dosage:multiplier") * amt;
+
+/* Check if we're already under the influence of this effect. */
+if(Get(\$actor, "effect:" + name + ":source")) \{
+    /* We are. Increase the concentration (raise severity cap and dosage) */
+    cap += Int(Get(\$actor, "effect:" + name + ":severity:cap"));
+    dosage = Int(Get(\$actor, "effect:" + name + ":dosage")) + Int(Flt(Get(\$actor, "effect:" + name + ":dosage")) * multiplier);
+
+    Set(\$actor, "effect:" + name + ":severity:cap", cap);
+    Set(\$actor, "effect:" + name + ":dosage", dosage);
+\} else \{
+    Call(\$\{Ironclaw:Effects:Poison:BloodPoison\}, "apply", \$who: \$actor, \$severity: Int(5.0 * amt));
+    \$dosage = Int(Get(\$actor, "effect:" + name + ":dosage")) + Int(Flt(Get(\$actor, "effect:" + name + ":dosage")) * multiplier);
+    \$delay(0.1, FALSE, "01aa");
+    Set(\$actor, "effect:" + name + ":dosage", \$dosage);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1223103369, "tonyd", "X", 1223103462, "tonyd", "E", 1223187068, "tonyd", "R", 1234179253, "balkaar", "E", 1234179373, "balkaar", "E", 1234180823, "balkaar", "E", 1234181064, "balkaar", "R", 1261006237, "balkaar", "E", 1294882021, "jominey", "E", 1294882142, "jominey", "K", 1294882158, "jominey", "K", 1294882168, "jominey", "K", 1294882185, "jominey", "E", 1294882218, "jominey", "E", 1294882256, "jominey", "K", 1294882448, "jominey", "R", 1294882461, "jominey", "R", 1294883387, "jominey", "E", 1294883474, "jominey", "E", 1294883516, "jominey", "E", 1294883532, "jominey", "E", 1294883833, "jominey", "E", 1294883900, "jominey", "E", 1294883917, "jominey", "E", 1294885256, "jominey", "E", 1294885259, "jominey", "E", 1294885261, "jominey", "E", 1294885263, "jominey", "E", 1294885267, "jominey", "E", 1294885270, "jominey", "E", 1294885566, "jominey", "E", 1294885602, "jominey", "E", 1294885828, "jominey", "E", 1294957289, "jominey", "E", 1294957305, "jominey", "E", 1294957313, "jominey", "E", 1294959179, "jominey", "E", 1294961119, "jominey", "E", 1294961165, "jominey", "E", 1294961193, "jominey", "E", 1294961301, "jominey", "E", 1294961354, "jominey", "E", 1294961385, "jominey", "E", 1294961390, "jominey", "E", 1294961484, "jominey", "E", 1294961515, "jominey", "E", 1294961583, "jominey", "E", 1294962027, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,1570 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Combat:Cards:Libraries:UrActions)"/>
+    <Core:PCProperties>
+      <Core:Property property="gimli:lib:breakcombat">
+         "E[G]\\n// Try to break from the combat\\nint i, j;\\n\$az = \$\{Chatters:IC:az:azrael\};\\nif(!\$char) \$char = \$actor;\\nif(!\$char \|\| !\$char.combat) return FALSE;\\n\\n// Get the combat data\\n\$combat_datafile = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};\\n\$combat_data = Get(\$combat_datafile, Str(\$char.combat[\\"id\\"]));\\nif(!\$combat_data) \{\\n  // No data - why are they trying to break from combat? That's strange!\\n  EmitTo(\$az, name(\$char)+\\" trying to break from combat, but there's no combat_data\\");\\n  // Clear their combat property (in case they still have it for some reason...)\\n  \$char.combat = nil;\\n  return TRUE; // Return true - if there's no data then they're not in combat anymore. So they've successfully broken from combat\\n\}\\n\\n// Is the PC targeting anyone?\\nif(\$char.combat[\\"target\\"]) \{\\n  EmitTo(\$char, \\"You stop targeting \\"+Describe(\$char.combat[\\"target\\"])+\\".\\");\\n  EmitTo(\$char.combat[\\"target\\"], Describe(\$char)+\\" stops targeting you.\\");\\n  if(\$char.\\"base:environment\\")\\n    EmitIn(\$char.\\"base:environment\\", Describe(\$char)+\\" stops targeting \\"+Describe(\$char.combat[\\"target\\"])+\\".\\", \$char, \$char.combat[\\"target\\"]);\\n  \$char.combat[\\"target\\"] = nil;\\n\}\\n\\n// Is anyone targeting the PC?\\n\$enemies = \\"\\";\\nfor(i=0; i\<sizeof(\$combat_data[\\"combatants\\"]); i++) \{\\n  /* Check if this combatant is targeting the \$char */\\n  if(\$combat_data[\\"combatants\\"][i]\\n  \&\& \$combat_data[\\"combatants\\"][i].combat\\n  \&\& \$combat_data[\\"combatants\\"][i].combat[\\"target\\"]\\n  \&\& \$combat_data[\\"combatants\\"][i].combat[\\"target\\"] == \$char) \{\\n    if(\$enemies != \\"\\") \$enemies += \\", \\";\\n    \$enemies += Describe(\$combat_data[\\"combatants\\"][i]);\\n  \}\\n\}\\n\\nif(\$enemies != \\"\\") \{\\n  EmitTo(\$char, \\"You cannot break from combat while you are being attacked. You are currently being targeted by: \\"+\$enemies);\\n  \$char.combat[\\"breakcombat\\"] = TRUE;\\n  return FALSE;\\n\} else \{\\n  // Nobody targeting this PC. Let them break from combat\\n  \\n  // Need to end their turn so the next fighter gets their turn... (as we haven't checked whether this PC is currently having their turn - this is easier, end_turn will check that\\n  ::end_turn(\$char: \$char, \$no_loop_trigger: FALSE);\\n  ::remove_from_combat(\$fighter: \$char, \$combat_data: \$combat_data);\\n\}\\n\\n// Were any of the other fighters trying to break from combat, but unable until now?\\n\$delay(0.01, TRUE);\\nfor(j=0; j\<sizeof(\$combat_data[\\"combatants\\"]); j++) \{\\n  \$fighter = \$combat_data[\\"combatants\\"][j];\\n  if(\$fighter.combat \&\& \$fighter.combat[\\"breakcombat\\"]) \{\\n    // They were trying to break from combat. Can they?\\n    \$enemies = FALSE;\\n    for(i=0; i\<sizeof(\$combat_data[\\"combatants\\"]); i++) \{\\n      // Check if this combatant is targeting the \$char\\n      if(\$combat_data[\\"combatants\\"][i]\\n      \&\& \$combat_data[\\"combatants\\"][i].combat\\n      \&\& \$combat_data[\\"combatants\\"][i].combat[\\"target\\"]\\n      \&\& \$combat_data[\\"combatants\\"][i].combat[\\"target\\"] == \$fighter) \{\\n        \$enemies = TRUE;\\n        break;\\n      \}\\n    \}\\n    if(!\$enemies) \{\\n      // They can now break from combat\\n      \$delay(0.1, TRUE);\\n      \$char = \$fighter;\\n      Social(\$\{Chatters:IC:go:gorc\}, \\"breakcombat\\");\\n    \}\\n  \}\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:draw_actions">
+         "E[G]\\n// Select up to 5 actions that the PC can do, based on the cards in their hand\\nint i;\\nif(!\$char) return FALSE;\\nif(!\$char.combat) return FALSE;\\n\\n// Select the actions available - i.e. the cards in their hand\\nif(!\$char.combat[\\"hand\\"]) \$char.combat[\\"hand\\"] = (\{ \});\\n\$actions = copy(\$char.combat[\\"hand\\"]);\\n\\n// They may only have 5 actions available\\nwhile(sizeof(\$actions) \> 5) \{\\n  // Remove random actions until they only have 5\\n  \$actions[random(sizeof(\$actions))] = nil;\\n  \$actions -= (\{ nil \});\\n\}\\n\\n\$char.combat[\\"options\\"] = \$actions;\\n\\nreturn \$actions;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:draw_card">
+         "E[G]\\n// Draw new card (combat option) for the fighter\\nint i;\\nif(!\$char) return FALSE;\\nif(!\$char.combat) return FALSE;\\n\\n// Are there any cards left in the deck?\\nif(!sizeof(\$char.combat[\\"deck\\"])) \{\\n  if(random(2))\\n    \$char.combat[\\"bonus:attack:endgame\\"] = Int(\$char.combat[\\"bonus:attack:endgame\\"]) + 1;\\n  else\\n    \$char.combat[\\"bonus:damage:endgame\\"] = Int(\$char.combat[\\"bonus:damage:endgame\\"]) + 1;\\n  \$char.combat[\\"tmp:bonus:endgame\\"] = TRUE; // Set this property so we can emote the bonus\\n  return TRUE;\\n\}\\n\\n// Draw a card\\ni = random(sizeof(\$char.combat[\\"deck\\"]));\\n\$card = \$char.combat[\\"deck\\"][i];\\n\\n// Is this card valid to draw?\\n// NOT WRITTEN YET\\n\\n// Add card to hand\\n\$char.combat[\\"hand\\"] += (\{ \$card \});\\n// And remove card from the deck\\n\$char.combat[\\"deck\\"][i] = nil;\\n\$char.combat[\\"deck\\"] -= (\{ nil \});\\n\\n// Does anything happen after adding the card to the hand?\\n// NOT WRITTEN YET\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:draw_hand">
+         "E[G]\\n// Sets up the combat options available to the PC\\nif(!\$char) return FALSE;\\n\\n// Some sanity checking\\nif(!\$char.combat[\\"deck\\"]) \{\\n  ::select_combat_deck(\$char: \$char);\\n  return FALSE;\\n\}\\n\\n// Are they already holding a hand?\\nif(!\$char.combat[\\"hand\\"]) \{\\n  // Draw five cards (Three starting cards + two drawn cards)\\n  \$char.combat[\\"hand\\"] = (\{ \});\\n  // Start the hand with the standard attack/aim/guard options\\n  \$char.combat[\\"hand\\"] += (\{ (\{ \\"attack\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});\\n  \$char.combat[\\"hand\\"] += (\{ (\{ \\"aim\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});\\n  \$char.combat[\\"hand\\"] += (\{ (\{ \\"guard\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});\\n\\n  // And start them guarding\\n  if(!\$char.combat[\\"status\\"]) \$char.combat[\\"status\\"] = ([ ]);\\n  \$char.combat[\\"status\\"][\\"guarding\\"] = 1;\\n\}\\n\\n// Draw remaining two cards\\n::draw_card(\$char: \$char);\\n::draw_card(\$char: \$char);\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:end_turn">
+         "E[G]\\n// End the turn for the current PC\\nif(!\$char \|\| !\$char.combat) return FALSE;\\n\\n// Get the combat data\\n\$combat_data = ccombat::datafile(\$id: \$char.combat[\\"id\\"]);\\nif(!\$combat_data) return FALSE;\\n\\n// Remove nil entries\\n\$combat_data[\\"combatants\\"] -= (\{ nil \});\\n\\n// Set it to be the next PCs turn\\n\$char.combat[\\"current_turn\\"] = nil;\\n\$char.combat[\\"actions\\"] = nil;\\nif(\$combat_data[\\"currently_acting\\"] == \$char) \{\\n  \$combat_data[\\"currently_acting\\"] = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$char);\\n\\n  if(!\$no_loop_trigger) \{\\n    // ... and (almost) immediately call the loop, so we don't have to wait\\n    \$combat_loop_id = \$char.combat[\\"id\\"]; // Need to save this into a variable in case they are ending their turn because they're breaking out of combat (in which case the variable will get cleared during the delay, and they might have moved rooms)\\n    \$delay(0.01, TRUE, \\"a301\\");\\n    ::loop(\$combat_loop_id: \$combat_loop_id);\\n  \}\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:get_next_player">
+         "E[G]\\n/* This function returns the player who gets the next turn\\nExpects:\\n\$combat_data - fight data info\\n\$currently_acting - the player who is currently having their turn. Can be nil, in which case initiative will be rolled\\n*/\\nint i;\\nif(!\$combat_data) return nil;\\n\\n\$combatants = Arr(\$combat_data[\\"combatants\\"]);\\n\$combatants -= (\{ nil \});\\n\\n/* SANITY CHECK - remove combatants that are no longer fighting.\\nTHIS SHOULD NOT BE NECESSARY, BUT IT IS FOR SOME REASON! */\\nfor(i=0;i\<sizeof(\$combatants);i++) \{\\n  if(!\$combatants[i].combat) \{\\n    \$combat_data[\\"combatants\\"] -= (\{ \$combatants[i] \});\\n    \$combatants -= (\{ \$combatants[i] \});\\n  \}\\n\}\\n\$combatants -= (\{ nil \});\\n\\n/* Easy situations first. If there are 0 or 1 combatants remaining */\\nif(!sizeof(\$combatants)) return nil;\\nif(sizeof(\$combatants) == 1) return \$combatants[0];\\n\\nif(\$currently_acting) \{\\n  \$index = index(\$currently_acting, \$combatants);\\n  if(\$index != -1) \{\\n    /* We found the player in the list */\\n    /* Get the index of the next player in the list */\\n    \$index++;\\n    /* Did we hit the end of the list? */\\n    if(\$index \>= sizeof(\$combatants)) \$index = 0;\\n    return \$combatants[\$index];\\n  \}\\n\}\\n\\n/* We don't know who had the previous turn (maybe it's a new fight?) */\\n/* Pick one at random */\\n/* EXTENSION - We should make this do some sort of initiative roll to see who goes first */\\nreturn \$combatants[random(sizeof(\$combatants))];"
+      </Core:Property>
+      <Core:Property property="gimli:lib:initialize_combat">
+         "E[G]\\n// Sets up the combat options available to the PC\\nif(!\$char) return FALSE;\\n\\n::select_combat_deck(\$char: \$char);\\nif(\$opponent \&\& !\$char.combat[\\"target\\"]) \{\\n  \$char.combat[\\"target\\"] = \$opponent;\\n\}\\n::draw_hand(\$char: \$char);\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:list_actions">
+         "E[G]\\n// list combat actions\\nint i;\\nif(!\$char) return FALSE;\\nif(!\$char.combat) return FALSE;\\nif(!\$char.combat[\\"actions\\"] \|\| \$char.combat[\\"actions\\"] \< 1) // No actions remaining (how did this happen?) - end the turn\\n  return ::end_turn(\$char: \$char);\\n\\n\$combat_data = ccombat::datafile(\$id: \$char.combat[\\"id\\"]);\\n\\n// Are they still in combat?\\nif(!\$combat_data \|\| !\$char.combat) return ::end_turn(\$char: \$char);\\n\\n// If they've won the fight. Pass this turn to let that trigger\\nif(sizeof(\$combat_data[\\"combatants\\"]) \<= 1) return ::end_turn(\$char: \$char);\\n\\n// Do they still have a target?\\nif(\$char.combat[\\"target\\"]) \{\\n  if(!\$char.combat[\\"target\\"].combat\\n  \|\| \$char.combat[\\"target\\"].\\"base:environment\\" != \$char.\\"base:environment\\"\\n  \|\| \$char.combat[\\"target\\"].combat[\\"id\\"] != \$char.combat[\\"id\\"]) \{\\n    \$char.combat[\\"target\\"] = nil;\\n  \}\\n\}\\n\\nif(!\$char.combat[\\"options\\"] \|\| !sizeof(\$char.combat[\\"options\\"])) \{\\n  EmitTo(\$char, TAG(\\"You have no actions available to take during this fight. You probably want to pass.\\", \\"Imp\\"));\\n\\n  if(FindMerry(\$char, \\"lib\\", \\"take_combat_actions\\")) \{\\n    \$result = Call(\$char, \\"take_combat_actions\\", \$char: \$char, \$par: ([ ]));\\n    if(\$result == -1 \|\| !\$result) ::end_turn(\$char: \$char);\\n  \}\\n  return FALSE;\\n\}\\n\\n// Delay for a moment, so this comes after the emotes for the previous turn ending (or whatever)\\n\$delay(0.01, TRUE, \\"cf9e\\");\\n\\nif(FindMerry(\$char, \\"lib\\", \\"take_combat_actions\\")) \{\\n  \$result = Call(\$char, \\"take_combat_actions\\", \$char: \$char, \$par: ([ ]));\\n  if(\$result == -1) \{\\n    // Returning -1 from this script means we need to offer the actions to them like we do for a normal PC\\n  \} else if (\$result) \{\\n    // Returning TRUE means the NPC has completed their action. Since they completed it, we don't need to charge actions\\n    return TRUE;\\n  \} else if (!\$result) \{\\n    // Returning FALSE means the NPC has not completed their action. We should charge actions like usual\\n    ::charge_action(\$char: \$char);\\n    return TRUE;\\n  \}\\n\}\\n\\n\\n\$par = nil;\\n\$actions = copy(\$char.combat[\\"options\\"]);\\n\$turn_id = random(1000000000);\\n\$params = ([ \\"char\\":\$char, \\"taking_action\\":TRUE, \\"turn_id\\":\$turn_id ]);\\n\$actions -= (\{ nil \});\\n\\nfor(i=0;i\<sizeof(\$actions);i++) \{\\n  // Check if this action is currently valid \\n  \$valid = Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE);\\n\\n  // Get a description of the action\\n  if(sizeof(\$actions[i]) \>= 2) \{\\n    if(\$valid)\\n      \$actions[i] += (\{ capitalize(Str(Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$description: TRUE))) \});\\n    else\\n      \$actions[i] += (\{ TAG(capitalize(Str(Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$description: TRUE))), \\"evoke:first\\") \});\\n\\n  \}\\n\}\\n\\nwhile(sizeof(\$actions) \< 5) \$actions += (\{ (\{ nil, nil, nil \}) \});\\n\\n\$expire_time = 60*2;\\n\$char.combat[\\"current_turn\\"] = time()+\$expire_time; // Sets the turn to expire at the same time the question expires\\n\\nif(\$char.combat[\\"actions\\"] == 1) \$actions_text = \\"1 action\\";\\nelse \$actions_text = Str(\$char.combat[\\"actions\\"])+\\" actions\\";\\n\\ninteraction::question(\$actor: \$char, \$question: \\"What action do you want to take? You have \\"+\$actions_text+\\" remaining.\\", \$expires: \$expire_time, \$env: \\"TRUE\\", \$a: \$actions[0][2], \$a_ob: \$actions[0][1], \$a_fun: \$actions[0][0], \$b: \$actions[1][2], \$b_ob: \$actions[1][1], \$b_fun: \$actions[1][0], \$c: \$actions[2][2], \$c_ob: \$actions[2][1], \$c_fun: \$actions[2][0], \$d: \$actions[3][2], \$d_ob: \$actions[3][1], \$d_fun: \$actions[3][0], \$e: \$actions[4][2], \$e_ob: \$actions[4][1], \$e_fun: \$actions[4][0], \$expire_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$expire_fun: \\"question_expire\\", \$par: \$params);\\n\\n\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:loop">
+         "E[G]\\n// combat loop\\nint i, j, k;\\nstring *indices;\\n\\n\$az = \$\{Chatters:IC:az:azrael\};\\nEmitTo(\$az, \\"Started loop\\");\\n\\nif(!\$combat_loop_id) return TRUE;\\n\$combat_datafile = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};\\n\$combat_data = ccombat::datafile(\$id: \$combat_loop_id);\\nif(!\$combat_data) return FALSE;\\n\$loop_id = Int(\$combat_data[\\"loop_id\\"])+1;\\n\$combat_data[\\"loop_id\\"] = \$loop_id;\\n\\nwhile(TRUE) \{\\n\\n  // Do we need this?\\n  \$combat_data = ccombat::datafile(\$id: \$combat_loop_id);\\n  if(!\$combat_data) return TRUE;\\n\\n  // Remove any nil combatants\\n  \$combat_data[\\"combatants\\"] -= (\{ nil \});\\n  \\n  // Is this the current loop, or have we started a new one?\\n  if(\$loop_id != \$combat_data[\\"loop_id\\"]) return TRUE;\\n\\n  \$currently_acting = \$combat_data[\\"currently_acting\\"];\\n\\n  if(!\$currently_acting) \{\\n    EmitTo(\$az, \\"We don't have a current actor. Pick a new one.\\");\\n    EmitTo(\$az, dump_value(\$combat_data));\\n    \$currently_acting = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$currently_acting);\\n    EmitTo(\$az, \\"Chose \\"+dump_value(\$currently_acting));\\n    if(!\$currently_acting) \{\\n      // Couldn't find a player to take a turn. I guess the fight is over?\\n      EmitTo(\$az, \\"No more PCs. Ending the fight.\\");\\n      Set(\$combat_datafile, \$combat_loop_id, nil);\\n      return TRUE;\\n    \}\\n  \}\\n  if(\$currently_acting)\\n    \$combat_data[\\"currently_acting\\"] = \$currently_acting;\\n\\n\\n  if(\$currently_acting \&\& !\$currently_acting.\\"base:environment\\") \{\\n    // They aren't in the room anymore. Possibly they logged out or got disconnected?\\n    EmitTo(\$az, Describe(\$currently_acting)+\\" seems to be logged out\\");\\n    \$combat_data[\\"currently_acting\\"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);\\n    continue;\\n  \} else if(\$currently_acting \&\& \$currently_acting.\\"base:environment\\" != \$combat_data[\\"location\\"]) \{\\n    // They are in a different room. I guess they escaped the fight somehow.\\n    EmitTo(\$az, Describe(\$currently_acting)+\\" has moved rooms\\");\\n    \$combat_data[\\"currently_acting\\"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);\\n    continue;\\n  \} else if(\$currently_acting \&\& !\$currently_acting.combat) \{\\n    // No longer fighting?!!!\\n    \$combat_data[\\"currently_acting\\"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);\\n    continue;\\n  \} else if(\$currently_acting \&\& \$currently_acting.combat[\\"id\\"] != \$combat_loop_id) \{\\n    // They are in a different fight.\\n    EmitTo(\$az, Describe(\$currently_acting)+\\" has changed fights\\");\\n    EmitTo(\$az, dump_value(\$currently_acting.combat));\\n    \$combat_data[\\"currently_acting\\"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);\\n    continue;\\n  \}\\n\\n\\n  // Sanity checking\\n  // We should probably find out why this isn't always set, so we don't need this\\n  if(!\$currently_acting.combat[\\"status\\"]) \$currently_acting.combat[\\"status\\"] = ([ ]);\\n\\n\\n  EmitTo(\$az, \\"OK. So it's \\"+dump_value(\$currently_acting)+\\"'s turn\\");\\n  // Have they won the fight?\\n  if(sizeof(\$combat_data[\\"combatants\\"]) \<= 1) \{\\n    EmitTo(\$currently_acting, \\"There you stand, the final fighter, triumphant.\\");\\n    if(\$currently_acting.\\"base:environment\\")\\n      EmitIn(\$currently_acting.\\"base:environment\\", Describe(\$currently_acting)+\\" is the last fighter left standing.\\", \$currently_acting);\\n    ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);\\n    Set(\$combat_datafile, \$combat_loop_id, nil);\\n    return FALSE;\\n  \} else if(!sizeof(\$combat_data[\\"combatants\\"])) \{\\n    Set(\$combat_datafile, \$combat_loop_id, nil);\\n    return FALSE;\\n  \}\\n\\n  // Have they already started their turn already?\\n  if(!\$currently_acting.combat[\\"current_turn\\"]) \{\\n    // STARTING TURN\\nEmitTo(\$az, \\"Starting turn\\");\\n    for(i=0;i\<sizeof(Arr(\$combat_data[\\"combatants\\"]));i++) \{\\n      if(\$combat_data[\\"combatants\\"][i] \&\& \$combat_data[\\"combatants\\"][i] != \$currently_acting)\\n        EmitTo(\$combat_data[\\"combatants\\"][i], TAG(\\"Starting turn for \\"+Describe(\$currently_acting)+\\".\\", \\"imp\\"));\\n    \}\\n\\n    // Remove any statuses that have expired (and reduce the rest by 1 round)\\n    indices = map_indices(\$currently_acting.combat[\\"status\\"]);\\n    for(i=0;i\<sizeof(indices);i++) \{\\n      if(\$currently_acting.combat[\\"status\\"][indices[i]] \> 1) \{\\n        // Reduce the number of rounds remaining by 1\\n        \$currently_acting.combat[\\"status\\"][indices[i]]--;\\n      \} else if(\$currently_acting.combat[\\"status\\"][indices[i]] \>= 0) \{\\n        // No rounds remaining, remove this status\\n        EmitTo(\$currently_acting, TAG(\\"You are no longer \\"+indices[i]+\\".\\", \\"imp\\"));\\n        \$currently_acting.combat[\\"status\\"][indices[i]] = nil;\\n      \}\\n    \}\\n\\n    \$currently_acting.combat[\\"current_turn\\"] = time()+60*2-5; // Turn expires in 2 minutes of no activity\\n    \$currently_acting.combat[\\"actions\\"] = 2; // A typical turn gives 2 actions\\n\\n    // If they're reeling, that uses up one of their actions\\n    if(\$currently_acting.combat[\\"status\\"][\\"reeling\\"]) \{\\n      \$currently_acting.combat[\\"actions\\"]--;\\n      \$currently_acting.combat[\\"status\\"][\\"reeling\\"] = nil;\\n      EmitTo(\$currently_acting, TAG(\\"You are no longer reeling.\\", \\"imp\\"));\\n    \}\\n    \\n    // If they want to guard someone, that uses up one of their actions\\n    if(\$currently_acting.combat[\\"to_guard\\"] \&\& \$currently_acting.combat[\\"to_guard\\"] == \$currently_acting.combat[\\"guarding\\"])\\n      \$currently_acting.combat[\\"to_guard\\"] = nil;\\n    if(\$currently_acting.combat[\\"actions\\"]\\n    \&\& \$currently_acting.combat[\\"to_guard\\"]) \{\\n      // Remove the previous PC that you were guarding\\n      if(\$currently_acting.combat[\\"guarding\\"]\\n      \&\& \$currently_acting.combat[\\"guarding\\"].combat\\n      \&\& \$currently_acting.combat[\\"guarding\\"].combat[\\"guarded_by\\"]) \{\\n        \$currently_acting.combat[\\"guarding\\"].combat[\\"guarded_by\\"] -= (\{ \$currently_acting \});\\n      \}\\n    \\n      \$currently_acting.combat[\\"guarding\\"] = \$currently_acting.combat[\\"to_guard\\"];\\n      if(!\$currently_acting.combat[\\"to_guard\\"].combat[\\"guarded_by\\"]) \$currently_acting.combat[\\"to_guard\\"].combat[\\"guarded_by\\"] = (\{ \});\\n      \$currently_acting.combat[\\"to_guard\\"].combat[\\"guarded_by\\"] \|= (\{ \$currently_acting \});\\n\\n      EmitTo(\$currently_acting, \\"You move protectively in front of \\"+Describe(\$currently_acting.combat[\\"to_guard\\"])+\\".\\");\\n      EmitTo(\$currently_acting.combat[\\"to_guard\\"], Describe(\$currently_acting)+\\" moves protectively in front of you.\\");\\n      EmitIn(\$currently_acting.\\"base:environment\\", Describe(\$currently_acting)+\\" moves protectively in front of \\"+Describe(\$currently_acting.combat[\\"to_guard\\"])+\\".\\", \$currently_acting, \$currently_acting.combat[\\"to_guard\\"]);\\n      \\n      \$currently_acting.combat[\\"to_guard\\"] = nil;\\n      \$currently_acting.combat[\\"target\\"] = nil;\\n      \\n      \\n      \\n      // Charge actions. If there's more than 1, just reduce it. If there's only 1, trigger the charge action script\\n      if(\$currently_acting.combat[\\"actions\\"] \> 1)\\n        \$currently_acting.combat[\\"actions\\"]--;\\n      else \{\\n        ccombat::charge_action(\$char:\$currently_acting);\\n        continue;\\n      \}\\n\\n    \}\\n    \\n    \\n\\n    // And draw 2 cards\\n    if(\$currently_acting.combat[\\"hand:redraw\\"]) \{ // Don't draw cards if this is their first turn since drawing their hand\\n      \$currently_acting.combat[\\"hand:redraw\\"] = nil;\\n    \} else \{\\n      ::draw_card(\$char: \$currently_acting);\\n      ::draw_card(\$char: \$currently_acting);\\n    \}\\n    // Now list their actions\\n    ::draw_actions(\$char: \$currently_acting);\\n    ::list_actions(\$char: \$currently_acting);\\n  \} else \{\\n    if(\$currently_acting.combat[\\"actions\\"] \<= 0) \{\\n      // They've used both their actions already\\n      \$combat_data[\\"currently_acting\\"] = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$currently_acting);\\n      continue;\\n    \}\\n  \}\\n\\n  if(\$currently_acting.combat\\n  \&\& \$currently_acting.combat[\\"current_turn\\"]\\n  \&\& \$currently_acting.combat[\\"current_turn\\"] \< time()) \{\\n    // Turn has expired. Next player's turn\\n    ::end_turn(\$char: \$currently_acting, \$no_loop_trigger: TRUE);\\n    \$delay(1, TRUE, \\"5c06\\");\\n  \} else \{\\n    \$delay(60*5, TRUE, \\"LOOP\\");\\n  \}\\n\}\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:remove_from_combat">
+         "E[G]\\n// remove a fighter from combat\\n// Expects:\\n// \$combat_data - fight data\\n// \$fighter - fighter that is no longer fighting\\n\\nobject next;\\n\\nif(!\$fighter) return nil;\\n\$fighter = NRefOb(\$fighter);\\n\\n\$combat_data = ccombat::datafile(\$char: \$fighter);\\nif(!\$combat_data) return nil;\\n\\nnext = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$fighter);\\n\$fighter.combat = nil;\\n\$combat_data[\\"combatants\\"] -= (\{ \$fighter \});\\n\\n// remove states that shouldn't last between combats\\n\\n// and to clear up old code...\\nif(\$fighter != \$\{Chatters:IC:az:azrael\}\\n\&\& \$fighter != \$\{Chatters:IC:go:gork\}\\n\&\& \$fighter != \$\{Chatters:IC:pi:pik\}) \{\\n  \$fighter.\\"merry:inherit:act-pre:breakcombat\\" = nil;\\n  \$fighter.\\"merry:inherit:act-pre:fight\\" = nil;\\n  \$fighter.\\"merry:inherit:act-pre:pass\\" = nil;\\n\}\\n\\n\$combat_data = ccombat::datafile(\$char: next);\\n\\nreturn next;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:select_combat_deck">
+         "E[G]\\n/* Sets up the combat options available to the PC */\\nif(!\$char) return FALSE;\\nif(!\$char.combat) return FALSE;\\n\\n/* For now just give everyone the same deck */\\n\$deck = (\{ \});\\n/*\$deck += (\{ (\{ \\"shield bash\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});\\n\$deck += (\{ (\{ \\"twohanded strike\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});*/\\n\\n// Can they sneak attack?\\nif(Int(\$char.\\"skill:combat:sneakattack\\")+Int(\$char.\\"career:combat:sneakattack\\"))\\n    \$deck += (\{ (\{ \\"sneak attack\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});\\n\\n// Allow barstool brawl?\\nif(\$char.\\"base:environment\\".\\"combat:options:barstool_brawl:name\\") \{\\n    \$deck += (\{ (\{ \\"barstool smash\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});\\n    \$deck += (\{ (\{ \\"barstool smash\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});\\n    \$deck += (\{ (\{ \\"barstool smash\\", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});\\n\}\\n\\n\$char.combat[\\"deck\\"] = \$deck;\\n\$char.combat[\\"hand:redraw\\"] = TRUE;\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="gimli:lib:start_fight">
+         "E[G]\\n// start (or join) a fight using the combat system\\n\$combat_data = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};\\n\$az = \$\{Chatters:IC:az:azrael\};\\n\\nif(!\$attacker) \$attacker = \$actor;\\nif(\$par \&\& \$par[\\"attacker\\"])\\n  \$attacker = \$par[\\"attacker\\"];\\n\\nif(!\$target \&\& \$par) \$target = \$par[\\"target\\"];\\nif(!\$target) \{\\n /* Maybe they're joining the fight in a support role, and don't have a target? e.g. guarding someone */\\n /*\\n EmitTo(\$actor, \\"Who do you want to fight?\\");\\n return FALSE;\\n */\\n\}\\n\\nif(!\$attacker.combat) \$attacker.combat = ([ \\"status\\":([ ]) ]);\\nif(\$target \&\& !\$target.combat) \$target.combat = ([ \\"status\\":([ ]) ]);\\n\\n// They just picked a target. They are no longer trying to break from combat\\n\$attacker.combat[\\"breakcombat\\"] = nil;\\n\\nif(\$target \&\& \$attacker.combat[\\"guarding\\"]) \{\\n  if(\$target\\n  \&\& \$attacker.combat[\\"guarding\\"]\\n  \&\& \$attacker.combat[\\"guarding\\"].combat\\n  \&\& \$attacker.combat[\\"guarding\\"].combat[\\"guarded_by\\"]) \{\\n    \$attacker.combat[\\"guarding\\"].combat[\\"guarded_by\\"] -= (\{ \$attacker \});\\n  \}\\n  EmitTo(\$attacker, \\"You are no longer guarding \\"+Describe(\$attacker.combat[\\"guarding\\"])+\\".\\");  \\n  \$attacker.combat[\\"guarding\\"] = nil;\\n\}\\n\\nif(\$target \&\& \$attacker.combat[\\"id\\"] \&\& \$target.combat[\\"id\\"]) \{\\n  // Both the attacker and defender are already fighting\\n\\n  // They are already in the same fight. Are they requesting to change targets?\\n  if(\$attacker.combat \&\& \$attacker.combat[\\"target\\"] == \$target) \{\\n    EmitTo(\$attacker, \\"You are already fighting \\"+Describe(\$target)+\\".\\");\\n    return FALSE;\\n  \}\\n\\n  \$combat_datafile = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};\\n  \$combat_data = Get(\$combat_datafile, \$attacker.combat[\\"id\\"]);\\n\\n  if(\$combat_data[\\"currently_acting\\"] == \$attacker) \{\\n    // It's their turn, they're allowed to change targets\\n    EmitTo(\$attacker, \\"You switch targets to fight \\"+Describe(\$target)+\\".\\");\\n    EmitTo(\$target, Describe(\$attacker)+\\" begins to fight you.\\");\\n    EmitIn(\$attacker.\\"base:environment\\", Describe(\$attacker)+\\" switches attention and begins to fight \\"+Describe(\$target)+\\".\\", \$attacker, \$target);\\n    \$attacker.combat[\\"target\\"] = \$target;\\n    if(!\$target.combat[\\"target\\"]) \{\\n      \$target.combat[\\"target\\"] = \$attacker;\\n      EmitTo(\$target, \\"You prepare to defend yourself from \\"+Describe(\$attacker)+\\".\\");\\n      EmitTo(\$attacker, Describe(\$target)+\\" prepares to defend \\"+\$target.\\"base:objective\\"+\\"self from you.\\");\\n      EmitIn(\$attacker.\\"base:environment\\", Describe(\$target)+\\" prepares to defend \\"+\$target.\\"base:objective\\"+\\"self from \\"+Describe(\$attacker)+\\".\\", \$attacker, \$target);\\n    \}\\n    ::list_actions(\$char: \$attacker);\\n  \} else \{\\n    // Not their turn. They can change on their next turn\\n    EmitTo(\$attacker, \\"You will switch targets to fight \\"+Describe(\$target)+\\" at the start of your next turn.\\");\\n  \}\\n  return FALSE;\\n\} else if(\$target) \{\\n  EmitTo(\$attacker, \\"You begin to fight \\"+Describe(\$target)+\\".\\");\\n  EmitTo(\$target, Describe(\$attacker)+\\" begins to fight you.\\");\\n  EmitIn(\$attacker.\\"base:environment\\", Describe(\$attacker)+\\" begins to fight \\"+Describe(\$target)+\\".\\", \$attacker, \$target);\\n\\n  if(\$attacker.combat[\\"id\\"]) \{\\n    // The attacker is already in a fight\\n    \$target.combat[\\"id\\"] = \$attacker.combat[\\"id\\"];\\n    ::initialize_combat(\$char: \$target, \$opponent: \$attacker);\\n  \} else if(\$target.combat[\\"id\\"]) \{\\n    // The defender is already in a fight\\n    \$attacker.combat[\\"id\\"] = \$target.combat[\\"id\\"];\\n    ::initialize_combat(\$char: \$attacker, \$opponent: \$target);\\n  \} else \{\\n    // Neither the attacker nor the defender is in the fight?\\n    \$attacker.combat[\\"id\\"] = name(\$attacker.\\"base:environment\\");\\n    \$target.combat[\\"id\\"] = \$attacker.combat[\\"id\\"];\\n    ::initialize_combat(\$char: \$attacker, \$opponent: \$target);\\n    ::initialize_combat(\$char: \$target, \$opponent: \$attacker);\\n  \}\\n\} else \{\\n  /* No target. Are they joining as a support role? */\\n  \$attacker.combat[\\"id\\"] = name(\$attacker.\\"base:environment\\");\\n  ::initialize_combat(\$char: \$attacker, \$opponent: nil);\\n\}\\n// Add these PCs to the list of combatants\\n\$data = Get(\$combat_data, \$attacker.combat[\\"id\\"]);\\nif(!\$data) \{\\n  \$data = ([ \\"combatants\\":(\{ \}), \\"location\\":\$attacker.\\"base:environment\\" ]);\\n  Set(\$combat_data, \$attacker.combat[\\"id\\"], \$data);\\n\}\\n\\nif(\$target)\\n    \$data[\\"combatants\\"] \|= (\{ \$attacker, \$target \});\\nelse\\n    \$data[\\"combatants\\"] \|= (\{ \$attacker \});\\n\\n/* And start the fight, if needed */\\n::loop(\$combat_loop_id: \$attacker.combat[\\"id\\"]);\\n\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="log:creator">"Combat"</Core:Property>
+      <Core:Property property="merry:act-post:command%combat">
+         X[M] /* was the verb a combat action? */
+\$debug = nil;
+\$debug = \$actor;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? ACT-POST:COMMAND!");
+
+
+if(!\$actor.combat
+\|\| !\$actor.combat["combatants"]
+\|\| sizeof(\$actor.combat["combatants"]) \< 2) return TRUE;
+
+/* Can only do these if they have a free action */
+if(\$actor."combat:actions" \&\& \$actor."combat:actions" \>= 1) \{
+  switch(\$verb) \{
+  case "focus":
+    if(\$actor."combat:state:focused") \{
+      EmitTo(\$actor, "You are already focused.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    if(\$actor."combat:actions" \< 2) \{
+      EmitTo(\$actor, "You need two free actions to focus properly during combat.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    \$actor."combat:state:focused" = TRUE;
+    /* charge an extra action for focus */
+    \$actor."combat:actions"--;
+    combat::action_complete();
+    return TRUE;
+    break;
+  case "aim":
+    if(\$actor."combat:state:aiming") \{
+      EmitTo(\$actor, "You have already aimed.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    \$actor."combat:state:aiming" = TRUE;
+    combat::action_complete();
+    return TRUE;
+    break;
+  case "guard":
+    if(\$actor."combat:state:guarding") \{
+      EmitTo(\$actor, "You are already guarding.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    \$actor."combat:state:guarding" = TRUE;
+    combat::action_complete();
+    return TRUE;
+    break;
+  case "rally":
+    return TRUE;
+    if(!\$dob)\{
+      EmitTo(\$actor, "Who do you want to rally?");
+      return TRUE;
+    \}
+    if(sizeof(\$dob) != 1)\{
+      EmitTo(\$actor, "You can only rally one ally at a time.");
+      return TRUE;
+    \}
+    /* Make dice roll to see how effective the rallying was */
+
+    /* If the rallying was successful, remove the afraid state */
+    if(TRUE) \{
+      combat::set_state(\$char: NRefOb(\$dob[0]), \$state: "unafraid");
+    \}
+    combat::action_complete();
+    return TRUE;
+    break;
+  default:
+    return TRUE;
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:attack%ccombat">
+         X[M] /* This allows a player to target standard attacks by using the emote: attack bob's nose */
+if(!\$actor.combat) return TRUE;
+
+if(\$actor.combat["options"]) \{
+  \$found = FALSE;
+  for(\$i=0;!\$found \&\& \$i\<sizeof(\$actor.combat["options"]);\$i++) \{
+    if(\$actor.combat["options"][\$i][0] == "attack") \$found = TRUE;
+  \}
+  if(!\$found) \{
+    EmitTo(\$actor, "You don't have any attack actions available.");
+    return FALSE;
+  \}
+\}
+
+Call(\$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\}, "attack", \$char: \$actor, \$par: ([
+"taking_action":TRUE,
+"use_target":\$target
+]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:enter%ccombat">
+         X[M] if(\$actor."exit:blocked") \{
+    EmitTo(\$actor, \$actor."exit:blocked");
+    return FALSE;
+\}
+if(\$actor.combat) \{
+  /* They are already in combat */
+
+  /* Can they successfully break from combat? */
+  if(Call(\$\{Ironclaw:Lib:Combat:Cards:Combat\}, "breakcombat", \$char: \$actor)) return TRUE;
+
+  /* Apparently not... */
+  EmitTo(\$actor, "You cannot leave "+Describe(\$actor."base:environment")+" while in combat.");
+  EmitTo(\$actor, "You can attempt to 'breakcombat' to end the fight. Or you can defeat or be defeated by your opponents.");
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:fight">
+         X[M] /* start (or join) a fight using the combat system */
+
+if(\$(dob:words)) \{
+    int x;
+    mapping replaceMap;
+    mixed* replace;
+
+    replaceMap = ([ "first":"1st", "second":"2nd", "third":"3rd", "fourth":"4th", "fifth":"5th", "sixth":"6th", "seventh":"7th", "eighth":"8th", "ninth":"9th", "tenth":"10th" ]);
+    replace = map_indices(replaceMap);
+    for(x = 0; x \< sizeof(\$(dob:words)); x++) \{
+        if(member(\$(dob:words)[x], replace)) \{
+            \$(dob:words)[x] = replaceMap[\$(dob:words)[x]];
+        \}
+    \}
+    \$dob = Call(\$\{Lib:raw\}, "point", \$point: implode(\$(dob:words), " "));
+\}
+
+/* start (or join) a fight using the combat system */
+if(!\$dob \|\| !sizeof(\$dob)) \{
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+\}
+
+\$target = NRefOb(\$dob[0]);
+if(!\$target."combat:fightable" \|\| \$target."trait:dead") \{
+ EmitTo(\$actor, "You cannot fight "+Describe(\$target, nil, \$actor)+".");
+ return FALSE;
+\}
+
+if(\$actor == \$target) \{
+ EmitTo(\$actor, "You cannot fight yourself.");
+ return FALSE;
+\}
+
+
+if(\$actor."combat:state:dying" \|\| \$actor."combat:state:dead") \{
+ EmitTo(\$actor, "You are way, WAY too injured to continue fighting.");
+ return FALSE;
+\}
+
+if(!\$actor."base:environment"."area:dangerarea"
+\&\& (\$target."combat:state:dying" \|\| \$target."combat:state:dead")) \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+ccombat::start_fight_joinfight();
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:pass">
+         X[M] /* passing a turn in combat */
+if(!\$actor \|\| !\$actor.combat) return TRUE;
+
+/* Sanity check that this isn't an emote for RP */
+if(\$dob \|\| \$iob \|\| \$with \|\| \$gait_exit \|\| \$evoke) return TRUE;
+
+return ccombat::end_turn(\$char: \$actor);
+
+/* return Call(\$\{Ironclaw:Lib:Combat:Cards:Combat\}, "end_turn", \$char: \$actor); */
+      </Core:Property>
+      <Core:Property property="merry:lib:action_complete">
+         X[M] /* The PC has completed a combat action */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? ACTION_COMPLETE!");
+
+
+if(!\$actor."combat:actions") \$actor."combat:actions" = 0;
+
+/* remove one of their actions */
+\$actor."combat:actions"--;
+
+/* Either list remaining actions, or assign actions to someone else */
+::list_actions(\$fighter: \$actor);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:action_rally">
+         X[M] /* Attempt to rally an ally */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? ACTION_RALLY!");
+
+/* Are they just asking if a rally action can be taken? */
+if(\$validcheck) \{
+  /* Cannot rally anyone if you are afraid, berserk, confused, enraged, terrified, or otherwise not in their right mindset */
+  if(\$fighter."combat:state:afraid") return FALSE;
+  if(\$fighter."combat:state:berserk") return FALSE;
+  if(\$fighter."combat:state:confused") return FALSE;
+  if(\$fighter."combat:state:enraged") return FALSE;
+  if(\$fighter."combat:state:terrified") return FALSE;
+  return TRUE;
+\}
+
+/* Can the fighter take a rally action? */
+/* Cannot rally anyone if you are afraid, berserk, confused, enraged, terrified, or otherwise not in their right mindset */
+if(\$fighter."combat:state:afraid") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are afraid.");
+  return FALSE;
+\} else if(\$fighter."combat:state:berserk") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are berserk.");
+  return FALSE;
+\} else if(\$fighter."combat:state:confused") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are confused.");
+  return FALSE;
+\} else if(\$fighter."combat:state:enraged") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are enraged.");
+  return FALSE;
+\} else if(\$fighter."combat:state:terrified") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are terrified.");
+  return FALSE;
+\}
+
+
+if(!\$fighter."combat:actions" \|\| \$fighter."combat:actions" \< 1) \{
+  EmitTo(\$fighter, "You cannot rally your allies at the moment. Wait until some actions have been assigned to you.");
+  combat::action_complete();
+  return FALSE;
+\}
+
+if(!\$dob)\{
+  EmitTo(\$fighter, "Who do you want to rally?");
+  return FALSE;
+\}
+if(sizeof(\$dob) != 1)\{
+  EmitTo(\$fighter, "You can only rally one ally at a time.");
+  return FALSE;
+\}
+
+/* Make dice roll to see how effective the rallying was */
+
+/* If the rallying was successful, remove the afraid state */
+/* EXTENSION: When we add the will attribute, remove the trait:mind attribute! */
+if( ironclaw::roll_dicepool(\$roller: \$fighter, \$skills: (\{ "trait:mind", "trait:will", "leadership" \}), \$rolltype: "target", \$target: 3) \> 0) \{
+  combat::set_state(\$char: NRefOb(\$dob[0]), \$state: "unafraid");
+\} else \{
+  \$adverb = "unsuccessfully";
+\}
+
+combat::action_complete(\$actor: \$fighter);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:assign_actions">
+         X[M] /* Nobody has any combat actions. Assign some */
+object fighter, target;
+int i, sz, highest;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? ASSIGN_ACTIONS!");
+
+if(!\$combatants) return nil;
+/* sanity check, remove nil combatants */
+\$combatants -= (\{ nil \});
+
+EmitTo(\$az, "Choosing combatant");
+
+/* choose a combatant to get actions */
+fighter = nil;
+/*EmitTo(\$actor, "combatants are "+dump_value(\$combatants));*/
+/* pick someone to give actions to */
+while(!fighter) \{
+ /* check we have enough fighters */
+ if(sizeof(\$combatants) \<= 1) \{
+  if(sizeof(\$combatants)) \{
+   if(\$combatants[0].combat["mode"] == "breakcombat") \{
+    EmitTo(\$combatants[0], "You see an opportunity and break from combat.");
+   \} else \{
+    EmitTo(\$combatants[0], "You are the last one standing in the fight.");
+   \}
+   ::remove_from_combat(\$fighter: \$combatants[0]);
+  \}
+  return nil;
+ \}
+
+ /* pick the next fighter */
+ if(\$scriptrunner) \{
+   EmitTo(\$az, "Choosing from "+dump_value(\$combatants));
+   for(i=0;i\<sizeof(\$combatants);i++) \{
+     if(\$combatants[i] == \$scriptrunner) \{
+       if(sizeof(\$combatants) \> i+1) \{
+         fighter = \$combatants[i+1];
+         continue;
+       \} else \{
+         fighter = \$combatants[0];
+       \}
+     \}
+   \}
+ \}
+
+ if(!fighter) \{
+   /* pick a fighter randomly */
+   EmitTo(\$az, "Choosing RANDOMLY from "+dump_value(\$combatants));
+   fighter = \$combatants[random(sizeof(\$combatants))];
+ \}
+
+ EmitTo(\$az, "Assigning actions to "+dump_value(fighter));
+
+ /* sanity check */
+ if(!fighter) break;
+ if(!fighter."base:environment") \{
+  /* check that they are still logged in */
+  EmitTo(\$az, "Not logged in. Removing from combat");
+  ::remove_from_combat(\$fighter: fighter);
+  \$combatants -= (\{ fighter \});
+  fighter = nil;
+  continue;
+ \}
+
+ /* is the fighter trying to break from combat? */
+ if(fighter \&\& fighter.combat["mode"] == "breakcombat") \{
+  /* have they started a new fight? */
+  if(fighter.combat["target"] \|\| fighter.combat["newtarget"]) \{
+   fighter.combat["mode"] = nil;
+  \} else \{
+   \$blockers = (\{\});
+   for(i=0;i\<sizeof(fighter.combat["combatants"]);i++) \{
+    if(fighter.combat["combatants"][i] \&\& fighter.combat["combatants"][i].combat) \{
+     if(fighter.combat["combatants"][i].combat["newtarget"] == fighter \|\|
+       (!fighter.combat["combatants"][i].combat["newtarget"] \&\& fighter.combat["combatants"][i].combat["target"] == fighter)) \{
+      if(fighter.combat["combatants"][i]."base:environment" == fighter."base:environment")
+       \$blockers \|= (\{ fighter.combat["combatants"][i] \});
+     \}
+    \}
+   \}
+   if(!sizeof(\$blockers)) \{
+    EmitTo(fighter, TAG("You see an opportunity to break from the fight.", "imp"));
+    ::remove_from_combat(\$fighter: fighter);
+    \$combatants -= (\{ fighter \});
+    fighter = nil;
+   \} else \{
+    \$message = "You cannot break from combat while ";
+    if(sizeof(\$blockers) \> 1) \{
+     \$message += Describe(\$blockers)+" are";
+    \} else \{
+     \$message += Describe(\$blockers)+" is";
+    \}
+    \$message += " fighting you.";
+    EmitTo(fighter, \$message);
+   \}
+  \}
+ \}
+
+\}
+
+if(!fighter) return nil;
+
+/* do we have a target? */
+if(fighter.combat["newtarget"]) \{
+ fighter.combat["target"] = fighter.combat["newtarget"];
+ fighter.combat["newtarget"] = nil;
+\}
+
+if(!fighter.combat["target"]) \{
+ target = nil;
+\} else \{
+ target = fighter.combat["target"];
+\}
+
+/* sanity check */
+if(target) \{
+ if(!target."base:environment") \{
+  ::remove_from_combat(\$fighter: target);
+  target = nil;
+ \} else if(target."base:environment" != fighter."base:environment") \{
+  target = nil;
+ \} else if(!target.combat \|\| !target.combat["combatants"]) \{
+  target = nil;
+ \}
+\}
+
+/* If they have a script to assign actions */
+if(FindMerry(fighter, "lib", "combat:assign_actions")) \{
+ if(!Call(fighter, "combat:assign_actions"))
+  \$combatants -= (\{ fighter \});
+ return ::assign_actions(\$combatants: \$combatants);
+\} else \{
+  /* no script. Assign actions normally */
+  if(Int(fighter."combat:actions") \>= 0) \{
+    fighter."combat:actions" = 2;
+  \} else \{
+    fighter."combat:actions" = Int(fighter."combat:actions")+2;
+  \}
+
+  /* Recover from reeling */
+  if(fighter.combat["status"]["reeling"]) \{
+    fighter."combat:actions"--;
+    fighter.combat["status"]["reeling"] = nil;
+    EmitTo(fighter, TAG("You are no longer reeling.", "imp"));
+    EmitIn(fighter."base:environment", TAG(Describe(fighter)+" is no longer reeling.", "imp"));
+  \}
+
+
+  /* If they have a script to deal with the actions */
+  if(FindMerry(fighter, "lib", "combat:perform_actions")) \{
+   Call(fighter, "combat:perform_actions");
+  \} else \{
+   /* describe the actions */
+   ::list_actions(\$fighter: fighter, \$target: target);
+
+   /* And now tell all the other combatants to wait their turn */
+   for(i=0;i\<sizeof(\$combatants);i++) \{
+     \$char = \$combatants[i];
+     if(\$char \&\& \$char != fighter) \{
+       EmitTo(\$char, TAG("[OOC: "+Describe(fighter)+" has been assigned combat actions.]", "imp"));
+     \}
+   \}
+  \}
+\}
+return fighter;
+      </Core:Property>
+      <Core:Property property="merry:lib:breakcombat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:breakcombat instead! */
+/* Try to break from the combat */
+int i, j;
+\$az = \$\{Chatters:AE:az:azrael\};
+if(!\$char) \$char = \$actor;
+if(!\$char \|\| !\$char.combat) return FALSE;
+
+/* Get the combat data */
+\$combat_datafile = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};
+\$combat_data = Get(\$combat_datafile, Str(\$char.combat["id"]));
+if(!\$combat_data) \{
+  /* No data - why are they trying to break from combat? That's strange! */
+  EmitTo(\$az, name(\$char)+" trying to break from combat, but there's no combat_data");
+  /* Clear their combat property (in case they still have it for some reason...) */
+  \$char.combat = nil;
+  return TRUE; /* Return true - if there's no data then they're not in combat anymore. So they've successfully broken from combat */
+\}
+
+/* Is the PC targeting anyone? */
+if(\$char.combat["target"]) \{
+  EmitTo(\$char, "You stop targeting "+Describe(\$char.combat["target"])+".");
+  EmitTo(\$char.combat["target"], Describe(\$char)+" stops targeting you.");
+  if(\$char."base:environment")
+    EmitIn(\$char."base:environment", Describe(\$char)+" stops targeting "+Describe(\$char.combat["target"])+".", \$char, \$char.combat["target"]);
+  \$char.combat["target"] = nil;
+\}
+
+/* Is anyone targeting the PC? */
+\$enemies = "";
+for(i=0; i\<sizeof(\$combat_data["combatants"]); i++) \{
+  /* Check if this combatant is targeting the \$char */
+  if(\$combat_data["combatants"][i]
+  \&\& \$combat_data["combatants"][i].combat
+  \&\& \$combat_data["combatants"][i].combat["target"]
+  \&\& \$combat_data["combatants"][i].combat["target"] == \$char) \{
+    if(\$enemies != "") \$enemies += ", ";
+    \$enemies += Describe(\$combat_data["combatants"][i]);
+  \}
+\}
+
+if(\$enemies != "") \{
+  EmitTo(\$char, "You cannot break from combat while you are being attacked. You are currently being targeted by: "+\$enemies);
+  \$char.combat["breakcombat"] = TRUE;
+  return FALSE;
+\} else \{
+  /* Nobody targeting this PC. Let them break from combat */
+  
+  /* Need to end their turn so the next fighter gets their turn... (as we haven't checked whether this PC is currently having their turn - this is easier, end_turn will check that */
+  ::end_turn(\$char: \$char, \$no_loop_trigger: FALSE);
+  ::remove_from_combat(\$fighter: \$char, \$combat_data: \$combat_data);
+\}
+
+/* Were any of the other fighters trying to break from combat, but unable until now? */
+\$delay(0.01, TRUE, "9eb5");
+for(j=0; j\<sizeof(\$combat_data["combatants"]); j++) \{
+  \$fighter = \$combat_data["combatants"][j];
+  if(\$fighter.combat \&\& \$fighter.combat["breakcombat"]) \{
+    /* They were trying to break from combat. Can they? */
+    \$enemies = FALSE;
+    for(i=0; i\<sizeof(\$combat_data["combatants"]); i++) \{
+      /* Check if this combatant is targeting the \$char */
+      if(\$combat_data["combatants"][i]
+      \&\& \$combat_data["combatants"][i].combat
+      \&\& \$combat_data["combatants"][i].combat["target"]
+      \&\& \$combat_data["combatants"][i].combat["target"] == \$fighter) \{
+        \$enemies = TRUE;
+        break;
+      \}
+    \}
+    if(!\$enemies) \{
+      /* They can now break from combat */
+      \$delay(0.1, TRUE, "f283");
+      \$char = \$fighter;
+      Social(\$\{Chatters:IC:go:gorc\}, "breakcombat");
+    \}
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight">
+         X[M] /* decide not to breakcombat, and continue the fight */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? CONTINUE_FIGHT!");
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+\$target."breakcombat:decision" = nil;
+
+EmitTo(\$target, "You steady yourself, and get ready to continue fighting.");
+EmitIn(\$target."base:environment", Describe(\$target)+" seems to gather "+\$target."base:possessive"+" wits, and appears ready for combat again.", \$target);
+
+Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight_expire">
+         X[M] /* decide not to breakcombat, and continue the fight */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? CONTINUE_FIGHT_EXPIRE!");
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+
+EmitTo(\$target, "You have taken too long to answer the question. We're going to assume you want to break from the fight.");
+if(\$target."base:combat:weapon") \{
+ EmitTo(\$target, "You lower your weapon, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" lowers "+\$target."base:possessive"+" weapon, apparently beaten.", \$target);
+\} else \{
+ EmitTo(\$target, "You raise your hands to yield, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" raises "+\$target."base:possessive"+" hands to yield, apparently beaten.", \$target);
+\}
+
+\$target."breakcombat:decision" = nil;
+::remove_from_combat(\$fighter: \$target);
+
+Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight_no">
+         X[M] /* decide not to breakcombat, and continue the fight */
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "DOES THIS SCRIPT EVER GET CALLED? CONTINUE_FIGHT_NO!");
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+
+if(\$target."base:combat:weapon") \{
+ EmitTo(\$target, "You lower your weapon, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" lowers "+\$target."base:possessive"+" weapon, apparently beaten.", \$target);
+\} else \{
+ EmitTo(\$target, "You raise your hands to yield, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" raises "+\$target."base:possessive"+" hands to yield, apparently beaten.", \$target);
+\}
+
+\$target."breakcombat:decision" = nil;
+::remove_from_combat(\$fighter: \$target);
+
+Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:draw_actions">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:draw_actions instead! */
+/* Select up to 5 actions that the PC can do, based on the cards in their hand */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Select the actions available - i.e. the cards in their hand */
+if(!\$char.combat["hand"]) \$char.combat["hand"] = (\{ \});
+\$actions = copy(\$char.combat["hand"]);
+
+/* They may only have 5 actions available */
+while(sizeof(\$actions) \> 5) \{
+  /* Remove random actions until they only have 5 */
+  \$actions[random(sizeof(\$actions))] = nil;
+  \$actions -= (\{ nil \});
+\}
+
+\$char.combat["options"] = \$actions;
+
+return \$actions;
+      </Core:Property>
+      <Core:Property property="merry:lib:draw_card">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:draw_card instead! */
+/* Draw new card (combat option) for the fighter */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* Are there any cards left in the deck? */
+if(!sizeof(\$char.combat["deck"])) \{
+  if(random(2))
+    \$char.combat["bonus:attack:endgame"] = Int(\$char.combat["bonus:attack:endgame"]) + 1;
+  else
+    \$char.combat["bonus:damage:endgame"] = Int(\$char.combat["bonus:damage:endgame"]) + 1;
+  \$char.combat["tmp:bonus:endgame"] = TRUE; /* Set this property so we can emote the bonus */
+  return TRUE;
+\}
+
+/* Draw a card */
+i = random(sizeof(\$char.combat["deck"]));
+\$card = \$char.combat["deck"][i];
+
+/* Is this card valid to draw? */
+/* NOT WRITTEN YET */
+
+/* Add card to hand */
+\$char.combat["hand"] += (\{ \$card \});
+/* And remove card from the deck */
+\$char.combat["deck"][i] = nil;
+\$char.combat["deck"] -= (\{ nil \});
+
+/* Does anything happen after adding the card to the hand? */
+/* NOT WRITTEN YET */
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:draw_hand">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:draw_hand instead! 
+/* Sets up the combat options available to the PC */
+if(!\$char) return FALSE;
+
+/* Some sanity checking */
+if(!\$char.combat["deck"]) \{
+  ::select_combat_deck(\$char: \$char);
+  return FALSE;
+\}
+
+/* Are they already holding a hand? */
+if(!\$char.combat["hand"]) \{
+  /* Draw five cards (Three starting cards + two drawn cards) */
+  \$char.combat["hand"] = (\{ \});
+  /* Start the hand with the standard attack/aim/guard options */
+  \$char.combat["hand"] += (\{ (\{ "attack", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+  \$char.combat["hand"] += (\{ (\{ "aim", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+  \$char.combat["hand"] += (\{ (\{ "guard", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+
+  if(\$char.combat \&\& \$char.combat["target"] \&\& \$char.combat["target"]."combat:extra:options") \{
+      \$char.combat["hand"] += \$char.combat["target"]."combat:extra:options";
+  \} 
+
+  /* And start them guarding */
+  if(!\$char.combat["status"]) \$char.combat["status"] = ([ ]);
+  \$char.combat["status"]["guarding"] = 1;
+\}
+
+/* Draw remaining two cards */
+::draw_card(\$char: \$char);
+::draw_card(\$char: \$char);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:end_turn">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:end_turn instead! */
+/* End the turn for the current PC */
+if(!\$char \|\| !\$char.combat) return FALSE;
+
+/* Get the combat data */
+\$combat_data = ccombat::datafile(\$id: \$char.combat["id"]);
+if(!\$combat_data) return FALSE;
+
+/* Remove nil entries */
+\$combat_data["combatants"] -= (\{ nil \});
+
+/* Set it to be the next PCs turn */
+\$char.combat["current_turn"] = nil;
+\$char.combat["actions"] = nil;
+if(\$combat_data["currently_acting"] == \$char) \{
+  \$combat_data["currently_acting"] = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$char);
+
+  if(!\$no_loop_trigger) \{
+    /* ... and (almost) immediately call the loop, so we don't have to wait */
+    \$combat_loop_id = \$char.combat["id"]; /* Need to save this into a variable in case they are ending their turn because they're breaking out of combat (in which case the variable will get cleared during the delay, and they might have moved rooms) */
+    \$delay(0.01, TRUE, "a301");
+    ::loop(\$combat_loop_id: \$combat_loop_id);
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_next_player">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:get_next_player instead! */
+/* This function returns the player who gets the next turn
+Expects:
+\$combat_data - fight data info
+\$currently_acting - the player who is currently having their turn. Can be nil, in which case initiative will be rolled
+*/
+int i;
+if(!\$combat_data) return nil;
+
+\$combatants = Arr(\$combat_data["combatants"]);
+\$combatants -= (\{ nil \});
+
+/* SANITY CHECK - remove combatants that are no longer fighting.
+THIS SHOULD NOT BE NECESSARY, BUT IT IS FOR SOME REASON! */
+for(i=0;i\<sizeof(\$combatants);i++) \{
+  if(!\$combatants[i].combat) \{
+    \$combat_data["combatants"] -= (\{ \$combatants[i] \});
+    \$combatants -= (\{ \$combatants[i] \});
+  \}
+\}
+\$combatants -= (\{ nil \});
+
+/* Easy situations first. If there are 0 or 1 combatants remaining */
+if(!sizeof(\$combatants)) return nil;
+if(sizeof(\$combatants) == 1) return \$combatants[0];
+
+if(\$currently_acting) \{
+  \$index = index(\$currently_acting, \$combatants);
+  if(\$index != -1) \{
+    /* We found the player in the list */
+    /* Get the index of the next player in the list */
+    \$index++;
+    /* Did we hit the end of the list? */
+    if(\$index \>= sizeof(\$combatants)) \$index = 0;
+    return \$combatants[\$index];
+  \}
+\}
+
+/* We don't know who had the previous turn (maybe it's a new fight?) */
+/* Pick one at random */
+/* EXTENSION - We should make this do some sort of initiative roll to see who goes first */
+return \$combatants[random(sizeof(\$combatants))];
+      </Core:Property>
+      <Core:Property property="merry:lib:initialize_combat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:initialize_combat instead! */
+/* Sets up the combat options available to the PC */
+if(!\$char) return FALSE;
+
+::select_combat_deck(\$char: \$char);
+if(\$opponent \&\& !\$char.combat["target"]) \{
+  \$char.combat["target"] = \$opponent;
+\}
+::draw_hand(\$char: \$char);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:list_actions">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:list_actions instead! */
+/* list combat actions */
+int i;
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+if(!\$char.combat["actions"] \|\| \$char.combat["actions"] \< 1) /* No actions remaining (how did this happen?) - end the turn */
+  return ::end_turn(\$char: \$char);
+
+\$combat_data = ccombat::datafile(\$id: \$char.combat["id"]);
+
+/* Are they still in combat? */
+if(!\$combat_data \|\| !\$char.combat) return ::end_turn(\$char: \$char);
+
+/* If they've won the fight. Pass this turn to let that trigger */
+if(sizeof(\$combat_data["combatants"]) \<= 1) return ::end_turn(\$char: \$char);
+
+/* Do they still have a target? */
+if(\$char.combat["target"]) \{
+  if(!\$char.combat["target"].combat
+  \|\| \$char.combat["target"]."base:environment" != \$char."base:environment"
+  \|\| \$char.combat["target"].combat["id"] != \$char.combat["id"]) \{
+    \$char.combat["target"] = nil;
+  \}
+\}
+
+if(!\$char.combat["options"] \|\| !sizeof(\$char.combat["options"])) \{
+  EmitTo(\$char, TAG("You have no actions available to take during this fight. You probably want to pass.", "Imp"));
+
+  if(FindMerry(\$char, "lib", "take_combat_actions")) \{
+    \$result = Call(\$char, "take_combat_actions", \$char: \$char, \$par: ([ ]));
+    if(\$result == -1 \|\| !\$result) ::end_turn(\$char: \$char);
+  \}
+  return FALSE;
+\}
+
+/* Delay for a moment, so this comes after the emotes for the previous turn ending (or whatever) */
+\$delay(0.01, TRUE, "cf9e");
+
+if(FindMerry(\$char, "lib", "take_combat_actions")) \{
+  \$result = Call(\$char, "take_combat_actions", \$char: \$char, \$par: ([ ]));
+  if(\$result == -1) \{
+    /* Returning -1 from this script means we need to offer the actions to them like we do for a normal PC */
+  \} else if (\$result) \{
+    /* Returning TRUE means the NPC has completed their action. Since they completed it, we don't need to charge actions */
+    return TRUE;
+  \} else if (!\$result) \{
+    /* Returning FALSE means the NPC has not completed their action. We should charge actions like usual */
+    ::charge_action(\$char: \$char);
+    return TRUE;
+  \}
+\}
+
+
+\$par = nil;
+\$actions = copy(\$char.combat["options"]);
+\$turn_id = random(1000000000);
+\$params = ([ "char":\$char, "taking_action":TRUE, "turn_id":\$turn_id ]);
+\$actions -= (\{ nil \});
+
+for(i=0;i\<sizeof(\$actions);i++) \{
+  /* Check if this action is currently valid  */
+  \$valid = Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE);
+
+  /* Get a description of the action */
+  if(sizeof(\$actions[i]) \>= 2) \{
+    if(\$valid)
+      \$actions[i] += (\{ capitalize(Str(Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$description: TRUE))) \});
+    else
+      \$actions[i] += (\{ TAG(capitalize(Str(Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$description: TRUE))), "evoke:first") \});
+
+  \}
+\}
+
+while(sizeof(\$actions) \< 5) \$actions += (\{ (\{ nil, nil, nil \}) \});
+
+\$expire_time = 60*2;
+\$char.combat["current_turn"] = time()+\$expire_time; /* Sets the turn to expire at the same time the question expires */
+
+if(\$char.combat["actions"] == 1) \$actions_text = "1 action";
+else \$actions_text = Str(\$char.combat["actions"])+" actions";
+
+interaction::question(\$actor: \$char, \$question: "What action do you want to take? You have "+\$actions_text+" remaining.", \$expires: \$expire_time, \$env: "TRUE", \$a: \$actions[0][2], \$a_ob: \$actions[0][1], \$a_fun: \$actions[0][0], \$b: \$actions[1][2], \$b_ob: \$actions[1][1], \$b_fun: \$actions[1][0], \$c: \$actions[2][2], \$c_ob: \$actions[2][1], \$c_fun: \$actions[2][0], \$d: \$actions[3][2], \$d_ob: \$actions[3][1], \$d_fun: \$actions[3][0], \$e: \$actions[4][2], \$e_ob: \$actions[4][1], \$e_fun: \$actions[4][0], \$expire_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$expire_fun: "question_expire", \$par: \$params);
+
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:loop">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:loop instead! */
+/* combat loop */
+int i, j, k;
+string *indices;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+EmitTo(\$az, "Started loop");
+
+if(!\$combat_loop_id) return TRUE;
+\$combat_datafile = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};
+\$combat_data = ccombat::datafile(\$id: \$combat_loop_id);
+if(!\$combat_data) return FALSE;
+\$loop_id = Int(\$combat_data["loop_id"])+1;
+\$combat_data["loop_id"] = \$loop_id;
+
+while(TRUE) \{
+
+  /* Do we need this? */
+  \$combat_data = ccombat::datafile(\$id: \$combat_loop_id);
+  if(!\$combat_data) return TRUE;
+
+  /* Remove any nil combatants */
+  \$combat_data["combatants"] -= (\{ nil \});
+  
+  /* Is this the current loop, or have we started a new one? */
+  if(\$loop_id != \$combat_data["loop_id"]) return TRUE;
+
+  \$currently_acting = \$combat_data["currently_acting"];
+
+  if(!\$currently_acting) \{
+    EmitTo(\$az, "We don't have a current actor. Pick a new one.");
+    EmitTo(\$az, dump_value(\$combat_data));
+    \$currently_acting = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$currently_acting);
+    EmitTo(\$az, "Chose "+dump_value(\$currently_acting));
+    if(!\$currently_acting) \{
+      /* Couldn't find a player to take a turn. I guess the fight is over? */
+      EmitTo(\$az, "No more PCs. Ending the fight.");
+      Set(\$combat_datafile, \$combat_loop_id, nil);
+      return TRUE;
+    \}
+  \}
+  if(\$currently_acting)
+    \$combat_data["currently_acting"] = \$currently_acting;
+
+
+  if(\$currently_acting \&\& !\$currently_acting."base:environment") \{
+    /* They aren't in the room anymore. Possibly they logged out or got disconnected? */
+    EmitTo(\$az, Describe(\$currently_acting)+" seems to be logged out");
+    \$combat_data["currently_acting"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    continue;
+  \} else if(\$currently_acting \&\& \$currently_acting."base:environment" != \$combat_data["location"]) \{
+    /* They are in a different room. I guess they escaped the fight somehow. */
+    EmitTo(\$az, Describe(\$currently_acting)+" has moved rooms");
+    \$combat_data["currently_acting"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    continue;
+  \} else if(\$currently_acting \&\& !\$currently_acting.combat) \{
+    /* No longer fighting?!!! */
+    \$combat_data["currently_acting"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    continue;
+  \} else if(\$currently_acting \&\& \$currently_acting.combat["id"] != \$combat_loop_id) \{
+    /* They are in a different fight. */
+    EmitTo(\$az, Describe(\$currently_acting)+" has changed fights");
+    EmitTo(\$az, dump_value(\$currently_acting.combat));
+    \$combat_data["currently_acting"] = ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    continue;
+  \}
+
+
+  /* Sanity checking */
+  /* We should probably find out why this isn't always set, so we don't need this */
+  if(!\$currently_acting.combat["status"]) \$currently_acting.combat["status"] = ([ ]);
+
+
+  EmitTo(\$az, "OK. So it's "+dump_value(\$currently_acting)+"'s turn");
+  /* Have they won the fight? */
+  if(sizeof(\$combat_data["combatants"]) \<= 1) \{
+    EmitTo(\$currently_acting, "There you stand, the final fighter, triumphant.");
+    if(\$currently_acting."base:environment")
+      EmitIn(\$currently_acting."base:environment", Describe(\$currently_acting)+" is the last fighter left standing.", \$currently_acting);
+    ::remove_from_combat(\$fighter: \$currently_acting, \$combat_data: \$combat_data);
+    Set(\$combat_datafile, \$combat_loop_id, nil);
+    return FALSE;
+  \} else if(!sizeof(\$combat_data["combatants"])) \{
+    Set(\$combat_datafile, \$combat_loop_id, nil);
+    return FALSE;
+  \}
+
+  /* Have they already started their turn already? */
+  if(!\$currently_acting.combat["current_turn"]) \{
+    /* STARTING TURN */
+EmitTo(\$az, "Starting turn");
+    for(i=0;i\<sizeof(Arr(\$combat_data["combatants"]));i++) \{
+      if(\$combat_data["combatants"][i] \&\& \$combat_data["combatants"][i] != \$currently_acting)
+        EmitTo(\$combat_data["combatants"][i], TAG("Starting turn for "+Describe(\$currently_acting)+".", "imp"));
+    \}
+
+    /* Remove any statuses that have expired (and reduce the rest by 1 round) */
+    indices = map_indices(\$currently_acting.combat["status"]);
+    for(i=0;i\<sizeof(indices);i++) \{
+      if(\$currently_acting.combat["status"][indices[i]] \> 1) \{
+        /* Reduce the number of rounds remaining by 1 */
+        \$currently_acting.combat["status"][indices[i]]--;
+      \} else if(\$currently_acting.combat["status"][indices[i]] \>= 0) \{
+        /* No rounds remaining, remove this status */
+        EmitTo(\$currently_acting, TAG("You are no longer "+indices[i]+".", "imp"));
+        \$currently_acting.combat["status"][indices[i]] = nil;
+      \}
+    \}
+
+    \$currently_acting.combat["current_turn"] = time()+60*2-5; /* Turn expires in 2 minutes of no activity */
+    \$currently_acting.combat["actions"] = 2; /* A typical turn gives 2 actions */
+
+    /* If they're reeling, that uses up one of their actions */
+    if(\$currently_acting.combat["status"]["reeling"]) \{
+      \$currently_acting.combat["actions"]--;
+      \$currently_acting.combat["status"]["reeling"] = nil;
+      EmitTo(\$currently_acting, TAG("You are no longer reeling.", "imp"));
+    \}
+    
+    /* If they want to guard someone, that uses up one of their actions */
+    if(\$currently_acting.combat["to_guard"] \&\& \$currently_acting.combat["to_guard"] == \$currently_acting.combat["guarding"])
+      \$currently_acting.combat["to_guard"] = nil;
+    if(\$currently_acting.combat["actions"]
+    \&\& \$currently_acting.combat["to_guard"]) \{
+      /* Remove the previous PC that you were guarding */
+      if(\$currently_acting.combat["guarding"]
+      \&\& \$currently_acting.combat["guarding"].combat
+      \&\& \$currently_acting.combat["guarding"].combat["guarded_by"]) \{
+        \$currently_acting.combat["guarding"].combat["guarded_by"] -= (\{ \$currently_acting \});
+      \}
+    
+      \$currently_acting.combat["guarding"] = \$currently_acting.combat["to_guard"];
+      if(!\$currently_acting.combat["to_guard"].combat["guarded_by"]) \$currently_acting.combat["to_guard"].combat["guarded_by"] = (\{ \});
+      \$currently_acting.combat["to_guard"].combat["guarded_by"] \|= (\{ \$currently_acting \});
+
+      EmitTo(\$currently_acting, "You move protectively in front of "+Describe(\$currently_acting.combat["to_guard"])+".");
+      EmitTo(\$currently_acting.combat["to_guard"], Describe(\$currently_acting)+" moves protectively in front of you.");
+      EmitIn(\$currently_acting."base:environment", Describe(\$currently_acting)+" moves protectively in front of "+Describe(\$currently_acting.combat["to_guard"])+".", \$currently_acting, \$currently_acting.combat["to_guard"]);
+      
+      \$currently_acting.combat["to_guard"] = nil;
+      \$currently_acting.combat["target"] = nil;
+      
+      
+      
+      /* Charge actions. If there's more than 1, just reduce it. If there's only 1, trigger the charge action script */
+      if(\$currently_acting.combat["actions"] \> 1)
+        \$currently_acting.combat["actions"]--;
+      else \{
+        ccombat::charge_action(\$char: \$currently_acting);
+        continue;
+      \}
+
+    \}
+    
+    
+
+    /* And draw 2 cards */
+    if(\$currently_acting.combat["hand:redraw"]) \{ /* Don't draw cards if this is their first turn since drawing their hand */
+      \$currently_acting.combat["hand:redraw"] = nil;
+    \} else \{
+      ::draw_card(\$char: \$currently_acting);
+      ::draw_card(\$char: \$currently_acting);
+    \}
+    /* Now list their actions */
+    ::draw_actions(\$char: \$currently_acting);
+    ::list_actions(\$char: \$currently_acting);
+  \} else \{
+    if(\$currently_acting.combat["actions"] \<= 0) \{
+      /* They've used both their actions already */
+      \$combat_data["currently_acting"] = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$currently_acting);
+      continue;
+    \}
+  \}
+
+  if(\$currently_acting.combat
+  \&\& \$currently_acting.combat["current_turn"]
+  \&\& \$currently_acting.combat["current_turn"] \< time()) \{
+    /* Turn has expired. Next player's turn */
+    ::end_turn(\$char: \$currently_acting, \$no_loop_trigger: TRUE);
+    \$delay(1, TRUE, "5c06");
+  \} else \{
+    \$delay(60*5, TRUE, "LOOP");
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:question_expire">
+         X[M] /* Waited for a response. Question has expired */
+/* Are they still in combat? */
+if(!\$actor \|\| !\$actor.combat) return FALSE;
+
+/* Does the turn expiry match this script? */
+/* \$actor.combat["current_turn"] should be equal to time() - give or take a few seconds for lag */
+if(Int(\$actor.combat["current_turn"]) \> time()+1 \|\| !\$actor.combat["current_turn"]) \{
+  /* The current turn timer has been reset since this question was asked */
+  return TRUE;
+\}
+
+/* Expire the question, let the player know their turn is over, and move onto the next combatant */
+EmitTo(\$actor, "You have taken too long to choose. Your turn is now over.");
+::end_turn(\$char: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_from_combat">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:remove_from_combat instead! */
+/* remove a fighter from combat */
+/* Expects: */
+/* \$combat_data - fight data */
+/* \$fighter - fighter that is no longer fighting */
+
+object next;
+
+if(!\$fighter) return nil;
+\$fighter = NRefOb(\$fighter);
+
+\$combat_data = ccombat::datafile(\$char: \$fighter);
+if(!\$combat_data) return nil;
+
+next = ::get_next_player(\$combat_data: \$combat_data, \$currently_acting: \$fighter);
+\$fighter.combat = nil;
+\$combat_data["combatants"] -= (\{ \$fighter \});
+
+/* remove states that shouldn't last between combats */
+
+/* and to clear up old code... */
+if(\$fighter != \$\{Chatters:AE:az:azrael\}
+\&\& \$fighter != \$\{Chatters:IC:go:gorc\}
+\&\& \$fighter != \$\{Chatters:IC:pi:pic\}) \{
+  \$fighter."merry:inherit:act-pre:breakcombat" = nil;
+  \$fighter."merry:inherit:act-pre:fight" = nil;
+  \$fighter."merry:inherit:act-pre:pass" = nil;
+\}
+
+\$combat_data = ccombat::datafile(\$char: next);
+
+return next;
+      </Core:Property>
+      <Core:Property property="merry:lib:select_combat_deck">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:select_combat_deck instead! */
+/* Sets up the combat options available to the PC */
+if(!\$char) return FALSE;
+if(!\$char.combat) return FALSE;
+
+/* For now just give everyone the same deck */
+\$deck = (\{ \});
+/*\$deck += (\{ (\{ "shield bash", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+\$deck += (\{ (\{ "twohanded strike", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});*/
+
+/* Can they sneak attack? */
+if(Int(\$char."skill:combat:sneakattack")+Int(\$char."career:combat:sneakattack"))
+    \$deck += (\{ (\{ "sneak attack", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+
+/* Allow barstool brawl? */
+if(\$char."base:environment"."combat:options:barstool_brawl:name") \{
+    \$deck += (\{ (\{ "barstool smash", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+    \$deck += (\{ (\{ "barstool smash", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+    \$deck += (\{ (\{ "barstool smash", \$\{Ironclaw:Lib:Combat:Cards:Libraries:Attacks\} \}) \});
+\}
+
+\$char.combat["deck"] = \$deck;
+\$char.combat["hand:redraw"] = TRUE;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_reeling">
+         X[M] /* Set this as PC reeling */
+if(!\$char \|\| !\$char.combat) return FALSE;
+
+if(!\$char.combat["status"]["reeling"]) \{
+  \$char.combat["status"]["reeling"] = -1;
+  EmitTo(\$char, TAG("You are now reeling.", "imp"));
+  if(\$notify)
+    EmitTo(\$notify, TAG(Describe(\$char)+" is sent reeling.", "imp"));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_state">
+         X[M] /* Set a combat status in a PC */
+if(!\$state \|\| typeof(\$state) != T_STRING) error("Unknown state passed with character "+dump_value(\$char));
+if(!\$char \|\| typeof(\$char) != T_OBJECT) error("Unknown \$char passed for state "+Str(\$state));
+/* Also possibly expect \$description */
+
+if(lower_case(\$state) == "reeling") \{
+  if(!NRefOb(\$char)."combat:state:reeling") \{
+    NRefOb(\$char)."combat:state:reeling" = TRUE;
+    if(\$description)
+      Social(\$char, "reel");
+  \}
+\} else if(lower_case(\$state) == "dead") \{
+  if(FindMerry( NRefOb(\$target), "lib", "combat:dead"))
+    if(!Call(NRefOb(\$target), "combat:dead")) return TRUE;
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been killed.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" has been killed.", \$char);
+  \}
+
+  Act(NRefOb(\$target), "nip/die");
+  Call(\$\{Ironclaw:Lib:Characters:Death\}, "die", \$victim: NRefOb(\$target));
+
+  if(!NRefOb(\$char)."combat:state:dead")
+    NRefOb(\$char)."combat:state:dead" = TRUE;
+  combat::remove_from_combat(\$fighter: NRefOb(\$target), \$description: FALSE);
+\} else if(lower_case(\$state) == "dying") \{
+  if(FindMerry( NRefOb(\$target), "lib", "combat:dying"))
+    if(!Call(NRefOb(\$target), "combat:dying")) return TRUE;
+
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:dying", \$value: TRUE, \$timer: 60*60*4);
+  /* Dying also makes you injured and hurt */
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:injured", \$value: TRUE, \$timer: 60*60*24*3);
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You are dying! Seek medical assistance.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to be dying.", \$char);
+  \}
+  combat::remove_from_combat(\$fighter: NRefOb(\$target), \$description: FALSE);
+\} else if(lower_case(\$state) == "injured") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:injured", \$value: TRUE, \$timer: 60*60*24*3);
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24); /* Injuries also make you hurt */
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been seriously injured", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to have been seriously injured.", \$char);
+  \}
+\} else if(lower_case(\$state) == "hurt") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been significantly hurt.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to have been significantly hurt.", \$char);
+  \}
+\} else if(lower_case(\$state) == "afraid") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:afraid", \$value: TRUE, \$timer: 60*60*4);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have become afraid.", "imp"));
+    EmitTo(\$char, "[OOC: You now take a penalty on all attacks until the fight ends, or an ally rallies you.]");
+  \}
+\} else if(lower_case(\$state) == "unafraid") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:afraid", \$value: nil, \$timer: 60*60*4);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You are no longer afraid.", "imp"));
+  \}
+\} else if(lower_case(\$state) == "overkilled") \{
+  /* NOT IMPLEMENTED YET */
+\} else \{
+  error("Unknown state "+Str(\$state)+" for "+dump_value(\$char)+".");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_error_noaction">
+         X[M] /* used by combat objects to display an error message saying they can't do an action */
+if(!\$actor) return FALSE;
+if(!\$victim) return FALSE;
+if(!\$action) return FALSE;
+
+if(!\$actor.combat \|\| (\$actor.combat["target"] != \$victim \&\& \$actor.combat["newtarget"] != \$victim) ) \{
+  EmitTo(\$actor, "You must fight "+Describe(\$victim)+" before you can "+Str(\$action)+" "+\$victim."base:objective"+".");
+\} else \{
+  EmitTo(\$actor, "You must wait for your turn before you can "+Str(\$action)+" "+Describe(\$victim)+".");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:start_fight instead! */
+/* start (or join) a fight using the combat system */
+\$combat_data = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};
+\$az = \$\{Chatters:AE:az:azrael\};
+
+if(!\$attacker) \$attacker = \$actor;
+if(\$par \&\& \$par["attacker"])
+  \$attacker = \$par["attacker"];
+
+if(!\$target \&\& \$par) \$target = \$par["target"];
+if(!\$target) \{
+ /* Maybe they're joining the fight in a support role, and don't have a target? e.g. guarding someone */
+ /*
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+ */
+\}
+
+if(!\$attacker.combat) \$attacker.combat = ([ "status":([ ]) ]);
+if(\$target \&\& !\$target.combat) \$target.combat = ([ "status":([ ]) ]);
+
+/* They just picked a target. They are no longer trying to break from combat */
+\$attacker.combat["breakcombat"] = nil;
+
+if(\$target \&\& \$attacker.combat["guarding"]) \{
+  if(\$target
+  \&\& \$attacker.combat["guarding"]
+  \&\& \$attacker.combat["guarding"].combat
+  \&\& \$attacker.combat["guarding"].combat["guarded_by"]) \{
+    \$attacker.combat["guarding"].combat["guarded_by"] -= (\{ \$attacker \});
+  \}
+  EmitTo(\$attacker, "You are no longer guarding "+Describe(\$attacker.combat["guarding"])+".");  
+  \$attacker.combat["guarding"] = nil;
+\}
+
+if(\$target \&\& \$attacker.combat["id"] \&\& \$target.combat["id"]) \{
+  /* Both the attacker and defender are already fighting */
+
+  /* They are already in the same fight. Are they requesting to change targets? */
+  if(\$attacker.combat \&\& \$attacker.combat["target"] == \$target) \{
+    EmitTo(\$attacker, "You are already fighting "+Describe(\$target)+".");
+    return FALSE;
+  \}
+
+  \$combat_datafile = \$\{Ironclaw:Lib:Combat:Cards:CombatData\};
+  \$combat_data = Get(\$combat_datafile, \$attacker.combat["id"]);
+
+  if(\$combat_data["currently_acting"] == \$attacker) \{
+    /* It's their turn, they're allowed to change targets */
+    EmitTo(\$attacker, "You switch targets to fight "+Describe(\$target)+".");
+    EmitTo(\$target, Describe(\$attacker)+" begins to fight you.");
+    EmitIn(\$attacker."base:environment", Describe(\$attacker)+" switches attention and begins to fight "+Describe(\$target)+".", \$attacker, \$target);
+    \$attacker.combat["target"] = \$target;
+    if(!\$target.combat["target"]) \{
+      \$target.combat["target"] = \$attacker;
+      EmitTo(\$target, "You prepare to defend yourself from "+Describe(\$attacker)+".");
+      EmitTo(\$attacker, Describe(\$target)+" prepares to defend "+\$target."base:objective"+"self from you.");
+      EmitIn(\$attacker."base:environment", Describe(\$target)+" prepares to defend "+\$target."base:objective"+"self from "+Describe(\$attacker)+".", \$attacker, \$target);
+    \}
+    ::list_actions(\$char: \$attacker);
+  \} else \{
+    /* Not their turn. They can change on their next turn */
+    EmitTo(\$attacker, "You will switch targets to fight "+Describe(\$target)+" at the start of your next turn.");
+  \}
+  return FALSE;
+\} else if(\$target) \{
+  EmitTo(\$attacker, "You begin to fight "+Describe(\$target)+".");
+  EmitTo(\$target, Describe(\$attacker)+" begins to fight you.");
+  EmitIn(\$attacker."base:environment", Describe(\$attacker)+" begins to fight "+Describe(\$target)+".", \$attacker, \$target);
+
+  if(\$attacker.combat["id"]) \{
+    /* The attacker is already in a fight */
+    \$target.combat["id"] = \$attacker.combat["id"];
+    ::initialize_combat(\$char: \$target, \$opponent: \$attacker);
+  \} else if(\$target.combat["id"]) \{
+    /* The defender is already in a fight */
+    \$attacker.combat["id"] = \$target.combat["id"];
+    ::initialize_combat(\$char: \$attacker, \$opponent: \$target);
+  \} else \{
+    /* Neither the attacker nor the defender is in the fight? */
+    \$attacker.combat["id"] = name(\$attacker."base:environment");
+    \$target.combat["id"] = \$attacker.combat["id"];
+    ::initialize_combat(\$char: \$attacker, \$opponent: \$target);
+    ::initialize_combat(\$char: \$target, \$opponent: \$attacker);
+  \}
+\} else \{
+  /* No target. Are they joining as a support role? */
+  \$attacker.combat["id"] = name(\$attacker."base:environment");
+  ::initialize_combat(\$char: \$attacker, \$opponent: nil);
+\}
+/* Add these PCs to the list of combatants */
+\$data = Get(\$combat_data, \$attacker.combat["id"]);
+if(!\$data) \{
+  \$data = ([ "combatants":(\{ \}), "location":\$attacker."base:environment" ]);
+  Set(\$combat_data, \$attacker.combat["id"], \$data);
+\}
+
+if(\$target)
+    \$data["combatants"] \|= (\{ \$attacker, \$target \});
+else
+    \$data["combatants"] \|= (\{ \$attacker \});
+
+/* And start the fight, if needed */
+::loop(\$combat_loop_id: \$attacker.combat["id"]);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_joinfight">
+         X[M] /* Trying to start or join in a fight */
+
+/* Sanity check */
+if(!\$actor."base:environment") return FALSE;
+
+/* If they are in a danger zone, then they don't get asked if they want to fight or not. They have no choice. */
+if(\$actor."base:environment"."area:dangerarea") \{
+ ccombat::start_fight_victimcheck();
+ return FALSE;
+\}
+
+/* if they're already fighting, don't ask about injuries */
+if(\$actor.combat \&\& \$actor.combat["combatants"] \&\& sizeof(\$actor.combat["combatants"]) \> 1) \{
+ ccombat::start_fight_victimcheck();
+ return FALSE;
+\}
+
+/* If they are an NPC, don't ask them any questions. */
+if(!\$actor."udat:object") \{
+ ccombat::start_fight_victimcheck();
+ return FALSE;
+\}
+
+/* If they have already used their gift that stops them dying, warn them that they might die */
+/* NOT WRITTEN YET */
+
+/* If they're already quite injured, let them know that they risk further injuries */
+if(\$actor."combat:state:injured") \{
+  /* warn that they're risking long term injuries and death */
+  interaction::question(\$actor: \$actor, \$question: "You are already quite injured. If you continue to fight, you risk suffering a long term injury, or possibly death. Are you sure you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$yes_fun: "start_fight_victimcheck", \$no: "", \$expire: "", \$par: ([ "target":\$target]));
+  return FALSE;
+\}
+
+ccombat::start_fight_victimcheck();
+
+return FALSE;
+
+
+
+
+
+if(!\$target \&\& \$par) \$target = \$par["target"];
+if(!\$target) \{
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+\}
+
+/* If they are dead, they can't fight */
+if(\$target."combat:state:dead") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* if they aren't possessed (i.e. an NPC) don't ask for consent */
+if(!\$target."udat:object") \{
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+/* are they able to fight? */
+
+/* If they are in a danger zone, then they don't get asked if they want to fight or not. They have no choice. */
+if(\$target."base:environment"."area:dangerarea") \{
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+/* If they have already used their gift that stops them dying, warn them that they might die */
+/* NOT WRITTEN YET */
+
+/* Dying, and not in a danger zone */
+if(!\$target."base:environment"."area:dangerarea"
+\&\& \$target."combat:state:dying") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* If they're already quite injured, let them know that they risk further injuries */
+if(\$actor."combat:state:injured") \{
+ /* warn that they're risking permanent injuries and death */
+ interaction::question(\$actor: \$target, \$question: Describe(\$actor)+" is attempting to attack you, however you are extremely tired. If you choose to fight you risk suffering a long term injury, or death. Do you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$no_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$expire_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$yes_fun: "start_fight", \$no_fun: "start_fight_victimcheck_no", \$expire_fun: "start_fight_victimcheck_expire", \$par: ([ "attacker":\$actor, "target":\$target]));
+  return FALSE;
+\}
+
+/* No other reasons to ask questions */
+ccombat::start_fight();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck">
+         X[M] /* Got attacked. Do we get to choose whether to fight? */
+
+if(!\$target \&\& \$par) \$target = \$par["target"];
+if(!\$target) \{
+ /*
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+ */
+ /* No target - maybe they're joining to help, like someone joining to guard? */
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+/* If they are dead, they can't fight */
+if(\$target."combat:state:dead") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* if they aren't possessed (i.e. an NPC) don't ask for consent */
+if(!\$target."udat:object") \{
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+/* are they able to fight? */
+
+/* If they are in a danger zone, then they don't get asked if they want to fight or not. They have no choice. */
+if(\$target."base:environment"."area:dangerarea") \{
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+/* If they have already used their gift that stops them dying, warn them that they might die */
+/* NOT WRITTEN YET */
+
+/* Dying, and not in a danger zone */
+if(!\$target."base:environment"."area:dangerarea"
+\&\& \$target."combat:state:dying") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* If they're already quite injured, let them know that they risk further injuries */
+if(\$actor."combat:state:injured") \{
+ /* warn that they're risking permanent injuries and death */
+ interaction::question(\$actor: \$target, \$question: Describe(\$actor)+" is attempting to attack you, however you are extremely tired. If you choose to fight you risk suffering a long term injury, or death. Do you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$no_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$expire_ob: \$\{Ironclaw:Lib:Combat:Cards:Combat\}, \$yes_fun: "start_fight", \$no_fun: "start_fight_victimcheck_no", \$expire_fun: "start_fight_victimcheck_expire", \$par: ([ "attacker":\$actor, "target":\$target]));
+  return FALSE;
+\}
+
+/* No other reasons to ask questions */
+ccombat::start_fight();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck_expire">
+         X[M] if(\$par \&\& \$par["target"])
+ \$target = \$par["target"];
+if(\$par \&\& \$par["attacker"])
+ \$attacker = \$par["attacker"];
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ /* Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "start_fight"); */
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+EmitTo(\$par["attacker"], Describe(\$par["target"])+" has taken too long to respond to your attack, and as they are injured, we're assuming they are unwilling to keep fighting.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck_no">
+         X[M] if(\$par \&\& \$par["target"])
+ \$target = \$par["target"];
+if(\$par \&\& \$par["attacker"])
+ \$attacker = \$par["attacker"];
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ EmitTo(\$target, "As you are already in combat, unfortunately, anyone else can join in too.");
+ /* Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "start_fight"); */
+ ccombat::start_fight();
+ return FALSE;
+\}
+
+EmitTo(\$attacker, Describe(\$target)+" is injured, and unwilling to keep fighting.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1382499666, "tonyd", "E", 1382499834, "tonyd", "P", 1382499988, "tonyd", "P", 1382500081, "tonyd", "P", 1382500424, "tonyd", "P", 1382500441, "tonyd", "P", 1382500479, "tonyd", "P", 1382502407, "tonyd", "P", 1382502459, "tonyd", "P", 1382502471, "tonyd", "P", 1382502487, "tonyd", "P", 1382502514, "tonyd", "P", 1382502543, "tonyd", "P", 1382503136, "tonyd", "P", 1382510933, "tonyd", "P", 1382511029, "tonyd", "P", 1382511036, "tonyd", "P", 1382511053, "tonyd", "P", 1382511066, "tonyd", "P", 1382511120, "tonyd", "P", 1382613906, "tonyd", "P", 1382614276, "tonyd", "P", 1382614301, "tonyd", "P", 1382614391, "tonyd", "P", 1382614444, "tonyd", "P", 1382614468, "tonyd", "P", 1382614521, "tonyd", "P", 1382614526, "tonyd", "P", 1382614587, "tonyd", "P", 1382614606, "tonyd", "P", 1382614615, "tonyd", "P", 1382614617, "tonyd", "P", 1382614640, "tonyd", "P", 1382614678, "tonyd", "P", 1382614685, "tonyd", "P", 1382614800, "tonyd", "P", 1382614819, "tonyd", "P", 1382615019, "tonyd", "P", 1382615072, "tonyd", "P", 1382615291, "tonyd", "P", 1382615365, "tonyd", "P", 1382678894, "tonyd", "P", 1383024214, "tonyd", "P", 1383024256, "tonyd", "P", 1383024290, "tonyd", "P", 1383024365, "tonyd", "P", 1383024419, "tonyd", "P", 1383024600, "tonyd", "P", 1383024615, "tonyd", "P", 1383024657, "tonyd", "P", 1383024685, "tonyd", "P", 1383024868, "tonyd", "P", 1383024950, "tonyd", "P", 1383024988, "tonyd", "P", 1383025244, "tonyd", "P", 1383025259, "tonyd", "P", 1383025402, "tonyd", "P", 1383025445, "tonyd", "P", 1383025464, "tonyd", "P", 1383025492, "tonyd", "P", 1383025541, "tonyd", "P", 1383025590, "tonyd", "P", 1383025628, "tonyd", "P", 1383025670, "tonyd", "P", 1383025762, "tonyd", "P", 1383025801, "tonyd", "P", 1383025856, "tonyd", "P", 1383025900, "tonyd", "P", 1383025935, "tonyd", "P", 1383025979, "tonyd", "P", 1383026024, "tonyd", "P", 1383026073, "tonyd", "P", 1383026185, "tonyd", "P", 1383026219, "tonyd", "P", 1383026280, "tonyd", "P", 1383026563, "tonyd", "P", 1383026625, "tonyd", "P", 1383026639, "tonyd", "P", 1383026648, "tonyd", "P", 1383028426, "tonyd", "P", 1383028467, "tonyd", "P", 1383028654, "tonyd", "P", 1383028956, "tonyd", "P", 1383029185, "tonyd", "P", 1383029206, "tonyd", "P", 1383029353, "tonyd", "P", 1383029515, "tonyd", "P", 1383029647, "tonyd", "P", 1383029718, "tonyd", "P", 1383029991, "tonyd", "P", 1383030203, "tonyd", "P", 1383030211, "tonyd", "P", 1383030237, "tonyd", "P", 1383030315, "tonyd", "P", 1383030340, "tonyd", "P", 1383030390, "tonyd", "P", 1383284187, "tonyd", "P", 1383284347, "tonyd", "P", 1383284472, "tonyd", "P", 1383284518, "tonyd", "P", 1383284540, "tonyd", "P", 1383284899, "tonyd", "P", 1383284946, "tonyd", "P", 1383284994, "tonyd", "P", 1383285078, "tonyd", "P", 1383285108, "tonyd", "P", 1383285241, "tonyd", "P", 1383285296, "tonyd", "P", 1383285330, "tonyd", "P", 1383285400, "tonyd", "P", 1383286054, "tonyd", "P", 1383286064, "tonyd", "P", 1383286106, "tonyd", "P", 1383286129, "tonyd", "P", 1383286171, "tonyd", "P", 1383286202, "tonyd", "P", 1383286356, "tonyd", "P", 1383286418, "tonyd", "P", 1383286514, "tonyd", "P", 1383286539, "tonyd", "P", 1383286557, "tonyd", "P", 1383286596, "tonyd", "P", 1383286624, "tonyd", "P", 1383286665, "tonyd", "P", 1383286692, "tonyd", "P", 1383286748, "tonyd", "P", 1383286772, "tonyd", "P", 1383286869, "tonyd", "E", 1383287053, "tonyd", "P", 1383287070, "tonyd", "P", 1383287389, "tonyd", "P", 1383287452, "tonyd", "P", 1383287466, "tonyd", "P", 1383287494, "tonyd", "P", 1383287746, "tonyd", "P", 1383287763, "tonyd", "P", 1383287880, "tonyd", "P", 1383288025, "tonyd", "P", 1383288082, "tonyd", "P", 1383288112, "tonyd", "P", 1383288125, "tonyd", "P", 1383288145, "tonyd", "P", 1383428890, "tonyd", "P", 1383428922, "tonyd", "P", 1383429129, "tonyd", "P", 1383429167, "tonyd", "P", 1383429674, "tonyd", "P", 1383429684, "tonyd", "P", 1383429689, "tonyd", "P", 1383429748, "tonyd", "P", 1383429941, "tonyd", "P", 1383430033, "tonyd", "P", 1383430077, "tonyd", "P", 1383461430, "tonyd", "P", 1383461601, "tonyd", "P", 1383461815, "tonyd", "P", 1383462516, "tonyd", "P", 1383462529, "tonyd", "P", 1383462675, "tonyd", "P", 1383462708, "tonyd", "P", 1383462726, "tonyd", "P", 1383462978, "tonyd", "P", 1383463004, "tonyd", "P", 1383463017, "tonyd", "P", 1383463044, "tonyd", "P", 1383463105, "tonyd", "P", 1383463114, "tonyd", "P", 1383463131, "tonyd", "P", 1383463173, "tonyd", "P", 1383463182, "tonyd", "P", 1383463211, "tonyd", "P", 1383463249, "tonyd", "P", 1383463262, "tonyd", "P", 1383463278, "tonyd", "P", 1383463297, "tonyd", "P", 1383463318, "tonyd", "P", 1383463462, "tonyd", "P", 1383463509, "tonyd", "P", 1383463595, "tonyd", "P", 1383463614, "tonyd", "P", 1383464011, "tonyd", "P", 1383464017, "tonyd", "P", 1383464082, "tonyd", "P", 1383464567, "tonyd", "P", 1383464641, "tonyd", "P", 1383464667, "tonyd", "P", 1383464711, "tonyd", "P", 1383464721, "tonyd", "P", 1383464766, "tonyd", "P", 1383464809, "tonyd", "P", 1383464863, "tonyd", "P", 1383464871, "tonyd", "P", 1383560446, "tonyd", "P", 1383560477, "tonyd", "P", 1383560501, "tonyd", "P", 1383560617, "tonyd", "P", 1383560637, "tonyd", "P", 1383560653, "tonyd", "P", 1383560717, "tonyd", "P", 1383560729, "tonyd", "P", 1383560985, "tonyd", "P", 1383561111, "tonyd", "P", 1383561173, "tonyd", "P", 1383561216, "tonyd", "P", 1383561308, "tonyd", "P", 1383561368, "tonyd", "P", 1383561481, "tonyd", "P", 1383563149, "tonyd", "P", 1383563208, "tonyd", "P", 1383563282, "tonyd", "P", 1383563298, "tonyd", "P", 1383563359, "tonyd", "P", 1383566093, "tonyd", "P", 1383566155, "tonyd", "P", 1383566174, "tonyd", "P", 1383566187, "tonyd", "P", 1383566309, "tonyd", "P", 1383566499, "tonyd", "P", 1383566758, "tonyd", "P", 1383566801, "tonyd", "P", 1383566861, "tonyd", "P", 1383567012, "tonyd", "P", 1383567028, "tonyd", "P", 1383567407, "tonyd", "P", 1383567600, "tonyd", "P", 1383567670, "tonyd", "P", 1383567686, "tonyd", "P", 1383567696, "tonyd", "P", 1383568904, "tonyd", "P", 1383569227, "tonyd", "P", 1383569432, "tonyd", "P", 1384840953, "tonyd", "P", 1384841513, "tonyd", "P", 1384841549, "tonyd", "P", 1384841598, "tonyd", "P", 1384841657, "tonyd", "P", 1384841817, "tonyd", "P", 1384842357, "tonyd", "P", 1384842369, "tonyd", "P", 1384842399, "tonyd", "P", 1384842502, "tonyd", "P", 1384842578, "tonyd", "P", 1384842707, "tonyd", "P", 1384842819, "tonyd", "P", 1384842880, "tonyd", "P", 1384842906, "tonyd", "P", 1384842948, "tonyd", "P", 1384843006, "tonyd", "P", 1384843029, "tonyd", "P", 1384843178, "tonyd", "P", 1384843370, "tonyd", "P", 1384843385, "tonyd", "P", 1384843400, "tonyd", "P", 1384843414, "tonyd", "P", 1384844565, "tonyd", "P", 1384844638, "tonyd", "P", 1384925204, "tonyd", "P", 1384925224, "tonyd", "P", 1384925306, "tonyd", "P", 1384925382, "tonyd", "P", 1384925514, "tonyd", "P", 1384925592, "tonyd", "P", 1384925692, "tonyd", "P", 1384925697, "tonyd", "P", 1384925761, "tonyd", "P", 1384925840, "tonyd", "P", 1384925914, "tonyd", "P", 1384925933, "tonyd", "P", 1384926023, "tonyd", "P", 1384926147, "tonyd", "P", 1384926162, "tonyd", "P", 1384926274, "tonyd", "P", 1384926326, "tonyd", "P", 1384926407, "tonyd", "P", 1384926449, "tonyd", "P", 1384926708, "tonyd", "P", 1384927037, "tonyd", "P", 1384927466, "tonyd", "P", 1384927519, "tonyd", "P", 1384927577, "tonyd", "P", 1384927638, "tonyd", "P", 1384927671, "tonyd", "P", 1384927686, "tonyd", "P", 1384927711, "tonyd", "P", 1384927746, "tonyd", "P", 1384927835, "tonyd", "P", 1384927848, "tonyd", "P", 1384927931, "tonyd", "P", 1384927961, "tonyd", "P", 1384928064, "tonyd", "P", 1384928076, "tonyd", "P", 1384928115, "tonyd", "P", 1384928225, "tonyd", "P", 1384928254, "tonyd", "P", 1384928305, "tonyd", "P", 1384928323, "tonyd", "P", 1384928391, "tonyd", "P", 1384928891, "tonyd", "P", 1384929331, "tonyd", "P", 1384929425, "tonyd", "P", 1384929693, "tonyd", "P", 1384929853, "tonyd", "P", 1384930152, "tonyd", "P", 1384930167, "tonyd", "P", 1384930832, "tonyd", "P", 1384930844, "tonyd", "P", 1384930865, "tonyd", "P", 1384931242, "tonyd", "P", 1384931267, "tonyd", "P", 1384947764, "tonyd", "P", 1384947846, "tonyd", "P", 1384947890, "tonyd", "P", 1384947911, "tonyd", "P", 1384947935, "tonyd", "P", 1384947947, "tonyd", "P", 1384947984, "tonyd", "P", 1384948027, "tonyd", "P", 1384948159, "tonyd", "P", 1384948190, "tonyd", "P", 1384948252, "tonyd", "P", 1384948271, "tonyd", "P", 1384948315, "tonyd", "P", 1384948393, "tonyd", "P", 1384948447, "tonyd", "P", 1384948457, "tonyd", "P", 1384949531, "tonyd", "P", 1384949558, "tonyd", "P", 1384949626, "tonyd", "P", 1384949820, "tonyd", "P", 1384949881, "tonyd", "P", 1384950011, "tonyd", "P", 1384950023, "tonyd", "P", 1384950056, "tonyd", "P", 1384950135, "tonyd", "P", 1384950207, "tonyd", "P", 1384950231, "tonyd", "P", 1384950246, "tonyd", "P", 1384950292, "tonyd", "P", 1384950301, "tonyd", "P", 1384950364, "tonyd", "P", 1384950376, "tonyd", "P", 1384950485, "tonyd", "P", 1384950523, "tonyd", "P", 1384950598, "tonyd", "P", 1384950791, "tonyd", "P", 1384950844, "tonyd", "P", 1384950860, "tonyd", "P", 1384950934, "tonyd", "P", 1384951184, "tonyd", "P", 1384951256, "tonyd", "P", 1384951270, "tonyd", "P", 1384951434, "tonyd", "P", 1384951493, "tonyd", "P", 1384951505, "tonyd", "P", 1384951627, "tonyd", "P", 1384952259, "tonyd", "P", 1384952279, "tonyd", "P", 1384989139, "tonyd", "P", 1384989794, "tonyd", "P", 1384989845, "tonyd", "P", 1384995734, "tonyd", "P", 1384998475, "tonyd", "P", 1384998773, "tonyd", "P", 1384998848, "tonyd", "P", 1384998875, "tonyd", "P", 1384998965, "tonyd", "P", 1384998983, "tonyd", "P", 1384999138, "tonyd", "P", 1384999181, "tonyd", "P", 1384999192, "tonyd", "P", 1384999230, "tonyd", "P", 1384999688, "tonyd", "P", 1384999709, "tonyd", "P", 1384999716, "tonyd", "P", 1384999724, "tonyd", "P", 1385001599, "tonyd", "P", 1385001603, "tonyd", "P", 1385001614, "tonyd", "P", 1385001687, "tonyd", "P", 1385001895, "tonyd", "P", 1385001970, "tonyd", "P", 1385001986, "tonyd", "P", 1385001994, "tonyd", "P", 1385002026, "tonyd", "P", 1385002191, "tonyd", "P", 1385002495, "tonyd", "P", 1385002502, "tonyd", "P", 1385002569, "tonyd", "P", 1385002648, "tonyd", "P", 1385002740, "tonyd", "P", 1385002848, "tonyd", "P", 1385002857, "tonyd", "P", 1385002914, "tonyd", "P", 1385005919, "tonyd", "P", 1385005937, "tonyd", "P", 1385005992, "tonyd", "P", 1385006033, "tonyd", "P", 1385006097, "tonyd", "P", 1385006114, "tonyd", "P", 1385006242, "tonyd", "P", 1385006268, "tonyd", "P", 1385006358, "tonyd", "P", 1385006392, "tonyd", "P", 1385006403, "tonyd", "P", 1385010716, "tonyd", "P", 1385010773, "tonyd", "P", 1385010812, "tonyd", "P", 1385010819, "tonyd", "P", 1385011188, "tonyd", "P", 1385011197, "tonyd", "P", 1385011329, "tonyd", "P", 1385011370, "tonyd", "P", 1385011431, "tonyd", "P", 1385011756, "tonyd", "P", 1385011797, "tonyd", "P", 1385011837, "tonyd", "P", 1385011851, "tonyd", "P", 1385011871, "tonyd", "P", 1385011947, "tonyd", "P", 1385012177, "tonyd", "P", 1385012704, "tonyd", "P", 1387691807, "tonyd", "P", 1387691900, "tonyd", "P", 1387691919, "tonyd", "P", 1387692032, "tonyd", "P", 1387692041, "tonyd", "P", 1387692090, "tonyd", "P", 1387692228, "tonyd", "P", 1387749252, "tonyd", "P", 1387749368, "tonyd", "P", 1387749506, "tonyd", "P", 1387749548, "tonyd", "P", 1387749600, "tonyd", "P", 1387749641, "tonyd", "P", 1387749719, "tonyd", "P", 1387749749, "tonyd", "P", 1387751882, "tonyd", "P", 1387752532, "tonyd", "P", 1387752583, "tonyd", "P", 1387752609, "tonyd", "P", 1387752639, "tonyd", "P", 1387753042, "tonyd", "P", 1387780937, "tonyd", "P", 1387781038, "tonyd", "P", 1387781125, "tonyd", "P", 1387781270, "tonyd", "P", 1387782851, "tonyd", "P", 1387782880, "tonyd", "P", 1387782891, "tonyd", "P", 1387782940, "tonyd", "P", 1387783057, "tonyd", "P", 1387783146, "tonyd", "P", 1390540282, "tonyd", "P", 1390540502, "tonyd", "P", 1390540547, "tonyd", "P", 1390540576, "tonyd", "P", 1390634397, "tonyd", "P", 1390634602, "tonyd", "P", 1390635248, "tonyd", "P", 1390635273, "tonyd", "P", 1390635287, "tonyd", "P", 1390690454, "tonyd", "P", 1390690475, "tonyd", "P", 1390691286, "tonyd", "P", 1390691319, "tonyd", "P", 1390691380, "tonyd", "P", 1390691540, "tonyd", "P", 1390692178, "tonyd", "P", 1390692239, "tonyd", "E", 1390692246, "tonyd", "P", 1390693209, "tonyd", "P", 1390693831, "tonyd", "P", 1390694003, "tonyd", "P", 1390694163, "tonyd", "P", 1390694268, "tonyd", "P", 1390694399, "tonyd", "P", 1390715240, "tonyd", "P", 1390715355, "tonyd", "P", 1390715455, "tonyd", "P", 1390716243, "tonyd", "P", 1390716364, "tonyd", "P", 1390716502, "tonyd", "P", 1390716634, "tonyd", "P", 1390716664, "tonyd", "P", 1390716723, "tonyd", "P", 1390716736, "tonyd", "P", 1390716760, "tonyd", "P", 1390716770, "tonyd", "P", 1390716825, "tonyd", "P", 1390716838, "tonyd", "P", 1390716871, "tonyd", "P", 1390719239, "tonyd", "P", 1390719303, "tonyd", "P", 1390719363, "tonyd", "P", 1390719598, "tonyd", "P", 1390719617, "tonyd", "P", 1390719665, "tonyd", "P", 1390719818, "tonyd", "P", 1390719833, "tonyd", "P", 1390719943, "tonyd", "P", 1390721090, "tonyd", "P", 1390786761, "tonyd", "P", 1390786815, "tonyd", "P", 1390786926, "tonyd", "P", 1390786952, "tonyd", "P", 1390786987, "tonyd", "P", 1390787006, "tonyd", "P", 1390787269, "tonyd", "P", 1390787343, "tonyd", "P", 1390787547, "tonyd", "P", 1390787620, "tonyd", "P", 1390787644, "tonyd", "P", 1390788968, "tonyd", "P", 1390789080, "tonyd", "P", 1390789146, "tonyd", "P", 1390789976, "tonyd", "P", 1390790127, "tonyd", "P", 1390790146, "tonyd", "P", 1390790303, "tonyd", "P", 1390790336, "tonyd", "P", 1390792567, "tonyd", "P", 1390792706, "tonyd", "P", 1390792797, "tonyd", "P", 1390792821, "tonyd", "P", 1390792860, "tonyd", "P", 1390792972, "tonyd", "P", 1391143880, "tonyd", "P", 1391143917, "tonyd", "P", 1391144077, "tonyd", "P", 1391145980, "tonyd", "P", 1391237012, "tonyd", "P", 1391237224, "tonyd", "P", 1391238227, "tonyd", "P", 1391238388, "tonyd", "P", 1391238440, "tonyd", "P", 1391238460, "tonyd", "P", 1391239314, "tonyd", "P", 1391239367, "tonyd", "P", 1391240350, "tonyd", "P", 1391240535, "tonyd", "P", 1391242124, "tonyd", "P", 1391242436, "tonyd", "P", 1391242460, "tonyd", "P", 1391244935, "tonyd", "P", 1391244952, "tonyd", "P", 1391244971, "tonyd", "P", 1391244998, "tonyd", "P", 1391245089, "tonyd", "P", 1391245467, "tonyd", "P", 1391245533, "tonyd", "P", 1391245700, "tonyd", "P", 1391245968, "tonyd", "P", 1391246016, "tonyd", "P", 1391486725, "tonyd", "P", 1391486960, "tonyd", "P", 1391487005, "tonyd", "P", 1391487073, "tonyd", "P", 1391487107, "tonyd", "P", 1391487135, "tonyd", "P", 1391487145, "tonyd", "P", 1391487199, "tonyd", "P", 1391487239, "tonyd", "P", 1391487245, "tonyd", "P", 1391488718, "tonyd", "P", 1391488795, "tonyd", "P", 1391488847, "tonyd", "P", 1391488865, "tonyd", "P", 1391488911, "tonyd", "P", 1391488936, "tonyd", "P", 1391489690, "tonyd", "P", 1391930640, "tonyd", "P", 1392445691, "tonyd", "P", 1392445819, "tonyd", "P", 1392449365, "tonyd", "P", 1392449407, "tonyd", "P", 1392449424, "tonyd", "P", 1392452652, "tonyd", "P", 1392504209, "tonyd", "P", 1392504573, "tonyd", "P", 1392505430, "tonyd", "P", 1392505532, "tonyd", "P", 1392505627, "tonyd", "P", 1392506131, "tonyd", "P", 1392506169, "tonyd", "P", 1392506239, "tonyd", "P", 1392713843, "tonyd", "P", 1392714037, "tonyd", "P", 1392714428, "tonyd", "P", 1392714464, "tonyd", "P", 1392714759, "tonyd", "P", 1393129890, "tonyd", "P", 1393129911, "tonyd", "P", 1393130024, "tonyd", "P", 1393130044, "tonyd", "P", 1393130182, "tonyd", "P", 1393651114, "tonyd", "P", 1393651801, "tonyd", "P", 1393651918, "tonyd", "P", 1393653176, "tonyd", "P", 1393653242, "tonyd", "P", 1393653289, "tonyd", "P", 1393653296, "tonyd", "P", 1393999258, "tonyd", "P", 1393999475, "tonyd", "P", 1393999553, "tonyd", "P", 1393999567, "tonyd", "P", 1393999597, "tonyd", "P", 1393999650, "tonyd", "P", 1393999895, "tonyd", "P", 1394000061, "tonyd", "P", 1394000149, "tonyd", "P", 1394000283, "tonyd", "P", 1394000327, "tonyd", "P", 1394000368, "tonyd", "P", 1394000393, "tonyd", "P", 1394000446, "tonyd", "P", 1394000456, "tonyd", "P", 1394000496, "tonyd", "P", 1394001178, "tonyd", "P", 1394001198, "tonyd", "P", 1394001221, "tonyd", "P", 1394001238, "tonyd", "P", 1394001266, "tonyd", "P", 1394001287, "tonyd", "P", 1394001343, "tonyd", "P", 1394001364, "tonyd", "P", 1394001388, "tonyd", "P", 1394001407, "tonyd", "P", 1394001430, "tonyd", "P", 1394001466, "tonyd", "P", 1394001486, "tonyd", "P", 1394001575, "tonyd", "P", 1394001592, "tonyd", "P", 1394001610, "tonyd", "P", 1394001692, "tonyd", "P", 1394001709, "tonyd", "P", 1394001760, "tonyd", "P", 1394001780, "tonyd", "P", 1394001807, "tonyd", "P", 1394086560, "tonyd", "P", 1394086573, "tonyd", "P", 1394086587, "tonyd", "P", 1394086602, "tonyd", "P", 1394086641, "tonyd", "P", 1394086677, "tonyd", "P", 1394086752, "tonyd", "P", 1400898937, "tonyd", "P", 1400898955, "tonyd", "P", 1400898974, "tonyd", "P", 1400899076, "tonyd", "P", 1400899133, "tonyd", "P", 1400899170, "tonyd", "P", 1400899229, "tonyd", "P", 1400899237, "tonyd", "P", 1400899425, "tonyd", "P", 1400899489, "tonyd", "P", 1400899495, "tonyd", "P", 1400899504, "tonyd", "P", 1400899511, "tonyd", "P", 1400903871, "tonyd", "P", 1400904113, "tonyd", "P", 1400904122, "tonyd", "P", 1400904131, "tonyd", "P", 1400904140, "tonyd", "P", 1400904147, "tonyd", "P", 1400904161, "tonyd", "P", 1400904172, "tonyd", "P", 1400904195, "tonyd", "P", 1400904202, "tonyd", "P", 1400904212, "tonyd", "P", 1400904232, "tonyd", "P", 1400904266, "tonyd", "P", 1400904274, "tonyd", "P", 1400904299, "tonyd", "P", 1400904306, "tonyd", "P", 1400904319, "tonyd", "P", 1400904345, "tonyd", "P", 1400906042, "tonyd", "P", 1400906095, "tonyd", "P", 1400906100, "tonyd", "P", 1400906209, "tonyd", "P", 1400906417, "tonyd", "P", 1400906780, "tonyd", "P", 1400906791, "tonyd", "P", 1400906848, "tonyd", "P", 1400906884, "tonyd", "P", 1400906945, "tonyd", "P", 1400906982, "tonyd", "P", 1400907001, "tonyd", "P", 1400907021, "tonyd", "P", 1400907029, "tonyd", "P", 1400907048, "tonyd", "P", 1400907058, "tonyd", "P", 1400908917, "tonyd", "P", 1400908994, "tonyd", "P", 1400909255, "tonyd", "P", 1400909295, "tonyd", "P", 1400909343, "tonyd", "P", 1400909383, "tonyd", "P", 1400909453, "tonyd", "P", 1401004844, "tonyd", "P", 1401005309, "tonyd", "P", 1401005341, "tonyd", "P", 1401005355, "tonyd", "P", 1401005393, "tonyd", "P", 1401005413, "tonyd", "P", 1401005428, "tonyd", "P", 1401005450, "tonyd", "P", 1401005461, "tonyd", "P", 1401005534, "tonyd", "P", 1401009162, "tonyd", "P", 1401009208, "tonyd", "P", 1401009351, "tonyd", "P", 1401012982, "tonyd", "P", 1412533775, "jominey", "E", 1412533983, "jominey", "E", 1412534002, "jominey", "E", 1412542073, "jominey", "E", 1412543591, "jominey", "E", 1412543717, "jominey", "E", 1412543787, "jominey", "E", 1412544915, "jominey", "E", 1412544948, "jominey", "E", 1412545053, "jominey", "E", 1412546178, "jominey", "E", 1412548362, "jominey", "E", 1449889492, "tonyd", "P", 1449889583, "tonyd", "P", 1449889901, "tonyd", "P", 1449890002, "tonyd", "P", 1449890027, "tonyd", "P", 1449890297, "tonyd", "P", 1449890303, "tonyd", "P", 1449890318, "tonyd", "P", 1449890339, "tonyd", "P", 1449890356, "tonyd", "P", 1449890364, "tonyd", "P", 1449890407, "tonyd", "P", 1449890440, "tonyd", "P", 1449890466, "tonyd", "P", 1449890523, "tonyd", "P", 1449901899, "tonyd", "P", 1449903500, "tonyd", "P", 1449903511, "tonyd", "P", 1449903539, "tonyd", "P", 1449903650, "tonyd", "P", 1449903855, "tonyd", "P", 1449904461, "tonyd", "P", 1449904540, "tonyd", "P", 1449904549, "tonyd", "P", 1449904576, "tonyd", "P", 1449904596, "tonyd", "P", 1449904655, "tonyd", "P", 1449908136, "tonyd", "P", 1449908233, "tonyd", "P", 1449908244, "tonyd", "P", 1449908306, "tonyd", "P", 1449908659, "tonyd", "P", 1449908717, "tonyd", "P", 1449908735, "tonyd", "P", 1449909566, "tonyd", "P", 1453874873, "tonyd", "P", 1453875132, "tonyd", "P", 1453875411, "tonyd", "P", 1453875467, "tonyd", "P", 1453875809, "tonyd", "P", 1453876025, "tonyd", "P", 1453876072, "tonyd", "P", 1453876099, "tonyd", "P", 1453876118, "tonyd", "P", 1453876134, "tonyd", "P", 1453876142, "tonyd", "P", 1453876179, "tonyd", "P", 1453876205, "tonyd", "P", 1453876222, "tonyd", "P", 1453876326, "tonyd", "P", 1453876332, "tonyd", "P", 1453878270, "tonyd", "P", 1453878329, "tonyd", "P", 1453878982, "tonyd", "P", 1453879040, "tonyd", "P", 1453879067, "tonyd", "P", 1453879605, "tonyd", "P", 1453879679, "tonyd", "P", 1453879692, "tonyd", "P", 1453879752, "tonyd", "P", 1453880062, "tonyd", "P", 1453880102, "tonyd", "P", 1453880219, "tonyd", "P", 1453954010, "tonyd", "P", 1453954138, "tonyd", "P", 1453956523, "tonyd", "P", 1456892620, "tonyd", "P", 1456892813, "tonyd", "P", 1456893979, "tonyd", "E", 1456894699, "tonyd", "P", 1456894792, "tonyd", "P", 1456894849, "tonyd", "P", 1456894946, "tonyd", "P", 1456895144, "tonyd", "P", 1456895237, "tonyd", "P", 1456895253, "tonyd", "P", 1456895287, "tonyd", "P", 1463725351, "tonyd", "P", 1463725503, "tonyd", "P", 1463725539, "tonyd", "P", 1463728103, "tonyd", "P", 1463728300, "tonyd", "P", 1463728315, "tonyd", "P", 1463728602, "tonyd", "P", 1463728684, "tonyd", "P", 1463728711, "tonyd", "P", 1463728777, "tonyd", "P", 1463728808, "tonyd", "P", 1463728866, "tonyd", "P", 1463728905, "tonyd", "P", 1463728947, "tonyd", "P", 1463729032, "tonyd", "P", 1463729066, "tonyd", "P", 1463729080, "tonyd", "P", 1463729131, "tonyd", "P", 1463729173, "tonyd", "P", 1463729249, "tonyd", "P", 1463729304, "tonyd", "P", 1463729350, "tonyd", "P", 1463729428, "tonyd", "P", 1463729455, "tonyd", "P", 1463729489, "tonyd", "P", 1463729600, "tonyd", "P", 1463729670, "tonyd", "P", 1463729746, "tonyd", "P", 1463729753, "tonyd", "P", 1463729764, "tonyd", "P", 1463729768, "tonyd", "P", 1463729780, "tonyd", "P", 1463731926, "tonyd", "P", 1463731955, "tonyd", "P", 1463732020, "tonyd", "P", 1463732211, "tonyd", "P", 1463732247, "tonyd", "P", 1464422792, "tonyd", "P", 1469080171, "tonyd", "P", 1469084130, "tonyd", "P", 1469087219, "tonyd", "P", 1469163080, "tonyd", "P", 1469251224, "tonyd", "P", 1469251293, "tonyd", "P", 1469251343, "tonyd", "P", 1469251364, "tonyd", "P", 1469251387, "tonyd", "P", 1469251611, "tonyd", "P", 1469251635, "tonyd", "P", 1469251695, "tonyd", "P", 1469251726, "tonyd", "P", 1469251757, "tonyd", "P", 1469251773, "tonyd", "P", 1469251801, "tonyd", "P", 1469251921, "tonyd", "P", 1469251959, "tonyd", "P", 1469251991, "tonyd", "P", 1469252049, "tonyd", "P", 1469252085, "tonyd", "P", 1469258335, "tonyd", "P", 1469258820, "tonyd", "P", 1469259425, "tonyd", "P", 1469259519, "tonyd", "P", 1469259552, "tonyd", "P", 1469260233, "tonyd", "P", 1469261398, "tonyd", "P", 1469261416, "tonyd", "P", 1469261502, "tonyd", "P", 1469261684, "tonyd", "P", 1469261706, "tonyd", "P", 1469262092, "tonyd", "P", 1469262361, "tonyd", "P", 1469262434, "tonyd", "P", 1469262471, "tonyd", "P", 1469262569, "tonyd", "P", 1478143389, "tonyd", "P", 1478143398, "tonyd", "P", 1478143442, "tonyd", "P", 1478143473, "tonyd", "P", 1478143923, "tonyd", "P", 1478143964, "tonyd", "P", 1478144066, "tonyd", "P", 1478144306, "tonyd", "P", 1478144539, "tonyd", "P", 1496730906, "tonyd", "P", 1496730919, "tonyd", "P", 1496730982, "tonyd", "P", 1508098073, "jominey", "E", 1567888415, "jominey", "E", 1567889116, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

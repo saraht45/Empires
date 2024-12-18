@@ -1,0 +1,264 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:do_nothing">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$original = \$par["original"];
+
+Act(\$npc, "refuse", \$what: (\{ \$original \}), \$who: \$actor);
+Social(\$npc, "turn", "dismissively", nil, "from", \$actor);
+
+\$npc.busy = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:make_the_thing">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$original = \$par["original"];
+
+\$options = \$par[\$key + "_options"];
+\$cost = \$par[\$key + "_cost"];
+
+if(Int(\$actor."trait:money") \< \$cost) \{
+    Act(\$npc, "refuse", \$what: (\{ \$original \}), \$who: \$actor);
+    Social(\$npc, "sneer", "sourly", "Don't waste my time if you can't pay!", "at", \$actor);
+    \$npc.busy = nil;
+    return FALSE;
+\}
+
+Act(\$npc, "accept", \$what: (\{ \$original \}), \$who: \$actor);
+\$actor."trait:money" = Int(\$actor."trait:money") - \$cost;
+
+\$skill = 24;
+
+\$cuts = map_indices(\$options);
+\$sack = Spawn(\$\{Allegory:Props:Clothing:Containers:Sack\});
+\$sack."trait:color" = "blood-stained";
+\$sack."trait:material" = "canvas";
+\$sack."trait:trash" = 1;
+
+for(\$i = 0; \$i \< sizeof(\$cuts); \$i++) \{ 
+    \$quantity = \$options[\$cuts[\$i]];
+
+    for(\$j = 0; \$j \< \$quantity; \$j++) \{
+        \$meat = Spawn(\$cuts[\$i]);
+        \$meat."base:environment" = \$sack;
+    \}
+\}
+
+\$delay(2, FALSE, "1c3c");
+ 
+EmitTo(\$actor, "After a short while, " + Describe(\$npc) + " hands you " + Describe(\$sack, nil, nil, STYLE_NONPOSS) + ".");
+EmitIn(\$actor."base:environment", "After a short while, " + Describe(\$npc) + " hands " + Describe(\$actor) + " " + Describe(\$sack, nil, nil, STYLE_NONPOSS) + ".", \$actor);
+
+\$sack."base:environment" = \$actor;
+
+if(!\$sack."base:environment") \$sack."base:environment" = \$actor."base:environment"; 
+
+\$delay(3, FALSE, "41f2");
+
+Social(\$npc, "nod", "silently", nil, "to", \$actor);
+
+Slay(\$original);
+
+\$npc.busy = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:sell_carcass">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$original = \$par["original"];
+\$sellprice = \$par["sellprice"];
+
+Act(\$npc, "accept", \$what: (\{ \$original \}), \$who: \$actor);
+
+/* Do a haggling roll, to see how much more the PC gets */
+\$original_price = \$sellprice;
+
+\$sellprice = allegory::do_haggle(\$price: \$sellprice, \$act: "selling");
+
+if(\$sellprice \> \$original_price) \{
+    EmitTo(\$actor, TAG("You manage to haggle " + Describe(\$npc) + " from " + Str(allegory::get_cost(\$cost: Flt(\$original_price)/100.0)) + " to " + Str(allegory::get_cost(\$cost: Flt(\$sellprice)/100.0)) + ".", "imp"));
+\} else \{
+    EmitTo(\$actor, TAG(capitalize(Describe(\$npc)) + " pays you " + allegory::get_cost(\$cost: Flt(\$sellprice)/100.0) + ".", "imp"));
+\}
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$npc)) + " hands " + Describe(\$actor) + " some coins.", "social:third"), \$actor);
+
+\$actor."trait:money" = Int(\$actor."trait:money") + Int(\$sellprice);
+
+Slay(\$original);
+
+\$npc.busy = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:offer-who%butcher">
+         X[M] if(\$this.busy) \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "tell", "curtly", "Wait.", nil, \$actor);
+    return FALSE;
+\}
+
+if(sizeof(\$what) \> 1) \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "stare", "blankly", nil, "at", \$actor);
+    return FALSE;
+\}
+
+\$ob = NRefOb(\$what[0]);
+
+if(!\$ob."butchering:cuts" \&\& !\$ob."butchering:cuts:failed") \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "stare", "blankly", nil, "at", \$actor);
+    return FALSE;
+\}
+
+\$this.busy = TRUE;
+
+\$par = ([ ]);
+\$par["npc"] = \$this;
+\$par["actor"] = \$actor;
+\$par["original"] = \$ob;
+
+\$options = \$ob."butchering:cuts";
+\$costList = ([ "extra-large":4000, "large":3000, "medium":2000, "small":1000, "tiny":500 ]);
+
+if(\$costList[\$ob."trait:size"]) \{
+    \$cost = \$costList[\$ob."trait:size"];
+\} else \{
+    \$cost = 2000;
+\}
+
+\$sellprice = (Flt(\$cost)/2.0) * allegory::get_quality_modifier(\$quality: Int(\$ob."trait:quality"));
+
+\$a = "Professional cuts (" + allegory::get_cost(\$cost: Flt(\$cost)/100.0) + ")";
+\$a_ob = \$\{Allegory:Lib:Tradesmen:Butcher\};
+\$a_fun = "make_the_thing";
+\$par["a_options"] = \$options;
+\$par["a_cost"] = \$cost;
+
+if(\$ob."butchering:cuts:failed") \{
+    \$options = \$ob."butchering:cuts:failed";
+    \$costList = ([ "extra-large":2000, "large":1500, "medium":1000, "small":500, "tiny":100 ]);
+
+    if(\$costList[\$ob."trait:size"]) \{
+        \$cost = \$costList[\$ob."trait:size"];
+    \} else \{
+        \$cost = 1000;
+    \}
+
+    \$b = "Primitive cuts (" + allegory::get_cost(\$cost: Flt(\$cost)/100.0) + ")";
+    \$b_ob = \$\{Allegory:Lib:Tradesmen:Butcher\};
+    \$b_fun = "make_the_thing";
+    \$par["b_options"] = \$options;
+    \$par["b_cost"] = \$cost;
+
+    \$c = "Sell the carcass (" + allegory::get_cost(\$cost: \$sellprice/100.0) + ")";
+    \$c_ob = \$\{Allegory:Lib:Tradesmen:Butcher\};
+    \$c_fun = "sell_carcass";
+    \$par["sellprice"] = \$sellprice;
+
+    \$d = "I need more time to think.";
+    \$d_ob = \$\{Allegory:Lib:Tradesmen:Butcher\};
+    \$d_fun = "do_nothing";
+\} else \{
+    \$b = "Sell the carcass (" + allegory::get_cost(\$cost: \$sellprice/100.0) + ")";
+    \$b_ob = \$\{Allegory:Lib:Tradesmen:Butcher\};
+    \$b_fun = "sell_carcass";
+    \$par["sellprice"] = \$sellprice;
+
+    \$c = "I need more time to think.";
+    \$c_ob = \$\{Allegory:Lib:Tradesmen:Butcher\};
+    \$c_fun = "do_nothing";
+\}
+
+\$expires = 30;
+\$expire_ob = \$\{Allegory:Lib:Tradesmen:Butcher\};
+\$expire_fun = "do_nothing";
+
+Social(\$this, "grunt", "assessingly", nil, "at", \$ob);
+
+\$delay(5, FALSE, "9926");
+
+\$optionsStr = "";
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$this)) + " simply points to a price list.", "social:third"));
+
+interaction::question(\$question: "", \$par: \$par);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:butcher-dob%butcher">
+         X[M] int skill, quantity, i, j;
+mapping cutsMap;
+mixed* cuts;
+mixed* meatList;
+object meat;
+string desc1, desc2;
+
+if(\$this."trait:state" != "raw") \{
+    EmitTo(\$actor, "You can only butcher raw meat.");
+    return FALSE;
+\}
+
+if(\$this."trait:sliced") \{
+    EmitTo(\$actor, "This carcass has already been cut into so you cannot adequately butcher it.");
+    return FALSE;
+\}
+
+if(!\$this."butchering:cuts") \{
+    EmitTo(\$actor, Describe(\$this) + " is not something you can butcher.");
+    return FALSE;
+\}
+
+skill = Int(\$actor."skill:general:cooking");
+
+if(/*!\$actor."crafting:override" \&\& */skill \< \$this."butchering:skill") \{
+    cutsMap = \$this."butchering:cuts:failed";
+    desc1 = "hack away at";
+    desc2 = "hacks away at";
+\} else \{
+    cutsMap = \$this."butchering:cuts";
+    desc1 = "skillfully butcher";
+    desc2 = "skillfully butchers";
+\}
+
+cuts = map_indices(cutsMap);
+
+meatList = (\{ \});
+for(i = 0; i \< sizeof(cuts); i++) \{
+    quantity = cutsMap[cuts[i]];
+
+    for(j = 0; j \< quantity; j++) \{
+        meat = Spawn(cuts[i]);
+        meatList += (\{ meat \});
+    \}
+\}
+
+EmitTo(\$actor, "You " + desc1 + " " + Describe(\$this, nil, nil, STYLE_NONPOSS) + " producing " + Describe(meatList, nil, nil, STYLE_REDUCE_CHUNK) + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor, nil, nil, STYLE_NONPOSS) + " " + desc2 + " " + Describe(\$this) + " producing " + Describe(meatList, nil, nil, STYLE_REDUCE_CHUNK) + ".", \$actor);
+
+for(i = 0; i \< sizeof(meatList); i++) \{
+    meatList[i]."base:environment" = \$actor;
+
+    if(!meatList[i]."base:environment") \{
+        meatList[i]."base:environment" = \$actor."base:environment";
+    \}
+\}
+
+Slay(\$this);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1589066742, "jominey", "E", 1589067789, "jominey", "E", 1589067808, "jominey", "E", 1589067833, "jominey", "E", 1589068168, "jominey", "E", 1589068227, "jominey", "E", 1589068438, "jominey", "E", 1589068502, "jominey", "E", 1589068768, "jominey", "E", 1589068880, "jominey", "E", 1589068955, "jominey", "P", 1589069211, "jominey", "E", 1589069280, "jominey", "P", 1589069619, "jominey", "R", 1589143824, "jominey", "E", 1589143856, "jominey", "E", 1589144094, "jominey", "E", 1589144124, "jominey", "E", 1589144660, "jominey", "E", 1589144712, "jominey", "E", 1589144990, "jominey", "E", 1589145065, "jominey", "E", 1589145081, "jominey", "E", 1589145175, "jominey", "E", 1589145266, "jominey", "E", 1589145339, "jominey", "E", 1589145418, "jominey", "E", 1589145455, "jominey", "E", 1589145556, "jominey", "E", 1589145674, "jominey", "E", 1589145811, "jominey", "E", 1589145840, "jominey", "E", 1589145903, "jominey", "E", 1589145969, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

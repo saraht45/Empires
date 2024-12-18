@@ -1,0 +1,91 @@
+<object clone="/usr/SkotOS/obj/verb" owner="necate">
+  <Socials:Verb imp="+demote" evoke="optional" audible="true" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:global:command instead! */
+/* grants a social rank decrease to a character */
+int i;
+
+if(!\$(dob:words) \|\| sizeof(\$(dob:words)) \< 2) \{
+  EmitTo(\$actor, "Format: +demote \<name\> list");
+  EmitTo(\$actor, "Format: +demote \<name\> \<group\>");
+  return FALSE;
+\}
+
+\$a_subj = lower_case( \$(dob:words)[0] );
+\$char = common::lookup(\$name: \$a_subj);
+if(!\$char) \{
+  EmitTo(\$actor, "Unknown character.");
+  return FALSE;
+\}
+
+\$groups = map_indices(prefixed_map(\$char."*", "rank:status:"));
+\$group = lower_case( \$(dob:words)[1] );
+if(\$group == "list") \{
+  if(!sizeof(\$groups)) \{
+    EmitTo(\$actor, Describe(\$char)+" has no status.");
+    return FALSE;
+  \}
+  EmitTo(\$actor, "Possible demotions for "+Describe(\$char)+":");
+  for(i=0;i\<sizeof(\$groups);i++) \{
+    \$level = Get(\$char, \$groups[i]);
+    \$rankname = Get(\$char, "rankname"+\$groups[i][4..]+":"+\$level);
+    EmitTo(\$actor, \$groups[i][12..]+" ("+\$level+" - "+\$rankname+")");
+  \}
+  return FALSE;
+\}
+
+if(!member("rank:status:"+\$group, \$groups)) \{
+  EmitTo(\$actor, Describe(\$char)+" has no "+\$group+" status.");
+  return FALSE;
+\}
+
+\$lib = \$\{Allegory:Lib:Characters:Rank\};
+/* \$new_rank_info = Call(\$lib, "check_potential_promotion", \$char:\$char, \$path:"status:"+\$group, \$give_demotion:TRUE); */
+\$new_rank_info = Call(\$lib, "check_status", \$char: \$char, \$path: \$group, \$give_demotion: TRUE);
+
+interaction::question(\$question: "Do you want to demote "+Describe(\$char)+" to "+\$new_rank_info["rankname"]+" ("+\$new_rank_info["level"]+")?", \$expires: 30, \$env: FALSE, \$expire: "+demote question has expired.", \$yes_ob: \$lib, \$yes_fun: "give_demotion", \$no: "OK, no demotion just yet!", \$par: ([
+"char":\$char,
+"info":\$new_rank_info
+]));
+
+return FALSE;
+
+EmitTo(\$actor, "Character is :"+dump_value(\$char));
+\$rankname = Call(\$\{Allegory:Lib:Characters:Promotion\}, "demote", \$char: \$char, \$title: \$title);
+
+if(\$rankname) \{
+ if(typeof(\$rankname) == T_STRING) \{
+  /* error message. (otherwise it would have been an array) */
+  EmitTo(\$actor, \$rankname);
+  return FALSE;
+ \}
+ \$title = \$rankname[1];
+ \$rankname = \$rankname[0];
+
+ EmitTo(\$actor, "You have demoted "+Describe(\$char)+" to the rank of "+\$rankname+".");
+ EmitTo(\$char, "You have been demoted to the rank of "+\$rankname+".");
+ if(\$title \&\& sizeof(Arr(\$title)))
+  EmitTo(\$char, "This rank includes an in-game title. To set which title to use, try the @title command.");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1431312839, "jominey", "E", 1579713651, "jominey", "E", 1579713752, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

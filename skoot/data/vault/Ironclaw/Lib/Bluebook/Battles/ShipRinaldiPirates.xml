@@ -1,0 +1,377 @@
+<object clone="/obj/properties" owner="slurpeeslurp">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="event:start">
+         ([ "incidents":(\{ "attack", "defend", "sneak_attack", "swing_on_rigging", "fearsome_swearing", "cutting_the_rigging", "duel_captain", "attacked_by_captain", "shoulderbarge" \}), "variables":([ "enemy_pirate_tokens":1000, "friendly_healer_tokens":0, "friendly_sailor_tokens":200, "friendly_soldier_tokens":200 ]) ])
+      </Core:Property>
+      <Core:Property property="merry:lib:attack">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(\$role != "healer") return TRUE;
+  return FALSE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{\$favorite_weapon\}), \$bonus: \$char."trait:agility") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 10;
+  return capitalize(Describe(\$char))+" spots a "+\$pirate+", who is cut off from his "+oneof("companions", "crew")+", and "+oneof("charges", "attacks", "takes advantage of the opportunity")+". "+capitalize(Describe(\$char))+" "+oneof("guts him with ease", "slices - quickly and efficiently, and kills the pirate", "strikes true and hard, knocking the "+\$pirate+" out of the fight")+".\<br/\>";
+\} else if(\$stage == "fail") \{
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));
+  if(response) \{
+    output = capitalize(Describe(\$char))+" "+oneof("pushes forward into the thick of battle", "chases after a "+\$pirate, "presses forward, fighting with a "+\$pirate)+oneof(", before realizing "+\$char."base:pronoun"+" is cut off from "+\$char."base:possessive"+" allies", ", unfortunately the ebb and flow of the fight leaves "+\$char."base:objective"+" stranded amongst enemies")+". "+response;
+    return output;
+  \}
+  output = capitalize(Describe(\$char))+" charges into the thick of battle where, surrounded by enemies, a "+\$pirate+" "+oneof("cuts "+\$char."base:objective"+" down with", "strikes "+\$char."base:objective"+" with", "lands a blow with")+" a "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+oneof(". The weapon pierces", ", leaving a nasty cut across")+" "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+". "+capitalize(Describe(\$char))+" falls to the deck, unconscious.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";
+  ::remove_pc();
+  return output;
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:attacked_by_captain">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(\$role != "dueler") return FALSE;
+  return TRUE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"combat:dodge"\}), \$bonus: \$char."trait:speed") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  \$pirate = "captain";
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 60;
+  \$pirate = "captain";
+  return oneof("Emerging from the swirling combat, "+capitalize(Describe(\$char))+" finds "+\$char."base:objective"+"self face to face with the pirate captain.", "Nimbley hopping past other combatants, the pirate captain bellows a challenge to "+capitalize(Describe(\$char))+".")+" "+oneof("A colossal clashing of blades commences, but "+capitalize(Describe(\$char))+" is able to fend off the attack for now.", "Ducking and weaving, "+capitalize(Describe(\$char))+" manages to thwart all attempts to do any bodily harm.", capitalize(Describe(\$char))+" just barely manages to avoid any serious injury at the hands of the pirate captain.")+"\<br/\>";
+\} else if(\$stage == "fail") \{
+  \$pirate = "captain";
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));
+  if(response) \{
+    output = oneof("Emerging from the swirling combat, "+capitalize(Describe(\$char))+" finds "+\$char."base:objective"+"self face to face with the pirate captain.", "Nimbley hopping past other combatants, the pirate captain bellows a challenge to "+capitalize(Describe(\$char))+".")+" The captain "+oneof("cuts "+\$char."base:objective"+" down with", "strikes "+\$char."base:objective"+" with", "lands a blow with")+" his cutlass"+oneof(". The weapon pierces", ", leaving a nasty cut across")+" "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+"."+response;
+    return output;
+  \}
+  output = oneof("Emerging from the swirling combat, "+capitalize(Describe(\$char))+" finds "+\$char."base:objective"+"self face to face with the pirate captain.", "Nimbley hopping past other combatants, the pirate captain bellows a challenge to "+capitalize(Describe(\$char))+".")+" The captain easily cuts down "+capitalize(Describe(\$char))+".\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";
+  ::remove_pc();
+  return output;
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:cutting_the_rigging">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(\$role != "healer") return TRUE;
+  return FALSE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"career:mercenary" \}), \$bonus: \$char."trait:body") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 25;
+  return capitalize(Describe(\$char))+" "+oneof("slashes", "hacks", "slices")+" "+oneof("through", "at")+" the enemy rigging, "+oneof("snapping an important rope", "bringing down a tangle of ropes", "causing much destruction")+", and resulting in "+oneof("a sail flapping loose", "a swinging rope snapping across the enemy lines", "a mast collapsing onto the deck", "one of the sails falling", "the ship to swing wildly")+".\<br/\>";
+\} else if(\$stage == "fail") \{
+  return capitalize(Describe(\$char))+" "+oneof("slashes", "hacks", "slices")+" "+oneof("through", "at")+" the enemy rigging, "+oneof("snapping a few ropes", "doing a bit of damage", "not achieving much effective damage")+".\<br/\>";
+  return output;
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:defend">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  return TRUE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"combat:dodge"\}), \$bonus: \$char."trait:speed") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 20;
+  return "A "+\$pirate+" charges at "+Describe(\$char)+", "+oneof("swinging a", "slashing a", "with a raised")+" "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+". "+capitalize(Describe(\$char))+" "+oneof("manages to keep away", "avoids the attacker, until an ally can cut him down", "sidesteps the attack, then watches in amusement as the "+\$pirate+" continues charging, and falls overboard")+".\<br/\>";
+\} else if(\$stage == "fail") \{
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));
+  if(response) \{
+    output = "A "+\$pirate+" charges at "+Describe(\$char)+", "+oneof("swinging a", "slashing a", "with a raised")+" "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+", and backs "+capitalize(Describe(\$char))+" against a railing. "+response;
+    return output;
+  \}
+  output = "A "+\$pirate+" charges at "+Describe(\$char)+", "+oneof("swinging a", "slashing a", "with a raised")+" "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+", and "+oneof("slices", "cuts", "stabs")+" into "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+". "+capitalize(Describe(\$char))+" falls to the deck, unconscious.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";
+  ::remove_pc();
+  return output;
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:defending">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  /* there needs to be a fighter in the group */
+  \$list = copy(\$battle.pcs);
+  \$newchar = nil;
+  while(!\$newchar \&\& sizeof(\$list)) \{
+    \$i = random(sizeof(\$list));
+    if(\$list[\$i][1] == "fighter" \&\& \$list[\$i][0] != \$char) \{
+      \$newchar = \$list[\$i][0];
+      \$newchar_favorite_weapon = \$list[\$i][2];
+    \} else \{
+      \$list -= (\{ \$list[\$i] \});
+    \}
+  \}
+  if(\$newchar) return TRUE;
+  return FALSE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$newchar, \$skills: (\{\$newchar_favorite_weapon\}), \$bonus: \$char."trait:body") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  return " "+oneof(capitalize(Describe(\$newchar))+" leaps out of the crowd, to grapple with the "+\$pirate+".", capitalize(Describe(\$newchar))+" is nearby and, back to back with "+Describe(\$char)+", they fight their way free.", "The "+\$pirate+" "+oneof("smiles", "grins", "leers")+" nastily, when "+Describe(\$newchar)+" hits him from "+oneof("behind", "the side")+".")+"\<br/\>";
+\} else if(\$stage == "fail") \{
+  output = " "+capitalize(Describe(\$newchar))+" "+oneof("tries to help, but can't make it there in time.", "attacks the "+\$pirate+", but doesn't take him down.", "rushes to help, but is cut off by enemies.")+" The "+\$pirate+" "+oneof("slices", "slashes", "scythes")+" a "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+" across "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+" before moving off in the press of battle.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";
+  response = ::run_incident(\$incidents: \$incidents);
+  if(!response) \{
+   ::remove_pc();
+   return output;
+  \} else \{
+   return response;
+  \}
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_enemy">
+         X[M] return "pirate";
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_pirate">
+         X[M] return oneof("dirty", "filthy", "villanous", "yellow-eyed", "hulking", "large", "wiry", "tough looking", "ugly", "scurrilous", "scurvey", "nasty", "vicious", "one-eyed", "", "", "", "", "", "")+" "+oneof("pirate", "pirate", "pirate", "buccaneer", "sea-dog", "scoundrel")+oneof("", "", "", "", "", "", "", " wearing a tri-corn hat", " wearing a tattered coat", " with a nasty glint in his eye", " with an anchor tattoo on his arm", " with yellow teeth");
+      </Core:Property>
+      <Core:Property property="merry:lib:duel_captain">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(\$role != "dueler") return FALSE;
+  return TRUE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{\$favorite_weapon\}), \$bonus: \$char."trait:agility") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  \$pirate = "captain";
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 60;
+  \$pirate = "captain";
+  return oneof(capitalize(Describe(\$char))+" sees an opening, and charges towards the captain.", "Pushing through the battle, "+capitalize(Describe(\$char))+" makes their way to the pirate captain.")+" "+oneof("There is the flash of swords, and the captain quickly retreats.", "The two combatants fight up and down the rigging, until "+capitalize(Describe(\$char))+" manages to stab the captain through the "+oneof("shoulder", "leg", "thigh", "forearm", "hand")+".", "The captain swings his cutlass, which "+capitalize(Describe(\$char))+" ducks, before rising up and smashing the captain's jaw with a powerful uppercut.")+"\<br/\>";
+\} else if(\$stage == "fail") \{
+  \$pirate = "captain";
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));
+  if(response) \{
+    output = oneof(capitalize(Describe(\$char))+" sees an opening, and charges towards the captain.", "Pushing through the battle, "+capitalize(Describe(\$char))+" makes their way to the pirate captain.")+" The captain "+oneof("cuts "+\$char."base:objective"+" down with", "strikes "+\$char."base:objective"+" with", "lands a blow with")+" his cutlass"+oneof(". The weapon pierces", ", leaving a nasty cut across")+" "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+"."+response;
+    return output;
+  \}
+  output = oneof(capitalize(Describe(\$char))+" sees an opening, and charges towards the captain.", "Pushing through the battle, "+capitalize(Describe(\$char))+" makes their way to the pirate captain.")+" The captain easily cuts down "+capitalize(Describe(\$char))+".\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";
+  ::remove_pc();
+  return output;
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:fearsome_swearing">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(\$role != "healer") return TRUE;
+  return FALSE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"career:pirate" \}), \$bonus: \$char."trait:mind") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 15;
+  return capitalize(Describe(\$char))+" "+oneof("swears fiercely", "lets out a fiersome curse")+", "+oneof("cowing "+\$char."base:possessive"+" enemies.", "scaring a "+\$pirate+" into "+oneof("jumping overboard.", "retreating from the fight altogether.", "wetting himself."))+"\<br/\>";
+\} else if(\$stage == "fail") \{
+  output = capitalize(Describe(\$char))+" "+oneof("swears reasonably well, resulting in a few raised eyebrows.", "yells randomly at the enemies.", "screams at the enemy.", "curses the stars.", "attempts to cow the enemies by "+oneof("letting out a curse", "swearing", "exclaiming")+", \\""+oneof("Oh, fiddlesticks.", "Well, darn.", "Phooey.", "Voldemort's nipple!")+"\\"")+"\<BR/\>";
+  return output;
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:healed">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(!\$friendly_healer_tokens \|\| \$friendly_healer_tokens \< 20) return FALSE;
+  return TRUE;
+\} else if(\$stage == "test") \{
+  /* always passes */
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$friendly_healer_tokens -= 20;
+  return " The "+\$pirate+" "+oneof("slices", "slashes", "scythes")+" a "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+" across "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+" before moving off in the press of battle. A passing "+\$ally+" spots the injury, and manages to apply a hasty field dressing, allowing "+Describe(\$char)+" to rejoin the fight.\<br/\>";
+\} else if(\$stage == "fail") \{
+  /* always passes */
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:healing">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  /* there needs to be a healer in the group */
+  \$list = copy(\$battle.pcs);
+  \$newchar = nil;
+  while(!\$newchar \&\& sizeof(\$list)) \{
+    \$i = random(sizeof(\$list));
+    if(\$list[\$i][1] == "healer" \&\& \$list[\$i][0] != \$char) \{
+      \$newchar = \$list[\$i][0];
+    \} else \{
+      \$list -= (\{ \$list[\$i] \});
+    \}
+  \}
+  if(\$newchar) return TRUE;
+  return FALSE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$newchar, \$skills: (\{"mental:first-aid"\}), \$bonus: \$char."trait:mind") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  return " The "+\$pirate+" "+oneof("slices", "slashes", "scythes")+" a "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+" across "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+" before moving off in the press of battle. "+capitalize(Describe(\$newchar))+" spots the injury, and manages to apply a hasty field dressing, allowing "+Describe(\$char)+" to rejoin the fight.\<br/\>";
+\} else if(\$stage == "fail") \{
+  output = " The "+\$pirate+" "+oneof("slices", "slashes", "scythes")+" a "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+" across "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+" before moving off in the press of battle. "+capitalize(Describe(\$newchar))+oneof(" spots the injury, and dashes toward "+Describe(\$char)+", but gets lost in the fury of the battle, leaving the "+oneof("wound", "gouge", "injury", "slice")+" "+oneof ("unmended", "bleeding"), " rushes over, and hastily bandages the "+oneof("wound", "gouge", "injury", "slice")+", but not before "+Describe(\$char)+" passes out")+".\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";
+  response = ::run_incident(\$incidents: \$incidents);
+  if(!response) \{
+   ::remove_pc();
+   return output;
+  \} else \{
+   return response;
+  \}
+
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_pc">
+         X[M] /* remove a PC from the list */
+int i;
+
+if(!this.pcs) return TRUE;
+if(!\$char) return FALSE;
+for(i=0;i\<sizeof(this.pcs);i++) \{
+  if(this.pcs[i][0] == \$char) \{
+    \$tmp = this.pcs[i];
+    this.pcs -= (\{ \$tmp \});
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:rescued">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(!\$friendly_soldier_tokens \|\| \$friendly_soldier_tokens \< 20) return FALSE;
+  return TRUE;
+\} else if(\$stage == "test") \{
+  /* always passes */
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$friendly_soldier_tokens -= 10;
+  return " Before the "+\$pirate+" can "+oneof("do any serious damage", "attack", "take advantage of the situation")+", a "+\$ally+" "+oneof("arrives, and drives the scoundrel away", "rushes past, stabbing the pirate on the way", "intervenes, dueling the pirate in "+Describe(\$char)+"'s place", "lands a well-placed hit on the back of the pirate's head, rendering him unconscious")+".\<br/\>";
+\} else if(\$stage == "fail") \{
+  /* always passes */
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_incident">
+         X[M] /* run a second incident, following the first */
+string incident;
+int i;
+
+if(!\$incidents \|\| !sizeof(Arr(\$incidents))) return nil;
+\$incidents = Arr(\$incidents);
+
+while(sizeof(\$incidents)) \{
+  incident = \$incidents[random(sizeof(\$incidents))];
+  \$incidents -= (\{ incident \});
+  if(Call(\$battle, incident, \$stage: "conditions")) \{
+    if(Call(\$battle, incident, \$stage: "test")) \{
+      return Call(\$battle, incident, \$stage: "pass");
+    \} else \{
+      return Call(\$battle, incident, \$stage: "fail");
+    \}
+  \}
+\}
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:shoulderbarge">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(\$role != "healer") return TRUE;
+  return FALSE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"combat:armor:rating" \}), \$bonus: \$char."trait:body") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 20;
+  return oneof("Lowering "+\$char."base:possessive"+" shoulder, "+capitalize(Describe(\$char))+" barrels into a group of pirates.", "Opportunely noting a gaggle of pirates, "+capitalize(Describe(\$char))+" lowers "+\$char."base:possessive"+" shoulder and charge into them at full bore.")+" "+oneof("The pirates are sent reeling in all directions.", "A handful of the pirates are knocked from their feet, looking quite dazed.", "They scatter like leaves before a powerful wind.")+"\<br/\>";
+\} else if(\$stage == "fail") \{
+  return ::run_incident(\$incidents: this."event:start"["incidents"]);
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:sneak_attack">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(\$role != "healer") return TRUE;
+  return FALSE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"thief:stealth", "combat:sneakattack", "career:pirate" \}), \$bonus: \$char."trait:speed") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 20;
+  return capitalize(Describe(\$char))+" sneak attacks a "+\$pirate+".\<br/\>";
+\} else if(\$stage == "fail") \{
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));
+  if(response) \{
+    output = capitalize(Describe(\$char))+" fails to sneak attack a "+\$pirate+". "+response;
+    return output;
+  \}
+  output = capitalize(Describe(\$char))+" fails to sneak attack a "+\$pirate+", who knocks him out.\<BR/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";
+  ::remove_pc();
+  return output;
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:swing_on_rigging">
+         X[M] /* an incident during the event */
+string output, response;
+if(!\$stage) error("No \$stage data passed for incident.");
+if(\$stage == "conditions") \{
+  if(\$role != "healer" \&\& \$char."skill:career:pirate") return TRUE;
+  return FALSE;
+\} else if(\$stage == "test") \{
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"career:pirate" \}), \$bonus: \$char."trait:agility") \< ironclaw::roll(\$bonus: 24)) return FALSE;
+  return TRUE;
+\} else if(\$stage == "pass") \{
+  \$enemy_pirate_tokens -= 40;
+  return capitalize(Describe(\$char))+" swings on rigging, and kicks "+\$pirate+" overboard.\<br/\>";
+\} else if(\$stage == "fail") \{
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));
+  if(response) \{
+    output = capitalize(Describe(\$char))+" swings on rigging, landing near a "+\$pirate+". "+response;
+    return output;
+  \}
+  output = capitalize(Describe(\$char))+" swings on rigging, getting cut down by a "+\$pirate+" as they swing past, and falling to the deck.\<BR/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";
+  ::remove_pc();
+  return output;
+\}
+return "nothing";
+      </Core:Property>
+      <Core:Property property="pcs">
+         (\{ (\{ \<Chatters:AE:mi:mia\>, "dueler", "combat:axe" \}), (\{ nil, "fighter", "combat:gun" \}), (\{ nil, "healer", "combat:dagger" \}), (\{ nil, "dueler", "combat:unarmed" \}), (\{ nil, "fighter", "combat:fencing" \}) \})
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1219457334, "tonyd", "E", 1219457357, "tonyd", "P", 1219457392, "tonyd", "E", 1219457426, "tonyd", "E", 1219457607, "tonyd", "P", 1219457640, "tonyd", "P", 1219458016, "tonyd", "P", 1219458072, "tonyd", "P", 1219458100, "tonyd", "P", 1219458154, "tonyd", "P", 1219458172, "tonyd", "P", 1219458190, "tonyd", "P", 1219458262, "tonyd", "P", 1219458277, "tonyd", "P", 1219458311, "tonyd", "P", 1219458514, "tonyd", "P", 1219458522, "tonyd", "P", 1219458529, "tonyd", "P", 1219458583, "tonyd", "P", 1219458591, "tonyd", "P", 1219458600, "tonyd", "E", 1219458629, "tonyd", "P", 1219458649, "tonyd", "P", 1219458787, "tonyd", "P", 1219458792, "tonyd", "P", 1219458836, "tonyd", "P", 1219459013, "tonyd", "P", 1219459073, "tonyd", "P", 1219459195, "tonyd", "E", 1219459460, "tonyd", "P", 1219459739, "tonyd", "P", 1219459881, "tonyd", "P", 1219459895, "tonyd", "E", 1219459916, "tonyd", "E", 1219460013, "tonyd", "E", 1219460080, "tonyd", "E", 1232532120, "tonyd", "P", 1232532255, "tonyd", "P", 1232532299, "tonyd", "P", 1232532370, "tonyd", "P", 1232532443, "tonyd", "P", 1232532493, "tonyd", "P", 1232532523, "tonyd", "P", 1236308576, "tonyd", "P", 1236308759, "tonyd", "P", 1236309421, "tonyd", "P", 1236309525, "tonyd", "P", 1236309658, "tonyd", "P", 1236309725, "tonyd", "P", 1236310516, "tonyd", "P", 1236310602, "tonyd", "P", 1236310633, "tonyd", "P", 1236310666, "tonyd", "P", 1236310705, "tonyd", "P", 1236310730, "tonyd", "P", 1236310899, "tonyd", "P", 1236310950, "tonyd", "P", 1236311366, "tonyd", "E", 1236311612, "tonyd", "P", 1236311871, "tonyd", "P", 1236311923, "tonyd", "P", 1236311998, "tonyd", "E", 1236312030, "tonyd", "P", 1236312046, "tonyd", "P", 1236312393, "tonyd", "P", 1236312549, "tonyd", "P", 1236313241, "tonyd", "P", 1236320593, "tonyd", "P", 1236320903, "tonyd", "P", 1236321206, "tonyd", "P", 1236321215, "tonyd", "P", 1236321322, "tonyd", "P", 1236321423, "tonyd", "P", 1236321499, "tonyd", "P", 1236321561, "tonyd", "P", 1236321630, "tonyd", "P", 1236321713, "tonyd", "P", 1236321733, "tonyd", "P", 1236322038, "tonyd", "P", 1236322183, "tonyd", "P", 1236322252, "tonyd", "P", 1236322717, "tonyd", "P", 1236322847, "tonyd", "P", 1236322884, "tonyd", "P", 1236323215, "tonyd", "P", 1236323228, "tonyd", "P", 1236323246, "tonyd", "P", 1236323281, "tonyd", "P", 1236323299, "tonyd", "P", 1236323302, "tonyd", "P", 1236469215, "balkaar", "E", 1336064029, "rastalabor", "E", 1344465439, "meandmine", "E", 1344465472, "meandmine", "E", 1344465600, "meandmine", "E", 1344465623, "meandmine", "E", 1344465639, "meandmine", "E", 1344465662, "meandmine", "E", 1344465682, "meandmine", "E", 1344465757, "meandmine", "E", 1344465824, "meandmine", "E", 1344465842, "meandmine", "E", 1344465916, "meandmine", "E", 1344466084, "meandmine", "E", 1344466127, "meandmine", "E", 1344466158, "meandmine", "E", 1344466178, "meandmine", "E", 1344469103, "meandmine", "E", 1432313100, "slurpeeslurp", "E", 1432347934, "slurpeeslurp", "E", 1432347960, "slurpeeslurp", "E", 1432350075, "jominey", "E", 1432350175, "slurpeeslurp", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

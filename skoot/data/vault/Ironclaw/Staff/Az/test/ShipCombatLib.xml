@@ -1,0 +1,276 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:action:close_distance">
+         X[M] /* Taking an action during a shipboard combat */
+if(!\$data) return FALSE;
+if(!\$room) return FALSE;
+
+/* Closing distance on an enemy ship */
+/* Roll sailing ability */
+\$roll = random(15);
+EmitTo(\$actor, "You rolled a "+dump_value(\$roll)+"!");
+
+/* Adjust distance to enemy ship */
+\$enemy["position"]["distance"] -= \$roll;
+
+/* Sanity check */
+if(\$enemy["position"]["distance"] \<= 0) \{
+  \$enemy["position"]["distance"] = 0;
+  /* EXTENSION: Do they want to ram or board the ship? */
+  /* For now, just assume ram */
+  /* DO STUFF HERE */
+  EmitIn(\$room, "With a sickening crunch, the "+\$data["name"]+" slams into the "+\$enemy["name"]+", sending splinters of wood flying in all directions.");
+\} else \{
+  EmitIn(\$room, "The "+\$data["name"]+" closes distance with the "+\$enemy["name"]+".");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:enemy_turn">
+         X[M] /* The enemy turn in a shipboard combat */
+/*
+::enemy_turn(\$data: \$data, \$datafile: \$datafile, \$datakey: \$datakey, \$room: \$room);
+*/
+int i;
+
+\$data = Get(\$datafile, \$datakey);
+\$enemies = \$data["enemy"];
+
+/* Are there any enemies left? */
+for(i=0;i\<sizeof(\$enemies);i++) \{
+  \$enemy = \$enemies[i];
+  \$position = "The "+\$enemy["name"]+" is ";
+  \$position += Str(\$enemy["position"]["distance"])+" points away, ";
+  \$position += Str(\$enemy["position"]["fore"])+" points off the fore guns, ";
+  \$position += Str(\$enemy["position"]["aft"])+" points off the aft guns, and ";
+  \$position += Str(\$enemy["position"]["broad"])+" points off broadside.";
+  EmitIn(\$room, \$position);
+  \$position = "The "+\$enemy["name"]+" has the "+\$data["name"]+" ";
+  \$position += Str(\$enemy["heading"]["fore"])+" points off her fore guns, ";
+  \$position += Str(\$enemy["heading"]["aft"])+" points off her aft guns, and ";
+  \$position += Str(\$enemy["heading"]["broad"])+" points off her broadside.";
+  EmitIn(\$room, \$position);
+
+\}
+/*
+"enemy":([ "aftguns":4, "boatswain":8, "captain":8, "foreguns":4, "gunnery":4, "marine":8, "position":([ "aft":0, "broad":0, "distance":0, "fore":24 ]) ]),
+*/
+
+::loop(\$data: \$data, \$datafile: \$datafile, \$datakey: \$datakey, \$room: \$room);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:initialize">
+         X[M] /* Start a shipboard combat */
+if(!\$captain) return FALSE;
+if(!\$room) return FALSE;
+
+EmitTo(\$captain, "Hello Captain. Initializing a shipboard combat");
+EmitTo(\$captain, "Starting it in "+Describe(\$room));
+
+\$datafile = \$\{Ironclaw:Staff:Az:test:ShipCombatData\};
+\$datakey = name(\$captain);
+
+
+\$enemies = (\{
+    ([
+        "name":"Frisky Filly",
+        "type":"corsair",
+        "position":([ "distance":24, "fore":24, "broad":0, "aft":0 ]),
+        "heading":([ "fore":24, "broad":0, "aft":0 ]),
+        "captain":8,
+        "gunnery":4,
+        "foreguns":4,
+        "aftguns":4,
+        "boatswain":8,
+        "marine":8
+    ]),
+    ([
+        "name":"Roundabout Pete",
+        "type":"corsair",
+        "position":([ "distance":24, "fore":24, "broad":0, "aft":0 ]),
+        "heading":([ "fore":24, "broad":0, "aft":0 ]),
+        "captain":8,
+        "gunnery":4,
+        "foreguns":4,
+        "aftguns":4,
+        "boatswain":8,
+        "marine":8
+    ])
+\});
+
+\$data = ([ "name":"Donna's Pride", "type":"corsair", "jobs":([ "captain":\$captain, "gunnery":nil, "foreguns":nil, "aftguns":nil, "lookout":nil, "boatswain":nil, "marine":nil ]), "enemy":\$enemies, "integrity":100, "crew":50, "marines":50 ]);
+Set(\$datafile, \$datakey, \$data);
+
+::loop(\$data: \$data, \$datafile: \$datafile, \$datakey: \$datakey, \$room: \$room);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:loop">
+         X[M] /* One turn during a shipboard combat */
+/*
+::loop(\$data:\$data, \$datafile:\$datafile, \$datakey:\$datakey, \$room:\$room);
+*/
+int i, j, k;
+string* joblist;
+
+if(!\$data) return FALSE;
+if(!\$room) return FALSE;
+
+/* How long do the PCs have to make their decisions? */
+\$expires = 5*3;
+
+/* What enemy ships are we fighting? */
+\$enemies = \$data["enemy"];
+
+/* What jobs do we have? */
+\$data["waiting"] = (\{ \});
+joblist = (\{ "captain", "gunnery", "foreguns", "aftguns", "lookout", "boatswain", "marine" \});
+for(i=0; i\<sizeof(map_indices(\$data["jobs"])); i++) \{
+  \$job = map_indices(\$data["jobs"])[i];
+  \$pc = \$data["jobs"][map_indices(\$data["jobs"])[i]];
+  EmitIn(\$room, "Job: "+\$job+" - PC: "+dump_value(\$pc)+".");
+  \$pc."tmp:shipcombat:options" = (\{ \});
+
+
+  \$question = "What do you do?";
+  \$q1 = nil;
+  \$f1 = nil;
+  \$q2 = nil;
+  \$f1 = nil;
+  \$q3 = nil;
+  \$f1 = nil;
+  \$q4 = nil;
+  \$f1 = nil;
+  \$q5 = nil;
+  \$f1 = nil;
+  \$expire = nil;
+  \$options = (\{ \});
+
+  /* Give options for this job */
+  if(\$job == "captain") \{
+    \$question = "What are your orders, Captain?";
+    \$expire = "Momentarily indecisive, the crew of the ship continue without your orders.";
+    for(k=0;k\<sizeof(\$enemies);k++)
+      \$options += (\{ (\{ "Bear down and close distance with the "+\$enemies[k]["name"]+"!", "action:close_distance", (\{ k, \$enemies[k]["name"] \}) \}) \});
+    /*
+    for(k=0;k\<sizeof(\$enemies);k++)
+      \$options += (\{ (\{ "Widen the gap between us and the"+\$enemies[k]["name"]+"!", "action:open_distance", (\{ k, \$enemies[k]["name"] \}) \}) \});
+    for(k=0;k\<sizeof(\$enemies);k++)
+      \$options += (\{ (\{ "Bring us around for a broadside volley on the "+\$enemies[k]["name"]+"!", "action:aim_broadside", (\{ k, \$enemies[k]["name"] \}) \}) \});
+    for(k=0;k\<sizeof(\$enemies);k++)
+      \$options += (\{ (\{ "Bring us into shot for the fore guns on the "+\$enemies[k]["name"]+"!", "action:aim_fore", (\{ k, \$enemies[k]["name"] \}) \}) \});
+    for(k=0;k\<sizeof(\$enemies);k++)
+      \$options += (\{ (\{ "Angle us to allow vantage to the aft guns against the "+\$enemies[k]["name"]+"!", "action:aim_aft", (\{ k, \$enemies[k]["name"] \}) \}) \});
+    */
+
+  \} else \{
+    EmitTo(\$pc, "Error: You have an unknown job about this ship. Please file a @bug report.");
+  \}
+
+  /* Pick which options to offer */
+  if(sizeof(\$options)) \{
+    j = random(sizeof(\$options));
+    \$q1 = \$options[j][0];
+    \$f1 = "option_a";
+        /* \$f1 = \$options[j][1]; */
+    \$pc."tmp:shipcombat:options" += (\{ (\{ \$options[j][1], \$options[j][2] \}) \});
+    \$options -= (\{ \$options[j] \});
+  \}
+  if(sizeof(\$options)) \{
+    j = random(sizeof(\$options));
+    \$q2 = \$options[j][0];
+    \$f2 = \$options[j][1];
+    \$pc."tmp:shipcombat:options" += (\{ (\{ \$options[j][1], \$options[j][2] \}) \});
+    \$options -= (\{ \$options[j] \});
+  \}
+  if(sizeof(\$options)) \{
+    j = random(sizeof(\$options));
+    \$q3 = \$options[j][0];
+    \$f3 = \$options[j][1];
+    \$pc."tmp:shipcombat:options" += (\{ (\{ \$options[j][1], \$options[j][2] \}) \});
+    \$options -= (\{ \$options[j] \});
+  \}
+  if(sizeof(\$options)) \{
+    j = random(sizeof(\$options));
+    \$q4 = \$options[j][0];
+    \$f4 = \$options[j][1];
+    \$pc."tmp:shipcombat:options" += (\{ (\{ \$options[j][1], \$options[j][2] \}) \});
+    \$options -= (\{ \$options[j] \});
+  \}
+  if(sizeof(\$options)) \{
+    j = random(sizeof(\$options));
+    \$q5 = \$options[j][0];
+    \$f5 = \$options[j][1];
+    \$pc."tmp:shipcombat:options" += (\{ (\{ \$options[j][1], \$options[j][2] \}) \});
+    \$options -= (\{ \$options[j] \});
+  \}
+
+  /* Ask the question */
+  if(\$q1) \{
+    /* There was at least one option to choose from */
+    \$data["waiting"] += (\{ \$pc \});
+    interaction::question(\$actor: \$pc, \$question: \$question, \$a: \$q1, \$b: \$q2, \$c: \$q3, \$d: \$q4, \$e: \$q5, \$expire: \$expire, \$a_ob: this, \$b_ob: this, \$c_ob: this, \$d_ob: this, \$e_ob: this, \$a_fun: \$f1, \$b_fun: \$f2, \$c_fun: \$f3, \$d_fun: \$f4, \$e_fun: \$f5, \$expires: \$expires, \$par: ([ "data":\$data, "datafile":\$datafile, "datakey":\$datakey, "room":\$room ]));
+  \}
+
+
+\}
+
+/* And now we wait for the PCs to make their choices, before we trigger the enemy's turn and then a new round */
+\$id = random(500000);
+\$data = Get(\$datafile, \$datakey);
+\$data["id"] = \$id;
+\$delay(\$expires+1, TRUE, "a316");
+/* Get datafile again, in case it's changed in the meantime */
+\$data = Get(\$datafile, \$datakey);
+if(\$data["id"] \&\& \$data["id"] == \$id) \{
+  ::enemy_turn(\$data: \$data, \$datafile: \$datafile, \$datakey: \$datakey, \$room: \$room);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:option_a">
+         X[M] /* PC chose one of the options... */
+\$room = \$par["room"];
+if(!\$actor) return FALSE;
+if(!\$actor."tmp:shipcombat:options") return FALSE;
+if(sizeof(\$actor."tmp:shipcombat:options") \< 1) return FALSE;
+\$info = \$actor."tmp:shipcombat:options"[0][1];
+\$data = Get(\$par["datafile"], \$par["datakey"]);
+\$data["waiting"] -= (\{ \$actor \});
+
+/* Does this ship still exist? */
+if(!\$data["enemy"]
+\|\| !sizeof(\$data["enemy"])
+\|\| sizeof(\$data["enemy"]) \<= \$info[0]
+\|\| \$data["enemy"][\$info[0]]["name"] != \$info[1]
+) \{
+  EmitTo(\$actor, "That ship no longer exists.");
+  return FALSE;
+\}
+\$enemy = \$data["enemy"][\$info[0]];
+
+/*\$result = Call(this, \$actor."tmp:shipcombat:options"[0][0], \$info: \$info, \$data: \$data, \$datafile: \$par["datafile"], \$datakey: \$par["datakey"], \$room: \$par["room"]);*/
+
+\$result = Call(this, \$actor."tmp:shipcombat:options"[0][0]);
+
+EmitTo(\$actor, "Result is: "+\$result);
+
+if(!sizeof(\$data["waiting"]) \&\& \$result) \{
+  /* Everyone has had a turn. Now it's the enemy's turn */
+  \$data["id"] = nil;
+  \$delay(1, TRUE, "cbe4");
+  ::enemy_turn(\$data: \$data, \$datafile: \$par["datafile"], \$datakey: \$par["datakey"], \$room: \$par["room"]);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1364601250, "tonyd", "P", 1364601492, "tonyd", "P", 1364601774, "tonyd", "P", 1364601888, "tonyd", "P", 1364601909, "tonyd", "P", 1364602167, "tonyd", "P", 1364602183, "tonyd", "P", 1364602220, "tonyd", "P", 1364603264, "tonyd", "P", 1364603284, "tonyd", "P", 1364603335, "tonyd", "P", 1364603444, "tonyd", "P", 1364603513, "tonyd", "P", 1364614781, "tonyd", "P", 1364614798, "tonyd", "P", 1364614816, "tonyd", "P", 1364614852, "tonyd", "P", 1364614890, "tonyd", "P", 1364614910, "tonyd", "P", 1364614924, "tonyd", "P", 1364614973, "tonyd", "P", 1364615016, "tonyd", "P", 1364615038, "tonyd", "P", 1364615101, "tonyd", "P", 1364615121, "tonyd", "P", 1364615146, "tonyd", "P", 1364615169, "tonyd", "P", 1364615196, "tonyd", "P", 1364615265, "tonyd", "P", 1364615300, "tonyd", "P", 1364615365, "tonyd", "P", 1364615420, "tonyd", "P", 1364615651, "tonyd", "P", 1364615675, "tonyd", "P", 1364615686, "tonyd", "P", 1364615719, "tonyd", "P", 1364615733, "tonyd", "P", 1364615741, "tonyd", "P", 1364615760, "tonyd", "P", 1364615802, "tonyd", "P", 1364616667, "tonyd", "P", 1364616824, "tonyd", "P", 1364616963, "tonyd", "P", 1364616983, "tonyd", "P", 1364617004, "tonyd", "P", 1364617018, "tonyd", "P", 1364617043, "tonyd", "P", 1364617094, "tonyd", "P", 1364617230, "tonyd", "P", 1364617267, "tonyd", "P", 1364617292, "tonyd", "P", 1364617327, "tonyd", "P", 1364617383, "tonyd", "P", 1364617422, "tonyd", "P", 1364617438, "tonyd", "P", 1364617476, "tonyd", "P", 1364617540, "tonyd", "P", 1364617598, "tonyd", "P", 1364617719, "tonyd", "P", 1364617790, "tonyd", "P", 1364617836, "tonyd", "P", 1364784542, "tonyd", "P", 1364784574, "tonyd", "P", 1364784602, "tonyd", "P", 1364784731, "tonyd", "P", 1364784897, "tonyd", "P", 1364784982, "tonyd", "P", 1364785026, "tonyd", "P", 1364785076, "tonyd", "P", 1364785192, "tonyd", "P", 1364785253, "tonyd", "P", 1364785280, "tonyd", "P", 1364785334, "tonyd", "P", 1364785362, "tonyd", "P", 1364785384, "tonyd", "P", 1364785485, "tonyd", "P", 1364785748, "tonyd", "P", 1364785801, "tonyd", "P", 1364785846, "tonyd", "P", 1364785897, "tonyd", "P", 1364786365, "tonyd", "P", 1364786396, "tonyd", "P", 1364786400, "tonyd", "P", 1364787180, "tonyd", "P", 1364787222, "tonyd", "P", 1364787242, "tonyd", "P", 1364787276, "tonyd", "P", 1364787306, "tonyd", "P", 1364787359, "tonyd", "P", 1364787386, "tonyd", "P", 1364787446, "tonyd", "P", 1364787482, "tonyd", "P", 1364787611, "tonyd", "P", 1364787656, "tonyd", "P", 1364787735, "tonyd", "P", 1364787781, "tonyd", "P", 1364787845, "tonyd", "P", 1364787855, "tonyd", "P", 1364787906, "tonyd", "P", 1364787927, "tonyd", "P", 1364801759, "tonyd", "P", 1364801771, "tonyd", "P", 1364801819, "tonyd", "P", 1364801845, "tonyd", "P", 1364801918, "tonyd", "P", 1364801977, "tonyd", "P", 1364802106, "tonyd", "P", 1364802264, "tonyd", "P", 1364802415, "tonyd", "P", 1364802462, "tonyd", "P", 1364802637, "tonyd", "P", 1364802712, "tonyd", "P", 1364803051, "tonyd", "P", 1364803093, "tonyd", "P", 1364803145, "tonyd", "P", 1364803171, "tonyd", "P", 1364803253, "tonyd", "P", 1364803384, "tonyd", "P", 1364803463, "tonyd", "P", 1364803540, "tonyd", "P", 1364803584, "tonyd", "P", 1364803645, "tonyd", "P", 1364803741, "tonyd", "P", 1364803798, "tonyd", "P", 1364803808, "tonyd", "P", 1364803829, "tonyd", "P", 1364803886, "tonyd", "P", 1364804027, "tonyd", "P", 1364804116, "tonyd", "P", 1364804245, "tonyd", "P", 1364804273, "tonyd", "P", 1364804296, "tonyd", "P", 1364804449, "tonyd", "P", 1364804650, "tonyd", "P", 1364804752, "tonyd", "P", 1364804803, "tonyd", "P", 1364804860, "tonyd", "P", 1364805046, "tonyd", "P", 1364805068, "tonyd", "P", 1364805141, "tonyd", "P", 1364805161, "tonyd", "P", 1364805190, "tonyd", "P", 1364805226, "tonyd", "P", 1364805246, "tonyd", "P", 1364805266, "tonyd", "P", 1364805294, "tonyd", "P", 1364805315, "tonyd", "P", 1364805329, "tonyd", "P", 1364805418, "tonyd", "P", 1364805465, "tonyd", "P", 1364805503, "tonyd", "P", 1364805569, "tonyd", "P", 1364805643, "tonyd", "P", 1364805708, "tonyd", "P", 1364805792, "tonyd", "P", 1364805824, "tonyd", "P", 1364805839, "tonyd", "P", 1364805918, "tonyd", "P", 1364806014, "tonyd", "P", 1364806083, "tonyd", "P", 1364806096, "tonyd", "P", 1364806192, "tonyd", "P", 1364806240, "tonyd", "P", 1364806320, "tonyd", "P", 1364806348, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

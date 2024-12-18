@@ -1,0 +1,232 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+twiki" evoke="optional" audible="false" private="false" secret="true" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="mode" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="defaultpage">
+         "WebHome"
+      </Core:Property>
+      <Core:Property property="defaultweb">
+         "Builders"
+      </Core:Property>
+      <Core:Property property="html:twiki">
+         X[S] \<html\>
+\<head\>
+  \<title\>Redirecting to \$[Str(\$web)+"."+Str(\$page)]\</title\>
+  \<meta HTTP-EQUIV="Refresh" CONTENT="0; URL=http://twiki.skotos.net/twiki/bin/view/\$[Str(\$web)+"/"+Str(\$page)]"/\>
+\</head\>
+\<body\>
+ \<p align="center"\>
+  \<span style="vertical-align: middle;"\>
+   \<font size="5"\>Opening \<a href="http://twiki.skotos.net/twiki/bin/view/\$[Str(\$web)+"/"+Str(\$page)]" alt=""\>Twiki.\$[Str(\$web)+"."+Str(\$page)]\</a\>\<sbr/\>
+\{? \| \$(example) \| Example usage: +twiki "Builders.MerryFuns"\<sbr/\>To set a default web: +twiki web "Builders"\<sbr/\> \}
+   \</font\>\</span\>\</p\>
+ \<hr/\>
+\</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] string web, page, *words, mode, account, evoke; 
+int example; 
+account = \$actor."udat:name"; 
+evoke = \$(raw-evoke); 
+if(evoke) 
+ evoke = strip(evoke); 
+if(\$(mode:words)) 
+ mode = implode(\$(mode:words), ""); 
+if(mode) 
+\{ 
+ if(mode=="web" \|\| mode=="w" \|\| 
+    mode=="setweb" \|\| mode=="sw" \|\| 
+    mode=="defaultweb" \|\| mode == "dw" \|\| 
+    mode=="webset" \|\| mode == "wb") 
+ \{ 
+  if(!this.userwebs) 
+   this.userwebs = ([ ]); 
+  if(evoke) 
+  \{ 
+   evoke = capitalize(lower_case(evoke)); 
+   EmitTo(\$actor, "Your default Twiki web has been set to "+dump_value(evoke)+"."); 
+   if(!member(evoke, this.weblist)) 
+    EmitTo(\$actor, "That isn't one of the standard Twiki webs (such as Builders or Lovecraft).  Make sure you have the correct spelling."); 
+  \} 
+  else 
+  \{ 
+   EmitTo(\$actor, "You no longer have a specific default Twiki web; you will now use the system default, "+Str(this.defaultweb)); 
+  \} 
+  this.userwebs[account] = evoke; 
+ \} 
+ else if(mode=="page" \|\| mode=="p" \|\| 
+    mode=="setpage" \|\| mode=="sp" \|\| 
+    mode=="defaultpage" \|\| mode == "dp" \|\| 
+    mode=="pageset" \|\| mode == "pb") 
+ \{ 
+  if(!this.userpages) 
+   this.userpages = ([ ]); 
+  this.userpages[account] = evoke; 
+  if(evoke) 
+   EmitTo(\$actor, "Your default Twiki page has been set to "+dump_value(evoke)+"\\nThis will apply only when using the +twiki command without an evoke."); 
+  else 
+   EmitTo(\$actor, "Your default Twiki page is now the system default, "+dump_value(this.defaultpage)); 
+ \} 
+ else 
+ \{ 
+  EmitTo(\$actor, "Example: "+TAG("+twiki \\"Builders.MerryIntro\\"", "info")); 
+  EmitTo(\$actor, UnSAM(\$"For further help, type: \<acmd cmd=\\"+man twiki\\"\>+man twiki\</acmd\>")); 
+ \} 
+ return FALSE; 
+\} 
+ 
+if(evoke) 
+\{ 
+ words = explode(evoke,"."); 
+ if(sizeof(words)==0) 
+ \{ 
+  EmitTo(\$actor, "Blank evoke; using defaults."); 
+ \} 
+ else if(sizeof(words)==1) 
+ \{ 
+  page = words[0]; 
+ \} 
+ else if(sizeof(words)==2) 
+ \{ 
+  web = words[0]; 
+  page = words[1]; 
+ \} 
+ else 
+ \{ 
+  EmitTo(\$actor, "Too many periods.  The format is +twiki \\"Web.Page\\""); 
+  return FALSE; 
+ \} 
+\} 
+else 
+\{ 
+ EmitTo(\$actor, "No evoke used; using defaults."); 
+\} 
+ 
+/*Set defaults if no specifics were chosen*/ 
+if(!web \&\& this.userwebs) 
+ web = this.userwebs[account]; 
+ 
+if(!page \&\& this.userpages) 
+ page = this.userpages[account]; 
+ 
+if(!web) 
+ web = this.defaultweb; 
+if(!page) 
+ page = this.defaultpage; 
+ 
+if(!web) 
+ web = "Builders"; 
+if(!page) 
+ page = "WebHome"; 
+ 
+web=capitalize(lower_case(strip(web))); 
+page=capitalize(strip(page)); 
+if(page=="") /*This allows the page to be set to a space to signify WebHome*/ 
+ page="WebHome"; 
+ 
+/*Give people extra help if they've not used the command before.*/ 
+if(evoke) 
+ this.newbiecheck \|= (\{ account \}); 
+else 
+ example = !member(account, this.newbiecheck); 
+ 
+Popup(\$actor, this, "twiki", \$web: web, \$page: page, \$example: example); 
+EmitTo(\$actor, "Popping up Twiki."+web+"."+page); 
+if(example) 
+ EmitTo(\$actor, "(New users: use +man twiki to get more out of this command.)"); 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:parseevoke">
+         X[M] /* 
+** Arguments: 
+**  \$(raw-evoke) - Optional string with web/page info. 
+**  \$soloweb - If set, assume a single-word evoke to be a web, not a page. 
+**  \$actor - Who's doing the command. 
+**  \$defaults - If set, figure out defaults if things are not explicitly stated. 
+** Returns - A array with two elements: web, then page.  Each is a string or nil. 
+*/ 
+string web, page, *words, account, evoke; 
+evoke = \$(raw-evoke); 
+account = \$actor."udat:name"; 
+ 
+if(evoke) 
+\{ 
+ words = explode(evoke,"."); 
+ if(sizeof(words)==1) 
+ \{ 
+  if(\$soloweb) 
+   web = words[0]; 
+  else 
+   page = words[0]; 
+ \} 
+ else if(sizeof(words)==2) 
+ \{ 
+  web = words[0]; 
+  page = words[1]; 
+ \} 
+ else if(sizeof(words)\>2) 
+ \{ 
+  EmitTo(\$actor, "Too many periods. The format is +twiki [command] \\"Web.Page\\"\\nUse +man twiki for more info."); 
+  return (\{ nil, nil \}); 
+ \} 
+\} 
+ 
+/*Once done parsing the evoke, figure out defaults as needed.*/ 
+if(\$defaults) 
+\{ 
+ if(!web \&\& this.userwebs) 
+  web = this.userwebs[account]; 
+ if(!page \&\& this.userpages) 
+  page = this.userpages[account]; 
+ 
+ if(!web) 
+  web = this.defaultweb; 
+ if(!page) 
+  page = this.defaultpage; 
+ 
+ if(!web) 
+  web = "Builders"; 
+ if(!page) 
+  page = "WebHome"; 
+\} 
+ 
+/*Clean things up*/ 
+if(web) 
+ web=capitalize(lower_case(strip(web))); 
+if(page) 
+ page=capitalize(strip(page)); 
+ 
+/*This here lets people use the format "Web.." to signify the WebHome*/ 
+/*This is because explode("Web..", ".") yields (\{ "Web", "" \})*/ 
+if(page=="") 
+ page="WebHome"; 
+ 
+return (\{ web, page \});
+      </Core:Property>
+      <Core:Property property="newbiecheck">
+         (\{ "orcsuit", "mikura", "publicenemy", "balkaar", "jominey" \})
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1151169422, "orcsuit", "E", 1151169918, "orcsuit", "P", 1151170316, "orcsuit", "P", 1151170386, "orcsuit", "P", 1151171898, "orcsuit", "P", 1151171956, "orcsuit", "E", 1151172016, "orcsuit", "E", 1151172178, "orcsuit", "P", 1151172332, "orcsuit", "P", 1151172411, "orcsuit", "P", 1151172589, "orcsuit", "P", 1151172676, "orcsuit", "P", 1151172691, "orcsuit", "P", 1151172797, "orcsuit", "P", 1151173601, "orcsuit", "E", 1151525902, "orcsuit", "E", 1151526145, "orcsuit", "P", 1151527378, "orcsuit", "P", 1151527455, "orcsuit", "P", 1151527862, "orcsuit", "P", 1151528409, "orcsuit", "P", 1151534548, "orcsuit", "P", 1151534749, "orcsuit", "P", 1151537867, "orcsuit", "P", 1151537881, "orcsuit", "P", 1151540285, "orcsuit", "P", 1151540713, "orcsuit", "P", 1151541133, "orcsuit", "P", 1151541202, "orcsuit", "P", 1151615632, "orcsuit", "E", 1151615963, "orcsuit", "E", 1151616089, "orcsuit", "E", 1151616320, "orcsuit", "E", 1151704429, "orcsuit", "E", 1151704603, "orcsuit", "E", 1151706075, "orcsuit", "E", 1151706430, "orcsuit", "P", 1151779803, "orcsuit", "P", 1151780306, "orcsuit", "P", 1152130995, "orcsuit", "P", 1152131252, "orcsuit", "P", 1152131376, "orcsuit", "P", 1265581148, "orcsuit", "X", 1267739132, "orcsuit", "E" \})
+      </Core:Property>
+      <Core:Property property="userpages">
+         ([ "mikura":"WebHome", "publicenemy":"Lovecraft.WebHome" ])
+      </Core:Property>
+      <Core:Property property="userwebs">
+         ([ "mikura":"Lovecraft", "orcsuit":"Builders" ])
+      </Core:Property>
+      <Core:Property property="weblist">
+         (\{ "Builders", "IronClaw" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

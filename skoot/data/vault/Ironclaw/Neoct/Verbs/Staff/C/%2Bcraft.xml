@@ -1,0 +1,517 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+craft" evoke="forbidden" audible="false" private="true" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="crafting:directory">
+         "Ironclaw:Lib:Crafting"
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \{? \| \$(actor.udat:host) \| \$[ParseXML(::getindex())] \| \$[error("You do not have permission to view this page.");] \}
+      </Core:Property>
+      <Core:Property property="html:outputcareer">
+         X[S] \{? \| \$(actor.udat:host) \| \$[\$data] \| \$[error("You do not have permission to view this page.");] \}
+      </Core:Property>
+      <Core:Property property="html:viewcareer">
+         X[S] \{? \| \$(actor.udat:host) \| \$[Call(\$\{Allegory:Lib:Crafting:CraftingInterface\}, "viewcareer")] \| \$[error("You do not have permission to view this page.");] \}
+      </Core:Property>
+      <Core:Property property="html:viewdb">
+         X[S] \{? \| \$(actor.udat:host) \| \$[ParseXML(::viewdb())] \| \$[error("You do not have permission to view this page.");] \}
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] Popup(\$actor, \$\{Allegory:Lib:Crafting:CraftingInterface\}, "html:staffindex", \$actor: \$actor);
+      </Core:Property>
+      <Core:Property property="merry:lib:getdata">
+         X[M] if(\$page == "index") \{
+
+    \$directory = Get(\$this, "crafting:directory");
+    \$folder = \$directory;
+    \$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+    \$structure = ([ ]);
+
+    for(\$i = 0; \$i \< sizeof(\$folders); \$i++) \{
+        if(\$folders[\$i] != "Old") \{
+                \$folder = \$directory + ":" + \$folders[\$i];
+                \$structure += ([ \$folders[\$i]:Call(\$\{/usr/System/sys/idd\}, "idd:get-objects")-(\{ "CrestsLib" \}) ]);
+        \}
+    \}
+
+    \$resources = map_indices(\$structure);    
+   
+    \$rstr = "\<table\>\<tr\>";    
+    for(\$i = 0; \$i \< sizeof(\$resources); \$i++) \{    
+        \$dbs = \$structure[\$resources[\$i]];
+        \$sz = sizeof(\$dbs);   
+   
+        \$rstr += "\<tr\>\<td valign='top' rowspan='" + Str(\$sz) + "'\>\<b\>" + capitalize(\$resources[\$i]) + "\</b\>\</td\>";   
+  
+        for(\$j = 0; \$j \< sizeof(\$dbs); \$j++) \{    
+            \$rstr += "\<td\>" + \$directory + ":" + \$resources[\$i] + ":" + capitalize(\$dbs[\$j]) + "\</td\>\</tr\>\<tr\>";    
+        \}        
+
+        \$rstr += "\<tr\>\</tr\>";      
+    \}    
+    
+    \$rstr += "\</tr\>\</table\>";    
+    
+    return \$rstr;
+
+\} else \{
+
+int i, j, k, l;
+string rStr;
+/* Get a list of all careers available in game */
+\$careerDB = \$\{Ironclaw:Lib:Teaching:newCareersDB\}; 
+\$temp = copy(\$careerDB."*"); 
+\$careers = map_indices(\$temp) - (\{ "revisions" \}); 
+
+\$dbs = this.dbs;
+
+\$data = ([ ]);
+for(i = 0; i \< sizeof(\$dbs); i++) \{
+    \$workdamnyou = copy(\$dbs[i]."*");
+    \$dbtemp = structure_propmap(\$workdamnyou)["alteration"]["knowledge"];
+    \$dbtemptwo = map_indices(\$dbtemp);
+    if(\$data[\$dbtemptwo]) \{
+        \$data[\$dbtemptwo] += (\{ map_values(\$dbtemp) \});
+    \} else \{
+        \$data += \$dbtemp;
+    \}
+\}
+
+\$types = map_indices(\$data);
+
+\$sz = sizeof(\$types);
+
+\$rMap = ([ ]);
+\$removeThese = (\{ \});
+
+/* Get a list of all careers available in game */
+\$careerDB = \$\{Ironclaw:Lib:Teaching:newCareersDB\}; 
+\$temp = copy(\$careerDB."*"); 
+\$careers = map_indices(\$temp) - (\{ "revisions" \}); 
+
+for(i = 0; i \< \$sz; i++) \{
+    \$temp = \$data[\$types[i]];
+    \$careerstwo = map_indices(\$temp);
+
+    for(j = 0; j \< sizeof(\$careerstwo); j++) \{
+        if(\$input == \$careerstwo[j]) \{
+            \$tempcareer = \$temp[\$careerstwo[j]];
+            \$levels = map_indices(\$tempcareer);
+
+            for(k = 0; k \< sizeof(\$levels); k++) \{
+                \$items = map_indices(\$tempcareer[\$levels[k]]);
+                for(l = 0; l \< sizeof(\$items); l++) \{
+                    if(!\$rMap[\$levels[k]]) \{
+                        \$rMap[Str(\$levels[k])] = (\{ \$items[l] + " \<font color='gray'\>(" + replace_strings(\$types[i], "-", " ") + ")\</font\>" \});
+                    \} else \{
+                        \$rMap[Str(\$levels[k])] += (\{ \$items[l] + " \<font color='gray'\>(" + replace_strings(\$types[i], "-", " ") + ")\</font\>" \});
+                    \}
+                \}
+            \}
+        \}
+        
+        if(member(\$careerstwo[j], \$allCareers)) \{
+            \$data[\$types[i]][\$careerstwo[j]] = nil;
+        \}
+    \}
+\}
+
+for(i = 0; i \< \$sz; i++) \{
+    \$temp = \$data[\$types[i]];
+  
+    if(map_sizeof(\$temp)) \{
+        \$items = map_indices(\$temp);
+
+        for(j = 0; j \< sizeof(\$items); j++) \{
+            if(!\$rMap["0"]) \{
+                \$rMap["0"] = (\{ \$items[j] + " \<font color='gray'\>(" + replace_strings(\$types[i], "-", " ") + ")\</font\>" \});
+            \} else \{
+                \$rMap["0"] += (\{ \$items[j] + " \<font color='gray'\>(" + replace_strings(\$types[i], "-", " ") + ")\</font\>" \});
+            \} 
+        \}
+    \}
+\}
+
+rStr = "\<h3\>Crafting Items By Level - " + proper(\$input) + "\</h3\>\<br/\>";
+rStr += "\<table border='0'\>";
+for(i = 0; i \<= 24; i++) \{
+    if(\$rMap[Str(i)] \&\& sizeof(\$rMap[Str(i)])) \{
+        \$output = \$rMap[Str(i)];
+        rStr += "\<tr\>\<td width='75px' valign='top'\>\<b\>Level " + Str(i) + ": \</b\>\</td\>\<td\>" + implode(\$output, ", ") + "\</td\>\</tr\>";
+    \}
+\}
+rStr += "\</table\>";
+
+rStr = replace_strings(rStr, "shaping metal", "shaping bar");
+rStr = replace_strings(rStr, "forging metal", "forging rod");
+rStr = replace_strings(rStr, "cutting gems", "cutting gem");
+rStr = replace_strings(rStr, "etching metal", "etching");
+rStr = replace_strings(rStr, "molding", "mold");
+rStr = replace_strings(rStr, "cutting", "cut", "forging", "forge", "shaping", "shape", "carving", "carve", "etching", "etch", "tailoring", "tailor", "chiseling", "chisel");
+
+return UnSAM(ParseXML(rStr));
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:viewcareer">
+         X[M] int i, j, k, l, m;
+string rStr;
+
+/* Get a list of all careers available in game */
+\$careerDB = \$\{Ironclaw:Lib:Teaching:newCareersDB\}; 
+\$temp = copy(\$careerDB."*"); 
+\$allCareers = map_indices(\$temp) - (\{ "revisions" \}); 
+\$dbs = (\{ \});
+
+if((!\$dbf \|\| \$dbf == "") \&\& (!\$cf \|\| \$cf == "") \&\& (!\$itemf \|\| \$itemf == "")) \{
+    return "Output too long. Please select a filter.";
+\}
+
+if(\$itemf \&\& strlen(\$itemf) \< 3) \{
+    return "The search string needs to be at least three characters long.";
+\}
+
+if(\$dbf \&\& \$dbf != "") \{
+    \$dbFilter = explode(\$dbf, " ");
+    for(i = 0; i \< sizeof(\$dbFilter); i++) \{
+        if(Obj(\$dbFilter[i])) \{
+            \$dbs += (\{ Obj(\$dbFilter[i]) \});
+        \}
+    \}
+\} else \{
+    \$directory = Get(\$this, "crafting:directory");
+    \$folder = \$directory;
+    \$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+    \$structure = (\{ \});
+    for(\$i = 0; \$i \< sizeof(\$folders); \$i++) \{
+        if(\$folders[\$i] != "Old") \{
+            \$folder = \$directory + ":" + \$folders[\$i];
+            \$structure = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects")-(\{ "CrestsLib", "CrestsDB", "FittingDB" \});
+    
+            for(j = 0; j \< sizeof(\$structure); j++) \{
+                \$dbs += (\{ Obj(\$folder + ":" + \$structure[j]) \});
+            \}
+        \}
+    \}
+\}
+
+\$cf;
+if(\$cf) \{
+    \$careerFilter = explode(\$cf, " ") + (\{ " noskill" \});
+\} else \{
+    \$careerFilter = \$allcareers;
+\}
+
+if(\$levelLimit) \{
+  \$levelLimit = Int(\$levelLimit);
+\} else \{
+  \$levelLimit = 24;
+\}
+
+\$data = ([ ]);
+for(i = 0; i \< sizeof(\$dbs); i++) \{
+    \$dbProperties = copy(\$dbs[i]."*");
+    \$dbtemp = structure_propmap(\$dbProperties)["alteration"]["knowledge"];
+    \$dbTypes = map_indices(\$dbtemp);
+
+    for(j = 0; j \< sizeof(\$dbTypes); j++) \{
+        \$dbtemp2 = \$dbtemp[\$dbTypes[j]];
+        
+        if(typeof(\$dbtemp2) == 6) \{
+            \$tempCareers = map_indices(\$dbtemp2);
+
+            for(k = 0; k \< sizeof(\$tempCareers); k++) \{
+                if(member(\$tempCareers[k], \$allCareers)) \{
+                    if(member(\$tempCareers[k], \$careerFilter)) \{
+                        if(!\$data[\$tempCareers[k]]) \{
+                            \$data[\$tempCareers[k]] = ([ ]);
+                        \}
+
+                        for(l = 1; l \<= \$levelLimit; l++) \{
+
+                            \$type = explode(\$dbTypes[j], "-")[0];
+                            \$resource = explode(\$dbTypes[j], "-")[1];
+
+                            if(\$dbtemp2[\$tempcareers[k]][Str(l)]) \{
+                                if(!\$data[\$tempCareers[k]][\$type]) \{
+                                    \$data[\$tempCareers[k]][\$type] = ([ ]);
+                                \}
+
+                                if(!\$data[\$tempCareers[k]][\$type][Str(l)]) \{
+                                    \$data[\$tempCareers[k]][\$type][Str(l)] = ([ ]);
+                                \}
+
+                                \$matched = 0;
+                                \$tempitems = map_indices(\$dbtemp2[\$tempCareers[k]][Str(l)]);
+                                for(m = 0; m \< sizeof(\$tempitems); m++) \{
+                                    \$dbtemp2[\$tempCareers[k]][Str(l)][\$tempitems[m]]["db"] = \$dbs[i];
+                                    \$dbtemp2[\$tempCareers[k]][Str(l)][\$tempitems[m]]["resource"] = \$resource;
+
+                                    if(!\$itemf \|\| (\$itemf \&\& !contains(\$tempitems[m], \$itemf))) \{
+                                        \$matched = 1;
+                                    \}
+                                \}
+
+                                if(\$matched) \{
+                                    \$data[\$tempCareers[k]][\$type][Str(l)] += \$dbtemp2[\$tempCareers[k]][Str(l)];
+                                \}
+                            \}
+                        \}
+                    \}
+                \} else \{
+                    if(member(" noskill", \$careerFilter)) \{
+
+                        \$type = explode(\$dbTypes[j], "-")[0];
+                        \$resource = explode(\$dbTypes[j], "-")[1];
+
+                        if(!\$data[" noskill"]) \{
+                            \$data[" noskill"] = ([ ]);
+                        \}
+    
+                        if(!\$data[" noskill"][\$type]) \{
+                            \$data[" noskill"][\$type] = ([ ]);
+                        \}
+    
+                        \$matched = 0;
+                        
+                        \$dbtemp2[\$tempCareers[k]]["db"] = \$dbs[i];
+                        \$dbtemp2[\$tempCareers[k]]["resource"] = \$resource;
+
+                        if(!\$itemf \|\| (\$itemf \&\& !contains(\$tempCareers[k], \$itemf))) \{
+                            \$matched = 1;
+                        \}
+                        
+                        if(\$matched) \{
+                            \$data[" noskill"][\$type][\$tempCareers[k]] = \$dbtemp2[\$tempCareers[k]];
+                        \} 
+                    \}
+                \}
+            \}
+        \}
+    \}
+\}
+
+\$careers = map_indices(\$data);
+\$rstr = "";
+
+for(i = 0; i \< sizeof(\$careers); i++) \{
+    \$career = \$careers[i];
+    \$types = map_indices(\$data[\$career]);
+    
+    if(\$career != " noskill") \{
+        \$rstr += "\<h3\>" + capitalize(Str(\$career)) + "\</h3\>";
+    \}
+
+    for(j = 0; j \< sizeof(\$types); j++) \{
+        \$type = \$types[j];
+
+        if(\$career != " noskill") \{
+            \$rstr += "\<b\>" + capitalize(Str(\$types[j])) + "\</b\>";
+            \$rstr += "\<table width='96%' border='1' align='center'\>";
+            \$rstr += "\<tr\>\<td width='20px'\>\<b\>Level\</b\>\</td\> \<td width='100px'\>\<b\>Item\</b\>\</td\> \<td width='100px'\>\<b\>Command\</b\>\</td\> \<td width='100px'\>\<b\>Resource\</b\>\</td\> \<td width='50px'\>\<b\>Cost\</b\>\</td\> \<td\>\<b\>Database\</b\>\</td\>\</tr\>";
+        
+            if(\$data[" noskill"][\$type]) \{
+                \$items = map_indices(\$data[" noskill"][\$type]);
+
+                \$rstr += "\<tr\>\<td valign='top' rowspan='" + Str(sizeof(\$items)) + "'\>" + Str(0) + "\</td\>";
+                for(m = 0; m \< sizeof(\$items); m++) \{
+                    \$item = \$data[" noskill"][\$type][\$items[m]];
+
+                    \$brief = \$items[m];
+                    \$db = \$item["db"];
+                    \$command = \$type;
+                    \$resource = \$item["resource"];
+
+                    if(\$item["cost"]) \{
+                        \$cost = \$item["cost"][0];
+                    \} else \{
+                        \$cost = "--";
+                    \}
+
+                    \$rstr += "\<td\>" + Str(\$brief) + "\</td\>\<td\>" + Str(\$command) + "\</td\>\<td\>" + Str(\$resource) + "\</td\>\<td\>" + Str(\$cost) + "\</td\>\<td\>" + Str(\$db) + "\</td\>\</tr\>\<tr\>";
+                \}
+                \$rstr += "\</tr\>";
+            \}
+
+            for(k = 1; k \<= 24; k++) \{
+                if(\$data[\$career][\$type][Str(k)]) \{
+                    \$items = map_indices(\$data[\$career][\$type][Str(k)]);
+     
+                    \$rstr += "\<tr\>\<td valign='top' rowspan='" + Str(sizeof(\$items)) + "'\>" + Str(k) + "\</td\>";
+                    for(m = 0; m \< sizeof(\$items); m++) \{
+                        \$item = \$data[\$career][\$type][Str(k)][\$items[m]];
+    
+                        \$brief = \$items[m];
+                        \$db = \$item["db"];
+                        \$command = \$type;
+                        \$resource = \$item["resource"];
+
+                        if(\$item["cost"]) \{
+                            \$cost = \$item["cost"][0];
+                        \} else \{
+                            \$cost = "--";
+                        \}
+                    
+                        \$rstr += "\<td\>" + Str(\$brief) + "\</td\>\<td\>" + Str(\$command) + "\</td\>\<td\>" + Str(\$resource) + "\</td\>\<td\>" + Str(\$cost) + "\</td\>\<td\>" + Str(\$db) + "\</td\>\</tr\>\<tr\>";
+                    \}
+                    \$rstr += "\</tr\>";
+                \}
+            \}
+            \$rstr += "\</table\>\<br/\>";
+        \}
+    \}
+\}
+
+\$rstr = replace_strings(\$rstr, "shaping metal", "shaping bar");
+\$rstr = replace_strings(\$rstr, "forging metal", "forging rod");
+\$rstr = replace_strings(\$rstr, "cutting gems", "cutting gem");
+\$rstr = replace_strings(\$rstr, "etching metal", "etching");
+\$rstr = replace_strings(\$rstr, "molding", "mold");
+\$rstr = replace_strings(\$rstr, "cutting", "cut", "forging", "forge", "shaping", "shape", "carving", "carve", "etching", "etch", "tailoring", "tailor", "chiseling", "chisel");
+
+return \$rstr;
+      </Core:Property>
+      <Core:Property property="merry:lib:viewdb">
+         X[M] object db;
+int i, j, k, l;
+string rStr;
+
+if(!Obj(\$db)) \{
+    error("Object " + \$db + " does not exist.");
+\}
+
+db = Obj(\$db);
+
+\$props = copy(db."*");
+\$data = structure_propmap(\$props)["alteration"]["knowledge"];
+\$types = map_indices(\$data);
+\$rMap = ([ ]);
+\$allCareers = \$this."data:careers";
+rStr = "";
+
+for(i = 0; i \< sizeof(\$types); i++) \{
+    \$temp = \$data[\$types[i]];
+
+    if(typeof(\$temp) == 6) \{
+        \$careers = map_indices(\$temp);
+
+        for(j = 0; j \< sizeof(\$careers); j++) \{
+            if(member(\$careers[j], \$allCareers)) \{
+                \$tempcareer = \$temp[\$careers[j]];
+                \$levels = map_indices(\$tempcareer);
+
+                for(k = 0; k \< sizeof(\$levels); k++) \{
+                    \$temp2 = \$tempcareer[\$levels[k]];
+                    \$items = map_indices(\$temp2);
+
+                    for(l = 0; l \< sizeof(\$items); l++) \{
+                        if(!\$rMap[\$careers[j]]) \{
+                            \$rMap[\$careers[j]] = ([ ]);
+                        \}
+
+                        if(\$temp2[\$items[l]]["cost"]) \{
+                            \$cost = \$temp2[\$items[l]]["cost"][0];
+                        \} else \{
+                            \$cost = "--";
+                        \}
+
+                        if(\$temp2[\$items[l]]["newobject"]) \{
+                            \$newobject = \$temp2[\$items[l]]["newobject"];
+                        \} else \{
+                            \$newobject = "--";
+                        \}
+
+                        if(!\$rMap[\$careers[j]][\$levels[k]]) \{
+                            \$rMap[\$careers[j]][Str(\$levels[k])] = (\{ (\{ \$items[l], explode(\$types[i], "-")[0], explode(\$types[i], "-")[1], \$cost, \$newobject \}) \});
+                        \} else \{
+                            \$rMap[\$careers[j]][Str(\$levels[k])] += (\{ (\{ \$items[l], explode(\$types[i], "-")[0], explode(\$types[i], "-")[1], \$cost, \$newobject \}) \});
+                        \}
+                    \}
+                \}
+
+                \$data[\$types[i]][\$careers[j]] = nil;
+            \}
+      
+        \}
+    \}
+\}
+
+for(i = 0; i \< sizeof(\$types); i++) \{
+    \$temp = \$data[\$types[i]];
+
+    if(typeof(\$temp) == 6) \{
+  
+        if(map_sizeof(\$temp)) \{
+            \$items = map_indices(\$temp);
+
+            for(j = 0; j \< sizeof(\$items); j++) \{
+                if(!\$rMap[" No Skill"]) \{
+                    \$rMap[" No Skill"] = ([ ]);
+                \}
+
+                if(\$temp[\$items[j]]["cost"]) \{
+                    \$cost = \$temp[\$items[j]]["cost"][0];
+                \} else \{
+                    \$cost = "--";
+                \}
+
+                if(\$temp[\$items[j]]["newobject"]) \{
+                    \$newobject = Str(\$temp[\$items[j]]["newobject"]);
+                \} else \{
+                    \$newobject = "--";
+                \}
+
+                if(!\$rMap[" No Skill"]["0"]) \{
+                    \$rMap[" No Skill"]["0"] = (\{ (\{ \$items[j], explode(\$types[i], "-")[0], explode(\$types[i], "-")[1], \$cost, \$newobject \}) \});
+                \} else \{
+                    \$rMap[" No Skill"]["0"] += (\{ (\{ \$items[j], explode(\$types[i], "-")[0], explode(\$types[i], "-")[1], \$cost, \$newobject \}) \});
+                \} 
+            \}
+        \}
+    \}
+\}
+
+\$rCareers = map_indices(\$rMap);
+\$sz = sizeof(\$rCareers);
+
+for(i = 0; i \< \$sz; i++) \{
+    rStr += "\<b\>" + capitalize(\$rCareers[i]) + "\</b\>";
+    rStr += "\<table width='100%' border='1'\>\<tr\>\<td\>\<b\>Level\</b\>\</td\>\<td\>\<b\>Item\</b\>\</td\>\<td\>\<b\>Command\</b\>\</td\> \<td\>\<b\>Material\</b\>\</td\>\<td\>\<b\>Cost\</b\>\</td\>\<td\>\<b\>New Object\</b\>\</td\>\</tr\>";
+
+    for(j = 0; j \<= 24; j++) \{
+        if(\$rMap[\$rCareers[i]][Str(j)] \&\& sizeof(\$rMap[\$rCareers[i]][Str(j)])) \{
+            \$items = \$rMap[\$rCareers[i]][Str(j)];
+
+            rStr += "\<tr\>\<td width='50px' rowspan='" + sizeof(\$items) +"' valign='top'\>" + Str(j) + "\</td\>";
+
+            for(k = 0; k \< sizeof(\$items); k++) \{
+                rStr += "\<td width='150px'\>" + Str(\$items[k][0]) + "\</td\>\<td width='50px'\>" + Str(\$items[k][1]) + "\</td\>\<td width='75px'\>" + Str(\$items[k][2]) + "\</td\>\<td width='50px'\>" + Str(\$items[k][3]) + "\</td\>\<td\>" + Str(\$items[k][4]) + "\</td\>\</tr\>\<tr\>";
+            \}
+
+            rStr += "\</tr\>";
+        \}
+    \}
+    rStr += "\</table\>\<table\>\<tr\>\<td\>\</td\>\</tr\>\</table\>";
+\}
+
+rStr = replace_strings(rStr, "shaping metal", "shaping bar");
+rStr = replace_strings(rStr, "forging metal", "forging rod");
+rStr = replace_strings(rStr, "cutting gems", "cutting gem");
+rStr = replace_strings(rStr, "etching metal", "etching");
+rStr = replace_strings(rStr, "molding", "mold");
+rStr = replace_strings(rStr, "cutting", "cut", "forging", "forge", "shaping", "shape", "carving", "carve", "etching", "etch", "tailoring", "tailor", "chiseling", "chisel");
+
+return rStr;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1298928518, "jominey", "E", 1298943497, "jominey", "E", 1298947002, "jominey", "E", 1298947033, "jominey", "E", 1298947201, "jominey", "E", 1298947320, "jominey", "E", 1298947353, "jominey", "E", 1298947447, "jominey", "E", 1298947536, "jominey", "E", 1298947597, "jominey", "E", 1298947640, "jominey", "E", 1298947795, "jominey", "E", 1298947930, "jominey", "E", 1298948031, "jominey", "E", 1298948112, "jominey", "E", 1298948476, "jominey", "E", 1298948795, "jominey", "E", 1298948866, "jominey", "E", 1298948917, "jominey", "E", 1298949010, "jominey", "E", 1298949112, "jominey", "E", 1298949260, "jominey", "E", 1298949377, "jominey", "E", 1298949408, "jominey", "E", 1298949533, "jominey", "E", 1298949583, "jominey", "E", 1298949648, "jominey", "E", 1298949690, "jominey", "E", 1298949807, "jominey", "E", 1298950138, "jominey", "E", 1298950181, "jominey", "E", 1298950419, "jominey", "E", 1298950472, "jominey", "E", 1298950611, "jominey", "E", 1298950697, "jominey", "E", 1298950730, "jominey", "E", 1298950900, "jominey", "E", 1298951401, "jominey", "E", 1298951503, "jominey", "E", 1298952148, "jominey", "E", 1298952289, "jominey", "E", 1298952331, "jominey", "E", 1298953443, "jominey", "E", 1298953456, "jominey", "E", 1298953519, "jominey", "E", 1298953646, "jominey", "E", 1298953717, "jominey", "E", 1298953966, "jominey", "E", 1298954056, "jominey", "E", 1298955431, "jominey", "E", 1299015815, "jominey", "E", 1299015869, "jominey", "E", 1299018038, "jominey", "E", 1299018708, "jominey", "E", 1299018833, "jominey", "E", 1299018944, "jominey", "E", 1299019112, "jominey", "E", 1299020589, "jominey", "E", 1299020848, "jominey", "E", 1299020890, "jominey", "E", 1299020935, "jominey", "E", 1299021033, "jominey", "E", 1299021119, "jominey", "E", 1299041411, "jominey", "E", 1299041648, "jominey", "E", 1299041981, "jominey", "E", 1299042285, "jominey", "E", 1299042532, "jominey", "E", 1299042585, "jominey", "E", 1299042642, "jominey", "E", 1299042820, "jominey", "E", 1299043184, "jominey", "E", 1299043352, "jominey", "E", 1299044445, "jominey", "E", 1299044487, "jominey", "E", 1299044877, "jominey", "E", 1299045697, "jominey", "E", 1299046138, "jominey", "E", 1299046911, "jominey", "E", 1299047594, "jominey", "E", 1299051593, "jominey", "E", 1299052658, "jominey", "E", 1299053026, "jominey", "E", 1299053094, "jominey", "E", 1299053221, "jominey", "E", 1299053255, "jominey", "E", 1299053312, "jominey", "E", 1299053398, "jominey", "E", 1299053534, "jominey", "E", 1299053947, "jominey", "E", 1299054156, "jominey", "E", 1299054265, "jominey", "E", 1299054312, "jominey", "E", 1299054396, "jominey", "E", 1299054503, "jominey", "E", 1299054987, "jominey", "E", 1299055262, "jominey", "E", 1299055278, "jominey", "E", 1299055483, "jominey", "E", 1299055538, "jominey", "E", 1299104940, "jominey", "E", 1299104998, "jominey", "E", 1299105131, "jominey", "E", 1299105213, "jominey", "E", 1299106667, "jominey", "E", 1299106795, "jominey", "E", 1299108150, "jominey", "E", 1299109083, "jominey", "E", 1299113127, "jominey", "E", 1299113237, "jominey", "E", 1299113487, "jominey", "E", 1299113537, "jominey", "E", 1299113645, "jominey", "E", 1299113770, "jominey", "E", 1299113821, "jominey", "E", 1299113899, "jominey", "E", 1299114067, "jominey", "E", 1299114089, "jominey", "E", 1299114237, "jominey", "E", 1299114479, "jominey", "E", 1299114567, "jominey", "E", 1299114743, "jominey", "E", 1299114824, "jominey", "E", 1299114887, "jominey", "E", 1299115155, "jominey", "E", 1299115607, "jominey", "E", 1299115779, "jominey", "E", 1299115844, "jominey", "E", 1299116021, "jominey", "E", 1299116300, "jominey", "E", 1299116423, "jominey", "E", 1299116657, "jominey", "E", 1299116825, "jominey", "E", 1299117557, "jominey", "E", 1299118553, "jominey", "E", 1303678111, "jominey", "E", 1303678153, "jominey", "E", 1303678240, "jominey", "E", 1303678296, "jominey", "E", 1303678664, "jominey", "E", 1303678706, "jominey", "E", 1303678767, "jominey", "E", 1303678889, "jominey", "E", 1303678935, "jominey", "E", 1305767565, "jominey", "R" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

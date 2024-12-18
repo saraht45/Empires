@@ -1,0 +1,407 @@
+<object clone="/obj/properties" owner="rastalabor">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="event:start">
+         ([ "incidents":(\{ "ambush_archers", "ambush_trap", "ambush_trap", "ambush_archers", "shaman", "shaman", "shaman", "attack", "attack_1", "attack_2", "attack_3", "attack", "attack_1", "attack_2", "attack_3", "attacked_by_boss", "attacked_by_boss", "attacked_by_boss" \}), "variables":([ "enemy_tokens":1000, "friendly_healer_tokens":100, "friendly_soldier_tokens":1600 ]) ])
+      </Core:Property>
+      <Core:Property property="merry:lib:ambush_archers">
+         X[M] /* an incident during the event */               
+string output, response;               
+if(!\$stage) error("No \$stage data passed for incident.");               
+if(\$stage == "conditions") \{               
+  return TRUE;               
+/* setting up rolls */              
+\} else if(\$stage == "test") \{               
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"combat:dodge", "combat:shield", "career:scout", "career:savage","career:sniper", "career:huscarl", "career:barbarian"\}), \$bonus: \$char."trait:mind") \< ironclaw::roll(\$bonus: 24)) return FALSE;               
+  return TRUE;               
+/* character's success - avoids trap */          
+\} else if(\$stage == "pass") \{           
+  \$enemy_tokens -= 60;         
+return capitalize(Describe(\$char))+" "+oneof("stops to catch their breath away from the combat for a moment", "steps between two knotty mangrove trees", "chases a group of fleeing cannibals", "gets a bit lost in the swamp, noises of battle from all directions")+" when "+Str(\$char."base:pronoun")+" realizes "+oneof ("there is no sound of frogs or birds", "a furtive movement from behind a group of reeds", "that something seems off", "there is a smell of others nearby")+". "+capitalize(Describe(\$char))+" realizes it is an ambush and "+oneof("charges before the swamp dwellers realize their ambush was detected", "sneaks around the ambush area, ambushing the ambushers", "gives a shout and cusses, startling the ambushers")+". "+Str(\$char."base:pronoun")+" successfully "+oneof("strikes rapidly", "cuts down a surprised ambusher", "slices through a bowstring, and then into its bearer", "turns a bow to kindling, before gutting the rat using it", "leaps on a wide eyed weasel that is too startled to attack")+" leaving it "+oneof("dazed", "unconscious", "dead", "unmoving", "injured and runs off")+ ".\<br/\>";       
+       
+/* failure of character - triggers trap */          
+\} else if(\$stage == "fail") \{           
+/* if there is enough tokens to save the person */          
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));           
+  if(response) \{        
+    output = capitalize(Describe(\$char))+" "+oneof("stops to catch their breath away from the combat for a moment", "steps between two knotty mangrove trees", "chases a group of fleeing cannibals", "gets a bit lost in the swamp, noises of battle from all directions")+" when "+Str(\$char."base:pronoun")+" realizes "+oneof ("there is no sound of frogs or birds", "a furtive movement from behind a group of reeds", "that something seems off", "there is a smell of others nearby")+". "+capitalize(Describe(\$char))+" realizes it is an ambush too late. A "+\$enemy+" "+oneof("retaliates", "recompenses", "reciprocates", "strikes back")+", sending a "+oneof("spray", "litter", "small clutter", "small cluster", "cascade", "miniature flood")+" of "+oneof("red-tipped", "green-tipped", "black-tipped", "razor-sharp", "ridged", "finely-crafted", "poison-dipped", "fast-flying")+" arrows directly at "+(Describe(\$char))+" from the shadows. "+oneof("Numerous", "Most of the", "The majority of the", "Many of the")+" projectiles "+oneof("hit", "smack into", "veer off toward", "collide with")+" the ground, but one manages to strike "+(Describe(\$char))+" "+oneof("directly", "point-blank", "precisely", "successfully", "roughly")+" in the "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "thorax", "abdomen", "left hip", "right hip", "left leg", "right leg", "throat", "buttocks", "left ankle", "right ankle", "left foot", "right foot")+". "+response;           
+    return output;                 
+  \}               
+/* char lost, not enough token to save him */          
+    output = capitalize(Describe(\$char))+" "+oneof("stops to catch their breath away from the combat for a moment", "steps between two knotty mangrove trees", "chases a group of fleeing cannibals", "gets a bit lost in the swamp, noises of battle from all directions")+" when "+Str(\$char."base:pronoun")+" realizes "+oneof ("there is no sound of frogs or birds", "a furtive movement from behind a group of reeds", "that something seems off", "there is a smell of others nearby")+". "+capitalize(Describe(\$char))+" realizes it is an ambush too late. A "+\$enemy+" "+oneof("retaliates", "recompenses", "reciprocates", "strikes back")+", sending a "+oneof("spray", "litter", "small clutter", "small cluster", "cascade", "miniature flood")+" of "+oneof("red-tipped", "green-tipped", "black-tipped", "razor-sharp", "ridged", "finely-crafted", "poison-dipped", "fast-flying")+" arrows directly at "+(Describe(\$char))+" from the shadows. "+oneof("Numerous", "Most of the", "The majority of the", "Many of the")+" projectiles "+oneof("hit", "smack into", "veer off toward", "collide with")+(Describe(\$char))+" the most fatal one manages to strike "+\$char."base:objective"+" "+oneof("directly", "point-blank", "precisely", "successfully", "roughly")+" in the "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "thorax", "abdomen", "left hip", "right hip", "left leg", "right leg", "throat", "buttocks", "left ankle", "right ankle", "left foot", "right foot")+". "+capitalize(\$char."base:pronoun")+" falls to the floor, bleeding and unconscious.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";           
+  ::remove_pc();               
+  return output;               
+\}               
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:ambush_trap">
+         X[M] /* an incident during the event */                
+string output, response;                
+if(!\$stage) error("No \$stage data passed for incident.");                
+if(\$stage == "conditions") \{                
+ return TRUE;                
+/* setting up rolls */               
+\} else if(\$stage == "test") \{                
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"mental:observation", "career:scout", "career:huscarl", "career:sniper", "career:barbarian", "career:savage"\}), \$bonus: \$char."trait:speed") \< ironclaw::roll(\$bonus: 24)) return FALSE;                
+  return TRUE;                
+/* character's success */               
+\} else if(\$stage == "pass") \{                
+  \$enemy_tokens -= 60;                
+return capitalize(Describe(\$char))+" is "+oneof("distracted by the chaos of the fight", "lured away from others by the skirmishing", "finds themselves out of position", "attempts to sneak up on a band of unsuspecting cannibals")+" but suddenly realizes she/he was about to " +oneof("fall into a pit", "step into the loop of a snare", "have an unpleasant encounter with a spiked log suspended from a tree", "join a number of irritable snakes stuck in a concealed hole")+ ". "+capitalize(Describe(\$char))+ " avoids the trap, frustrating the swamp dwellers' plans and " +oneof("returns to the battle with whoop", "charges at the first visible swamp dweller", "sneaks off looking for the right opportunity to attack")+ ".\<br/\>";       
+/* failure of character */               
+\} else if(\$stage == "fail") \{                
+/* if there is enough tokens to save the person */               
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));                
+  if(response) \{                
+    output = capitalize(Describe(\$char))+" is "+oneof("distracted by the chaos of the fight", "lured away from others by the skirmishing", "finds themselves out of position", "attempts to sneak up on a band of unsuspecting cannibals")+ "when "+capitalize(Describe(\$char))+" "+oneof("falls into a pit and onto sharpened stakes", "steps into the loop of a snare and is whipped through the air by a released sapling encountering the ground again forcefully", "has an unpleasant encounter with a spiked log as it comes swinging down at the end of a rope", "joins a number of irritable snakes stuck in a concealed hole and before escaping is bitten")+". "+capitalize(Describe(\$char))+" writhes about at the damage to "+Str(\$char."base:possessive")+" "+oneof("right eye", "left eye", "stomach", "right cheek", "left cheek", "neck", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "throat", "abdomen", "left hip", "right hip", "left leg", "right leg", "left thigh", "right thigh", "waist", "ribs", "lower back", "back", "buttocks", "left ankle", "right ankle", "left foot", "right foot")+", working to get free. "+response;      
+      
+      
+    return output;                
+  \}                
+/* if there is not enough token to save the char */               
+    output = capitalize(Describe(\$char))+" is "+oneof("distracted by the chaos of the fight", "lured away from others by the skirmishing", "finds themselves out of position", "attempts to sneak up on a band of unsuspecting cannibals")+ "when "+capitalize(Describe(\$char))+" unwittingly "+oneof("falls into a pit and onto sharpened stakes", "steps into the loop of a snare and is whipped through the air by a released sapling encountering the ground again forcefully", "has an unpleasant encounter with a spiked log as it comes swinging down at the end of a rope", "joins a number of irritable snakes stuck in a concealed hole and before escaping is bitten")+" . " +capitalize(Describe(\$char))+" writhes about at the damage to "+capitalize(Describe(\$char))+"'s " +oneof ("head", "shoulder", "gut", "thigh", "foot", "hand", "arm", "ribs", "hip", "face", "chest", "back")+". "+capitalize(Describe(\$char))+" falls to the ground, unconscious.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";           
+       
+  ::remove_pc();                
+  return output;                
+\}                
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:attack">
+         X[M] /* an incident during the event */             
+string output, response;             
+if(!\$stage) error("No \$stage data passed for incident.");             
+if(\$stage == "conditions") \{             
+  if(\$role != "healer") return TRUE;             
+  return FALSE;             
+/* setting up rolls */            
+\} else if(\$stage == "test") \{             
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{\$favorite_weapon\}), \$bonus: \$char."trait:body") \< ironclaw::roll(\$bonus: 24)) return FALSE;             
+  return TRUE;             
+/* character's success */            
+\} else if(\$stage == "pass") \{             
+  \$enemy_tokens -= 60;             
+ return capitalize(Describe(\$char))+" spots a "+\$enemy+", who is cut off from "+oneof("his companions", "tribe members", "his comrades", "his allies")+", and "+oneof("charges", "attacks", "takes advantage of the opportunity")+". "+capitalize(Describe(\$char))+" "+oneof("guts him with ease", "slices - quickly and efficiently, and kills the cannibal", "strikes true and hard, knocking the "+\$enemy+" out of the fight", "effectively disposes of the "+\$enemy, "kills the "+\$enemy+" "+oneof("swiftly", "with ease", "without difficulty", "giving no more thoughts to the poor bastard, stepping into the battle once more", "rapidly", "due to some lucky coincidences"), "beats the "+\$enemy+" "+oneof("half dead", "senseless", "unconscious") )+".\<br/\>";          
+/* failure of character */            
+\} else if(\$stage == "fail") \{             
+/* if there is enough tokens to save the person */            
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));             
+  if(response) \{             
+    output = capitalize(Describe(\$char))+" "+oneof("pushes forward into the thick of battle", "chases after a "+\$enemy, "presses forward, fighting with a "+\$enemy, "fights tattooed opponents left and right", "zealously attends the battle", "vigorously cuts through masses of swamp dwellers", "tries to corner a cannibal", "dashes through the battle to get to the selected enemy")+oneof(", before realizing "+\$char."base:pronoun"+" is cut off from "+\$char."base:possessive"+oneof(" allies", " friends", "associates"), ", unfortunately the ebb and flow of the fight leaves "+\$char."base:objective"+oneof(" stranded amongst enemies"," surrounded by menacing cannibals", " alone amidst a group of hungry enemies. GULP (hopefully not literally)", " behind enemy lines", " all alone in the company of malicious cannibals waving their weapons") )+". "+response;           
+    return output;             
+  \}             
+/* if there is not enough token to save the char */            
+  output = capitalize(Describe(\$char))+" "+oneof("pushes forward into the thick of battle", "chases after a "+\$enemy, "presses forward, fighting with a "+\$enemy, "fights cannibals left and right", "zealously attends the battle", "vigorously cuts through masses of enemies", "tries to corner a cannibal", "dashes through the battle to get to the selected enemy")+" where, surrounded by enemies, a "+\$enemy+" "+oneof("cuts "+\$char."base:objective"+" down with", "strikes "+\$char."base:objective"+" with", "lands a blow with")+" a "+oneof("goad", "primitive dagger", "wooden spear", "knife", "stone axe")+oneof(". The weapon pierces", ", leaving a nasty cut across")+" "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+". "+capitalize(Describe(\$char))+" falls to the ground, unconscious.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";           
+  ::remove_pc();             
+  return output;             
+\}             
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:attack_1">
+         X[M] /* an incident during the event */              
+string output, response;              
+if(!\$stage) error("No \$stage data passed for incident.");              
+if(\$stage == "conditions") \{              
+  if(\$role != "healer") return TRUE;              
+  return FALSE;              
+/* setting up rolls */             
+\} else if(\$stage == "test") \{              
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{\$favorite_weapon\}), \$bonus: \$char."trait:agility") \< ironclaw::roll(\$bonus: 24)) return FALSE;              
+  return TRUE;              
+/* character's success */             
+\} else if(\$stage == "pass") \{              
+  \$enemy_tokens -= 60;              
+return capitalize(Describe(\$char))+" "+oneof("charges", "yells at and attacks", "drives the weapon at")+" a "+\$enemy+", who is cut off from "+oneof("his companions", "the other cannibals", "his comrades", "his allies", "the other swamp dwellers")+", and "+oneof("charges", "attacks", "takes advantage of the opportunity")+". "+capitalize(Describe(\$char))+" "+oneof("guts him with ease", "slices - quickly and efficiently, and kills the cannibal", "strikes true and hard, knocking the "+\$enemy+" out of the fight", "effectively disposes of the "+\$enemy, "kills the "+\$enemy+" "+oneof("swiftly", "with ease", "without difficulty", "giving no more thoughts to the poor bastard, stepping into the battle once more", "rapidly", "due to some lucky coincidences"), "beats the "+\$enemy+" "+oneof("half dead", "senseless", "unconscious") )+".\<br/\>";            
+/* failure of character */             
+\} else if(\$stage == "fail") \{              
+/* if there is enough tokens to save the person */             
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));              
+  if(response) \{              
+    output = capitalize(Describe(\$char))+" "+oneof("charges", "yells at and attacks", "drives the weapon at")+" a "+\$enemy+". Swinging "+\$char."base:possessive"+" weapon, "+\$char."base:pronoun"+" misses and takes a blow to the "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "throat", "abdomen", "left hip", "right hip", "left leg", "right leg", "left thigh", "right thigh", "waist", "ribs", "lower back", "back", "buttocks", "left ankle", "right ankle", "left foot", "right foot")+". "+capitalize(Describe(\$char))+" staggers backwardly, clasping a hand to the "+oneof("deep", "shallow", "ugly", "jagged", "scratch of a", "minor", "gaping", "nasty", "serious", "barely noticeable", "perfunctory")+" wound."+response;            
+    return output;              
+  \}              
+/* if there is not enough token to save the char */             
+  output = capitalize(Describe(\$char))+" "+oneof("charges", "yells at and attacks", "drives the weapon at")+" a "+\$enemy+". Swinging "+\$char."base:possessive"+" weapon, "+\$char."base:pronoun"+" misses and takes a blow to the "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "throat", "abdomen", "left hip", "right hip", "left leg", "right leg", "left thigh", "right thigh", "waist", "ribs", "lower back", "back", "buttocks", "left ankle", "right ankle", "left foot", "right foot")+". "+capitalize(Describe(\$char))+" staggers backwardly, clasping a hand to the "+oneof("deep", "bleeding", "ugly", "jagged", "gaping", "nasty", "serious", "barely noticeable", "perfunctory")+" wound. "+capitalize(Describe(\$char))+" eventually falls to the ground, unconscious.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";            
+  ::remove_pc();              
+  return output;              
+\}              
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:attack_2">
+         X[M] /* an incident during the event */            
+string output, response;            
+if(!\$stage) error("No \$stage data passed for incident.");            
+if(\$stage == "conditions") \{            
+  if(\$role != "healer") return TRUE;            
+  return FALSE;            
+/* setting up rolls */           
+\} else if(\$stage == "test") \{            
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{\$favorite_weapon\}), \$bonus: \$char."trait:speed") \< ironclaw::roll(\$bonus: 24)) return FALSE;            
+  return TRUE;            
+/* character's success */           
+\} else if(\$stage == "pass") \{            
+  \$enemy_tokens -= 60;            
+  return capitalize(Describe(\$char))+" "+oneof("scans", "browses", "contemplates", "examines", "glances at", "surveys", "skims", "sizes up", "takes a long gander at")+" the "+oneof("group", "assembly", "band", "batch", "bundle", "cluster", "clutch", "collection", "gathering", "party", "pack")+" of surrounding "+oneof("enemies", "villagers", "natives", "cannibals", "swamp folk")+ " before exclusively singling out a "+\$enemy+". "+capitalize(Describe(\$char))+" "+oneof("advances", "progresses", "heads", "steps")+" toward the target, "+oneof("deflecting", "averting", "keeping away from")+" any side "+oneof("battles", "fights", "skirmishes", "attacks")+"."+capitalize(\$char."base:pronoun")+" "+oneof("swiftly", "quickly", "abruptly", "fleet-footedly", "nimbly", "promptly", "rapidly", "readily", "speedily")+" reaches the enemy and "+oneof("bashes in the "+\$enemy+"'s face with a single blow", "breaks the "+\$enemy+"'s ribs with a crushing swing", "disables the "+\$enemy+"'s legs with severe wounds to both knees", "knocks the "+\$enemy+" unconscious with a knuckle sandwich", "strikes at pressure points until the "+\$enemy+" surrenders", "uppercuts the "+\$enemy+"'s jaw, sending him reeling toward the ground", "blindsides the "+\$enemy+", sending him toppling to the ground where he hits hits his head upon a rock", "swipes the "+\$enemy+"'s neck with a sharp weapon, sending blood spilling forth")+".\<br/\>";            
+        
+/* failure of character */           
+\} else if(\$stage == "fail") \{            
+/* if there is enough tokens to save the person */           
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));            
+  if(response) \{            
+    output = capitalize(Describe(\$char))+" "+oneof("unsuccessfully", "fruitlessly", "futilely", "ineffectively", "ineffectually", "uselessly", "vainly")+" "+oneof("attempts", "endeavours", "ventures", "tries")+" to attack "+\$enemy+". The opposition "+oneof("retaliates", "recompenses", "reciprocates", "strikes back", "ripostes")+" dashing in from the shadows "+oneof("slashing", "thrusting", "jabbing", "dragging")+" a "+oneof("jagged", "serrated", "sharpened", "dangerous")+" "+oneof("dagger", "dirk", "knife", "stiletto")+" "+oneof("over", "at", "against")+capitalize(Describe(\$char))+"'s "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "nose", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "throat", "abdomen", "left hip", "right hip", "left leg", "right leg", "back", "lower back", "buttocks", "left ankle", "right ankle", "left foot", "right foot")+"."+response;            
+    return output;            
+  \}            
+/* if there is not enough token to save the char */           
+  output = capitalize(Describe(\$char))+" "+oneof("unsuccessfully", "fruitlessly", "futilely", "ineffectively", "ineffectually", "uselessly", "vainly")+" "+oneof("attempts", "endeavours", "ventures", "tries")+" to attack "+\$enemy+". The opposition "+oneof("retaliates", "recompenses", "reciprocates", "strikes back", "ripostes")+" dashing in from the shadows "+oneof("slashing", "thrusting", "jabbing", "dragging")+" a "+oneof("jagged", "serrated", "sharpened", "dangerous")+" "+oneof("dagger", "dirk", "knife", "stiletto")+" "+oneof("over", "at", "against")+capitalize(Describe(\$char))+"'s "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "nose", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "throat", "abdomen", "left hip", "right hip", "left leg", "right leg", "back", "lower back", "buttocks", "left ankle", "right ankle", "left foot", "right foot")+". "+capitalize(Describe(\$char))+" slowly falls to the ground, unconscious.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";            
+  ::remove_pc();            
+  return output;            
+\}            
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:attack_3">
+         X[M] /* an incident during the event */             
+string output, response;             
+if(!\$stage) error("No \$stage data passed for incident.");             
+if(\$stage == "conditions") \{             
+  if(\$role != "healer") return TRUE;             
+  return FALSE;             
+/* setting up rolls */            
+\} else if(\$stage == "test") \{             
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{\$favorite_weapon\}), \$bonus: \$char."trait:agility") \< ironclaw::roll(\$bonus: 24)) return FALSE;             
+  return TRUE;             
+/* character's success */            
+\} else if(\$stage == "pass") \{             
+  \$enemy_tokens -= 60;             
+            
+  return capitalize(Describe(\$char))+" "+oneof("spots", "catches sight of", "detects", "discovers", "espies", "locates", "picks out")+" a "+\$enemy+" who is "+oneof("away from", "cut off from", "disassociated with", "excluded from", "free of", "independent of", "isolated from", "separated from", "to one side of")+" the main "+oneof("group", "batch", "bunch", "bundle", "cluster", "clutch", "company", "gang", "pack")+" and "+oneof("sneaks closer before attacking", "catches the "+\$enemy+" off guard", "prowls stealthily toward the subject", "aggressively rushes forward", "takes the offensive, ambushing the "+\$enemy+" from behind", "charges forward thoughtlessly, ramming into the "+\$enemy+"'s body")+". "+capitalize(Describe(\$char))+" "+oneof(" mercilessly "+oneof("assaults", "beats upon", "strikes", "wallops", "abuses")+" the "+\$enemy+" to the point of knocking him out cold", " makes a precision attack, "+oneof("cutting", "slicing", "stabbing", "puncturing", "horribly wounding")+" the "+oneof("neck", "heart", "vital organs", "lower back")+" of the "+\$enemy+" and disabling him from further combat", "manages to "+oneof("overthrow", "overpower", "conquer", "crush", "eradicate", "exterminate", "terminate", "vanquish")+" the "+\$enemy+" before moving on to the next "+oneof("adversary", "opponent", "enemy", "foe", "rival"), " "+oneof("crashes", "tumbles", "falls", "topples to the ground")+" with the "+\$enemy+", but quickly gains the upper-hand and "+oneof("strangles", "chokes", "asphyxiates", "throttles")+" the "+\$enemy+" until no "+oneof("breath", "air", "life", "oxygen")+" remains", " bashes the "+\$enemy+" upside the head, leaving him "+oneof("unconscious", "there like gator chow", "lying in the mud", "helpless, in a pool of his's own blood", "senseless and dazed", "breathing out its last", "half-dead in the muck of the swamp", "with countless broken bones", "in an extreme amount of pain and confusion"))+".\<br/\>";             
+            
+/* failure of character */            
+\} else if(\$stage == "fail") \{             
+/* if there is enough tokens to save the person */            
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));             
+  if(response) \{             
+            
+    output = oneof("A small group", "Three", "A party", "A cluster")+" of "+oneof("natives", "villagers", "cannibals", "swamp dwellers")+" "+oneof("dressed in not much more than mud", "wooden spears and goads", "avoiding the main of the fight", "preparing to ambush your party")+" is "+oneof("surprised", "pleased", "emboldened")+", when "+capitalize(Describe(\$char))+" unluckily "+oneof("leaps into their midst", "backs into the cluster while trying to catch "+\$char."base:possessive"+" breath", "tries to fight them on solo", "comes running at them with weapon held high")+". "+oneof("Numbers trump skill", "Two of the foes distract "+capitalize(Describe(\$char)), capitalize(Describe(\$char))+" is overwhelmed by the mass of bodies", "Fighting dishonorably two of the them grapple "+capitalize(Describe(\$char))+"'s weapon arm")+" and create an opening for one of the natives to strike "+capitalize(Describe(\$char))+" a "+oneof("deep", "shallow", "ugly", "jagged", "scratch of a", "minor", "gaping", "barely noticable", "perfunctory", "serious")+" wound to the "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "right elbow", "left elbow", "abdomen", "left hip", "right hip", "left leg", "right leg", "throat", "buttocks", "right knee", "left knee", "left ankle", "right ankle", "left foot", "right foot")+". They are driven off by the press of fighting, but not before they "+oneof("kick "+capitalize(Describe(\$char))+" in the belly", "mock "+capitalize(Describe(\$char))+" with taunts", "tell "+capitalize(Describe(\$char))+" what they plan to do to "+\$char."base:possessive"+" friends", "drive "+capitalize(Describe(\$char))+" to the ground briefly with a solid blow to the jaw")+". "+response;             
+         
+    return output;             
+  \}             
+/* if there is not enough token to save the char */            
+   output = oneof("A small group", "Three", "A party", "A cluster")+" of "+oneof("natives", "villagers", "cannibals", "swamp dwellers")+" "+oneof("dressed in not much more than mud", "wooden spears and goads", "avoiding the main of the fight", "preparing to ambush your party")+" is "+oneof("surprised", "pleased", "emboldened")+", when "+capitalize(Describe(\$char))+" unluckily "+oneof("leaps into their midst", "backs into the cluster while trying to catch "+\$char."base:possessive"+" breath", "tries to fight them on solo", "comes running at them with weapon held high")+". "+oneof("Numbers trump skill", "Two of the foes distract "+capitalize(Describe(\$char)), capitalize(Describe(\$char))+" is overwhelmed by the mass of bodies", "Fighting dishonorably two of the them grapple "+capitalize(Describe(\$char))+"'s weapon arm")+" and create an opening for one of the natives to strike "+capitalize(Describe(\$char))+" a "+oneof("deep", "nasty", "ugly", "jagged", "minor", "gaping", "vital", "serious")+" wound to the "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "right elbow", "left elbow", "abdomen", "left hip", "right hip", "left leg", "right leg", "throat", "buttocks", "right knee", "left knee", "left ankle", "right ankle", "left foot", "right foot")+". They are driven off by the press of fighting, but not before they "+oneof("kick "+capitalize(Describe(\$char))+" in the belly", "mock "+capitalize(Describe(\$char))+" with taunts", "tell "+capitalize(Describe(\$char))+" what they plan to do to "+\$char."base:possessive"+" friends", "drive "+capitalize(Describe(\$char))+" to the ground briefly with a solid blow to the jaw")+". It was too much, "+capitalize(Describe(\$char))+" lands on the ground, and stays there.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";             
+         
+  ::remove_pc();             
+  return output;             
+\}             
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:attacked_by_boss">
+         X[M] /* an incident during the event */            
+string output, response;            
+if(!\$stage) error("No \$stage data passed for incident.");            
+if(\$stage == "conditions") \{            
+  if(\$role != "dueler") return FALSE;            
+  return TRUE;            
+\} else if(\$stage == "test") \{            
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"combat:dodge", "academics:magic", "academics:religion"\}), \$bonus: \$char."trait:speed") \< ironclaw::roll(\$bonus: 24)) return FALSE;            
+  return TRUE;            
+\} else if(\$stage == "pass") \{            
+  \$enemy_tokens -= 150;            
+        
+  return oneof("Emerging from the swirling combat, "+capitalize(Describe(\$char))+" finds "+\$char."base:objective"+"self face to face with one of the shamans and guards.", "A shaman begins chanting a spell, and forces begin to form around "+capitalize(Describe(\$char)))+". "+capitalize(Describe(\$char))+" doesn't pause, as "+Str(\$char."base:pronoun")+" "+oneof("ducks and weaves avoiding the spell as the place "+Str(\$char."base:pronoun")+" was standing "+oneof("begins to smolder", "is overrun by snakes", "seems to collapse down into the swamp with a belching, muddy bubble of swamp gas"), "moves in and "+oneof("guts", "yells at", "stabs", "drives off")+" an "+\$enemy+" acting as a guard, causing the shaman to retreat", "manages to get past the guards briefly and slice the shaman, the sight of the blood shocking the other "+oneof("cannibals", "natives", "swamp folk", "enemies", "warriors"))+".\<br/\>";        
+        
+\} else if(\$stage == "fail") \{    
+  \$enemy_tokens += 50;             
+  response = ::run_incident(\$incidents: (\{ "rescued", "healed", "healing", "defending" \}));            
+  if(response) \{            
+  output = oneof("Emerging from the swirling combat, "+capitalize(Describe(\$char))+" finds "+Str(\$char."base:objective")+"self face to face with one of the shamans and guards.", "A shaman begins chanting a spell, and forces begin to form around "+capitalize(Describe(\$char)))+". The shaman gestures with "+oneof("his", "her")+" "+oneof("tattooed hand", "gnarled staff", "mangrove staff", "shrunken head totem", "alligator fetish")+" at "+capitalize(Describe(\$char))+" and "+Str(\$char."base:pronoun")+" "+oneof("is suddenly attacked by a flock of strike pecking and drawing blood in a whirlwind of feathers", "is entrapped by a thorned vine emerging from the swamp, as a cold feeling chills the blood where the thorns pierce skin", "is startled by the rush of an alligator that trammels "+Str(\$char."base:objective")+" knocking "+capitalize(Describe(\$char))+" down", "is struck by a bolt of lightning, seemingly out of nowhere")+". The worst of the injury is to "+capitalize(Describe(\$char))+"'s "+oneof("right eye", "left eye", "heart", "stomach", "right cheek", "left cheek", "neck", "nose", "right shoulder", "left shoulder", "right arm", "left arm", "right wrist", "left wrist", "right hand", "left hand", "chest", "throat", "abdomen", "left hip", "right hip", "left leg", "right leg", "back", "lower back", "buttocks", "left ankle", "right ankle", "left foot", "right foot")+"."+response;          
+    return output;            
+  \}            
+  output = oneof("Emerging from the swirling combat, "+capitalize(Describe(\$char))+" finds "+Str(\$char."base:objective")+"self face to face with one of the shamans and guards.", "A shaman begins chanting a spell, and forces begin to form around "+capitalize(Describe(\$char)))+". The shaman gestures with "+oneof("his", "her")+" "+oneof("tattooed hand", "gnarled staff", "mangrove staff", "shrunken head totem", "alligator fetish")+" at "+capitalize(Describe(\$char))+" and "+Str(\$char."base:pronoun")+" "+oneof("is suddenly attacked by a flock of strike pecking and drawing blood in a whirlwing of feathers", "is entrapped by a thorned vine emerging from the swamp, as a cold feeling chills the blood where the thorns pierce skin", "is startled by the rush of an alligator that trammels "+Str(\$char."base:objective")+" knocking "+capitalize(Describe(\$char))+" down", "is struck by a bolt of lightning, seemingly out of nowhere")+". The injury is too severe as the shaman's magics overcome "+capitalize(Describe(\$char))+".\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";            
+        
+  ::remove_pc();            
+  return output;            
+\}            
+return "nothing";
+      </Core:Property>
+      <Core:Property property="merry:lib:defending">
+         X[M] /* an incident during the event */           
+string output, response;           
+if(!\$stage) error("No \$stage data passed for incident.");           
+if(\$stage == "conditions") \{           
+  /* there needs to be a fighter in the group */           
+  \$list = copy(\$battle.pcs);           
+  \$newchar = nil;           
+  while(!\$newchar \&\& sizeof(\$list)) \{           
+    \$i = random(sizeof(\$list));           
+    if(\$list[\$i][1] == "fighter" \&\& \$list[\$i][0] != \$char) \{           
+      \$newchar = \$list[\$i][0];           
+      \$newchar_favorite_weapon = \$list[\$i][2];           
+    \} else \{           
+      \$list -= (\{ \$list[\$i] \});           
+    \}           
+  \}           
+  if(\$newchar) return TRUE;           
+  return FALSE;           
+\} else if(\$stage == "test") \{           
+  if(ironclaw::roll(\$roller: \$newchar, \$skills: (\{\$newchar_favorite_weapon\}), \$bonus: \$char."trait:body") \< ironclaw::roll(\$bonus: 24)) return FALSE;           
+  return TRUE;           
+\} else if(\$stage == "pass") \{           
+  return " "+oneof(capitalize(Describe(\$newchar))+" leaps out of the crowd, to grapple with the "+\$enemy+".", capitalize(Describe(\$newchar))+" is nearby and, back to back with "+Describe(\$char)+", they fight their way free.", "The "+\$enemy+" "+oneof("smiles", "grins", "leers")+" nastily, when "+Describe(\$newchar)+" hits him from "+oneof("behind", "the side")+".")+"\<br/\>";           
+\} else if(\$stage == "fail") \{           
+  output = " "+capitalize(Describe(\$newchar))+" "+oneof("tries to help, but can't make it there in time.", "attacks the "+\$enemy+", but doesn't take him down.", "rushes to help, but is cut off by enemies.")+" The "+\$enemy+" "+oneof("slices", "slashes", "scythes")+" a "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+" across "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+" before moving off in the press of battle.\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";           
+  response = ::run_incident(\$incidents: \$incidents);           
+  if(!response) \{           
+   ::remove_pc();           
+   return output;           
+  \} else \{           
+   return response;           
+  \}           
+\}           
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_enemy">
+         X[M] return oneof("avaricious", "", "predative", "camouflaged", "greedy", "vulturine", "dirty", "filthy", "filth-covered", "astute", "slick", "wiley", "bedraggled", "one-armed", "raunchy", "squalid", "unsightly", "smutty", "scuzzy", "begrimed", "poorly armed", "stout", "ill-fed", "gap-toothed", "dirt covered", "blood spattered", "dangerous looking", "", "", "", "")+" "+oneof("native", "hooligan", "marauder", "outlaw", "pillager", "plunderer", "raider", "forager") +oneof("", "", "", "", "", "", " dual-wielding swords", " cracking a whip", " clad in dust-laden fineries", " missing two front teeth", " with blood-stained claws", " with a flea-infested beard", " cloaked in black", " riddled with bugs", " decorated in war paint", " wearing a murderous scowl", " snarling viciously", " humming a foreboding tune");
+      </Core:Property>
+      <Core:Property property="merry:lib:healed">
+         X[M] /* an incident during the event */           
+string output, response;           
+if(!\$stage) error("No \$stage data passed for incident.");           
+if(\$stage == "conditions") \{           
+  if(!\$friendly_healer_tokens \|\| \$friendly_healer_tokens \< 50) return FALSE;           
+  return TRUE;           
+\} else if(\$stage == "test") \{           
+  /* always passes */           
+  return TRUE;           
+\} else if(\$stage == "pass") \{           
+  \$friendly_healer_tokens -= 50;           
+  return  oneof("Blood", "Red fluid")+" "+oneof("oozes", "trickles", "drips", "streams", "leaks", "flows")+" from the "+oneof("deep", "shallow", "considerable", "horrid", "perfunctorily", "subtle", "small", "notable", "serious", "gaping", "horrible")+" "+oneof("wound", "injury", "gash", "cut")+" "+Describe(\$char)+" "+oneof("obtained", "suffered", "endured", "gained")+" from a "+\$enemy+"'s "+oneof("swift", "skilled", "rapid", "precise", "lucky", "professional", "clumsy", "successful", "vicious", "savage", "haphazard")+" "+oneof("hit", "stroke", "motion", "move")+" with his "+oneof("blade", "hand", "dagger", "dirk", "knife", "longsword", "pitchfork", "torch", "log", "primitive club")+". "+oneof("A passing", "An attentive", "A ready", "An able", "An alert", "An adept", "An observant", "A perceptive", "A vigilant", "A running")+" "+\$ally+" "+oneof("spots", "takes note of", "notices", "sees", "espies", "detects")+" the injury and "+oneof("runs", "struggles", "sneaks", "dashes", "steps")+" to the side of "+Describe(\$char)+". "+capitalize(\$char."base:pronoun")+" "+oneof("swiftly", "agilely", "rapidly", "knowingly", "hurriedly", "haphazardly", "distractedly", "worriedly")+" "+oneof("tends to", "bandages", "applies a field dressing", "wraps", "attends")+" the injury"+oneof(", allowing "+Describe(\$char)+" to rejoin the fight", ". Catching "+\$char."base:possessive"+" breath "+Describe(\$char)+" can finally rejoin the battle", ", making it possible for "+Describe(\$char)+" to continue the fight")+". \<br/\>";           
+\} else if(\$stage == "fail") \{           
+  /* always passes */           
+\}           
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:healing">
+         X[M] /* an incident during the event */           
+string output, response;           
+if(!\$stage) error("No \$stage data passed for incident.");           
+if(\$stage == "conditions") \{           
+  /* there needs to be a healer in the group */           
+  \$list = copy(\$battle.pcs);           
+  \$newchar = nil;           
+  while(!\$newchar \&\& sizeof(\$list)) \{           
+    \$i = random(sizeof(\$list));           
+    if(\$list[\$i][1] == "healer" \&\& \$list[\$i][0] != \$char) \{           
+      \$newchar = \$list[\$i][0];           
+    \} else \{           
+      \$list -= (\{ \$list[\$i] \});           
+    \}           
+  \}           
+  if(\$newchar) return TRUE;           
+  return FALSE;           
+\} else if(\$stage == "test") \{           
+  if(ironclaw::roll(\$roller: \$newchar, \$skills: (\{"mental:first-aid"\}), \$bonus: \$char."trait:mind") \< ironclaw::roll(\$bonus: 24)) return FALSE;           
+  return TRUE;           
+\} else if(\$stage == "pass") \{           
+  return " The "+\$enemy+" "+oneof("slices", "slashes", "scythes")+" a "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+" across "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+" before moving off in the press of battle. "+capitalize(Describe(\$newchar))+" spots the injury, and manages to apply a hasty field dressing, allowing "+Describe(\$char)+" to rejoin the fight.\<br/\>";           
+\} else if(\$stage == "fail") \{           
+  output = " The "+\$enemy+" "+oneof("slices", "slashes", "scythes")+" a "+oneof("cutlass", "dagger", "dirk", "knife", "sword")+" across "+Describe(\$char)+"'s "+oneof("stomach", "shoulder", "face", "leg", "arm", "gut", "chest")+" before moving off in the press of battle. "+capitalize(Describe(\$newchar))+oneof(" spots the injury, and dashes toward "+Describe(\$char)+", but gets lost in the fury of the battle, leaving the "+oneof("wound", "gouge", "injury", "slice")+" "+oneof ("unmended", "bleeding"), " rushes over, and hastily bandages the "+oneof("wound", "gouge", "injury", "slice")+", but not before "+Describe(\$char)+" passes out")+".\<br/\>\<font color='red'\>["+capitalize(Describe(\$char))+" has been removed from the combat]\</font\>\<BR/\>";           
+  response = ::run_incident(\$incidents: \$incidents);           
+  if(!response) \{           
+   ::remove_pc();           
+   return output;           
+  \} else \{           
+   return response;           
+  \}           
+           
+\}           
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_pc">
+         X[M] /* remove a PC from the list */           
+int i;           
+           
+if(!this.pcs) return TRUE;           
+if(!\$char) return FALSE;           
+for(i=0;i\<sizeof(this.pcs);i++) \{           
+  if(this.pcs[i][0] == \$char) \{           
+    \$tmp = this.pcs[i];           
+    this.pcs -= (\{ \$tmp \});           
+  \}           
+\}           
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:rescued">
+         X[M] /* an incident during the event */           
+string output, response;           
+if(!\$stage) error("No \$stage data passed for incident.");           
+if(\$stage == "conditions") \{           
+  if(!\$friendly_soldier_tokens \|\| \$friendly_soldier_tokens \< 90) return FALSE;           
+  return TRUE;           
+\} else if(\$stage == "test") \{           
+  /* always passes */           
+  return TRUE;           
+\} else if(\$stage == "pass") \{           
+  \$friendly_soldier_tokens -= 90;           
+  return " Before the "+\$enemy+" can "+oneof("do any serious damage", "attack", "take advantage of the situation")+", a "+\$ally+" "+oneof("arrives, and drives the scoundrel away", "rushes past, stabbing the cannibal on the way", "intervenes, dueling the cannibal in "+Describe(\$char)+"'s place", "lands a well-placed hit on the back of the cannibal's head, rendering him unconscious")+".\<br/\>";           
+\} else if(\$stage == "fail") \{           
+  /* always passes */           
+\}           
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_incident">
+         X[M] /* run a second incident, following the first */           
+string incident;           
+int i;           
+           
+if(!\$incidents \|\| !sizeof(Arr(\$incidents))) return nil;           
+\$incidents = Arr(\$incidents);           
+           
+while(sizeof(\$incidents)) \{           
+  incident = \$incidents[random(sizeof(\$incidents))];           
+  \$incidents -= (\{ incident \});           
+  if(Call(\$battle, incident, \$stage: "conditions")) \{           
+    if(Call(\$battle, incident, \$stage: "test")) \{           
+      return Call(\$battle, incident, \$stage: "pass");           
+    \} else \{           
+      return Call(\$battle, incident, \$stage: "fail");           
+    \}           
+  \}           
+\}           
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:shaman">
+         X[M] /* an incident during the event */             
+string output, response;             
+if(!\$stage) error("No \$stage data passed for incident.");             
+if(\$stage == "conditions") \{             
+  if(\$role != "healer") return TRUE;             
+  return FALSE;             
+/* setting up rolls */            
+\} else if(\$stage == "test") \{             
+  if(ironclaw::roll(\$roller: \$char, \$skills: (\{"academics:magic", "career:priest", "career:savage", "career:huscarl", "career:sniper", "career:scout", "career:scholar"\}), \$bonus: \$char."trait:speed") \< ironclaw::roll(\$bonus: 24)) return FALSE;             
+  return TRUE;             
+/* character's success */            
+\} else if(\$stage == "pass") \{             
+  \$enemy_tokens -= 90;             
+  return "A "+oneof("impressive", "manic", "inspired", "sallow faced", "dedicated")+" shaman, raises "+oneof("his","her")+" "+oneof("hands", "gnarled staff", "primitive fetish", "hair and tooth decorated pouch")+" and begins to chant. Sensing the danger, "+capitalize(Describe(\$char))+" "+oneof("quickly steps forward", "charges at the shaman", "gathers a small group")+" and "+oneof("disrupts the incantation", "causes the shaman to back off", "is balked by a group of cannibals but not before stopping the spell", "distracts the shaman with a glob of mud to the face")+".\<br/\>";          
+       
+/* failure of character */            
+\} else if(\$stage == "fail") \{             
+ \$enemy_tokens += 90;        
+          
+  /* shaman gets the spell off */       
+    output =  "A "+oneof("impressive", "manic", "inspired", "sallow faced", "dedicated")+" shaman, raises "+oneof("his","her")+" "+oneof("hands", "gnarled staff", "primitive fetish", "hair and tooth decorated pouch", "alligator totem", "shrunken head")+" and begins to chant. The shaman's voice carries and "+oneof("is answered by the bellowing of alligators throughout the swamp", "the wind begins to blow harder", "the shaman is surrounded by a glow", "the natives take heart", "some of your soldiers quail")+". You notice "+oneof("a group of injured natives rise up, their wounds knitting leaving behind heavy scars", "vines ensnare a group of your soldiers", "the cannibals seem to gain a second wind, revitalized", "a wild eyed weasel roar, surrounded by an algae green glow as she tears into a line of guards")+".\<br/\>";       
+       
+  return output;           
+\}           
+return "nothing";
+      </Core:Property>
+      <Core:Property property="pcs">
+         (\{ (\{ \<Chatters:Backup:IC:ac:achlys0\>, "healer", "combat:dagger" \}), (\{ \<Chatters:AE:ka:kaine\>, "dueler", "combat:fencing" \}), (\{ \<Chatters:AE:ba:bayard\>, "dueler", "combat:sword" \}), (\{ \<Chatters:IC:cl:clover\>, "dueler", "combat:polearm" \}), (\{ nil, "fighter", "combat:sword" \}), (\{ nil, "fighter", "combat:dagger" \}), (\{ \<Chatters:IC:ei:eiryk\>, "fighter", "combat:dagger" \}), (\{ \<Chatters:AE:ta:tara\>, "healer", "combat:dagger" \}) \})
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1340215447, "rastalabor", "X", 1340230550, "rastalabor", "X", 1344461051, "rastalabor", "X", 1344461088, "rastalabor", "X", 1344462255, "rastalabor", "X", 1344462461, "rastalabor", "X", 1344462630, "rastalabor", "X" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

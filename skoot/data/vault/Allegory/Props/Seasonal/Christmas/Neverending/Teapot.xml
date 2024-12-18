@@ -1,0 +1,175 @@
+<object clone="/base/obj/thing" owner="lidiab">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="10" density="2.5"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="standing" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="false" under="false" on="false" inside="false" near="true" over="false" behind="false" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="teapot"/>
+            <Base:SName sname="pot"/>
+            <Base:SName sname="tea"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="pots"/>
+            <Base:PName pname="teapots"/>
+            <Base:PName pname="teas"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="decorative"/>
+          <Base:Adjective adjective="elaborate"/>
+          <Base:Adjective adjective="floral"/>
+          <Base:Adjective adjective="highly"/>
+          <Base:Adjective adjective="metal"/>
+          <Base:Adjective adjective="polished"/>
+          <Base:Adjective adjective="silver"/>
+          <Base:Adjective adjective="tea"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             elaborate silver teapot
+          </Base:Description>
+          <Base:Description type="look">
+             A round-bodied $(this.trait:color) $(this.trait:material) teapot. A decorative floral pattern, also in silver, wraps around the teapot's handle, base, and spout. {? not | $(this.trait:flavor) | There is no tea currently brewing. | Some $(this.trait:flavor) tea is currently brewing. }
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:flavor">
+         "full-bodied deep black"
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "sharp, earthy tones"
+      </Core:Property>
+      <Core:Property property="merry:react-desc:add-iob">
+         X[M] /* this allows us to add a teabag to the kettle, and have the flavor carry across */
+
+EmitTo(\$actor, "This script");
+
+/* check if we were given a tea bag */
+if(\$dob \&\& sizeof(\$dob) == 1) \{
+  /* we have one object being added. check if it's a teabag */
+  \$teabag = NRefOb(\$dob[0]);
+\} else \{
+  /* either they didn't add any objects, or they added more than one */
+  return TRUE;
+\}
+
+/* check if the object is, indeed, a tea bag */
+if(!\$teabag."trait:objecttype" \|\| \$teabag."trait:objecttype" != "teabag")
+  return TRUE;
+
+/* we have a teabag. */
+
+/* should we transfer the flavor? */
+/* does the kettle already have flavor? */
+if(\$this."trait:flavor") \{
+  EmitTo(\$actor, Describe(\$this, nil, \$actor)+ " already holds " +\$this."trait:flavor"+ " tea. You will need to empty it before attempting a new flavor.");
+  EmitTo(\$actor, "Blah3-3.1 Check: Already Brewing Tea");
+  return FALSE;
+\}
+
+/* the tea didn't already have flavor, so transfer it */
+\$this."trait:flavor" = \$teabag."trait:flavor";
+\$this."trait:taste" = \$teabag."trait:taste";
+\$this."trait:smell" = \$teabag."trait:smell";
+EmitTo(\$actor, "Blah-3.2: Add Tea Flavor to Kettle");
+
+EmitTo(\$actor, "Done.");
+return TRUE;
+
+/* Here is the previous code --------------------------------------------------------------------------*/
+
+/* EmitTo(\$actor, dump_value(args));   */
+
+if(\$iob \&\& sizeof(\$iob) == 1) \{
+    \$tea_ob = NRefOb(\$iob[0]);
+    EmitTo(\$actor, "Blah-First Check");
+
+   if(\$tea_ob."trait:objecttype" == "teabag") \{
+        EmitTo(\$actor, "Blah-Second Check: Objecttype");
+
+            if(\$this."trait:flavor") \{
+
+                EmitTo(\$actor, Describe(\$this, nil, \$actor)+ " already holds " +\$this."trait:flavor"+ " tea. You will need to empty it before attempting a new flavor.");
+                EmitTo(\$actor, "Blah3-3.1 Check: Already Brewing Tea");
+                return FALSE;
+
+
+\}            else if(!\$this."trait:flavor") \{
+                \$flavor = Get(\$tea_ob, "trait:flavor");
+                \$this."trait:flavor" = \$flavor;
+                EmitTo(\$actor, "Blah-3.2: Add Tea Flavor to Kettle");
+\}
+\}
+\}
+EmitTo(\$actor, "Blah-End");
+      </Core:Property>
+      <Core:Property property="merry:react-pre:pour-dob">
+         X[M] if(\$this."trait:flavor" == nil)\{
+EmitTo(\$actor, "There is no tea brewing at the moment, maybe you should pick a flavor of tea and brew a pot.");
+return FALSE;
+\}
+
+EmitTo(\$actor, "You retrieve a clean tea cup from the green-stained mahogany tea cabinet, drop a piece of rock sugar into it, and pour yourself a steaming hot cup of "+\$this."trait:flavor"+ " tea. Mmmm...");
+
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " retrieves a clean tea cup from the green-stained mahogany tea cabinet, drops a piece of rock sugar into it, and then pours " +\$actor."base:objective"+ "self a cup of steaming hot "+\$this."trait:flavor"+" tea.", \$actor);
+
+\$drink = \$\{Allegory:Props:Drinks:Regional:Italy:Containers:Negroni\};
+\$tea = Spawn(\$drink);
+\$tea."trait:flavor" = \$this."trait:flavor";
+\$tea."trait:smell" = \$this."trait:smell";
+\$tea."trait:liquid" = "tea";
+\$tea."trait:container" = "silver cup and saucer";
+\$tea."trait:quantity" = 50;
+\$tea."emote:drink" = "It is hot and delicious";
+\$tea."emote:quaff" = "This hot liquid, while tasty, burns your throat";
+\$tea."emote:savor" = "The sweetness of the "+\$this."trait:flavor"+" tea lingers pleasantly";
+\$tea."emote:savour" = "The sweetness of the "+\$this."trait:flavor"+" tea lingers pleasantly";
+\$tea."emote:gulp" = "The hot liquid of the tea slightly burns your throat";
+\$tea."emote:slurp" = "It is delicious";
+\$tea."emote:swill" = "It slowly slides down your throat, warming you as it goes";
+\$tea."emote:taste" = "The full flavor of the "+\$this."trait:flavor"+" tea spreads over your taste buds";
+\$tea."emote:sip" = "Hot "+\$this."trait:flavor"+" tea eclipses your tongue";
+\$tea."base:environment" = \$actor;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1309206170, "tunk_bodin", "R", 1444166471, "lidiab", "E", 1444166646, "lidiab", "E", 1444167516, "lidiab", "R", 1444168025, "lidiab", "R", 1444168059, "lidiab", "E", 1573693963, "jominey", "E", 1701639446, "lidiab", "K" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

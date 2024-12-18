@@ -1,0 +1,105 @@
+<object clone="/usr/SkotOS/obj/verb" owner="jominey">
+  <Socials:Verb imp="survey" second="survey" third="surveys" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="false" requirement="required" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="with" direct="false" single="false" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="with"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* woodcutting somewhere */
+
+/* Where are we woodcutting?*/
+if(\$dob) \{
+    /* are we trying to woodcut in too many places? */
+    if(sizeof(\$dob) \> 1) \{
+        return TRUE;
+    \}
+    \$target = NRefOb(\$dob[0]);
+    \$detail = NRefDetail(\$dob[0]);
+\} else \{
+    /* no DOB, so return true */
+    return TRUE;
+\}
+
+/* Check that the object is a woodcut location */
+if(!Get(\$target, "woodcutting:"+\$detail+":array")) \{
+  return TRUE;
+\}
+
+/* are they already busy? */
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+    EmitTo(\$actor, "You are already busy "+\$message+".");
+    return FALSE;
+\}
+
+if(Int(\$actor."effect:energy:severity") \>= 80) \{
+    EmitTo(\$actor, "You are too tired to survey for trees right now.");
+    return FALSE;
+\}
+
+if(\$actor."trait:class1" != "woodcutter" \&\& \$actor."trait:class2" != "woodcutter") \{
+    EmitTo(\$actor, "You don't know how to survey land for trees.");
+    return FALSE;
+\}
+
+/* what tool are they using? */
+if(\$iob) \{
+    /* Only use one tool at a time */
+    if(sizeof(\$iob) \> 1) \{
+        EmitTo(\$actor, "You can only fell a tree using one tool at a time.");
+        return FALSE;
+    \}
+  
+    /* Are we using an axe? */
+    if(NRefOb(\$iob[0])."trait:objecttype" != "axe") \{
+        EmitTo(\$actor, "You will need an axe if you want to fell a tree.");
+        return FALSE;
+    \}
+
+    /* Don't use someone else's tools */
+    if(NRefOb(\$iob[0])."base:environment" != \$actor) \{
+        EmitTo(\$actor, "You must be holding " + Describe(\$iob[0]) + " in order to use it.");
+        return FALSE;
+    \}
+
+    \$axe = NRefOb(\$iob[0]);
+\} else \{
+    /* Checkinventory for a axe */
+    \$inv = \$actor."base:inventory";
+
+    for(\$i = 0; \$i \< sizeof(\$inv); \$i++) \{
+        if(\$inv[\$i]."trait:objecttype" == "axe") \{
+            \$axe = \$inv[\$i];
+        \}
+    \}
+
+    if(!\$axe) \{
+        EmitTo(\$actor, "You can't fell a tree without an axe.");
+        return FALSE;
+    \}
+\}
+
+EmitTo(\$actor, "You begin to survey the area for suitable trees.");
+
+Call(\$\{Allegory:Lib:Tradesmen:Milling\}, "woodcut");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1583018226, "jominey", "E", 1583018239, "jominey", "E", 1583018845, "jominey", "E", 1583019742, "jominey", "E", 1583019844, "jominey", "E", 1583020017, "jominey", "E", 1583020170, "jominey", "E", 1592533739, "jominey", "E", 1592536175, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

@@ -1,0 +1,186 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.3" density="1.1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="hourglass"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="hourglasses"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             the ironclaw hourglass
+          </Base:Description>
+          <Base:Description type="examine">
+             A six foot tall hourglass, with sand constantly running through, but never running out. It is standing in a large mahogany frame.
+<sbr/>
+This hourglass keeps time for the world of Calabria, and legend states that time will stop the hourglass is ever destroyed.
+          </Base:Description>
+          <Base:Description type="look">
+             A six foot tall hourglass, standing in a large mahogany frame.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:gather_children">
+         X[M] /*EmitTo(\$actor, "Gathering children for room " + name(\$room));*/
+
+if(!\$object)
+  \$object = \$this;
+
+if(!\$object.gathering_children) \{
+  \$object.gathering_children = 1;
+\} else \{
+  \$object.gathering_children++;
+\}
+
+\$delay(0.1, TRUE, "5480");
+
+if(!\$object.roomlist) \{
+  \$object.roomlist = (\{\});
+\}
+
+if(\$room."base:firsturchild")
+\{
+  \$firstchild = \$room."base:firsturchild";
+  \$currentroom = \$firstchild;
+
+  /* We have a child, so add it to the list */
+  /* as long as it is not virtual */
+  if(\$currentroom \&\& !Get(\$currentroom, "isvirtual")) \{
+    \$object.roomlist \|= (\{ \$currentroom \});
+    Call(this, "gather_children", \$room: \$currentroom);
+  \}
+  \$currentroom = \$currentroom."base:nextursibling";
+
+  /* While we have more than one child, add them to the list too */
+  while(\$currentroom."base:nextursibling" != \$firstchild)
+  \{
+    if(\$currentroom \&\& !Get(\$currentroom, "isvirtual")) \{
+      \$object.roomlist \|= (\{ \$currentroom \});
+      Call(this, "gather_children", \$room: \$currentroom);
+    \}
+    \$currentroom = \$currentroom."base:nextursibling";
+    \$delay(0.1, TRUE, "a398");
+  \}
+\}
+
+\$object.gathering_children--;
+if(\$object.gathering_children \< 1) \{
+  \$object.gathering_children = nil;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:heartbeat">
+         X[M] while(this.running)
+\{
+  \$delay_amount = 10;
+  \$time = (time()/(60*60))%16;
+  EmitTo(nil /* defunct */, "Hourglass hour " + \$time);
+
+  \$timeSphere = Spawn(\$\{Ironclaw:Systems:Time:TimeSphere\});
+  if(\$time == 0)
+  \{
+    Call(\$timeSphere, "send_time_of_day", \$time: "time/morning");
+    /* Make the world light */
+/*    Set(\$\{IronClaw:Rooms:UrOutside\}, "details:sky:luminosity", 500.0);*/
+  \} else if (\$time==4)
+  \{
+    Call(\$timeSphere, "send_time_of_day", \$time: "time/midday");
+  \} else if (\$time==8)
+  \{
+    Call(\$timeSphere, "send_time_of_day", \$time: "time/dusk");
+    /* Make the world dark */
+/*    Set(\$\{IronClaw:Rooms:UrOutside\}, "details:sky:luminosity", 5.0);*/
+  \} else if (\$time==12)
+  \{
+    Call(\$timeSphere, "send_time_of_day", \$time: "time/midnight");
+  \}
+
+  /* gather a list of rooms that should be emitted to */
+  if(\$time == 0) \{
+    /* delay, so this doesn't happen while time of day is being sent */
+    \$delay(60*60, TRUE, "fc01");
+    /* Gather a list of all the children and grandchildren of UrOutside */
+    Call(\$this, "gather_children", \$room: \$\{IronClaw:Rooms:UrOutside\});
+    while(this.gathering_children) \{
+      \$delay(3, TRUE, "d613");
+    \}
+    Call(\$this, "gather_children", \$room: \$\{IronClaw:Rooms:UrInside\});
+  \}
+
+  /* do daily chores */
+  /* charge guilds for their employees */
+  Call(\$\{Ironclaw:Lib:Guilds:Guild\}, "merry:lib:pay_npc_employees");
+
+  /* calculate the delay until the next signal gets sent */
+  \$hours = (time()/(60*60))%16;
+  \$minutes = (time()/60)%60;
+  \$seconds = time()%60;
+  \$time_of_day = \$hours*60*60 + \$minutes*60 + \$seconds;
+  \$delay_amount = 4*60*60 - \$time_of_day%(4*60*60);
+
+  \$delay(\$delay_amount, TRUE, "b3a3");
+
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:press-dob">
+         X[M] if(this.running)
+\{
+  EmitTo(\$actor, "The hourglass is already running");
+\} else \{
+  EmitTo(\$actor, "You start the hourglass moving");
+  this.running = 1;
+  Call(this, "heartbeat");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1103000566, "tonyd", "E", 1103000641, "tonyd", "E", 1103000704, "tonyd", "E", 1108464004, "tonyd", "X", 1108464078, "tonyd", "E", 1108464240, "tonyd", "E", 1108464284, "tonyd", "E", 1108464309, "tonyd", "E", 1108464384, "tonyd", "E", 1108464412, "tonyd", "E", 1108776269, "tonyd", "E", 1108776367, "tonyd", "E", 1108777905, "tonyd", "E", 1108778507, "tonyd", "E", 1108778724, "tonyd", "E", 1108778893, "tonyd", "E", 1108779010, "tonyd", "E", 1108779137, "tonyd", "E", 1108779487, "tonyd", "P", 1108779580, "tonyd", "P", 1108779619, "tonyd", "P", 1108779648, "tonyd", "P", 1108780022, "tonyd", "P", 1108780787, "tonyd", "P", 1108780829, "tonyd", "P", 1108780911, "tonyd", "P", 1108780953, "tonyd", "P", 1108780963, "tonyd", "P", 1108781086, "tonyd", "P", 1108781121, "tonyd", "P", 1108781181, "tonyd", "P", 1108781255, "tonyd", "P", 1108781359, "tonyd", "P", 1108781476, "tonyd", "P", 1108781562, "tonyd", "P", 1108782523, "tonyd", "P", 1108782839, "tonyd", "P", 1108783108, "tonyd", "P", 1108783141, "tonyd", "P", 1108783291, "tonyd", "P", 1108783443, "tonyd", "P", 1108783650, "tonyd", "P", 1108783784, "tonyd", "P", 1108784569, "tonyd", "E", 1109990352, "tonyd", "E", 1109991534, "tonyd", "E", 1109991550, "tonyd", "P", 1109996187, "tonyd", "P", 1109996265, "tonyd", "P", 1109996578, "tonyd", "P", 1109996742, "tonyd", "P", 1109996791, "tonyd", "P", 1109996948, "tonyd", "P", 1109997307, "tonyd", "P", 1109997900, "tonyd", "E", 1109998399, "tonyd", "P", 1109998480, "tonyd", "P", 1109998665, "tonyd", "P", 1109998764, "tonyd", "P", 1109998839, "tonyd", "P", 1109998924, "tonyd", "P", 1109998949, "tonyd", "P", 1109998969, "tonyd", "P", 1109999048, "tonyd", "P", 1109999067, "tonyd", "P", 1109999109, "tonyd", "P", 1109999147, "tonyd", "P", 1110000107, "tonyd", "P", 1110000205, "tonyd", "P", 1110000239, "tonyd", "P", 1110000368, "tonyd", "P", 1110000829, "tonyd", "P", 1110000885, "tonyd", "P", 1110000914, "tonyd", "P", 1110001002, "tonyd", "P", 1110001100, "tonyd", "P", 1110001895, "tonyd", "P", 1110001952, "tonyd", "P", 1110002338, "tonyd", "P", 1110002561, "tonyd", "P", 1110002809, "tonyd", "P", 1110002894, "tonyd", "P", 1110003089, "tonyd", "P", 1110003367, "tonyd", "P", 1110003424, "tonyd", "P", 1110003584, "tonyd", "P", 1110003622, "tonyd", "P", 1110003756, "tonyd", "P", 1110003826, "tonyd", "P", 1110003897, "tonyd", "P", 1110003995, "tonyd", "P", 1110004039, "tonyd", "P", 1110004112, "tonyd", "P", 1110004193, "tonyd", "P", 1110004316, "tonyd", "P", 1110004385, "tonyd", "P", 1110004495, "tonyd", "P", 1110004564, "tonyd", "P", 1110004806, "tonyd", "P", 1110004839, "tonyd", "P", 1110004868, "tonyd", "P", 1110005020, "tonyd", "P", 1110005153, "tonyd", "P", 1110005202, "tonyd", "P", 1110005342, "tonyd", "P", 1110005361, "tonyd", "P", 1110005669, "tonyd", "P", 1110005730, "tonyd", "P", 1110006046, "tonyd", "P", 1110006082, "tonyd", "P", 1110006125, "tonyd", "P", 1110006241, "tonyd", "P", 1110006456, "tonyd", "P", 1110006498, "tonyd", "P", 1110006932, "tonyd", "P", 1110006998, "tonyd", "P", 1110010507, "tonyd", "P", 1110010562, "tonyd", "P", 1110010675, "tonyd", "P", 1110010711, "tonyd", "P", 1110011008, "tonyd", "P", 1110011968, "tonyd", "P", 1110012938, "tonyd", "P", 1110013008, "tonyd", "P", 1111292441, "tonyd", "P", 1111292785, "tonyd", "P", 1111292864, "tonyd", "P", 1111294257, "tonyd", "P", 1111297506, "tonyd", "P", 1111369267, "tonyd", "P", 1111369461, "tonyd", "P", 1126914200, "tonyd", "E", 1126914268, "tonyd", "E", 1126915545, "tonyd", "P", 1126915571, "tonyd", "P", 1126915592, "tonyd", "P", 1135909346, "tonyd", "E", 1140149336, "tonyd", "P", 1141016200, "tonyd", "P", 1141016251, "tonyd", "P", 1141016411, "tonyd", "P", 1141017581, "tonyd", "P", 1141017626, "tonyd", "P", 1141017962, "tonyd", "P", 1141018170, "tonyd", "P", 1141018302, "tonyd", "P", 1141018323, "tonyd", "P", 1141018436, "tonyd", "P", 1141018807, "tonyd", "P", 1141018887, "tonyd", "P", 1141018903, "tonyd", "P", 1141018916, "tonyd", "P", 1141018935, "tonyd", "P", 1141019063, "tonyd", "P", 1141019148, "tonyd", "P", 1141019207, "tonyd", "P", 1141019322, "tonyd", "P", 1141019413, "tonyd", "P", 1141019486, "tonyd", "P", 1141019556, "tonyd", "P", 1141019708, "tonyd", "P", 1141019758, "tonyd", "P", 1141020128, "tonyd", "P", 1150074344, "tonyd", "P", 1309489398, "rorschakovacs", "R" \})
+      </Core:Property>
+      <Core:Property property="roomlist">
+         (\{ \<Ironclaw:World:DockTown:Roads:DeadEnds:DeadEndNE\>, nil, \<IronClaw:Rooms:Staff:Khalea:The-Dark-Forest\>, \<IronClaw:Rooms:Staff:Addeo:TheHarbor\>, \<IronClaw:Rooms:Staff:Newton:Field\>, \<Ironclaw:Staff:Ditto:Rooms:Harrowgate:market\>, \<Ironclaw:World:DockTown:Roads:UR:UrAlley\>, \<Ironclaw:World:DockTown:Roads:Alleys:WestAlley\>, \<Ironclaw:World:DockTown:Roads:Alleys:SouthAlley\>, \<[IronClaw:Rooms:UrOutside]#13965\>, \<Ironclaw:World:DockTown:Roads:Alleys:NorthAlley\>, \<Ironclaw:World:DockTown:Roads:DeadEnds:NorthernCuldesac\>, \<Ironclaw:World:DockTown:Roads:Alleys:HelloisetoSea\>, nil, \<Ironclaw:World:DockTown:Roads:Alleys:SolToCuldesac\>, \<Ironclaw:World:DockTown:Plazas:Brewery:Patio\>, \<Ironclaw:World:DockTown:Roads:Alleys:DockToCourt\>, \<Ironclaw:World:DockTown:Roads:DeadEnds:DeadEndWest\>, \<Ironclaw:World:DockTown:Roads:Alleys:HelloiseToDeadend\>, nil, \<Ironclaw:World:DockTown:Roads:Alleys:CourtToMarket\>, \<Ironclaw:World:DockTown:Commons:WestCommons\>, nil, \<Ironclaw:Staff:Death:Park\>, \<Allegory:Setting:Rinascita:Buildings:Northeast:HerbShop:FirstFloor:Garden\>, \<Ironclaw:World:DockTown:Roads:UR:UrStreet\>, \<Ironclaw:World:DockTown:UrRoad\>, \<Ironclaw:World:DockTown:Roads:DeadEnds:EasternCuldesac\>, \<Ironclaw:World:DockTown:Roads:Lanes:Common03\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise06\>, \<Ironclaw:World:DockTown:Buildings:TrainingYard:DockSquare\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise07\>, \<Ironclaw:World:DockTown:Buildings:Faire:NorthEastCuldesac\>, nil, \<Ironclaw:World:DockTown:Plazas:TurretCourtyard:MainArea\>, \<Ironclaw:World:DockTown:Roads:Streets:Sea01\>, \<Ironclaw:World:DockTown:Plazas:Market:Mainroom\>, \<Ironclaw:World:DockTown:Roads:Streets:Market02\>, \<Ironclaw:World:DockTown:Buildings:Ships:Galleon:UrOutside\>, \<Ironclaw:World:DockTown:Roads:Lanes:Common04\>, \<Ironclaw:World:DockTown:Buildings:Ships:Galleon:MainDeck:Aft\>, \<Ironclaw:World:DockTown:Buildings:Ships:Galleon:Forecastle\>, \<Ironclaw:World:DockTown:Roads:UR:UrBoardwalk\>, \<Ironclaw:World:DockTown:Roads:Lanes:Common02\>, \<Ironclaw:World:DockTown:Buildings:Ships:Galleon:Bridge\>, \<Ironclaw:World:DockTown:Roads:Piers:11\>, \<Ironclaw:World:DockTown:Roads:Piers:08\>, nil, \<Ironclaw:World:DockTown:Roads:Streets:Sea03\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock04\>, nil, \<Ironclaw:World:DockTown:Roads:Streets:Sea04\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock06\>, \<Ironclaw:World:DockTown:Roads:Streets:Sea02\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock07\>, \<Ironclaw:World:DockTown:Roads:Lanes:Common01\>, \<Ironclaw:World:DockTown:Roads:Piers:12\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise08\>, \<Ironclaw:World:DockTown:Roads:Piers:02\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise09\>, \<Ironclaw:World:DockTown:Roads:Piers:01\>, \<Ironclaw:World:DockTown:Roads:Streets:Sea05\>, \<Ironclaw:World:DockTown:Roads:Piers:05\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise02\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock09\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise10\>, \<Ironclaw:World:DockTown:Roads:Piers:05B\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise03\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock08\>, \<Ironclaw:World:DockTown:Roads:Streets:Cliff01\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock05\>, \<Ironclaw:World:DockTown:Roads:Streets:Sea06\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock03\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise04\>, \<[Ironclaw:World:DockTown:Roads:UR:UrBoardwalk]#25893\>, \<Ironclaw:World:DockTown:Roads:Streets:Sol01\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock01B\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise05\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock02\>, \<Ironclaw:World:DockTown:Roads:Streets:Salt01\>, \<Ironclaw:World:DockTown:Roads:Piers:07\>, \<Ironclaw:World:DockTown:Roads:Streets:Helloise01\>, \<Ironclaw:World:DockTown:Roads:Piers:03\>, \<Ironclaw:World:DockTown:Roads:Piers:10\>, \<Ironclaw:World:DockTown:Roads:Piers:06\>, \<Ironclaw:World:DockTown:Roads:Streets:Dock01A\>, \<Ironclaw:World:DockTown:Roads:Piers:09\>, \<Ironclaw:World:DockTown:Roads:Piers:13\>, \<Allegory:Setting:Rinascita:Buildings:Northeast:HerbShop:FirstFloor:Main\>, nil, nil, \<Allegory:Setting:Rinascita:Buildings:Northeast:JailOld:Main\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:Tavern:SecondFloor:HallNorth\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:Tavern:FirstFloor:Kitchen\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:Tavern:SecondFloor:HallSouth\>, \<Ironclaw:Backstage:OLD:VPLounge\>, nil, \<Allegory:Setting:Rinascita:Buildings:Southeast:Tavern:SecondFloor:StairwellTop\>, \<IronClaw:Rooms:Staff:Stacey:ChiefOffice\>, \<IronClaw:Rooms:Staff:Stacey:Bunkroom\>, \<IronClaw:Rooms:Staff:Stacey:PriestOffice\>, \<IronClaw:Stage:MMF:Rooms:DiningRoom\>, nil, \<IronClaw:Rooms:Staff:Addeo:TheWarehouse\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:Tavern:FirstFloor:BarRoom\>, \<IronClaw:Rooms:Staff:Stacey:Stairwell\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:Tavern:FirstFloor:Main\>, \<IronClaw:Rooms:Staff:Stacey:ShowerRoom\>, \<[IronClaw:Rooms:UrInside]#10341\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:BoardingHouse:SecondFloor:HallNorth\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:BoardingHouse:FirstFloor:Stairwell\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:ImportsShop:Main\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:BoardingHouse:SecondFloor:StairwellTop\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:BoardingHouse:FirstFloor:Main\>, nil, \<Allegory:Setting:Rinascita:Buildings:Northeast:Weavers:FrontRoom\>, nil, \<Allegory:Setting:Rinascita:Buildings:Northeast:Locksmith:Main\>, \<IronClaw:Rooms:Staff:Mammoth:Room\>, \<Allegory:Setting:Rinascita:Buildings:Northwest:Brewery:Main\>, \<Allegory:Setting:Rinascita:Buildings:Southwest:Bank:CoinandCoffer\>, nil, \<IronClaw:Stage:MMF:Rooms:Library\>, nil, \<Allegory:Setting:Rinascita:Buildings:Southeast:Tavern:FirstFloor:StairwellBottom\>, nil, nil, \<[IronClaw:Rooms:UrInside]#18572\>, \<Ironclaw:World:DockTown:Buildings:Restaurant:MainRoom\>, nil, \<Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Narthex\>, \<IronClaw:Rooms:Staff:Catherine:Mainroom\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:Tavern:SecondFloor:StorageRoom\>, \<Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Chapel\>, \<IronClaw:Rooms:Staff:Addeo:Warehouse\>, \<Allegory:Setting:Rinascita:Buildings:Northeast:ItalianRestaurant:BackRoom\>, \<IronClaw:Stage:MMF:Rooms:OOC:WaitMaster\>, \<IronClaw:Stage:MMF:Rooms:OOC:Wait:Room1\>, \<IronClaw:Stage:MMF:Rooms:OOC:Wait:Room3\>, \<Allegory:Setting:Rinascita:Buildings:Northeast:JailOld:HoldingRoom\>, \<IronClaw:Stage:MMF:Rooms:OOC:Wait:Room4\>, \<IronClaw:Rooms:Staff:Ashleigh:Office\>, \<IronClaw:Stage:MMF:Rooms:OOC:Wait:Room2\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:BoardingHouse:SecondFloor:HallSouth\>, \<IronClaw:Stage:MMF:Rooms:OOC:Wait:Room5\>, \<IronClaw:Rooms:Staff:Maya:Office\>, \<IronClaw:Stage:MMF:Rooms:OOC:Wait:Room6\>, nil, nil, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse2:GroundFloor:Main\>, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse2:SecondFloor:StairwellSW\>, nil, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse2:SecondFloor:Main\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:BoardingHouse:SecondFloor:HallCentral\>, \<Allegory:Setting:Rinascita:Sewers:02\>, \<Allegory:Setting:Rinascita:Buildings:Northeast:Tailors:FirstFloor:Front\>, \<Ironclaw:World:DockTown:Buildings:SailorsGuild:EntranceHall\>, \<Allegory:Setting:Rinascita:Buildings:Northeast:Tailors:FirstFloor:StoreRoom\>, \<Allegory:Setting:Rinascita:Buildings:Northeast:Tailors:FirstFloor:Back\>, nil, \<IronClaw:Rooms:Staff:Stacey:Hallway\>, \<Ironclaw:Backstage:OLD:PrivateMeetings\>, \<Ironclaw:World:DockTown:Buildings:Ships:Galleon:Cabins:Crew\>, \<Allegory:Setting:Rinascita:Sewers:06\>, \<Ironclaw:World:DockTown:Buildings:SailorsGuild:FilingRoom\>, nil, \<Allegory:Setting:Rinascita:Buildings:Southeast:BarberShop:SmithandDunst\>, nil, \<Ironclaw:World:DockTown:Buildings:Ships:Galleon:Passageway\>, nil, \<Allegory:Setting:Rinascita:Buildings:Northeast:Weavers:SideRoom\>, nil, nil, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse1:Basement\>, nil, nil, \<Allegory:Setting:Rinascita:Buildings:Northeast:Carpenter:Workshop\>, \<Ironclaw:World:DockTown:Buildings:SailorsGuild:MeetingRoom\>, \<[Ironclaw:World:DockTown:Buildings:SailorsGuild:MeetingRoom]#26060\>, nil, nil, \<Allegory:Setting:Rinascita:Buildings:Northwest:ArcheryRange:Entrance\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:UrTunnel\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Two\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Eighteen\>, nil, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Five\>, nil, nil, \<Allegory:Setting:Rinascita:Buildings:Northeast:Blacksmith:Main\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentyseven\>, nil, \<Allegory:Setting:Rinascita:Sewers:01\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:One\>, nil, \<Ironclaw:Staff:Death:Sandbox:OOCStorage\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Eight\>, nil, \<Ironclaw:World:DockTown:Buildings:TurretTavern:HiddenCellar\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Four\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:HomeShop:Main\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Seven\>, \<Allegory:NPCs:NIPs:StrayAnimals:SpawnPoints\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Six\>, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse3:SecondFloor:Stairwell\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Eleven\>, nil, \<Allegory:Setting:Rinascita:Buildings:Northeast:Carpenter:Main\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Three\>, nil, \<Ironclaw:Staff:Death:Sandbox:CraftableRoom\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Nine\>, nil, nil, nil, \<Allegory:Setting:Rinascita:Buildings:Southwest:Bar:Main\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Ten\>, nil, \<Allegory:Setting:ForteRicchezza:Buildings:Bathhouse:Main\>, \<Ironclaw:World:DockTown:Buildings:TurretTavern:StorageArea\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twelve\>, nil, \<Ironclaw:World:DockTown:Buildings:Empties:DockOne\>, \<Allegory:Setting:Rinascita:Buildings:Northwest:ArcheryRange:MainRoom\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Thirteen\>, nil, \<[Ironclaw:World:DockTown:Buildings:Empties:DockOne]#10986\>, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse3:FirstFloor:Stairwell\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Fourteen\>, nil, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse3:SecondFloor:Main\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Fifteen\>, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse3:FirstFloor:Main\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentyfive\>, \<Allegory:Setting:Rinascita:Buildings:Southeast:PaintShop:Main\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Sixteen\>, \<Allegory:Setting:Rinascita:Sewers:05\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Seventeen\>, \<Allegory:Setting:Rinascita:Buildings:Southwest:Warehouse1:Main\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentyfour\>, \<Allegory:Setting:Rinascita:Buildings:Northwest:Cathedral:Old:Nave\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentyone\>, \<Allegory:Setting:Rinascita:Sewers:04\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentytwo\>, \<Allegory:Setting:Rinascita:Sewers:03\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twenty\>, nil, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Nineteen\>, \<IronClaw:Rooms:Staff:Sin:Lair\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentythree\>, \<Ironclaw:World:DockTown:Buildings:Ships:Galleon:Cabins:Captains\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentyeight\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentysix\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Twentynine\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Thirty\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Thirtyone\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Thirtytwo\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Thirtyfour\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Thirtythree\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Thirtyfive\>, \<Ironclaw:World:DockTown:Underground:Jailhouse:Tunnels:Thirtysix\>, \<Ironclaw:World:DockTown:Plazas:TurretCourtyard:BlackMarket\>, \<Allegory:Setting:Rinascita:Sewers:UrVertical\>, \<Allegory:Setting:Rinascita:Sewers:11\>, \<Allegory:Setting:Rinascita:Sewers:07\>, \<Allegory:Setting:Rinascita:Sewers:39\>, \<Allegory:Setting:Rinascita:Sewers:09\>, \<Allegory:Setting:Rinascita:Sewers:08\>, \<IronClaw:Rooms:Staff:Mammoth:Room2\>, \<[IronClaw:Rooms:UrInside]#5984\>, \<Allegory:Setting:Rinascita:Sewers:UrHorizontal\>, \<Allegory:Setting:Rinascita:Sewers:12\>, \<Allegory:Setting:Rinascita:Sewers:33\>, \<Allegory:Setting:Rinascita:Sewers:10\>, \<Allegory:Setting:Rinascita:Sewers:17\>, \<Allegory:Setting:Rinascita:Sewers:32\>, \<Allegory:Setting:Rinascita:Buildings:Northwest:Library:FirstFloor:SittingArea\>, \<Allegory:Setting:Rinascita:Sewers:21\>, nil, \<Allegory:Setting:Rinascita:Sewers:ThiefVault\>, \<Allegory:Setting:Rinascita:Sewers:19\>, \<Allegory:Setting:Rinascita:Sewers:23\>, \<Allegory:Setting:Rinascita:Buildings:Northwest:Library:SecondFloor:SittingArea\>, \<Allegory:Setting:Rinascita:Sewers:25\>, \<Allegory:Setting:Rinascita:Sewers:30\>, \<Allegory:Setting:Rinascita:Sewers:ThiefLair\>, \<Allegory:Setting:Rinascita:Sewers:16\>, \<Allegory:Setting:Rinascita:Sewers:18\>, \<Allegory:Setting:Rinascita:Sewers:24\>, \<Allegory:Setting:Rinascita:Buildings:Southwest:TradeHouse:RecordRoom\>, \<Allegory:Setting:Rinascita:Sewers:15\>, \<Allegory:Setting:Rinascita:Sewers:UrJunction\>, \<Allegory:Setting:Rinascita:Sewers:13\>, \<Allegory:Setting:Rinascita:Sewers:35\>, \<Allegory:Setting:Rinascita:Sewers:31\>, \<Allegory:Setting:Rinascita:Sewers:20\>, \<[IronClaw:Rooms:UrInside]#23769\>, \<Allegory:Setting:Rinascita:Sewers:28\>, nil, nil, \<Allegory:Setting:Rinascita:Sewers:27\>, \<Allegory:Setting:Rinascita:Sewers:29\>, \<Allegory:Setting:Rinascita:Sewers:26\>, \<Allegory:Setting:Rinascita:Sewers:22\>, nil, \<Ironclaw:Backstage:OLD:WorkArea\>, nil, \<Ironclaw:Staff:Death:Sandbox:CraftableSpawnable\>, \<Allegory:Setting:Rinascita:Sewers:14\>, \<Ironclaw:World:WelcomeRoom:Room\>, \<[IronClaw:Rooms:UrInside]#30832\>, \<[IronClaw:Rooms:UrInside]#32590\>, \<[IronClaw:Rooms:UrInside]#33929\>, \<Allegory:Setting:Rinascita:Sewers:ThiefLeaderStorage\>, \<Ironclaw:World:INCOMPLETE:NewTown:Guild:Storage\>, \<[IronClaw:Rooms:UrInside]#41507\>, \<Allegory:Setting:Rinascita:Buildings:Northwest:Library:FirstFloor:Entrance\>, \<IronClaw:Rooms:Staff:Vic:Bedroom\>, nil, \<[IronClaw:Rooms:UrInside]#43123\>, \<Ironclaw:World:INCOMPLETE:NewTown:Guild:West-Private\>, \<Ironclaw:World:INCOMPLETE:NewTown:Guild:Main\>, nil, nil, \<Ironclaw:World:INCOMPLETE:NewTown:Guild:Workshop\>, nil, nil, \<Allegory:Setting:Rinascita:Buildings:Northwest:Library:FirstFloor:Main\>, \<Ironclaw:World:INCOMPLETE:NewTown:Guild:Welcoming\>, \<Ironclaw:World:INCOMPLETE:NewTown:Guild:North-Private\>, nil, \<Allegory:Setting:Rinascita:Buildings:Southwest:TradeHouse:TradeRoom\>, \<Ironclaw:World:Underworld:Deathroom\>, \<Ironclaw:World:Underworld:Deathroom-shield\>, nil, \<Ironclaw:World:DockTown:LutaranGrove:Grove\>, nil, nil, \<[IronClaw:Rooms:UrInside]#10497\>, \<[IronClaw:Rooms:Staff:Maya:Office]#13194\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:Garden\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:Guestroom\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:URs:UrShowHouseInside\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:Lake\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:Dungeon\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:PassageT\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:DungeonStorage\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:Spa\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:Office\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:ThirdFloor:LunaRoom\>, \<[IronClaw:Rooms:Staff:Richard:Showhouse:URs:UrShowHouseInside]#30543\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:PassageS\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:Basement:PassageW\>, nil, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:ChangingRoom\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:Baths\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:Reception\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:PassageW\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:PassageE\>, \<Allegory:Setting:Rinascita:Buildings:Southwest:TradeHouse:Lobby\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:Basement:PassageS\>, nil, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:PassageT\>, \<[IronClaw:Rooms:UrInside]#59670\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:ChangingRoomStorage\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:ThirdFloor:PassageE\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:Makeup\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:ThirdFloor:PassageT\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:ThirdFloor:PassageS\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:PassageW\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:ThirdFloor:PassageW\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:MainHall\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:BackstageMain\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:FirstFloor:PassageS\>, \<IronClaw:Rooms:Staff:Richard:Showhouse:SecondFloor:PassageE\> \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,106 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+hidedetail" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="true" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] int i;
+
+if(!\$dob) \{
+    EmitTo(\$actor, "To hide a detail: +hidedetail \<detail\>");
+    EmitTo(\$actor, "To hide all details: +hidedetail \<chatter\> \\"all\\"");
+    EmitTo(\$actor, "To unhide a detail: +hidedetail \<chatter\> \\"detail name\\"");
+    EmitTo(\$actor, "To view a list of hidden details on a chatter: +hidedetail \<chatter\>");
+    return FALSE;
+\}
+
+\$chatter = NRefOb(\$dob[0]);
+\$detail = NRefDetail(\$dob[0]);
+\$details = Get(\$chatter, "base:details");
+\$hiddenDetails = (\{ \});
+
+if(\$detail == "default") \{
+    if(!\$evoke) \{
+        for(i = 0; i \< sizeof(\$details); i++) \{
+            if(Get(\$chatter, "details:" + \$details[i] + ":hidden")) \{
+                \$hiddenDetails += (\{ \$details[i] \});
+            \}
+        \}
+        if(!sizeof(\$hiddenDetails)) \{
+            \$hiddenDetails += (\{ "none" \});
+        \}
+
+        EmitTo(\$actor, "The following details are hidden in " + TAG(Describe(\$chatter), "imp") + ": \\"" + implode(\$hiddenDetails, "\\", \\"") + "\\"\\nTo unhide a detail: +hidedetails \<chatter\> \\"detailname\\"");
+        return FALSE;
+    \} else \{
+        \$input = replace_strings(lower_case(\$evoke), "\\"", "");
+
+        if(\$input == "all") \{
+            if(\$chatter."detail:bak") \{
+                \$hiddenDetails = \$chatter."detail:baK";
+                for(i = 0; i \< sizeof(\$hiddenDetails); i++) \{
+                    if(\$hiddenDetails[i] != "none") \{
+                        Set(\$chatter, "details:" + \$hiddenDetails[i] + ":hidden", FALSE);
+                    \}
+                \}
+                \$chatter."detail:bak" = nil;
+                EmitTo(\$actor, "All details now visible.");
+            \} else \{
+                for(i = 0; i \< sizeof(\$details); i++) \{
+                    if(Get(\$chatter, "details:" + \$details[i] + ":hidden")) \{
+                        \$hiddenDetails += (\{ \$details[i] \});
+                    \}
+                \}
+
+                if(!sizeof(\$hiddenDetails)) \{
+                    \$hiddenDetails += (\{ "none" \});
+                \}
+
+                for(i = 0; i \< sizeof(\$details); i++) \{
+                    if(\$details[i] != "default") \{
+                        Set(\$chatter, "details:" + \$details[i] + ":hidden", TRUE);
+                    \}
+                \}   
+
+                \$chatter."detail:bak" = \$hiddenDetails;
+                EmitTo(\$actor, "All details now hidden.");
+            \}  
+            return FALSE;
+        \}
+
+        if(!Get(\$chatter, "details:" + \$input + ":snames")) \{
+            EmitTo(\$actor, "Detail " + TAG(\$input, "imp") + " in " + TAG(Describe(\$chatter), "imp") + " does not exist.");
+            return FALSE;
+        \}
+
+        if(Get(\$chatter, "details:" + \$input + ":hidden")) \{
+            Set(\$chatter, "details:" + \$input + ":hidden", FALSE);
+
+            EmitTo(\$actor, "Detail " + TAG(\$input, "imp") + " in " + TAG(Describe(\$chatter), "imp") + " is now visible.");
+            return FALSE;
+        \}
+
+        EmitTo(\$actor, "Detail " + TAG(\$input, "imp") + " in " + TAG(Describe(\$chatter), "imp") + " is already visible.");
+        return FALSE;
+    \}
+\}
+
+Set(\$chatter, "details:" + \$detail + ":hidden", TRUE);
+
+EmitTo(\$actor, "Detail " + TAG(\$detail, "imp") + " in " + TAG(Describe(\$chatter), "imp") + " is now hidden.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1289859319, "jominey", "E", 1289859337, "jominey", "E", 1289859367, "jominey", "E", 1289859398, "jominey", "E", 1289859425, "jominey", "E", 1289860486, "jominey", "E", 1289860583, "jominey", "E", 1289860610, "jominey", "E", 1289862219, "jominey", "E", 1303958040, "jominey", "E", 1303958392, "jominey", "E", 1303958557, "jominey", "E", 1303958691, "jominey", "E", 1303958741, "jominey", "E", 1303958973, "jominey", "E", 1303959030, "jominey", "E", 1305767449, "jominey", "R" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

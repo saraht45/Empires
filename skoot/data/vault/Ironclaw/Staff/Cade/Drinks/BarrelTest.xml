@@ -1,0 +1,166 @@
+<object clone="/base/obj/thing" owner="haystack">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="false" on="true" inside="false" near="true" over="false" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="container"/>
+            <Base:SName sname="barrel"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="containers"/>
+            <Base:PName pname="barrels"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:type) of $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="look">
+             $(this.trait:look)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "apricot nectar"
+      </Core:Property>
+      <Core:Property property="export:trait:liquid">
+         "apricot nectar"
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         20
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "sweet"
+      </Core:Property>
+      <Core:Property property="export:trait:type">
+         "keg"
+      </Core:Property>
+      <Core:Property property="merry:react:tap-dob">
+         X[M] /* what is in the barrel? */
+\$liquid = \$this."trait:liquid";
+
+/* check there is ale available */
+if(\$this."trait:quantity" \< 1 \&\& \$this."trait:quantity" != -1) \{
+  EmitTo(\$actor, "There is no "+\$liquid+" in "+Describe(\$this)+".");
+  return FALSE;
+\}
+
+/* reduce the number of cups */
+if(\$this."trait:quantity" != -1)
+  \$this."trait:quantity" -= 1;
+
+/* create the ale object and give it to the player */
+\$object = Spawn(\$\{IronClaw:Props:Drinks:Potable:Newest:BarrelRecepticle\});
+\$object."base:environment" = \$actor;
+
+/* set the properties for the cup */
+\$object."trait:container" = \$this."trait:cuptype";
+\$object."trait:material" = \$this."trait:cupmaterial";
+\$object."trait:color" = \$this."trait:cupcolor";
+\$object."trait:liquid" = "empty";
+\$object."trait:quantity" = 0;
+
+/* emit message to player and room */
+EmitTo(\$actor, "You grab "+Describe(\$object, nil, nil, STYLE_NONPOSS)+", and pour "+\$liquid+" into it from "+Describe(\$this, nil, nil, STYLE_NONPOSS)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" grabs "+Describe(\$object, nil, nil, STYLE_NONPOSS)+" and pours "+\$liquid+" into it from "+Describe(\$this, nil, nil, STYLE_NONPOSS)+".", \$actor);
+
+/* set the drink inside the cup */
+\$object."trait:liquid" = \$liquid;
+\$object."trait:smell" = \$this."trait:smell";
+\$object."trait:quantity" = 20;
+\$taste = \$this."trait:liquid:taste";
+\$object."emote:drink" = \$taste;
+\$object."emote:gulp" = \$taste;
+\$object."emote:guzzle" = \$taste;
+\$object."emote:quaff" = \$taste;
+\$object."emote:savor" = \$taste;
+\$object."emote:savour" = \$taste;
+\$object."emote:sip" = \$taste;
+\$object."emote:slurp" = \$taste;
+\$object."emote:swill" = \$taste;
+\$object."emote:taste" = \$taste;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:brief">
+         X[M] string drink;
+drink = \$this."trait:brief";
+
+Set(\$this, "details:default:sname:"+drink, 1);
+Set(\$this, "details:default:pname:"+drink+"s", 1);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:look">
+         X[M] if(\$this."trait:type" == "cask")\{
+\$this."trait:look" = "This is a small hollow cylindrical container called a cask it is made traditionally made of wood staves and bound with iron hoops. It is filled with "+\$this."trait:brief"+".";
+Set(\$this, "details:default:adjective:small", 1);
+return TRUE;
+\}
+if(\$this."trait:type" == "barrel")\{
+\$this."trait:look" = "This is a large hollow cylindrical container called large barrel, made from thick wooden staves and bound with irons hoops. It is filled with "+\$this."trait:brief"+".";
+Set(\$this, "details:default:adjective:large", 1);
+return TRUE;
+\}
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quantity">
+         X[M] /* stop when we hit 15 cups in the keg */
+if(\$this."trait:quantity" \>= 2) return TRUE;
+
+/* wait a while, then add a cup */
+if(\$this."trait:quantity" == 0)\{
+\$empty = \$\{IronClaw:Props:Drinks:Potable:Newest:UrEmptyBarrel\};
+Spawn(\$empty);
+\$empty."trait:type" = \$this."trait:type";
+\$empty."trait:brief" = \$this."trait:brief";
+\$empty."base:environment" = \$this."base:environment";
+Slay(\$this);
+\}
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:type">
+         X[M] Set(\$this, "details:default:sname:"+\$this."trait:type", 1);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1177831215, "necate", "E", 1177831232, "necate", "K", 1177831242, "necate", "E", 1177831255, "necate", "E", 1177831266, "necate", "E", 1177831329, "necate", "E", 1177831616, "necate", "E", 1178572398, "necate", "K", 1178573024, "necate", "E", 1178573451, "necate", "P", 1178573483, "necate", "P", 1178573504, "necate", "P", 1178573516, "necate", "P", 1178573677, "necate", "P", 1178573925, "necate", "P", 1183015294, "tonyd", "E", 1183015321, "tonyd", "E", 1183015455, "tonyd", "E", 1184491664, "tonyd", "P", 1184491908, "tonyd", "P", 1184492138, "tonyd", "P", 1184493114, "tonyd", "P", 1184493943, "tonyd", "P", 1184494064, "tonyd", "P", 1184494284, "tonyd", "P", 1184494395, "tonyd", "P", 1184494416, "tonyd", "S", 1184494440, "tonyd", "S", 1184494450, "tonyd", "P", 1184494494, "tonyd", "P", 1184494782, "tonyd", "P", 1184495405, "tonyd", "E", 1184495474, "tonyd", "P", 1184495686, "tonyd", "P", 1184501491, "tonyd", "P", 1184501532, "tonyd", "P", 1186194157, "rorschakovacs", "E", 1188358355, "haystack", "E", 1309490624, "rorschakovacs", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,1131 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:celestial_describe">
+         X[M] /* create help and error messages */
+\$msg_help = "Proper use: @celestial \<name of celestial body\>, e.g., @celestial Wyrm Queen.";
+\$msg_nophase = "Please request a phase of the moon to recall more information. e.g., @celestial waning gibbous moon.";
+\$msg_nobody = "Unable to find a celestial body matching those parameters. Please try again or report as a bug.";
+
+/* check for line */
+if(!\$line) \{
+EmitTo(\$actor, \$msg_help);
+return FALSE;
+\}
+
+/* words in line need to be proper */
+\$line = proper(\$line);
+
+/* turn line into array so we can check for certain words */
+\$line_arr = explode(\$line, " ");
+
+/* Quick check for the moon */
+if(member("Moon", Arr(\$line_arr))) \{
+/* it is the moon so set type */
+\$data_type = "moon";
+/* remove the word moon, combine rest to get requested phase */
+\$sz_line = sizeof(\$line_arr);
+/* if size is 1 and it has moon in it, they haven't given enough information */
+if(\$sz_line == 1) \{
+EmitTo(\$actor, \$msg_nophase);
+return FALSE;
+\}
+\$data_tags = \$line_arr;
+\$data_tags -= (\{ "Moon" \});
+\$data_tags = implode(\$data_tags, " ");
+\}
+
+/* continue here if no data_type else skip to actual script */
+if(!\$data_type) \{
+/* for the sake of the Chain and Lock, we have to reduce the word and to lower case */
+if(\$line == "Chain And Lock") \$line = "Chain and Lock";
+/* list possible dbs */
+\$tmp = (\{ "autumn", "winter", "spring", "summer", "constant", "wanderer", "zodiac" \});
+\$sz_t = sizeof(\$tmp);
+for(\$i=0; \$i\<\$sz_t; \$i++) \{
+\$tmp2 = \$tmp[\$i];
+\$db_name = "stars_"+\$tmp2;
+if(\$db_name == "stars_wanderer" \|\| \$db_name == "stars_zodiac") \{
+\$db_stars = Get(\$\{Ironclaw:Lib:Builders:Time\}, \$db_name);
+\} else \{
+\$db_tmp = Get(\$\{Ironclaw:Lib:Builders:Time\}, \$db_name);
+\$db_stars = \$db_tmp["stars"];
+\}
+if(member(\$line, \$db_stars)) \$data_type = \$tmp2;
+\}
+\}
+
+/* if still no data type, send error message */
+if(!\$data_type) \{
+EmitTo(\$actor, \$msg_nobody);
+return FALSE;
+\}
+
+/* they seek the moon, send them on their way */
+if(\$data_type == "moon") \{
+Call(\$this, "moon_phase", \$actor: \$actor, \$data_type: \$data_type, \$phase: \$data_tags);
+return FALSE;
+\}
+
+/* not the moon so carry on */
+/* if it is a wanderer or zodiac, send them forward now and mark as such */
+if(\$data_type == "wanderer" \|\| \$data_type == "zodiac") \{
+Call(\$this, "stars_indepth", \$actor: \$actor, \$data_type: \$data_type, \$data_tags: \$line);
+return FALSE;
+\}
+
+/* set db name then send stars on their way */
+\$db_name = "stars_"+\$data_type;
+Call(\$this, "stars_indepth", \$actor: \$actor, \$data_type: \$data_type, \$data_tags: \$line, \$db_name: \$db_name);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:moon_change">
+         X[M] /* set moon phase and continue until ID is changed */
+/* this script will be called daily */
+string month;
+int day, year;
+
+\$debug = \$\{Chatters:IC:de:death\};
+
+/* start script, overwrite ID */
+\$id = random(10000);
+\$this."settings:id" = \$id;
+
+/* once a day (when script is run), check the phase of the moon */
+sscanf(ctime(time()), "%*s %s %d %*s %d", month, day, year);
+
+while(this."settings:id" == \$id \&\& FALSE) \{ 
+\}
+
+\$phase = Call(\$\{Ironclaw:Lib:Builders:Time\}, "moon_script", \$day: day, \$month: month);
+
+/* set the phase of the moon */
+\$this."settings:moon_phase" = \$phase;
+
+EmitTo(\$debug, \$phase);
+      </Core:Property>
+      <Core:Property property="merry:lib:moon_indepth">
+         X[M] /* set help and error msgs */  
+\$help_badphase = "There is no moon phase matching request. Please try again or submit as a bug.";  
+
+/* make sure requested phase exists */  
+\$phase_arr = (\{ "New", "Waxing Crescent", "First Quarter", "Waxing Gibbous", "Full", "Waning Gibbous", "Last Quarter", "Waning Crescent" \});  
+if(!member(\$data_tags, \$phase_arr)) \{  
+EmitTo(\$actor, \$help_badphase); 
+return FALSE;  
+\}  
+  
+/* grab mapping of phases */  
+\$phase_map = Get(\$this, "moon_phases");  
+/* grab data about requested moon phase */  
+\$phase = \$phase_map[\$data_tags];  
+  
+/* skill check */ 
+\$msg_lvl = Call(\$\{Ironclaw:Lib:Builders:Time\}, "time_skillcheck", \$actor: \$actor ); 
+ 
+/* grab the msg now */  
+\$msg = \$phase[\$msg_lvl-1];  
+
+return \$msg;
+      </Core:Property>
+      <Core:Property property="merry:lib:moon_phase">
+         X[M] if(!\$phase) \$phase = Get(\$\{Ironclaw:Lib:Builders:Time\}, "settings:moon_phase"); 
+\$msg = Call(\$\{Ironclaw:Lib:Builders:Time\}, "moon_indepth", \$data_tags: \$phase, \$actor: \$actor); 
+EmitTo(\$actor, "The "+ \$msg+ " moon overhead." ); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:moon_script">
+         X[M] if(!\$day \|\| !\$month) return FALSE;   
+   
+/* array phases in order */   
+\$phase_arr = (\{ "New", "Waxing Crescent", "First Quarter", "Waxing Gibbous", "Full", "Waning Gibbous", "Last Quarter", "Waning Crescent" \});   
+   
+/* dates based on 2011, just change these in years to come, doesn't take multiple occurrences in a month yet */   
+\$jan = ([ "New":4, "First":12, "Full":19, "Last":26 ]);   
+\$feb = ([ "New":3, "First":11, "Full":18, "Last":24 ]);   
+\$mar = ([ "New":4, "First":12, "Full":19, "Last":26 ]);   
+\$apr = ([ "New":3, "First":11, "Full":18, "Last":25 ]);   
+\$may = ([ "New":3, "First":10, "Full":17, "Last":24 ]);   
+\$jun = ([ "New":1, "First":9, "Full":15, "Last":23 ]);   
+\$jul = ([ "New":1, "First":8, "Full":15, "Last":23 ]);   
+\$aug = ([ "New":29, "First":6, "Full":13, "Last":21 ]);   
+\$sep = ([ "New":27, "First":4, "Full":12, "Last":20 ]);   
+\$oct = ([ "New":26, "First":4, "Full":12, "Last":20 ]);   
+\$nov = ([ "New":25, "First":2, "Full":10, "Last":18 ]);   
+\$dec = ([ "New":24, "First":2, "Full":10, "Last":18 ]);   
+   
+/* grab map based on month */   
+if(\$month == "Jan") \$map = \$jan;   
+if(\$month == "Feb") \$map = \$feb;   
+if(\$month == "Mar") \$map = \$mar;   
+if(\$month == "Apr") \$map = \$apr;   
+if(\$month == "May") \$map = \$may;   
+if(\$month == "Jun") \$map = \$jun;   
+if(\$month == "Jul") \$map = \$jul;   
+if(\$month == "Aug") \$map = \$aug;   
+if(\$month == "Sep") \$map = \$sep;   
+if(\$month == "Oct") \$map = \$oct;   
+if(\$month == "Nov") \$map = \$nov;   
+if(\$month == "Dec") \$map = \$dec;   
+   
+/* grab notable days, doesn't take multiple occurrences in a month yet */   
+\$new = \$map["New"];   
+\$first = \$map["First"];   
+\$full = \$map["Full"];   
+\$last = \$map["Last"];   
+   
+/* determine order in month */   
+\$order = (\{ "New", "First", "Full", "Last" \});   
+\$start = 0;   
+if(\$first \< \$new \&\& \$first \< \$full \&\& \$first \< \$last) \{   
+\$order = (\{ "First", "Full", "Last", "New" \});   
+\$start = 2;   
+\}   
+if(\$full \< \$new \&\& \$full \< \$first \&\& \$full \< \$last) \{   
+\$order = (\{ "Full", "Last", "New", "First" \});   
+\$start = 4;   
+\}   
+if(\$last \< \$first \&\& \$last \< \$full \&\& \$last \< \$new) \{   
+\$order = (\{ "Last", "New", "First", "Full" \});   
+\$start = 6;   
+\}   
+   
+/* math based on order */   
+\$a = \$order[0];   
+\$b = \$order[1];   
+\$c = \$order[2];   
+\$d = \$order[3];   
+   
+\$av = \$map[\$a];   
+\$bv = \$map[\$b];   
+\$cv = \$map[\$c];   
+\$dv = \$map[\$d];   
+   
+if(\$day \< \$av) \{   
+if(\$start == 0) \{   
+\$start = 7;   
+\} else \{   
+\$start -= 1;   
+\}   
+\}   
+   
+if(\$day \> \$av \&\& \$day \< \$bv) \$start += 1;  
+if(\$day == \$bv) \$start +=2;  
+if(\$day \> \$bv \&\& \$day \< \$cv) \$start += 3;   
+if(\$day == \$cv) \$start +=4;  
+if(\$day \> \$cv \&\& \$day \< \$dv) \$start += 5;   
+if(\$day == \$dv) \$start +=6;  
+if(\$day \> \$dv) \$start += 7;   
+   
+if(\$start \> 7) \$start -= 8;   
+   
+/* we should have the phase now */   
+if(\$start == 0) \{   
+\$phase = \$phase_arr[0];   
+\} else \{   
+\$phase = \$phase_arr[\$start];   
+\}   
+return \$phase;
+      </Core:Property>
+      <Core:Property property="merry:lib:stars_change">
+         X[M] /* set the stars in the sky and continue until ID is changed */  
+/* this script will be called daily */  
+string month, season;  
+int day, year;  
+  
+\$debug = \$\{Chatters:IC:de:death\};  
+  
+/* start script, overwrite ID */  
+\$id = random(10000);  
+\$this."settings:stars:id" = \$id;  
+  
+/* once a day (when script is run), check what stars are out there */  
+sscanf(ctime(time()), "%*s %s %d %*s %d", month, day, year);  
+  
+/* grab the current season */  
+/* options: spring, summer, autumn, winter */  
+season = Get(\$\{Allegory:Lib:Weather:DB\}, "settings:season");  
+  
+while(\$this."settings:stars:id" == \$id \&\& FALSE) \{  
+\}  
+  
+/* make the call to the main script here */  
+\$map = Call(\$\{Ironclaw:Lib:Builders:Time\}, "stars_script", \$day: day, \$month: month, \$season: season); 
+  
+/* set the stars in the sky */  
+\$this."stars:settings:palace" = \$map["palace"];  
+\$this."stars:settings:color" = \$map["color"];  
+\$this."stars:settings:cardinal" = \$map["cardinal"];  
+\$this."stars:settings:major" = \$map["major"];  
+\$this."stars:settings:minor1" = \$map["minor"][0];  
+\$this."stars:settings:minor2" = \$map["minor"][1];  
+\$this."stars:settings:zodiac" = \$map["zodiac"];  
+\$this."stars:settings:element" = \$map["element"];  
+\$this."stars:settings:wanderer" = \$map["wanderer"];  
+\$this."stars:settings:wine" = \$map["wine"];  
+  
+/* only one constant right now, may update this later */  
+\$this."stars:settings:constants" = \$map["constants"][0];  
+  
+/* also grab a full description for the palace (might be used later) */  
+\$this."stars:settings:palace_full" = \$this."stars:settings:color"+ " " +\$this."stars:settings:palace"+ " of the " +\$this."stars:settings:cardinal";  
+  
+\$tmp = \$this."stars:settings:palace_full";  
+EmitTo(\$debug, \$tmp);
+      </Core:Property>
+      <Core:Property property="merry:lib:stars_display">
+         X[M] /* \$time_data = ironclaw::ictime(\$needed: (\{ "day", "day_code", "month", "time_of_day", "time_period", "time_period_name", "time_period_description", "year", "special", "season" \}), \$timestamp: \$timestamp, \$output_style: \$style); */
+
+\$time_data = ironclaw::ictime(\$needed: (\{ "season" \}), \$timestamp: time());
+
+/* grab all data */
+\$palace = \$this."stars:settings:palace";
+\$color = \$this."stars:settings:color";
+\$cardinal = \$this."stars:settings:cardinal";
+\$major = \$this."stars:settings:major";
+\$minor1 = \$this."stars:settings:minor1";
+\$minor2 = \$this."stars:settings:minor2";
+\$zodiac = \$this."stars:settings:zodiac";
+\$element = \$this."stars:settings:element";
+\$wanderer = \$this."stars:settings:wanderer";
+\$wine = \$this."stars:settings:wine";
+\$constants = \$this."stars:settings:constants";
+\$palace_full = \$this."stars:settings:palace_full";
+
+/* grab the moon too so it can be incorporated */
+if(!\$phase) \$phase = Get(\$\{Ironclaw:Lib:Builders:Time\}, "settings:moon_phase");
+\$phase = Call(\$\{Ironclaw:Lib:Builders:Time\}, "moon_indepth", \$data_tags: \$phase, \$actor: \$actor);
+
+/* grab the season too so it can be incorporated */
+/* \$season = Get(\$\{Ironclaw:Lib:Weather:DB\}, "settings:season"); */
+\$season = \$time_data["season"];
+
+/* do the skill check */
+\$msg_lvl = Call(\$\{Ironclaw:Lib:Builders:Time\}, "time_skillcheck", \$actor: \$actor);
+
+
+/* setup db for stars */
+\$star_map = Get(\$\{Ironclaw:Lib:Builders:Time\}, "stars_"+\$season+"_msg");
+
+/* get star msgs based on msg_lvl */
+if(\$msg_lvl \> 3) \{
+  \$major_name = \$major;
+  \$major_msg = "the " +TAG(\$major_name, "who")+ " constellation which has ";
+  \$minor1_name = \$minor1;
+  \$minor2_name = \$minor2;
+  \$minor_msg = "Elsewhere in the sky, the constellations of the " +TAG(\$minor1_name, "who")+ " and the " +TAG(\$minor2_name, "who")+ " are visible whereas the others are obscured by distance or season. \\n";
+\} else \{
+  \$major_count = \$star_map[\$major]["count"];
+  \$major_look = \$star_map[\$major]["resembles"];
+  \$major_msg = "a cluster of " +TAG(Str(\$major_count), "who")+ " stars which resemble " +TAG(\$major_look, "who")+ " which have ";
+  \$minor1_count = \$star_map[\$minor1]["count"];
+  \$minor1_look = \$star_map[\$minor1]["resembles"];
+  \$minor2_count = \$star_map[\$minor2]["count"];
+  \$minor2_look = \$star_map[\$minor2]["resembles"];
+  \$minor_msg = "Elsewhere in the sky, two clusters of stars are visible. The first consists of " +TAG(Str(\$minor1_count), "who")+ " stars and resembles " +TAG(\$minor1_look, "who")+ " and the second group of " +TAG(Str(\$minor2_count), "who")+ " stars resemble " +TAG(\$minor2_look, "who")+ ". \\n";
+\}
+
+/* now for the wanderers */
+/* new map for wanderers */
+\$wander_map = Get(\$\{Ironclaw:Lib:Builders:Time\}, "stars_wanderer_msg");
+\$wander_saint = \$wander_map[\$wanderer]["saint"];
+\$wander_desc = \$wander_map[\$wanderer]["description"];
+\$wander_rune = \$wander_map[\$wanderer]["rune"];
+\$wander_race = \$wander_map[\$wanderer]["race"];
+if(\$msg_lvl \> 3) \{
+  \$wander_msg = "Known for its wandering ways, the Star of " +TAG("St. "+capitalize(\$wander_saint), "who")+ ", a " +TAG(\$wander_race, "who")+ " passes overhead. They are represented by the " +TAG(\$wander_rune, "who")+ " rune. \\n";
+\} else \{
+  \$wander_msg = "Known for its wandering ways, the " +TAG(capitalize(\$wander_race), "who")+ " passes overhead. \\n";
+\}
+
+/* build msg */
+/* all notice the season */
+\$msg = "The " +TAG(\$season, "who")+ " sky is dominated by ";
+
+/* add major constellation */
+\$msg += \$major_msg;
+/* add in the moon */
+\$msg += "paired with the " +TAG(\$phase, "who")+ " moon tonight. \\n";
+/* add in the north star */
+if(\$msg_lvl \> 2) \$msg += "The " +TAG(\$constants, "who")+ " star shines brightly as it points sailors due north. \\n";
+/* add the zodiac symbol */
+if(\$msg_lvl \> 2) \$msg += "The sign of the zodiac associated with this evening and watching from above is the " +TAG(\$zodiac, "who")+ ". \\n";
+/* add the wandering planet */
+\$msg += \$wander_msg;
+/* add the minor constellations */
+\$msg += \$minor_msg;
+/* everybody gets to see the spilled wine */
+if(\$wine == "yes") \$msg += "A stream of closely knit stars, space detritus, and other unknown elements create the appearance of a dark red river spanning the heavens which is referred to as " +TAG("The Spilled Wine", "who")+ ". \\n";
+/* only those who hit the top msg lvl can see the foreigner data */
+if(\$msg_lvl == 5) \$msg += "The Zhongguo considers this portion of the sky as the " +TAG(\$palace_full, "who")+ " and associate it with the element \\'" +TAG(\$element, "who")+ "\\'.";
+
+/* deliver data */
+/* EmitTo(\$actor, \$msg); */
+return \$msg;
+      </Core:Property>
+      <Core:Property property="merry:lib:stars_display_singular">
+         X[M] /* Pass the script a \$setting and return the appropriate string */
+
+\$time_data = ironclaw::ictime(\$needed: (\{ "season" \}), \$timestamp: time());
+
+/* grab all data */
+\$palace = \$this."stars:settings:palace";
+\$color = \$this."stars:settings:color";
+\$cardinal = \$this."stars:settings:cardinal";
+\$major = \$this."stars:settings:major";
+\$minor1 = \$this."stars:settings:minor1";
+\$minor2 = \$this."stars:settings:minor2";
+\$zodiac = \$this."stars:settings:zodiac";
+\$element = \$this."stars:settings:element";
+\$wanderer = \$this."stars:settings:wanderer";
+\$wine = \$this."stars:settings:wine";
+\$constants = \$this."stars:settings:constants";
+\$palace_full = \$this."stars:settings:palace_full";
+
+/* grab the moon too so it can be incorporated */
+if(!\$phase) \$phase = Get(\$\{Ironclaw:Lib:Builders:Time\}, "settings:moon_phase");
+\$phase = Call(\$\{Ironclaw:Lib:Builders:Time\}, "moon_indepth", \$data_tags: \$phase, \$actor: \$actor);
+
+/* grab the season too so it can be incorporated */
+/* \$season = Get(\$\{Ironclaw:Lib:Weather:DB\}, "settings:season"); */
+\$season = \$time_data["season"];
+
+/* do the skill check */
+\$msg_lvl = Call(\$\{Ironclaw:Lib:Builders:Time\}, "time_skillcheck", \$actor: \$actor);
+
+
+/* setup db for stars */
+\$star_map = Get(\$\{Ironclaw:Lib:Builders:Time\}, "stars_"+\$season+"_msg");
+
+/* get star msgs based on msg_lvl */
+if(\$msg_lvl \> 3) \{
+  \$major_name = \$major;
+  \$major_msg = "the " +TAG(\$major_name, "who")+ " constellation which has ";
+  \$minor1_name = \$minor1;
+  \$minor2_name = \$minor2;
+  \$minor_msg = "Elsewhere in the sky, the constellations of the " +TAG(\$minor1_name, "who")+ " and the " +TAG(\$minor2_name, "who")+ " are visible whereas the others are obscured by distance or season. \\n";
+\} else \{
+  \$major_count = \$star_map[\$major]["count"];
+  \$major_look = \$star_map[\$major]["resembles"];
+  \$major_msg = "a cluster of " +TAG(Str(\$major_count), "who")+ " stars which resemble " +TAG(\$major_look, "who")+ " which have ";
+  \$minor1_count = \$star_map[\$minor1]["count"];
+  \$minor1_look = \$star_map[\$minor1]["resembles"];
+  \$minor2_count = \$star_map[\$minor2]["count"];
+  \$minor2_look = \$star_map[\$minor2]["resembles"];
+  \$minor_msg = "Elsewhere in the sky, two clusters of stars are visible. The first consists of " +TAG(Str(\$minor1_count), "who")+ " stars and resembles " +TAG(\$minor1_look, "who")+ " and the second group of " +TAG(Str(\$minor2_count), "who")+ " stars resemble " +TAG(\$minor2_look, "who")+ ". \\n";
+\}
+
+/* now for the wanderers */
+/* new map for wanderers */
+\$wander_map = Get(\$\{Ironclaw:Lib:Builders:Time\}, "stars_wanderer_msg");
+\$wander_saint = \$wander_map[\$wanderer]["saint"];
+\$wander_desc = \$wander_map[\$wanderer]["description"];
+\$wander_rune = \$wander_map[\$wanderer]["rune"];
+\$wander_race = \$wander_map[\$wanderer]["race"];
+if(\$msg_lvl \> 3) \{
+  \$wander_msg = "Known for its wandering ways, the Star of " +TAG("St. "+capitalize(\$wander_saint), "who")+ ", a " +TAG(\$wander_race, "who")+ " passes overhead. They are represented by the " +TAG(\$wander_rune, "who")+ " rune. \\n";
+\} else \{
+  \$wander_msg = "Known for its wandering ways, the " +TAG(capitalize(\$wander_race), "who")+ " passes overhead. \\n";
+\}
+
+/* build msg */
+/* all notice the season */
+
+if(\$setting == "season") \{
+    \$msg = "The season is " + TAG(\$season, "who") + ".";
+\}
+
+if(\$setting == "major constellations") \{
+    \$msg = "The " +TAG(\$season, "who")+ " sky is dominated by ";
+
+    /* add major constellation */
+    \$msg += \$major_msg;
+\}
+
+if(\$setting == "moon") \{
+    /* add in the moon */
+    \$msg = "paired with the " +TAG(\$phase, "who")+ " moon tonight.";
+\}
+
+if(\$setting == "constant") \{
+    /* add in the north star */
+    if(\$msg_lvl \> 2) \$msg = "The " +TAG(\$constants, "who")+ " star shines brightly as it points sailors due north.";
+\}
+
+if(\$setting == "zodiac") \{
+    /* add the zodiac symbol */
+    if(\$msg_lvl \> 2) \$msg = "The sign of the zodiac associated with this evening and watching from above is the " +TAG(\$zodiac, "who")+ ".";
+\}
+
+if(\$setting == "wanderer") \{
+    /* add the wandering planet */
+    \$msg = \$wander_msg;
+\}
+
+if(\$setting == "minor constellations") \{
+    /* add the minor constellations */
+    \$msg = \$minor_msg;
+\}
+
+if(\$setting == "wine") \{
+    /* everybody gets to see the spilled wine */
+    if(\$wine == "yes") \$msg = "A stream of closely knit stars, space detritus, and other unknown elements create the appearance of a dark red river spanning the heavens which is referred to as " +TAG("The Spilled Wine", "who")+ ".";
+\}
+
+if(\$setting == "palace") \{
+    if(\$msg_lvl == 5) \$msg = "The Zhongguo considers this portion of the sky as the " +TAG(\$palace_full, "who")+ " and associate it with the element \\'" +TAG(\$element, "who")+ "\\'.";
+\}
+
+/* deliver data */
+/* EmitTo(\$actor, \$msg); */
+return \$msg;
+      </Core:Property>
+      <Core:Property property="merry:lib:stars_indepth">
+         X[M] /* a method to recall what you know about stars */
+/* it will provide information based on skills therefor cannot be used to learn more than you should */
+
+/* skill check */ 
+\$msg_lvl = Call(\$\{Ironclaw:Lib:Builders:Time\}, "time_skillcheck", \$actor: \$actor );
+
+/* constant variables */
+\$db = \$\{Ironclaw:Lib:Builders:Time\};
+\$db_prop = "stars_" +\$data_type+ "_msg";
+
+/* wanderers first */
+if(\$data_type == "wanderer") \{
+\$map = Get(\$db, \$db_prop);
+/* grab all the info */
+\$name = \$data_tags;
+\$desc = \$map[\$name]["description"];
+\$horo = \$map[\$name]["horoscope"];
+\$race = \$map[\$name]["race"];
+\$rune = \$map[\$name]["rune"];
+\$saint = \$map[\$name]["saint"];
+
+/* build msg */
+\$msg = "";
+if(\$msg_lvl \> 2) \{
+
+
+
+\} else \{
+\$msg += "You understand little of astronomy; it is surprising you are able to define the word at all.";
+
+
+\}
+/* send msg and stop here */
+EmitTo(\$actor, \$msg);
+return FALSE;
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:stars_script">
+         X[M] if(!\$day \|\| !\$month) return FALSE; 
+ 
+/* reduce size of month here, allowing us to call this script using different methods such as 'Jan' or 'January' */ 
+if(strlen(\$month) \> 3) \$month = \$month[0..2]; 
+ 
+/* check for season, scheduled script has it but this allows for calling this script from outside via day and month */ 
+if(!\$season) \{ 
+if(\$month == "Dec" \|\| \$month == "Jan" \|\| \$month == "Feb") \$season = "winter"; 
+if(\$month == "Mar" \|\| \$month == "Apr" \|\| \$month == "May") \$season = "spring"; 
+if(\$month == "Jun" \|\| \$month == "Jul" \|\| \$month == "Aug") \$season = "summer"; 
+if(\$month == "Sep" \|\| \$month == "Oct" \|\| \$month == "Nov") \$season = "autumn"; 
+\} 
+ 
+/* the wine is based on season, only one lacks it */ 
+\$wine = "yes"; 
+if(\$season == "spring") \$wine = "no"; 
+ 
+/* grab our constant data */ 
+\$center = Get(\$\{Ironclaw:Lib:Builders:Time\}, "stars_constant"); 
+\$zodiacs = Get(\$\{Ironclaw:Lib:Builders:Time\}, "stars_zodiac"); 
+\$wanderers = Get(\$\{Ironclaw:Lib:Builders:Time\}, "stars_wanderer"); 
+ 
+/* grab our alternating data */ 
+\$data = Str("stars_"+\$season); 
+\$stars = Get(\$\{Ironclaw:Lib:Builders:Time\}, \$data); 
+ 
+/* start getting our stars */ 
+/* only one constant right now so it is always the right answer */ 
+\$constants = \$center["stars"][0]; 
+ 
+/* the wanderers will be completely random */ 
+\$sz_w = sizeof(\$wanderers); 
+\$ran = random(\$sz_w); 
+\$wanderer = \$wanderers[\$ran]; 
+ 
+/* the zodiac will change mid-month */ 
+/* start with comhach for Jan 1st */ 
+\$z = 12; 
+if(\$month == "Jan" \&\& \$day \> 20) \$z = 1; 
+if(\$month == "Feb") \$z = 1; 
+if(\$month == "Feb" \&\& \$day \> 18) \$z = 2; 
+if(\$month == "Mar") \$z = 2; 
+if(\$month == "Mar" \&\& \$day \> 20) \$z = 3; 
+if(\$month == "Apr") \$z = 3; 
+if(\$month == "Apr" \&\& \$day \> 19) \$z = 4; 
+if(\$month == "May") \$z = 4; 
+if(\$month == "May" \&\& \$day \> 19) \$z = 5; 
+if(\$month == "Jun") \$z = 5; 
+if(\$month == "Jun" \&\& \$day \> 20) \$z = 6; 
+if(\$month == "Jul") \$z = 6; 
+if(\$month == "Jul" \&\& \$day \> 21) \$z = 7; 
+if(\$month == "Aug") \$z = 7; 
+if(\$month == "Aug" \&\& \$day \> 21) \$z = 8; 
+if(\$month == "Sep") \$z = 8; 
+if(\$month == "Sep" \&\& \$day \> 21) \$z = 9; 
+if(\$month == "Oct") \$z = 9; 
+if(\$month == "Oct" \&\& \$day \> 22) \$z = 10; 
+if(\$month == "Nov") \$z = 10; 
+if(\$month == "Nov" \&\& \$day \> 22) \$z = 11; 
+if(\$month == "Dec") \$z = 11; 
+if(\$month == "Dec" \&\& \$day \> 21) \$z = 12; 
+\$zodiac = \$zodiacs[\$z-1]; 
+ 
+/* time to get the non-constant data */ 
+\$cardinal = \$stars["cardinal"]; 
+\$color = \$stars["color"]; 
+\$element = \$stars["element"]; 
+\$palace = \$stars["palace"]; 
+/* available stars */ 
+\$stars_arr = \$stars["stars"]; 
+/* randomly pick a major star */ 
+\$sz_s = sizeof(\$stars_arr); 
+\$rand = random(\$sz_s); 
+\$major = \$stars_arr[\$rand]; 
+/* remove major star from options */ 
+\$stars_arr -= (\{ \$major \}); 
+/* pick 1st minor star */ 
+\$sz_s = sizeof(\$stars_arr); 
+\$rand = random(\$sz_s); 
+\$minor1 = \$stars_arr[\$rand]; 
+/* remove minor star from options */ 
+\$stars_arr -= (\{ \$minor1 \}); 
+/* pick final minor star */ 
+\$sz_s = sizeof(\$stars_arr); 
+\$rand = random(\$sz_s); 
+\$minor2 = \$stars_arr[\$rand]; 
+ 
+/* create the mapping */ 
+\$map = ([ ]); 
+\$map["constants"] = (\{ \$constants \}); 
+\$map["wanderer"] = \$wanderer; 
+\$map["zodiac"] = \$zodiac; 
+\$map["wine"] = \$wine; 
+\$map["cardinal"] = \$cardinal; 
+\$map["color"] = \$color; 
+\$map["element"] = \$element; 
+\$map["palace"] = \$palace; 
+\$map["major"] = \$major; 
+\$map["minor"] = (\{ \$minor1, \$minor2 \}); 
+ 
+/* send away */ 
+return \$map;
+      </Core:Property>
+      <Core:Property property="merry:lib:time_convert">
+         X[M] \$day = replace_strings(\$day, "Sunday", "Sunday", "Monday", "Monday", "Tuesday", "Tuesday", "Wednesday", "Wednesday", "Thursday", "Thursday", "Friday", "Friday", "Saturday", "Saturday" );
+
+if(\$nextday) \$nextday = replace_strings(\$nextday, "Sunday", "Sunday", "Monday", "Monday", "Tuesday", "Tuesday", "Wednesday", "Wednesday", "Thursday", "Thursday", "Friday", "Friday", "Saturday", "Saturday" );
+
+/* array for dolo months */
+\$dolarr = (\{ "Birch", "Rowan", "Ash", "Alder", "Willow", "Hawthorn", "Oak", "Holly", "Hazel", "Vine", "Ivy", "Reed", "Elder" \});
+
+/* standard month and day variables */
+/* \$a == the dol day num on the 1st of the Sallumer month */
+/* \$b == array number for dol month on the 1st day of the Sallumer month */
+
+if(\$month == "Yule") \{
+\$a = 9;
+\$b = 0;
+\}
+if(\$month == "Snow") \{
+\$a = 12;
+\$b = 1;
+/* this month has exceptions for Leap Day */
+if(\$year%4 == 0) \$leap = TRUE;
+\}
+if(\$month == "Sap") \{
+\$a = 12;
+\$b = 2;
+\}
+if(\$month == "Grass") \{
+\$a = 15;
+\$b = 3;
+\}
+if(\$month == "Flower") \{
+\$a = 17;
+\$b = 4;
+\}
+if(\$month == "Strawberry") \{
+\$a = 20;
+\$b = 5;
+\}
+if(\$month == "Thunder") \{
+\$a = 22;
+\$b = 6;
+\}
+if(\$month == "Green") \{
+\$a = 25;
+\$b = 7;
+\}
+if(\$month == "Harvest") \{
+\$a = 28;
+\$b = 8;
+/* this month has exceptions as it crosses three dol months */
+\}
+if(\$month == "Hunter's") \{
+\$a = 2;
+\$b = 9;
+\}
+if(\$month == "Frost") \{
+\$a = 5;
+\$b = 11;
+\}
+if(\$month == "Night") \{
+\$a = 7;
+\$b = 12;
+/* this month has exceptions for Unhewn Stone - see below */
+\}
+
+/* formulate */
+/* days in a month so we can add exceptions */
+\$m = 28;
+/* exception for leap year and Unhewn Stone (Elder 29th or Night 23th) */
+if(\$leap \|\| \$month == "Night") \$m +=1;
+/* \$c == the Sallumer day num that is the last day of the dol month */
+\$c = (\$m-\$a)+1;
+/* grab the new months */
+/* \$m1 == The dol month coinciding with the 1st day of the Sallumer month */
+/* \$m2 == The new dol month that it will change to */
+/* \$m3 == Strictly for Hunter's as it changes twice */
+\$m1 = \$dolarr[\$b];
+\$b += 1;
+/* cycle back to 1st month */
+if(\$b == 13) \$b = 0;
+\$m2 = \$dolarr[\$b];
+/* add a new month for the Harvest's exception */
+if(\$month == "Harvest") \{
+\$b +=1;
+\$m3 = \$dolarr[\$b];
+\}
+
+if(\$daynum \> 0 \&\& \$c \>= \$daynum) \{
+\$dolmonth = \$m1;
+\$daynum = \$daynum + (\$a-1);
+\} else \{
+\$dolmonth = \$m2;
+\$daynum = \$daynum - \$c;
+\}
+
+/* exception for Harvest */
+if(\$daynum == 29 \&\& \$month == "Harvest") \{
+\$daynum = 1;
+\$dolmonth = \$m3;
+\}
+
+/* easy check for future is that it has a next day */
+if(\$nextday) \{
+\$msg = "It will be "+TAG(\$day, "imp")+", the "+TAG(desc_ordinal(\$daynum), "imp")+" day of "+TAG(\$dolmonth, "imp")+"; approximately the "+\$period+ ". It will become " +TAG(\$nextday, "imp")+ " " +\$change+ " in the day.";
+\} else \{
+\$msg = "It is "+TAG(\$day, "imp")+", the "+TAG(desc_ordinal(\$daynum), "imp")+" day of "+TAG(\$dolmonth, "imp")+"; it is currently the "+\$period+ ".";
+\}
+/* call the end */
+Call(\$this, "time_end", \$actor: \$actor, \$day: \$day, \$daynum: \$daynum, \$month: \$dolmonth, \$year: \$year, \$msg: \$msg, \$timing: \$timing);
+      </Core:Property>
+      <Core:Property property="merry:lib:time_end">
+         X[M] /* send date msg */
+EmitTo(\$actor, \$msg);
+/* send special day msg */
+\$special = Call(\$this, "time_special", \$month: \$month, \$day: \$day, \$timing: \$timing);
+EmitTo(\$actor, \$special);
+/* send season */
+if(\$timing == "now") \{
+\$season = Get(\$\{Allegory:Lib:Weather:DB\}, "current:season");
+EmitTo(\$actor, "The season is " +TAG(\$season, "imp")+ ".");
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:time_future">
+         X[M] string icmonth, days, t;
+int monthnumber, daynumber, year;
+string *daynames;
+
+/* help files */
+\$help_format = "The correct format for " +TAG(\$comm, "imp")+ " is month followed by date such as: " +TAG(\$comm+ " \\'12 01", "imp")+ " for the 1st of December. A year is optional.";
+
+/* Get the date they want to check */
+if(sscanf(\$line, "\\"%d %d %d\\"", monthnumber, daynumber, year) \< 2) \{
+  EmitTo( \$actor, \$help_format );
+  return FALSE;
+\}
+
+/* set the year, if it's not already set */
+if(!year) year = get_year(time());
+if(year \< 2000) year += 2000;
+
+/* Check if this is a valid date */
+if((year \< 2000) \|\| (year \> 2030)) \$invalid = TRUE;
+if ((monthnumber \< 1) \|\| (monthnumber \> 12)) \$invalid = TRUE;
+if ((daynumber \< 1) \|\| (daynumber \> 31)) \$invalid = TRUE;
+/* check number of days in the month */
+switch(monthnumber) \{
+  case 4:
+  case 6:
+  case 9:
+  case 11:
+    if(daynumber \> 30) \$invalid = TRUE;
+    break;
+  case 2:
+    if(daynumber == 29) \{
+      if(year%4 != 0)
+        \$invalid = TRUE;
+    \} else if(daynumber \> 28) \{
+      \$invalid = TRUE;
+    \}
+    break;
+\}
+
+if(\$invalid) \{
+  EmitTo( \$actor, "That is an invalid date. \\n"+\$help_format );
+  return FALSE;
+\}
+
+/* calculate the timestamp */
+\$timestamp = calculate_stamp( year, monthnumber, daynumber );
+if(\$timestamp \< time()) \$timestamp = calculate_stamp( year+1, monthnumber, daynumber );
+
+t = ctime( \$timestamp );
+t = t[..10] + TAG( t[11..19], "imp" ) + t[20..];
+EmitTo( \$actor, "OOC -- The date you are using is "+t+" Skotos Time." );
+
+
+/* new stuff */
+/*
+\$time_data = ironclaw::ictime(\$needed: (\{ "day", "day_code", "month", "time_of_day", "time_period", "time_period_name", "time_period_description", "year", "special", "season" \}), \$timestamp: \$timestamp, \$output_style: \$style);
+
+\$nextday = "something";
+\$change = "sometime";
+
+EmitTo(\$actor, "It is "+TAG(\$time_data["day"], "imp")+", the "+TAG(desc_ordinal(\$time_data["day_code"]), "imp")+" day of "+TAG(\$time_data["month"], "imp")+" in the year of "+TAG(\$time_data["year"], "imp")+" Apres le Miracle; approximately the "+ \$time_data["time_period_name"] + " ("+\$time_data["time_period"]+"); "+\$time_data["time_period_description"]+". It will become " +TAG(\$nextday, "imp")+ " " +\$change+ " in the day.");
+*/
+
+/* send special day msg */
+/*
+if(\$time_data["special"]) \{
+  if(\$timing == "now") EmitTo(\$actor, "It is "+\$time_data["special"]+".");
+  else EmitTo(\$actor, "It will be "+\$time_data["special"]+".");
+\}
+
+\$special = Call(\$this, "time_special", \$month: \$month, \$day: \$day, \$timing: \$timing);
+EmitTo(\$actor, \$special);
+*/
+
+/* send season */
+/*
+if(\$timing == "now" \&\& \$time_data["season"]) EmitTo(\$actor, "The season is "+TAG(\$time_data["season"], "imp")+".");
+else if(\$timing != "now" \&\& \$time_data["season"]) EmitTo(\$actor, "The season will be "+TAG(\$time_data["season"], "imp")+".");
+*/
+/* end new stuff */
+
+
+
+
+
+
+daynames = (\{ "Dimache", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi" \});
+
+/* Find the details we want */
+sscanf(ctime( \$timestamp ), "%*s %s %d %*s %d", icmonth, daynumber, year);
+
+/* find in-character day of week */
+days = daynames[\$timestamp/(60*60*16)%7];
+
+/* Replace strings */
+icmonth = replace_strings(icmonth, "Jan", "Yule", "Feb", "Snow", "Mar", "Sap", "Apr", "Grass", "May", "Flower", "Jun", "Strawberry", "Jul", "Thunder", "Aug", "Green", "Sep", "Harvest", "Oct", "Hunter's", "Nov", "Frost", "Dec", "Night" );
+
+\$nextday = daynames[((\$timestamp/(60*60*16+1))+1)%7];
+
+if(((\$timestamp/(60*60))%16) \> 12)
+\{
+\$period = TAG("Office of Matins", "imp")+ " (midnight); the night vigil";
+\$change = "late";
+\} else \{
+\$period = TAG("Office of Sext", "imp")+ " (midday); the midday break";
+\$change = "early";
+\}
+
+if(\$style == "sallumer") \{
+/* start msg */
+\$msg = "It will be "+TAG(days, "imp")+", the "+TAG(desc_ordinal(daynumber), "imp")+" day of "+TAG(icmonth, "imp")+" in the year of "+TAG(Str(year-1119), "imp")+" Apres le Miracle; approximately the "+\$period+ ". It will become " +TAG(\$nextday, "imp")+ " " +\$change+ " in the day.";
+/* call the end */
+Call(\$this, "time_end", \$actor: \$actor, \$day: days, \$daynum: daynumber, \$month: icmonth, \$year: year, \$msg: \$msg, \$timing: \$timing);
+\} else \{
+Call(\$this, "time_convert", \$actor: \$actor, \$day: days, \$daynum: daynumber, \$month: icmonth, \$year: year, \$period: \$period, \$nextday: \$nextday, \$change: \$change, \$timing: \$timing);
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:time_now">
+         X[M] \$time_data = ironclaw::ictime(\$needed: (\{ "day", "day_code", "month", "time_of_day", "time_period", "time_period_name", "time_period_description", "year", "special", "season" \}), \$timestamp: time(), \$output_style: \$style);
+
+EmitTo(\$actor, "It is "+TAG(\$time_data["day"], "imp")+", the "+TAG(desc_ordinal(\$time_data["day_code"]), "imp")+" day of "+TAG(\$time_data["month"], "imp")+" in the year of "+TAG(\$time_data["year"], "imp")+" Apres le Miracle; it is currently the "+ \$time_data["time_period_name"] + " ("+\$time_data["time_period"]+"); "+\$time_data["time_period_description"]+".");
+
+/* send special day msg */
+if(\$timing == "now" \&\& \$time_data["special"]) EmitTo(\$actor, "It is "+\$time_data["special"]+".");
+else if(\$timing != "now" \&\& \$time_data["special"]) EmitTo(\$actor, "It will be "+\$time_data["special"]+".");
+
+\$special = Call(\$this, "time_special", \$month: \$month, \$day: \$day, \$timing: \$timing);
+EmitTo(\$actor, \$special);
+
+/* send season */
+if(\$timing == "now" \&\& \$time_data["season"]) EmitTo(\$actor, "The season is "+TAG(\$time_data["season"], "imp")+".");
+else if(\$timing != "now" \&\& \$time_data["season"]) EmitTo(\$actor, "The season will be "+TAG(\$time_data["season"], "imp")+".");
+      </Core:Property>
+      <Core:Property property="merry:lib:time_period">
+         X[M] \$time_data = ironclaw::ictime(\$needed: (\{ "time_period", "time_period_name", "time_period_description" \}), \$timestamp: time());
+return TAG(\$time_data["time_period_name"], "imp") + " ("+\$time_data["time_period"]+"); "+\$time_data["time_period_description"];
+      </Core:Property>
+      <Core:Property property="merry:lib:time_skillcheck">
+         X[M] \$err_skill = "There is an error concerning the level of your skills. Please report via @bug including exactly what you did.";
+
+/* categories for skill checks */
+\$categories = (\{ "alteration", "combat", "hunting", "academics", "social", "thief", "career" \});
+\$cat_sz = sizeof(\$categories);
+
+/* get associated skills */
+\$skill_options = (\{ "scholar", "pirate", "sailor" \});
+\$skill_lvl = 1;
+\$skill_sz = sizeof(\$skill_options);
+\$tmp_lvl = 1;
+
+/* determine highest value of skills */
+for(\$o=0; \$o \< \$skill_sz; \$o++) \{
+\$option = \$skill_options[\$o];
+for(\$c=0; \$c \< \$cat_sz; \$c++) \{
+\$category = \$categories[\$c];
+if(Get(\$actor, "skill:"+\$category+":"+\$option)) \$tmp_lvl = Get(\$actor, "skill:"+\$category+":"+\$option);
+if(\$tmp_lvl \> \$skill_lvl) \$skill_lvl = \$tmp_lvl;
+if(Get(\$actor, "career:"+\$category+":"+\$option)) \$tmp_lvl = Get(\$actor, "career:"+\$category+":"+\$option);
+if(\$tmp_lvl \> \$skill_lvl) \$skill_lvl = \$tmp_lvl;
+\}
+\}
+
+/* determine msg based on skill value */
+if(\$skill_lvl \< 6) \$msg_lvl = 1;
+else if(\$skill_lvl \< 11) \$msg_lvl = 2;
+else if(\$skill_lvl \< 16) \$msg_lvl = 3;
+else if(\$skill_lvl \< 21) \$msg_lvl = 4;
+else \$msg_lvl = 5;
+
+return \$msg_lvl;
+      </Core:Property>
+      <Core:Property property="merry:lib:time_special">
+         X[M] /* set holiday and special days */
+/* start msg */
+\$special = "It is the ";
+if(\$timing == "future") \$special = "It will be the ";
+
+/* add emits for holy sallumer days */
+if(\$day == "Dimache") \{
+\$holy = "Today is a ";
+if(\$timing == "future") \$holy = "It will be a ";
+\$holy += TAG("Holy Day", "imp")+" for those who follow S'Allumer. Trade and dueling are restricted. \\n";
+\}
+
+/* add emits for special sallumer days
+/* if(\$daynum == 21 \&\& \$month == "Yule") \$special += TAG("Praelucidia", "imp")+ "; the \\'Promise of Light\\' is the /* 1st full moon of the new year! It honors Generosity and is often celebrated with the exchange of gifts. \\n";
+/* if(\$daynum == 21 \&\& \$month == "Sap") \$special += TAG("Muliebrea", "imp") + "; celebrating the birth of Helloise /* and coincides with the " +TAG("Spring Equinox", "imp") + ". \\n";
+/* if(\$daynum == 20 \&\& \$month == "Flower") \$special += TAG("Antefrugalia", "imp") + "; an unofficial holiday celebrated with a carnival as the following day starts " +TAG("Frugalitia", "imp") + " which is a time of fasting. \\n";
+/* if(\$daynum \> 20 \&\& \$month == "Flower") \$special += "32-day festival of " +TAG("Frugalitia", "imp") + "; a time of fasting while the sun is visible. \\n";
+/* if(\$daynum \< 21 \&\& \$month == "Strawberry") \$special += "32-day festival of " +TAG("Frugalitia", "imp") + "; a time of fasting while the sun is visible. \\n";
+/* if(\$daynum == 21 \&\& \$month == "Strawberry") \$special += TAG("Vadimonia", "imp") + "; also called Midsummer's Day or the " +TAG("Northern Solstice", "imp")+ ". One of two days when the sun appears to stand still before reversing direction. This is the day of Promises Kept and Commitments Honored, commending the virtue of self-control. \\n";
+/* if(\$daynum == 1 \&\& \$month == "Green") \$special += TAG("Demetendia", "imp") + "; a day when commoners have the chance to be King or Queen. In places such as the great city of Triskellian, it is customary to bake two honey cakes, each with a bean inside, and when the slices are passed out, whoever finds the bean inside their cake will be King or Queen for a day. \\n";
+/* if(\$daynum == 21 \&\& \$month == "Harvest") \$special += TAG("Auctumnitia", "imp") + "; also called the Festival of Zeal or the " +TAG("Autumnal Equinox", "imp")+ ". A day of competition and out-doing your opponents in tournaments. \\n";
+/* if(\$daynum == 25 \&\& \$month == "Hunter's") \$special += TAG("Lachrymosia", "imp") + "; the Night of Humility marked by a new moon. \\n";
+/* if(\$month == "Night") \{
+/* if(\$daynum \> 20 \&\& \$daynum \< 26) \$special += TAG("Solacia", "imp") + "; the Great Holy Season of the Penitents of S\\'allumer and also called " +TAG("Southern Solstice", "imp")+ ". These mark the days that Helloise walked the city and healed the sick, it is a time to give to the poor. \\n";
+\}
+/* if(\$daynum == 26 \&\& \$month == "Night") \$special += "day of the " +TAG("Miracle", "imp")+ ", in which Helloise gave herself as a Vessel of the Light, and purged the city of the plague; this is a great day of celebration, the Triumph of Light. \\n";
+*/
+
+/* Add emits for special dolo days
+/* if(\$month == "Elder" \&\& \$daynum == 29) \$special += TAG("Secret of the Unhewn Stone", "imp")+"; denotes the quality of potential in all things. \\n";
+/* The Equinoxes are considered Dolo holidays
+/* if(\$month == "Alder" \&\& \$daynum == 4) \$special += TAG("Vernal Equinox", "imp")+ "; one of two days when sunrise and sunset are closest to being precisely 12 hours apart. \\n";
+/* if(\$month == "Vine" \&\& \$daynum == 20) \$special += TAG("Autumnal Equinox", "imp")+ "; one of two days when sunrise and sunset are closest to being precisely 12 hours apart. \\n";
+/* The Solstices are considered Dolo holidays
+/* if(\$month == "Oak" \&\& \$daynum == 12) \$special += TAG("Northern Solstice", "imp")+ "; one of two days when the sun appears to stand still before reversing direction. \\n";
+/* if(\$month == "Elder" \&\& \$daynum == 27) \$special += TAG("Southern Solstice", "imp")+ "; one of two days when the sun appears to stand still before reversing direction. \\n";
+/* Two holy Dolo days; one early spring and one late autumn
+/* if(\$month == "Reed" \&\& \$daynum == 26) \$special += TAG("Day of Hoping", "imp")+ "; it consists of the cutting of the tree planted on the Day of Receiving and thanks to Lutara for the bounty of the past year \\n.";
+/* if(\$month == "Ash" \&\& \$daynum == 11) \$special += TAG("Day of Receiving", "imp")+ "; it consists of the planting of a tree and the giving of thanks to Lutara for surviving the winter. \\n";
+*/
+
+\$db_holidays = Get(\$\{Ironclaw:Lib:Builders:Time\}, "time_holidays");
+\$db_indices = map_indices(\$db_holidays);
+\$db_i_sz = sizeof(\$db_indices);
+
+for(\$t=0; \$t\<\$db_i_sz; \$t++) \{
+\$holiday = \$db_indices[\$t];
+\$months = \$db_holidays[\$holiday]["month"];
+\$days = \$db_holidays[\$holiday]["days"];
+if(member(\$daynum, \$days) \&\& \$month == \$months) \{
+\$holi_name = \$db_holidays[\$holiday]["name"];
+\$holi_desc = \$db_holidays[\$holiday]["description"];
+if(\$db_holidays[\$holiday]["introduction"]) \$holi_intro = \$db_holidays[\$holiday]["introduction"];
+if(\$holi_intro) \{
+\$special += \$holi_intro+ " ";
+\$holi_intro = nil;
+\}
+\$special += TAG(\$holi_name, "imp");
+\$special += "; " +\$holi_desc+ "\\n";
+\}
+\}
+
+
+if(\$special == "It is the " \|\| \$special == "It will be the ") \$special = "";
+/* extra spot for leap day as it may add to an existing holiday */
+if(\$daynum == 29 \&\& \$month == "Snow") \$special += "It is "+TAG("Leap Day", "imp")+ "; occurring every four years! \\n";
+if(\$month == "Rowan" \&\& \$daynum == 29) \$special += TAG("Leap Day", "imp")+ "; occurring every four years! \\n";
+/* add in the holy */
+if(\$holy) \$special = \$holy+"\\n"+\$special;
+
+return \$special;
+      </Core:Property>
+      <Core:Property property="merry:lib:time_start">
+         X[M] /* list help */
+\$help_future = "@future will convert a Real Date to a S\\'allumer Date. Usage is as follows: \\n @future \\'[month] [date] \\n Example: @future \\'12 01.";
+\$help_dolfuture = "@dolfuture will convert a Real Date to a Doloreaux Date. Usage is as follows: \\n @dolfuture \\'[month] [date] \\n Example: @dolfuture \\'12 01.";
+
+/* if no line where line is required, send help */
+if(\$comm == "@future" \&\& !\$line) \{
+  EmitTo(\$actor, \$help_future);
+  return FALSE;
+\} else if(\$comm == "@dolfuture" \&\& !\$line) \{
+  EmitTo(\$actor, \$help_dolfuture);
+  return FALSE;
+\}
+
+/* always send related message */
+\$related = (\{ "time", "@time", "@ictime", "@doltime", "@future", "@dolfuture" \});
+\$related -= (\{ \$comm \});
+\$related = implode(\$related, ", ");
+\$help_related = "-- Related commands: " + \$related + ". --";
+/* send related msg */
+EmitTo(\$actor, TAG(\$help_related, "imp")+ "\\n");
+
+/* what calendar */
+\$style = "sallumer";
+if(\$comm == "@doltime" \|\| \$comm == "@dolfuture") \$style = "doloreaux";
+
+/* now or future */
+\$timing = "now";
+if(\$comm == "@future" \|\| \$comm == "@dolfuture") \$timing = "future";
+
+/* figure what they want */
+if(\$comm == "@future" \|\| \$comm == "@dolfuture") \{
+  Call(\$this, "time_future", \$actor: \$actor, \$line: \$line, \$style: \$style, \$timing: \$timing);
+\} else \{
+  Call(\$this, "time_now", \$actor: \$actor, \$style: \$style, \$timing: \$timing);
+\}
+      </Core:Property>
+      <Core:Property property="moon_phases">
+         ([ "First Quarter":(\{ "half", "quarter", "quarter", "first quarter", "first quarter" \}), "Full":(\{ "full", "round", "full", "full", "full" \}), "Last Quarter":(\{ "half", "quarter", "quarter", "last quarter", "last quarter" \}), "New":(\{ "new", "dark", "dimmed", "new", "new" \}), "Waning Crescent":(\{ "crescent", "waning crescent", "waning crescent" \}), "Waning Gibbous":(\{ "gibbous", "waning gibbous", "waning gibbous" \}), "Waxing Crescent":(\{ "crescent", "waxing crescent", "waxing crescent" \}), "Waxing Gibbous":(\{ "gibbous", "waxing gibbous", "waxing gibbous" \}) ])
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1297037045, "tunk_bodin", "E", 1297037064, "tunk_bodin", "P", 1297037983, "tunk_bodin", "P", 1297038989, "tunk_bodin", "P", 1297040164, "tunk_bodin", "P", 1297041421, "tunk_bodin", "P", 1297041818, "tunk_bodin", "P", 1297042305, "tunk_bodin", "P", 1297058734, "jominey", "E", 1297058781, "jominey", "E", 1297058807, "jominey", "E", 1297058828, "jominey", "E", 1297058850, "jominey", "E", 1297110616, "tunk_bodin", "X", 1297112004, "tunk_bodin", "X", 1297112578, "tunk_bodin", "X", 1297115198, "tunk_bodin", "P", 1297115493, "tunk_bodin", "P", 1297116436, "tunk_bodin", "P", 1449720799, "tonyd", "P", 1449720829, "tonyd", "P", 1449720867, "tonyd", "P", 1449720885, "tonyd", "P", 1449721044, "tonyd", "P", 1449721073, "tonyd", "P", 1449721235, "tonyd", "P", 1449721240, "tonyd", "P", 1449721246, "tonyd", "P", 1449721430, "tonyd", "P", 1449727185, "tonyd", "P", 1449727267, "tonyd", "P", 1449727285, "tonyd", "P", 1449727308, "tonyd", "P", 1449727516, "tonyd", "P", 1449727540, "tonyd", "P", 1449727569, "tonyd", "P", 1449727588, "tonyd", "P", 1449727616, "tonyd", "P", 1449727857, "tonyd", "P", 1449727885, "tonyd", "P", 1449727919, "tonyd", "P", 1449727964, "tonyd", "P", 1449727989, "tonyd", "P", 1449729009, "tonyd", "P", 1449729026, "tonyd", "P", 1449729044, "tonyd", "P", 1449729073, "tonyd", "P", 1449729135, "tonyd", "P", 1449729157, "tonyd", "P", 1449729175, "tonyd", "P", 1449731063, "tonyd", "P", 1449731097, "tonyd", "P", 1449731449, "tonyd", "P", 1449731532, "tonyd", "P", 1449731540, "tonyd", "P", 1449731556, "tonyd", "P", 1449731698, "tonyd", "P", 1449731855, "tonyd", "P", 1449731979, "tonyd", "P", 1449732047, "tonyd", "P", 1449732057, "tonyd", "P", 1449732107, "tonyd", "P", 1449732218, "tonyd", "P", 1449732637, "tonyd", "P", 1449732714, "tonyd", "P", 1449733316, "tonyd", "P", 1449733337, "tonyd", "P", 1449738735, "tonyd", "P", 1449738802, "tonyd", "P", 1449738836, "tonyd", "P", 1449738934, "tonyd", "P", 1449739067, "tonyd", "P", 1449739170, "tonyd", "P", 1449816526, "tonyd", "P", 1460166300, "tonyd", "P", 1460166317, "tonyd", "P", 1460166357, "tonyd", "P", 1460166500, "tonyd", "P", 1460166513, "tonyd", "P", 1460166553, "tonyd", "P", 1460166719, "tonyd", "P", 1460166741, "tonyd", "P", 1460166774, "tonyd", "P", 1460166793, "tonyd", "P", 1460166808, "tonyd", "P", 1460167865, "tonyd", "P", 1460167884, "tonyd", "P", 1460167911, "tonyd", "P", 1460167925, "tonyd", "P", 1460167945, "tonyd", "P", 1460167981, "tonyd", "P", 1460167996, "tonyd", "P", 1460168022, "tonyd", "P", 1460168046, "tonyd", "P", 1460168079, "tonyd", "P", 1460168189, "tonyd", "P", 1460168248, "tonyd", "P", 1460168310, "tonyd", "P", 1460168334, "tonyd", "P", 1460168372, "tonyd", "P", 1460168405, "tonyd", "P", 1460168515, "tonyd", "P", 1460168526, "tonyd", "P", 1534371065, "jominey", "E", 1534372101, "jominey", "E", 1573012715, "ezralee", "E", 1620194384, "ezralee", "E", 1620194577, "ezralee", "E", 1620195235, "ezralee", "E", 1620195408, "ezralee", "E", 1620195501, "ezralee", "E", 1620195599, "ezralee", "E", 1620195927, "ezralee", "E", 1620195959, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="settings:id">6269</Core:Property>
+      <Core:Property property="settings:moon_phase">
+         "Waning Gibbous"
+      </Core:Property>
+      <Core:Property property="settings:stars:id">
+         7481
+      </Core:Property>
+      <Core:Property property="stars:settings:cardinal">
+         "North"
+      </Core:Property>
+      <Core:Property property="stars:settings:color">
+         "Black"
+      </Core:Property>
+      <Core:Property property="stars:settings:constants">
+         "Azzis"
+      </Core:Property>
+      <Core:Property property="stars:settings:element">
+         "Water"
+      </Core:Property>
+      <Core:Property property="stars:settings:major">
+         "Tower"
+      </Core:Property>
+      <Core:Property property="stars:settings:minor1">
+         "Handmaid"
+      </Core:Property>
+      <Core:Property property="stars:settings:minor2">
+         "Scribe"
+      </Core:Property>
+      <Core:Property property="stars:settings:palace">
+         "Tortoise"
+      </Core:Property>
+      <Core:Property property="stars:settings:palace_full">
+         "Black Tortoise of the North"
+      </Core:Property>
+      <Core:Property property="stars:settings:wanderer">
+         "Wolf"
+      </Core:Property>
+      <Core:Property property="stars:settings:wine">
+         "yes"
+      </Core:Property>
+      <Core:Property property="stars:settings:zodiac">
+         "Scythe"
+      </Core:Property>
+      <Core:Property property="stars_autumn">
+         ([ "cardinal":"West", "color":"White", "element":"Metal", "palace":"Tiger", "stars":(\{ "Angel", "Acrobat", "Stranger", "Mastiff", "Giant", "Hero" \}) ])
+      </Core:Property>
+      <Core:Property property="stars_autumn_msg">
+         ([ "Acrobat":([ "count":5, "description":"Often referred to as the Aerobat, it portrays a bat performer soaring through the heavens to entertain the gods.", "resembles":"a winged creature" ]), "Angel":([ "count":10, "description":"Syphus, the Angel, is considered a messenger of the Light, who brings omens to mortals in cryptic and riddling ways, so that they might be enlightened only through diligent study and reasoning.", "resembles":"a winged being" ]), "Giant":([ "count":12, "description":"The Giant is difficult to distinguish as it tends to encompass nearby constellations into its form due to the mere massiveness of it. The easiest method to locate the Giant is by a string of three stars considered his belt.", "resembles":"a mass of convoluted stars" ]), "Hero":([ "count":6, "description":"The Hero, oft-depicted as a badger woodsman of the House Blaireu, holds the Sword constellation in his outstretched hand as he faces the Giant in battle, his loyal Mastiff at his side.", "resembles":"a profile of a lunging man" ]), "Mastiff":([ "count":6, "description":"The Mastiff crouches in front of his master, the Hero, as he does battle against the Giant.", "resembles":"a crouching beast" ]), "Stranger":([ "count":9, "description":"The Stranger is cowled and cloaked, not revealing its species and bearing a mysterious presence.", "resembles":"a confusing triangle" ]) ])
+      </Core:Property>
+      <Core:Property property="stars_constant">
+         ([ "cardinal":"Center", "color":"Golden", "element":"Earth", "palace":"Qi-Ling", "stars":(\{ "Azzis" \}) ])
+      </Core:Property>
+      <Core:Property property="stars_constant_msg">
+         ([ "Azzis":([ "count":1, "description":"Pointing true north, the Axis star is also called Azzis or the North Star. It is of great importance to navigators especially sailors and pirates. It is the most recognizable heavenly body sans the sun and moon.", "resembles":"a bright star" ]) ])
+      </Core:Property>
+      <Core:Property property="stars_spring">
+         ([ "cardinal":"East", "color":"Blue", "element":"Wood", "palace":"Dragon", "stars":(\{ "Knight", "Chain and Lock", "Daemon", "Beast", "Lady", "Helloise" \}) ])
+      </Core:Property>
+      <Core:Property property="stars_spring_msg">
+         ([ "Beast":([ "count":16, "description":"The Great Beast of the heavens is as massive as the Giant. It appears as a large, four-legged creature with bony protuberances across its spine.", "resembles":"a craggy mountain" ]), "Chain and Lock":([ "count":7, "description":"The Chain and Lock terminate at Azzis, the Axis Star.", "resembles":"a little dipper" ]), "Daemon":([ "count":12, "description":"The Daemon is a great creature of indeterminate species. It is in constant battle with the Knight.", "resembles":"a sprawled newt" ]), "Helloise":([ "count":7, "description":"Helloise stands proudly among the stars as she cradles a babe in her arms.", "resembles":"a crooked mannequin" ]), "Knight":([ "count":11, "description":"The species of the Knight is based upon the viewer. He holds his sword overhead and aims to strike against the monsters of the sky; the daemon, the sea monster, and the great beast.", "resembles":"a man with a raised arm" ]), "Lady":([ "count":8, "description":"The Lady is a noblewoman holding her arms toward the heavens, one of which grasps a telescope.", "resembles":"a female with her arms raised high" ]) ])
+      </Core:Property>
+      <Core:Property property="stars_summer">
+         ([ "cardinal":"South", "color":"Red", "element":"Fire", "palace":"Phoenix", "stars":(\{ "Key", "Priestess", "Vixen", "Cupbearer", "Scimitar", "Wyrm King" \}) ])
+      </Core:Property>
+      <Core:Property property="stars_summer_msg">
+         ([ "Cupbearer":([ "count":5, "description":"The Cupbearer, also known as Lancelin, holds the Chalice aloft and he is directly responsible for the fact that it continues to spill forth.", "resembles":"nothing notable" ]), "Key":([ "count":6, "description":"The Key is just that, a skeleton key. Some speculate it is tied to the Chain and Lock yet there is no substantial evidence to prove this claim.", "resembles":"a skeleton key" ]), "Priestess":([ "count":7, "description":"The Priestess, Penitent of S'allumer, is shown on all charts as a cat. In Pagan times, she was considered the Prophetess and boded well for female Screeberagh.", "resembles":"a vee" ]), "Scimitar":([ "count":4, "description":"The Scimitar is held aloft by the Desert Prince however traditional interpretations consider this set of stars to be a tuft-eared desert lynx.", "resembles":"a crooked line" ]), "Vixen":([ "count":6, "description":"The Vixen is held in the right crook of the Giant's arm.", "resembles":"a curled up pet" ]), "Wyrm King":([ "count":8, "description":"Often paired with the Wyrm Queen, it depicts a fire-breathing reptile with a long, slinky, wing-less body.", "resembles":"a lengthy string" ]) ])
+      </Core:Property>
+      <Core:Property property="stars_wanderer">
+         (\{ "Mouse", "Doe", "Wolf", "Bear", "Cougar" \})
+      </Core:Property>
+      <Core:Property property="stars_wanderer_msg">
+         ([ "Bear":([ "description":"Trahern is the smith of the heavens, possessed of legendary strength and skill, and he is known as a formidable wrestler.", "horoscope":"harbinger of the end of conflicts; one way or another, including martial, commercial, and social", "race":"bear", "rune":"anvil", "saint":"Trahern" ]), "Cougar":([ "description":"Condan appears to be slightly elliptical in shape. It is said that in the most powerful telescopes of the Repense, it is possible to see that the Cougar Star actually has a ring around it. In legend, Condan is a brilliant architect, engineer and artist, serving the court of Heaven.", "horoscope":"raises expectations that a child born under the Cougar will be inclined toward artistic and scientific pursuits.", "race":"cougar", "rune":"compass", "saint":"Condan" ]), "Doe":([ "description":"Wynne is distinctive for being the brightest of the Wanderers; through a telescope, she can be seen to shine a faint blue-green. She is typically seen either in the late evening or early morning; like Brangaine, she does not depart far from the sun. Her role in the heavens is that of a servant and water-bearer.", "horoscope":"predictions concerning romance", "race":"doe", "rune":"vase", "saint":"Wynne" ]), "Mouse":([ "description":"Brangaine is the fastest of the Wanderers, though she keeps close to the sun, meaning that when she is visible, it is only shortly before sunrise or after sunset, depending on her position. According to tradition, she is the scroll-bearer and messenger of the heavens.", "horoscope":"bringer of omens", "race":"mouse", "rune":"scroll", "saint":"Brangaine" ]), "Wolf":([ "description":"Weylyn is noticeably red in color. His role in the heavens is that of a huntsman and archer.", "horoscope":"harbinger of war, conflict, and the hunt", "race":"wolf", "rune":"bow and arrow", "saint":"Weylyn" ]) ])
+      </Core:Property>
+      <Core:Property property="stars_winter">
+         ([ "cardinal":"North", "color":"Black", "element":"Water", "palace":"Tortoise", "stars":(\{ "Wyrm Queen", "Handmaid", "Sea Monster", "Scribe", "Tower" \}) ])
+      </Core:Property>
+      <Core:Property property="stars_winter_msg">
+         ([ "Handmaid":([ "count":4, "description":"The Handmaid is tasked with only one job among the heavens; mop up the Spilled Wine. It is an endless job as the tilted Chalice is ever-full.", "resembles":"nothing notable" ]), "Scribe":([ "count":11, "description":"Sitting atop the Tower, the Scribe dutifully records the whole of History in a tome, as observed from the heavens.", "resembles":"a small person with arms extended to the fore" ]), "Sea Monster":([ "count":10, "description":"The Sea Monster, sometimes dubbed the Kraken, coils and twists as it seeks an opportune moment to snap its beaked maw upon the Knight.", "resembles":"a knotted cord" ]), "Tower":([ "count":5, "description":"Riddock's Tower, so named to honor the Repense's Bisclavret masters, spans the Spilled Wine. At times, it is the vantage point for the Scribe.", "resembles":"a melting candle" ]), "Wyrm Queen":([ "count":8, "description":"Often paired with the Wyrm King, it depicts a fire-breathing reptile with a long, slinky, wing-less body.", "resembles":"a lengthy string" ]) ])
+      </Core:Property>
+      <Core:Property property="stars_zodiac">
+         (\{ "Bow", "Fish", "Sword", "Destrier", "Chalice", "Natheireun", "Coffer", "Spider", "Scepter", "Serpent", "Scythe", "Comhach" \})
+      </Core:Property>
+      <Core:Property property="stars_zodiac_msg">
+         ([ "Bow":([ "count":4, "description":"Three stars create the Bow with a fourth star depicting the tip of the arrow. It points to the north in a general sense although not precisely.", "horoscope":"unknown yet some reference hunting and tracking", "link":"Fish", "name":"Bow", "type":"treasure" ]), "Chalice":([ "count":5, "description":"The Chalice is a large ever-full cup flowing over and creating the red haze called the Spilled Wine among the heavens.", "horoscope":"abundance and plenty", "link":"Natheireun", "name":"Chalice", "type":"treasure" ]), "Coffer":([ "count":6, "description":"The Coffer used to have another star in its midst that suddenly vanished. Such an unexpected change in the heavens caused dire predictions at the time and many older star charts still show the 7th star.", "horoscope":"material wealth", "link":"Spider", "name":"Coffer", "type":"treasure" ]), "Comhach":([ "count":7, "description":"A charming little creature that can also be a pest, the Comhach is often shown to stand on its hind legs. At times, it is paired with the Lesser Comhach constellation.", "horoscope":"a mixed blessing between good luck and prone to mischief", "link":"Scythe", "name":"Comhach", "type":"guardian" ]), "Destrier":([ "count":4, "description":"Repense heirs are desirable when born under the Destrier. It is sometimes viewed as being carried by the Giant. Another name for this constellation is the Burindent.", "horoscope":"strength and power", "link":"Sword", "name":"Destrier", "type":"guardian" ]), "Fish":([ "count":5, "description":"Called the Fish or the Whale, the creature depicted by these stars is open to interpretation.", "horoscope":"unknown yet some reference the harvest", "link":"Bow", "name":"Fish", "type":"guardian" ]), "Natheireun":([ "count":5, "description":"The Natheireun is a flying feathered lizard of unknown species, known for grace, beauty, bright plumage and soothing songs.", "horoscope":"favorable for women or men with poetic or artistic aspirations.", "link":"Chalice", "name":"Natheireun", "type":"guardian" ]), "Scepter":([ "count":3, "description":"The Scepter is a common birth sign as many are born during this cycle. The stars line up to create the imagery yet the bright star at the tip is actually 6 pinpricks of densely packed stars.", "horoscope":"fortuitous for births especially nobility.", "link":"Serpent", "name":"Scepter", "type":"treasure" ]), "Scythe":([ "count":5, "description":"The scythe is often associated with the 'Harvest of Souls' during times of war but fortuitous for farmers at any time.", "horoscope":"associated with the harvest and predictions of bounty and plenty", "link":"Comhach", "name":"Scythe", "type":"treasure" ]), "Serpent":([ "count":5, "description":"Legend says the Serpent whispers into the ear of the King.", "horoscope":"predisposes one toward craftiness and guile, not a favorable sign", "link":"Scepter", "name":"Serpent", "type":"guardian" ]), "Spider":([ "count":10, "description":"The exact image of the Spider is under debate as some view the 8 outer stars as its legs and the two inner stars as the body whereas others interpret the 8 outer stars as the web, the brightest central star as the spider, and the lesser star as the prey. Another interesting note is that the brightest star is not a single entity as it appears but rather 8 pinpricks of light in close proximity.", "horoscope":"a sign of importance to weavers and seamstresses for good luck", "link":"Coffer", "name":"Spider", "type":"guardian" ]), "Sword":([ "count":4, "description":"The Sword portends War however at times it is called the Dagger and refers to assassination or subterfuge.", "horoscope":"predictions of conflict", "link":"Destrier", "name":"Sword", "type":"treasure" ]) ])
+      </Core:Property>
+      <Core:Property property="time_holidays">
+         ([ "Antefrugalia":([ "days":(\{ 20 \}), "description":"an unofficial holiday celebrated with a carnival as the following day starts Frugalitia which is a time of fasting.", "month":"Flower", "name":"Antefrugalia" ]), "Auctumnitia":([ "days":(\{ 21 \}), "description":"also called the Festival of Zeal or the Autumnal Equinox. A day of competition and out-doing your opponents in tournaments.", "month":"Harvest", "name":"Auctumnitia" ]), "Autumnal":([ "days":(\{ 20 \}), "description":"one of two days when sunrise and sunset are closest to being precisely 12 hours apart.", "month":"Vine", "name":"Autumnal Equinox" ]), "Demetendia":([ "days":(\{ 1 \}), "description":"a day when commoners have the chance to be King or Queen. In places such as the great city of Triskellian, it is customary to bake two honey cakes, each with a bean inside, and when the slices are passed out, whoever finds the bean inside their cake will be King or Queen for a day.", "month":"Green", "name":"Demetendia" ]), "Frugalitia1":([ "days":(\{ 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 \}), "description":"a time of fasting while the sun is visible.", "introduction":"32-day festival of", "month":"Flower", "name":"Frugalitia" ]), "Frugalitia2":([ "days":(\{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 \}), "description":"a time of fasting while the sun is visible.", "introduction":"32-day festival of", "month":"Strawberry", "name":"Frugalitia" ]), "Hoping":([ "days":(\{ 26 \}), "description":"it consists of the cutting of the tree planted on the Day of Receiving and thanks to Lutara for the bounty of the past year.", "month":"Reed", "name":"Day of Hoping" ]), "Lachrymosia":([ "days":(\{ 25 \}), "description":"the Night of Humility marked by a new moon.", "month":"Hunter's", "name":"Lachrymosia" ]), "Miracle":([ "days":(\{ 26 \}), "description":"in which Helloise gave herself as a Vessel of the Light, and purged the city of the plague; this is a great day of celebration, the Triumph of Light.", "introduction":"day of the", "month":"Night", "name":"Miracle" ]), "Muliebrea":([ "days":(\{ 21 \}), "description":"celebrating the birth of Helloise and coincides with the Spring Equinox.", "month":"Sap", "name":"Muliebrea" ]), "Northern":([ "days":(\{ 12 \}), "description":"one of two days when the sun appears to stand still before reversing direction.", "month":"Oak", "name":"Northern Solstice" ]), "Praelucidia":([ "days":(\{ 21 \}), "description":"the 'Promise of Light' is the 1st full moon of the new year! It honors generosity and is often celebrated with the exchange of gifts.", "month":"Yule", "name":"Praelucidia" ]), "Receiving":([ "days":(\{ 11 \}), "description":"it consists of the planting of a tree and the giving of thanks to Lutara for surviving the winter.", "month":"Ash", "name":"Day of Receiving" ]), "Solacia":([ "days":(\{ 21, 22, 23, 24, 25 \}), "description":"the Great Holy Season of the Penitents of S'allumer and also called the Southern Solstice. These mark the days that Helloise walked the city and healed the sick, it is a time to give to the poor.", "month":"Night", "name":"Solacia" ]), "Southern":([ "days":(\{ 27 \}), "description":"one of two days when the sun appears to stand still before reversing direction.", "month":"Elder", "name":"Southern Solstice" ]), "Unhewn":([ "days":(\{ 29 \}), "description":"denotes the quality of potential in all things.", "month":"Elder", "name":"Secret of the Unhewn Stone" ]), "Vadimonia":([ "days":(\{ 21 \}), "description":"also called Midsummer's Day or the Northern Solstice. One of two days when the sun appears to stand still before reversing direction. This is the day of Promises Kept and Commitments Honored, commending the virtue of self-control.", "month":"Strawberry", "name":"Vadimonia" ]), "Vernal":([ "days":(\{ 4 \}), "description":"one of two days when sunrise and sunset are closest to being precisely 12 hours apart.", "month":"Alder", "name":"Vernal Equinox" ]) ])
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

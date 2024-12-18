@@ -1,0 +1,225 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Props:Weapons:Sheaths:UrSheath)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0.5" maxweight="10" verb2="hold" verb3="holds"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="true"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="harness"/>
+            <Base:SName sname="strap"/>
+            <Base:SName sname="sheath"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="harnesses"/>
+            <Base:PName pname="straps"/>
+            <Base:PName pname="sheaths"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="back"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $[!sizeof(this."base:inventory")] | empty | $[replace_strings("!" + Describe(this."base:inventory"[0], nil, nil, STYLE_NONPOSS), "!a ", "", "!an ", "", "!", "")] hanging from a }$(this.trait:color) {? | $(this.trait:embroidery) | {? | $(this.trait:embroidery:pattern) | $(this.trait:embroidery:pattern)} embroidered } $(this.trait:material) $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="examine">
+             <a_or_an>{? | $[!sizeof(NRefOb($target)."base:inventory")] | empty } $(this.trait:color) $(this.trait:material)  $(this.trait:brief)</a_or_an>$(this.trait:description) {? | $(this.trait:embroidery) | $(this.trait:embroidery).}
+          </Base:Description>
+          <Base:Description type="look">
+             <a_or_an>{? | $[!sizeof(NRefOb($target)."base:inventory")] | empty } $(this.trait:color) $(this.trait:material) $(this.trait:brief)</a_or_an>$(this.trait:description) {? | $(this.trait:embroidery) | $(this.trait:embroidery).}
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="scabbard" prime="false" def="false" abstract="false" hidden="true" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="right-shoulder"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "back harness"
+      </Core:Property>
+      <Core:Property property="export:trait:description">
+         " that wraps securely around a weapon and straps down against the wearer's back."
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "strap"
+      </Core:Property>
+      <Core:Property property="export:trait:strapaccepts">
+         "weapon"
+      </Core:Property>
+      <Core:Property property="merry:react-pre:place-where%strap">
+         X[M] /* place an item in the strap */
+if (\$obprep == PREP_INSIDE) \{
+  /* only let them put the right weapon inside */
+  object weapon;
+  /* only put one thing at a time */
+  if(!\$what) return TRUE;
+  if(sizeof(\$what) != 1) \{
+    EmitTo(\$actor, "You can only secure one weapon at a time.");
+    return FALSE;
+  \}
+  weapon = NRefOb(\$what[0]);
+  if(!member(Str(weapon."trait:straptype"), Arr(this."trait:strapaccepts"))) \{
+    EmitTo(\$actor, "You cannot secure "+Describe(\$what, nil, \$actor)+" in "+Describe(this, nil, \$actor)+".");
+    return FALSE;
+  \}
+
+  return TRUE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:embroider-dob">
+         X[M] /* embroider clothes */     
+     
+object database;     
+database = \$\{Allegory:Lib:Crafting:Clothing:EmbroideryDB\};     
+     
+/* sanity check */     
+if(this."trait:embroidery:pattern") \{     
+ EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is already embroidered.");     
+ return TRUE;     
+\}     
+     
+if(sizeof(\$dob) != 1) \{     
+ EmitTo(\$actor, "Please only attempt to embroider one garment at a time.");     
+ return FALSE;     
+\}     
+     
+if(!\$using) \{     
+ EmitTo(\$actor, "You need some thread to embroider with.");     
+ return FALSE;     
+\}     
+     
+if(sizeof(\$using) != 1) \{     
+ EmitTo(\$actor, "You can only work with one spool of thread at a time.");     
+ return FALSE;     
+\}     
+     
+\$thread = NRefOb(\$using[0]);     
+if(!\$thread."trait:objecttype" \&\& \$thread.objecttype != "thread") \{     
+ EmitTo(\$actor, "You can only embroider " + Describe(\$this, nil, \$actor) + " with thread.");     
+ return FALSE;     
+\}     
+     
+if(this."base:worn-by") \{     
+ EmitTo(\$actor, "How can you embroider " + Describe(this, nil, \$actor) + " while someone is wearing it?");     
+ return FALSE;     
+\}     
+     
+if(\$this."base:environment" != \$actor) \{     
+ EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + " to embroider it.");     
+ return FALSE;     
+\}     
+     
+\$skill =  
+Int(\$actor."skill:career:tailor")+Int(\$actor."skill:career:seamstress");    
+ 
+     
+/* \$skill = Int(\$actor."skill:alteration:tailoring")+Int(\$actor."career:alteration:tailoring"); */     
+     
+if(\$(raw-evoke)) \{     
+ \$tmp = Get(database, \$(raw-evoke));     
+ if(\$tmp) \{     
+  /* found a change to make */     
+  if(\$tmp["skill"] \&\& \$tmp["skill"] \> \$skill) \{     
+   EmitTo(\$actor, "You don't have enough skill to embroider " + Describe(this, nil, \$actor) + " in that way.");     
+   return FALSE;     
+  \}     
+     
+  if(\$tmp["design"]) \{     
+   \$design = \$tmp["design"];     
+  \} else \{     
+   \$design = "It has been embroidered with a " + \$(raw-evoke) + " design.";     
+  \}     
+     
+  /* no further objections. Make the change. */     
+  EmitTo(\$actor, "You embroider " + Describe(this, nil, \$actor) + " with a "+\$(raw-evoke) + " pattern using " + Describe(\$thread, nil, \$actor) + ".");     
+  EmitIn(\$actor."base:environment", Describe(\$actor) + " embroiders " + Describe(this, \$actor) + " with a " + \$(raw-evoke) + " pattern using " + Describe(\$thread, \$actor) + ".", \$actor);     
+     
+  /* set the embroidery */     
+  this."trait:embroidery:pattern" = \$(raw-evoke);     
+  this."trait:embroidery" = replace_strings(\$design, "COLOR", Get(\$thread, "trait:color") + " " + Get(\$thread, "trait:material"));     
+     
+  \$thread."trait:quantity" -= 10;     
+     
+  /* and set the adjectives */     
+  \$words = explode(\$(raw-evoke), " ");     
+  for(\$i = 0; \$i \< sizeof(\$words); \$i++)     
+   Set(this, "details:default:adjective:" + lower_case(\$words[\$i]) + ":local", 1);     
+     
+  return FALSE;     
+ \}     
+\}     
+     
+/* list embroidery options */     
+\$options = (\{ \});     
+\$tmp = Get(database, "*");     
+\$indices = map_indices(\$tmp);     
+\$indices -= (\{ "revisions" \});     
+     
+for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{     
+ if(typeof(\$tmp[\$indices[\$i]]) == T_MAPPING \&\& (!\$tmp[\$indices[\$i]]["skill"] \|\| Int(\$tmp[\$indices[\$i]]["skill"]) \<= \$skill)) \{     
+  \$options \|= (\{ \$indices[\$i] \});     
+ \}     
+\}     
+     
+if(!sizeof(\$options)) \{     
+ EmitTo(\$actor, "You don't know how to embroider " + Describe(this, nil, \$actor) + ".");     
+ return FALSE;     
+\}     
+     
+EmitTo(\$actor, "To embroider clothing, it must not be worn. Then the command is:");     
+EmitTo(\$actor, "embroider " + Describe(this) + " 'PATTERN");     
+EmitTo(\$actor, "Your pattern options are: " + implode(\$options, ", "));     
+     
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1499135272, "jominey", "E", 1499135409, "jominey", "E", 1528324812, "jominey", "E", 1528324825, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,312 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:do_nothing">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$materials = \$par["materials"];
+
+Act(\$npc, "refuse", \$what: \$materials, \$who: \$actor);
+Social(\$npc, "nod", "easily", "Let me know when you make up your mind.", "to", \$actor);
+
+\$npc.busy = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:sell_ore">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$materials = \$par["materials"];
+\$sellprice = \$par["sellprice"];
+
+Act(\$npc, "accept", \$what: \$materials, \$who: \$actor);
+
+/* Do a haggling roll, to see how much more the PC gets */
+\$original_price = \$sellprice;
+
+\$sellprice = allegory::do_haggle(\$price: \$sellprice, \$act: "selling");
+
+if(\$sellprice \> \$original_price) \{
+    EmitTo(\$actor, TAG("You manage to haggle " + Describe(\$npc) + " from " + Str(allegory::get_cost(\$cost: Flt(\$original_price)/100.0)) + " to " + Str(allegory::get_cost(\$cost: Flt(\$sellprice)/100.0)) + ".", "imp"));
+\} else \{
+    EmitTo(\$actor, TAG(capitalize(Describe(\$npc)) + " pays you " + allegory::get_cost(\$cost: Flt(\$sellprice)/100.0) + ".", "imp"));
+\}
+
+EmitIn(\$actor."base:environment", TAG(capitalize(Describe(\$npc)) + " hands " + Describe(\$actor) + " some coins.", "social:third"), \$actor);
+
+\$actor."trait:money" = Int(\$actor."trait:money") + Int(\$sellprice);
+
+for(\$i = 0; \$i \< sizeof(\$materials); \$i++) \{
+    Slay(NRefOb(\$materials[\$i]));
+\}
+
+\$npc.busy = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:smelt_ore">
+         X[M] \$npc = \$par["npc"];
+\$actor = \$par["actor"];
+\$materials = \$par["materials"];
+\$quality = Int(\$par["quality"]);
+
+\$product = \$par[\$key + "_product"];
+\$smeltcost = \$par[\$key + "_smeltcost"];
+
+if(Int(\$actor."trait:money") \< Int(\$smeltcost)) \{
+    Act(\$npc, "refuse", \$what: \$materials, \$who: \$actor);
+    Social(\$npc, "wave", "unconcernedly", "Not enough coin today? Alright, come back when ye can.", "to", \$actor);
+    \$npc.busy = nil;
+    return FALSE;
+\}
+
+Act(\$npc, "accept", \$what: \$materials, \$who: \$actor);
+\$actor."trait:money" = Int(\$actor."trait:money") - \$smeltcost;
+
+if(\$key == "a") \{
+    \$ur = \$\{Allegory:Props:Jewelry:Metal:UrMetal\};
+\} else \{
+    \$ur = \$\{Allegory:Props:Materials:Smithing:UrMetalRod\};
+\}
+
+\$products = (\{ \});
+if(Int(\$product[0]) \> 0) \{
+    for(\$i = 0; \$i \< Int(\$product[0]); \$i++) \{
+        \$temp = Spawn(\$ur);
+        \$temp."trait:color" = NRefOb(\$materials[0])."trait:color";
+        \$temp."trait:material" = NRefOb(\$materials[0])."trait:material";
+        \$temp."trait:quality" = \$quality;
+        \$temp."base:environment" = \$actor;
+        \$products += (\{ \$temp \});
+    \}
+\}
+
+if(Flt(\$product[1]) \> Flt(0)) \{
+    \$temp = Spawn(\$ur);
+    \$temp."trait:color" = NRefOb(\$materials[0])."trait:color";
+    \$temp."trait:material" = NRefOb(\$materials[0])."trait:material";
+    \$temp."trait:quality" = \$quality;
+    \$temp."trait:quantity" = Int(Flt(\$product[1]) * 10.0);
+    \$temp."base:environment" = \$actor;
+    \$products += (\{ \$temp \});
+\}
+
+\$delay(1, FALSE, "b317");
+
+EmitTo(\$actor, "After a short while, " + Describe(\$npc) + " hands you " + Describe(\$products, nil, nil, STYLE_NONPOSS) + ".");
+EmitIn(\$actor."base:environment", "After a short while, " + Describe(\$npc) + " hands " + Describe(\$actor) + " " + Describe(\$products, nil, nil, STYLE_NONPOSS) + ".", \$actor);
+
+\$delay(3, FALSE, "41f2");
+
+Social(\$npc, "thank", "graciously", "Thank you and come again!", nil, \$actor);
+
+\$npc.busy = nil;
+
+for(\$i = 0; \$i \< sizeof(\$materials); \$i++) \{
+    Slay(NRefOb(\$materials[\$i]));
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:offer-who%smelting">
+         X[M] if(!\$what) \{
+    EmitTo(\$actor, "What did you want to offer to " + Describe(\$this) + "?");
+    return FALSE;
+\}
+
+if(!sizeof(\$what)) \{
+    EmitTo(\$actor, "What did you want to offer to " + Describe(\$this) + "?");
+    return FALSE;
+\}
+
+if(\$this.busy) \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "mention", "distractedly", "Jus' a moment.", "to", \$actor);
+    return FALSE;
+\}
+
+\$buyableList = (\{ \$\{Allegory:Props:Materials:Mining:Miscellaneous:Chalk\}, \$\{Allegory:Props:Materials:Mining:Miscellaneous:RockSalt\}, \$\{Allegory:Props:Materials:Mining:Miscellaneous:Coal\}, \$\{Allegory:Props:Materials:Mining:Gems:GemRare\} \});
+\$buyables = (\{ \});
+\$notbuyable = (\{ \});
+\$sellprice = 0.0;
+for(\$i = 0; \$i \< sizeof(\$what); \$i++) \{
+    if(member(NRefOb(\$what[\$i])."base:urparent", \$buyableList)) \{
+        \$buyables += (\{ \$what[\$i] \});
+
+        \$multipliers = ([ "small":0.5, "regular":1.0, "large":2.0 ]);
+
+        \$size = Str(NRefOb(\$what[\$i])."trait:size");
+        if(!\$size \|\| \$size == "") \$size = "regular";
+
+        if(\$multipliers[\$size]) \{
+            \$multiplier = \$multipliers[\$size];
+        \} else \{
+            \$multiplier = 1.0;
+        \}
+
+        \$sellprice += Flt(NRefOb(\$what[\$i])."trait:sellprice") * \$multiplier * allegory::get_quality_modifier(\$quality: Int(NRefOb(\$what[\$i])."trait:quality"));
+    \} else \{
+        \$notbuyable += (\{ \$what[\$i] \});
+    \}
+\}
+
+if(sizeof(\$notbuyable)) \{
+    Act(this, "refuse", \$what: \$notbuyable, \$who: \$actor);
+\}
+
+if(sizeof(\$buyables)) \{
+    \$par = ([ ]);
+    \$par["actor"] = \$actor;
+    \$par["npc"] = \$this;
+    \$par["materials"] = \$buyables;
+
+    \$a = "Sell it (" + Str(allegory::get_cost(\$cost: Flt(\$sellprice)/100.0))+ ")";
+    \$a_ob = \$\{Allegory:Lib:Tradesmen:Smelting\};
+    \$a_fun = "sell_ore";
+    \$par["sellprice"] = \$sellprice;
+
+    \$b = "I need more time to think about it.";
+    \$b_ob = \$\{Allegory:Lib:Tradesmen:Smelting\};
+    \$b_fun = "do_nothing";
+
+    Social(\$this, "proffer", "thoughtfully", "I will buy " + replace_strings(Describe(\$buyables, nil, nil, STYLE_REDUCE_CHUNK), Describe(\$actor) + "'s", "", Describe(\$actor) + "'", "") + " from you for " + Str(allegory::get_cost(\$cost: Flt(\$sellprice)/100.0)) +".", "to", \$actor);
+
+    interaction::question(\$question: "", \$expires: 30, \$expire_ob: \$\{Allegory:Lib:Tradesmen:Smelting\}, \$expire_fun: "do_nothing", \$par: \$par);
+    return FALSE;
+\}
+
+/* Make sure they are all the same */
+/* Make sure we are only offering ore */
+\$control = NRefOb(\$what[0])."trait:material";
+if(NRefOb(\$what[0])."trait:objecttype" != "ore") \{
+    Act(this, "refuse", \$what: \$what, \$who: \$actor);
+    Social(\$this, "tell", "", "Sorry, I only work with raw ore. I also buy gems, rock salt, coal, and chalk mined from the earth.", nil, \$actor);
+    return FALSE;
+\}
+
+\$sellprice = 0.0;
+\$amount = 0.0;
+\$quality = 0.0;
+\$multipliers = ([ "small":0.5, "regular":1.0, "large":2.0 ]);
+for(\$i = 0; \$i \< sizeof(\$what); \$i++) \{
+    if(NRefOb(\$what[\$i])."trait:material" != \$control) \{
+        Act(this, "refuse", \$what: \$what, \$who: \$actor);
+        Social(\$this, "tell", "", "Naw, they all gotta be the same!", nil, \$actor);
+        return FALSE;
+    \} else \{ 
+        \$size = Str(NRefOb(\$what[\$i])."trait:size");
+        if(!\$size \|\| \$size == "") \$size = "regular";
+
+        if(\$multipliers[\$size]) \{
+            \$multiplier = \$multipliers[\$size];
+        \} else \{
+            \$multiplier = 1.0;
+        \}
+
+        /* Calculate quality */ 
+        \$q = Int(NRefOb(\$what[\$i])."trait:quality");
+        if(\$q == 0) \$q = 1;
+        if(\$q \> 12) \$q = 12;
+        \$quality += \$multiplier * Flt(\$q);
+
+        /* Get the sell price while we're at it */
+        \$cost = Int(NRefOb(\$what[\$i])."trait:sellprice");
+        if(!\$cost) \$cost = 40;
+        \$cost = Flt(\$cost) * \$multiplier * Flt(Flt(\$q)/12.0);
+        \$sellprice += \$cost;
+
+        /* Total amount of material */
+        \$amount += \$multiplier;
+    \}
+\}
+
+if(Flt(\$sellprice) \< Flt(0.01)) \$sellprice = 0.01;
+ 
+\$quality = \$quality/\$amount;
+\$oresmeltcost = Int(NRefOb(\$what[0])."trait:smeltcost");
+
+\$par = ([ ]);
+\$par["actor"] = \$actor;
+\$par["npc"] = \$this;
+\$par["materials"] = \$what;
+\$par["quality"] = \$quality;
+
+\$fullbars = Int(floor(\$amount/3.0));
+\$partialbar = format_float(fmod(\$amount, 3.0)*Flt(5.0/3.0), 1);
+if(!Flt(\$partialbar)) \$partialbar = 0.0;
+
+if(\$fullbars \> 0) \{
+    if(Flt(\$partialbar) \> 0.0) \$extra = 1; else \$extra = 0;
+    \$smeltcost = (\$fullbars + \$extra) * \$oresmeltcost;
+
+    \$bardesc = desc_cardinal(\$fullbars) + " full ";
+    \$bardesc += (\$fullbars == 1) ? "bar" : "bars";
+
+    if(Flt(\$partialbar) \> Flt(0)) \{
+        \$bardesc += " and a partial bar of about " + Str(\$partialbar) + " grams";
+    \}
+
+    \$bardesc += " for " + Str(allegory::get_cost(\$cost: Flt(\$smeltcost)/100.0));
+\} else \{
+    \$smeltcost = \$oresmeltcost;
+
+    \$bardesc = "a partial bar of about " + Str(\$partialbar) + " grams for " + Str(allegory::get_cost(\$cost: Flt(\$smeltcost)/100.0));
+\}
+
+\$a = "Smelt into bars (" + Str(allegory::get_cost(\$cost: Flt(\$smeltcost)/100.0)) + ")";
+\$a_ob = \$\{Allegory:Lib:Tradesmen:Smelting\};
+\$a_fun = "smelt_ore";
+\$par["a_product"] = (\{ \$fullbars, \$partialbar \});
+\$par["a_smeltcost"] = \$smeltcost;
+
+\$fullrods = Int(floor(\$amount/10.0));
+\$partialrod = format_float(fmod(\$amount, 10.0), 1);
+if(!Flt(\$partialrod)) \$partialrod = 0.0;
+
+if(Int(\$fullrods) \> 0) \{
+    if(Flt(\$partialrod) \> 0.0) \$extra = 1; else \$extra = 0;
+    \$smeltcost = (\$fullrods + \$extra) * Int(Flt(\$oresmeltcost)*1.5);
+
+    \$roddesc = desc_cardinal(\$fullrods) + " full ";
+    \$roddesc += (\$fullrods == 1) ? "rod" : "rods";
+
+    if(Flt(\$partialrod) \> Flt(0)) \{
+        \$roddesc += " and a partial rod of about " + Str(\$partialrod) + " feet";
+    \}
+
+    \$roddesc += " for " + Str(allegory::get_cost(\$cost: Flt(\$smeltcost)/100.0));
+\} else \{
+    \$smeltcost = Int(Flt(\$oresmeltcost)*1.5);
+
+    \$roddesc = "a partial rod of about " + Str(\$partialrod) + " feet for " + Str(allegory::get_cost(\$cost: Flt(\$smeltcost)/100.0));
+\}
+
+\$b = "Smelt into rods (" + Str(allegory::get_cost(\$cost: Flt(\$smeltcost)/100.0)) + ")";
+\$b_ob = \$\{Allegory:Lib:Tradesmen:Smelting\};
+\$b_fun = "smelt_ore";
+\$par["b_product"] = (\{ \$fullrods, \$partialrod \});
+\$par["b_smeltcost"] = \$smeltcost;
+
+\$c = "Sell it (" + Str(allegory::get_cost(\$cost: Flt(\$sellprice)/100.0))+ ")";
+\$c_ob = \$\{Allegory:Lib:Tradesmen:Smelting\};
+\$c_fun = "sell_ore";
+\$par["sellprice"] = \$sellprice;
+
+\$d = "I need more time to think about it.";
+\$d_ob = \$\{Allegory:Lib:Tradesmen:Smelting\};
+\$d_fun = "do_nothing";
+
+Social(\$this, "proffer", "thoughtfully", "I can smelt this into " + Str(\$bardesc) + ". Or I can smelt this into " + Str(\$roddesc) + ". I can also buy these from you for " + Str(allegory::get_cost(\$cost: Flt(\$sellprice)/100.0)) +".", "to", \$actor);
+
+interaction::question(\$question: "", \$expires: 30, \$expire_ob: \$\{Allegory:Lib:Tradesmen:Smelting\}, \$expire_fun: "do_nothing", \$par: \$par);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1589142726, "jominey", "E", 1589144853, "jominey", "E", 1589144876, "jominey", "E", 1589144971, "jominey", "E", 1589145181, "jominey", "E", 1589145309, "jominey", "E", 1589145915, "jominey", "E", 1589145985, "jominey", "E", 1589145995, "jominey", "E", 1589148383, "jominey", "E", 1589148417, "jominey", "E", 1597080708, "jominey", "P", 1597080786, "jominey", "P", 1597080835, "jominey", "P", 1597080873, "jominey", "P", 1597080970, "jominey", "P", 1597081293, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

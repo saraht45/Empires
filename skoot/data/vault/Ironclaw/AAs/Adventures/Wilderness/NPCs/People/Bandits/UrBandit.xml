@@ -1,0 +1,486 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:AAs:Adventures:Wilderness:NPCs:People:UrNPC-Person)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="false" on="true" inside="false" near="true" over="false" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:combat:armor:rating">
+         2
+      </Core:Property>
+      <Core:Property property="export:combat:dagger">
+         10
+      </Core:Property>
+      <Core:Property property="export:combat:extra:options">
+         (\{ (\{ "bribe", \<Ironclaw:Lib:Combat:Cards:Libraries:Attacks\> \}) \})
+      </Core:Property>
+      <Core:Property property="export:combat:fightable">
+         1
+      </Core:Property>
+      <Core:Property property="export:combat:unarmed">
+         12
+      </Core:Property>
+      <Core:Property property="export:nip:group">
+         "forest-only"
+      </Core:Property>
+      <Core:Property property="export:trait:body">10</Core:Property>
+      <Core:Property property="export:trait:brief">
+         "bandit"
+      </Core:Property>
+      <Core:Property property="export:trait:type">
+         "bandit"
+      </Core:Property>
+      <Core:Property property="merry:lib:fight_outcome_accept_bribe">
+         X[M] /* Successfully bribe the bandit. */
+
+/* Show the emit */
+Social(\$this, "smirk", "satisfiedly", "That's more like it!");
+
+/* Make note of the PC's actions */
+/* Unfriendly means the PC will continue to be targetted by bandits */
+\$target."tmp:combat:bandit:unfriendly" = Int(\$target."tmp:combat:bandit:unfriendly")+1; 
+
+/* Transfer the money */
+\$bribe = Int(\$target.combat["status"]["bribing"]) * 100;
+\$target."trait:money" -= \$bribe;
+\$this."trait:money" += \$bribe;
+
+/* Remove PC from fight */
+\$this.combat["target"] = Call(\$\{Ironclaw:Lib:Combat:Cards:Combat\}, "remove_from_combat", \$fighter: \$target);
+if(!\$this."combat:bribed_by") \$this."combat:bribed_by" = ([ ]);
+if(\$this."combat:bribed_by"[\$target]) \{
+  \$this."combat:bribed_by"[\$target] = time();
+\} else \{
+  \$this."combat:bribed_by" += ([ \$target:time() ]);
+\}
+
+if(\$this.combat["target"]) \{
+    return Call(\$\{Ironclaw:Lib:Combat:Cards:Combat\}, "end_turn", \$char: \$this);
+\}
+
+/* Remove any properties that were set by this fight */
+\$this."status:hurt" = nil; 
+\$this."savedprop:status:hurt" = nil; 
+\$this."status:afraid" = nil; 
+\$this."savedprop:status:afraid" = nil; 
+\$this."status:recently_afraid" = nil; 
+\$this."savedprop:status:recently_afraid" = nil; 
+\$this."status:injured" = nil; 
+\$this."savedprop:status:injured" = nil;
+
+Call(\$this, "breakcombat");
+Set(\$this, "nip:trait:movement:frequency", 10);
+Call(\$this, "heartbeat");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fight_outcome_capture">
+         X[M] /* Kill the bandit. */
+
+if(!\$par["char"]) return TRUE; 
+
+\$fighter = \$par["char"];
+ 
+EmitTo(\$fighter, "You knock " + Describe(this) + " unconscious."); 
+EmitIn(this."base:environment", Describe(\$fighter) + " knocks " + Describe(\$this) + " unconscious.", \$fighter); 
+ 
+\$this."status:hurt" = nil; 
+\$this."savedprop:status:hurt" = nil; 
+\$this."status:afraid" = nil; 
+\$this."savedprop:status:afraid" = nil; 
+\$this."status:recently_afraid" = nil; 
+\$this."savedprop:status:recently_afraid" = nil; 
+\$this."status:injured" = nil; 
+\$this."savedprop:status:injured" = nil; 
+\$this."trait:state" = "unconscious";
+
+/* Unfriendly means this pc will continue to be targetted by bandits */
+\$par["char"]."tmp:combat:bandit:unfriendly" = Int(\$par["char"]."tmp:combat:bandit:unfriendly")+1; 
+
+if(\$this."trait:money") \{
+    \$loot = Int(\$this."trait:money");
+    EmitTo(\$fighter, TAG("You find " + Str(\$loot/100) + " denarii on " + Describe(\$this) + ".", "social:first"));
+    \$fighter."trait:money" += \$loot;
+\}
+
+\$delay(60*5, FALSE, "8be6");
+
+\$this."trait:state" = nil;
+
+Social(\$this, "groan", "disorientedly");
+
+\$delay(3, FALSE, "ebec");
+
+EmitIn(\$this."base:environment", TAG(Describe(\$this) + " quickly disappears into the foliage.", "social:third"));
+
+Slay(\$this);
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fight_outcome_friendly">
+         X[M] /* Release the bandit and increase overall rep with bandits */
+
+if(!\$par["char"]) return TRUE; 
+
+\$fighter = \$par["char"];
+ 
+EmitTo(\$par["char"], "You release " + Describe(\$this) + ", with a nod of approval."); 
+EmitIn(\$this."base:environment", Describe(\$fighter) + " releases " + Describe(\$this) + ", with a nod of approval.", \$fighter); 
+ 
+\$this."status:hurt" = nil; 
+\$this."savedprop:status:hurt" = nil; 
+\$this."status:afraid" = nil; 
+\$this."savedprop:status:afraid" = nil; 
+\$this."status:recently_afraid" = nil; 
+\$this."savedprop:status:recently_afraid" = nil; 
+\$this."status:injured" = nil; 
+\$this."savedprop:status:injured" = nil; 
+ 
+\$fighter."tmp:combat:bandit:friendly" = Int(\$fighter."tmp:combat:bandit:friendly") + 1; 
+
+\$delay(2, FALSE, "48d1");
+
+if(\$this."trait:money") \{
+    \$loot = Int(\$this."trait:money");
+    EmitTo(\$fighter, TAG(Describe(\$this) + " grins wearily at you, handing over " + Str(\$loot/100) + " denarii before disappearing into the foliage.", "social:first"));
+    EmitIn(\$this."base:environment", TAG(Describe(\$this) + " grins wearily at " + Describe(\$fighter."base:environment") + " before disappearing into the foliage.", "social:third"), \$fighter);
+    \$fighter."trait:money" += \$loot;
+\} else \{
+    EmitTo(\$fighter, TAG(Describe(\$this) + " grins wearily at you before disappearing into the foliage.", "social:first"));
+    EmitIn(\$this."base:environment", TAG(Describe(\$this) + " grins wearily at " + Describe(\$fighter."base:environment") + " before disappearing into the foliage.", "social:third"), \$fighter);
+\}
+
+Slay(\$this);
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fight_outcome_kill">
+         X[M] /* Kill the bandit. */
+
+if(!\$par["char"]) return TRUE; 
+
+\$fighter = \$par["char"];
+ 
+EmitTo(\$fighter, "You kill " + Describe(this) + "."); 
+EmitIn(this."base:environment", Describe(\$fighter) + " kills " + Describe(\$this) + ".", \$fighter); 
+ 
+\$this."status:hurt" = nil; 
+\$this."savedprop:status:hurt" = nil; 
+\$this."status:afraid" = nil; 
+\$this."savedprop:status:afraid" = nil; 
+\$this."status:recently_afraid" = nil; 
+\$this."savedprop:status:recently_afraid" = nil; 
+\$this."status:injured" = nil; 
+\$this."savedprop:status:injured" = nil; 
+\$this."trait:state" = "dead";
+
+\$par["char"]."tmp:combat:bandit:unfriendly" = Int(\$par["char"]."tmp:combat:bandit:unfriendly")+1; 
+
+if(\$this."trait:money") \{
+    \$loot = Int(\$this."trait:money");
+    EmitTo(\$fighter, TAG("You find " + Str(\$loot/100) + " denarii on " + Describe(\$this) + ".", "social:first"));
+    \$fighter."trait:money" += \$loot;
+\}
+
+\$delay(60*5, FALSE, "d3ee");
+
+EmitIn(\$this."base:environment", Describe(\$this) + " really starts to rot");
+
+Slay(\$this);
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:fight_outcome_neutral">
+         X[M] /* Let the bandit go. No rep gain. */
+
+if(!\$par["char"]) return TRUE; 
+
+\$fighter = \$par["char"];
+
+EmitTo(\$fighter, "You dismissively turn away from " + Describe(\$this) + "."); 
+EmitIn(\$this."base:environment", Describe(\$fighter) + " dismissively turns away from " + Describe(\$this) + ".", \$fighter);
+
+\$this."status:hurt" = nil; 
+\$this."savedprop:status:hurt" = nil; 
+\$this."status:afraid" = nil; 
+\$this."savedprop:status:afraid" = nil; 
+\$this."status:recently_afraid" = nil; 
+\$this."savedprop:status:recently_afraid" = nil; 
+\$this."status:injured" = nil; 
+\$this."savedprop:status:injured" = nil; 
+ 
+\$fighter."tmp:combat:bandit:neutral" = Int(\$fighter."tmp:combat:bandit:neutral") + 1; 
+
+\$delay(2, FALSE, "d3ee");
+
+EmitIn(\$this."base:environment", Describe(\$this) + " flees, disappearing into the foliage.");
+
+Slay(\$this);
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_target">
+         X[M] /* When the NPC is looking for a target */
+int i;
+
+/* In this example, we want to target PCs */
+\$options = Match(this."base:environment", "pc");
+\$preferred_options = (\{ \});
+
+/* We need to convert the NRef's from the PC list into objects */
+for(i=0; i\<sizeof(\$options); i++)
+  \$options[i] = NRefOb(\$options[i]);
+
+/* We prefer to target PCs that are already attacking us */
+for(i=0; i\<sizeof(\$options); i++) \{
+  if(\$options[i]."udat:object" \&\& \$options[i].combat \&\& \$options[i].combat["target"] == this) \$preferred_options += (\{ \$options[i] \});
+\}
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];
+
+/* Next prefer to target PCs that are already in combat with us */
+for(i=0; i\<sizeof(\$options); i++) \{
+  if(\$options[i]."udat:object" \&\& \$options[i].combat) \$preferred_options += (\{ \$options[i] \});
+\}
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];
+
+/* Next prefer to target PCs that aren't dying or dead or injured */
+for(i=0; i\<sizeof(\$options); i++) \{
+  if(\$options[i]."udat:object" \&\& !\$options[i]."status:injured" \&\& !\$options[i]."status:dying" \&\& !\$options[i]."status:dead") \$preferred_options += (\{ \$options[i] \});
+\}
+if(sizeof(\$preferred_options)) return \$preferred_options[random(sizeof(\$preferred_options))];
+
+/* Remove any PCs that have bribed this bandit */
+if(\$this."combat:bribed_by" \&\& map_sizeof(\$this."combat:bribed_by")) \{
+  \$bribed_by = map_indices(\$this."combat:bribed_by");
+  \$options -= \$bribed_by;
+\}
+
+/* Remove PCs that are friendly with bandits */
+\$friendly = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$options); \$i++) \{
+    if(Int(\$options[\$i]."tmp:combat:bandit:friendly") \> Int(\$options[\$i]."tmp:combat:bandit:unfriendly")) \{
+        \$friendly += (\{ \$options[\$i] \});
+    \}
+\}
+\$options -= \$friendly;
+/* Remove any PCs that were beat within the last 6 hours */
+if(\$this."combat:defeated" \&\& map_sizeof(\$this."combat:defeated")) \{
+  \$defeated = map_indices(\$this."combat:defeated");
+  for(i = 0; i \< sizeof(\$defeated); i++) \{
+      \$now = time();
+      \$then = \$this."combat:defeated"[\$defeated[i]];
+      if(Int(\$now - \$then) \<= (60*60*6)) \{
+          \$options -= (\{ \$defeated[i] \});
+      \}
+  \}
+\}
+
+if(sizeof(\$options)) return \$options[random(sizeof(\$options))];
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_combat_damage">
+         X[M] if(\$damage \>= 4) \{ 
+  ccombat::remove_from_combat(\$fighter: \$target); 
+  \$delay(0.5, TRUE, "30de"); 
+  \$target."tmp:combat:bandit:defeated" = Int(\$target."tmp:combat:bandit:defeated")+1; 
+  Social(\$char, "nod", "tiredly", "I'll be takin' yer coin now.", "at", \$target);
+  Set(\$char, "base:proximity", NewNRef(\$target, "default"));
+  Social(\$char, "pickpocket", nil, nil, nil, \$target);
+  \$delay(1, FALSE, "036c");
+  EmitTo(\$target, TAG(Describe(\$char) + " rummages through your things, taking whatever coin is visible.", "social:first"));
+  EmitIn(\$target."base:environment", TAG(Describe(\$char) + " rummages through " + Describe(\$target) + "'s things, taking whatever coin is visible.", "social:third"));
+
+  if(!\$this, "combat:defeated") \$this."combat:defeated" = ([ ]);
+  if(\$this."combat:defeated"[\$target]) \{
+      \$this."combat:defeated"[\$target] = time();
+  \} else \{
+    \$this."combat:defeated" += ([ \$target:time() ]);
+  \}
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_combat_actions">
+         X[M] /* When the NPC is given a turn in combat, this is the script where they decide what to do */ 
+int i; 
+ 
+/* \$az = \$\{Chatters:IC:az:azrael\}; 
+EmitTo(\$az, "Taking an action"); */ 
+
+/* Is the enemy being offered a bribe? If so, take it. */
+if(\$char.combat \&\& \$char.combat["target"]) \{
+  \$target = \$char.combat["target"];
+  if(\$target.combat["status"]["bribing"]) \{
+    return Call(\$char, "fight_outcome_accept_bribe");
+  \}
+\}
+ 
+switch(random(3)) \{ 
+  case 2: 
+    Social(this, oneof("hiss", "growl"), oneof("warningly", "angrily", "threateningly")); break; 
+  case 1: 
+    Social(this, oneof("dart", "dash", "dive"), oneof("right", "left", "back-and-forth")); break; 
+  default: 
+    Social(this, oneof("growl", "demand", "announce"), oneof("calmly", "dangerously", "matter-of-factly"), oneof("Drop your coin and nobody gets hurt.", "Empty your pockets. Now!", "Gimme yer money and it'll all end", "I'll gut you!")); 
+\} 
+\$delay(2, TRUE, "52ac"); 
+ 
+\$actions = copy(this.combat["options"]); 
+\$actions -= (\{ nil \}); 
+ 
+/* Do we need a new target? */ 
+if(!this.combat["target"]) 
+  this.combat["target"] = ::find_target(); 
+ 
+if(!this.combat["target"]) \{ 
+  /* We couldn't find a target. Remove ourselves from the fight. */ 
+  ccombat::remove_from_combat(\$fighter: this); 
+  ccombat::end_turn(\$char: this); 
+  return TRUE; 
+\} 
+ 
+if(!this.combat["target"].combat) \{ 
+  ccombat::start_fight(\$attacker: this, \$target: this.combat["target"]); 
+  \$delay(0.1, TRUE, "64a5"); 
+\} 
+ 
+\$turn_id = random(1000000000); 
+\$params = ([ "char":this, "taking_action":TRUE, "turn_id":\$turn_id ]); 
+ 
+ 
+/* Can we attack? */ 
+for(i=0;i\<sizeof(\$actions);i++) \{ 
+  if(\$actions[i][0] == "attack") \{ 
+    if( Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE) ) \{ 
+      return Call(\$actions[i][1], \$actions[i][0], \$par: \$params); 
+    \} 
+  \} 
+\} 
+ 
+/* Couldn't attack. Can we do another action? */ 
+for(i=0;i\<sizeof(\$actions);i++) \{ 
+  if(\$actions[i][0] == "aim" \|\| \$actions[i][0] == "guard") \{ 
+    if( Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE) ) \{ 
+ 
+      if(\$actions[i][0] == "aim") \{ 
+        EmitIn(this."base:environment", Describe(this)+" attempts to "+oneof("focus on "+Describe(this.combat["target"]), "line up an attack")+"."); 
+      \} else if(\$actions[i][0] == "guard") \{ 
+        EmitIn(this."base:environment", Describe(this)+" shifts side to side, attempting to read the attack."); 
+      \} 
+ 
+      return Call(\$actions[i][1], \$actions[i][0], \$par: \$params); 
+    \} 
+  \} 
+\} 
+ 
+/* Couldn't do anything. End the turn */ 
+ccombat::end_turn(\$char: this); /* Because we return TRUE above during the delay, the script won't pass for us. So we need to tell it to pass */ 
+return FALSE; /* This means we didn't complete our action, so the script will need to pass for us */
+      </Core:Property>
+      <Core:Property property="merry:lib:take_combat_damage_dying">
+         X[M] /* Script run when the NPC takes enough damage to be dying */ 
+\$char."tmp:combat:bandit:won" = Int(\$char."tmp:combat:bandit:won")+1; 
+ 
+EmitTo(\$char, "With a final strike, you beat down "+Describe(this)+"!"); 
+EmitIn(\$char."base:environment", "With a final strike, "+Describe(\$char)+" beats down "+Describe(this)+"!", \$char); 
+
+ccombat::remove_from_combat(\$fighter: this); 
+
+::die(\$nip: \$this);
+ 
+\$delay(0.5, FALSE, "b561"); 
+
+interaction::question(\$actor: \$char, \$question: "What do you want to do with this bandit??", \$expires: 60, \$env: "FALSE", \$a: "Release him - he fought well.", \$a_ob: this, \$a_fun: "fight_outcome_friendly", \$b: "Release him - he's not worth my time.", \$b_ob: this, \$b_fun: "fight_outcome_friendly", \$c: "Tie him up!", \$c_ob: this, \$c_fun: "fight_outcome_capture", \$d: "Kill him!", \$d_ob: this, \$d_fun: "fight_outcome_kill", \$expire_ob: this, \$expire_fun: "fight_outcome_friendly", \$par: ([ "char":\$char ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:witness-post:enter-from">
+         X[M] if(this.combat) return TRUE;
+if(!\$actor."udat:object") return TRUE; 
+if(this."base:environment" == nil /* defunct */) return TRUE; 
+if(this."tmp:starting_fight") return TRUE; 
+this."tmp:starting_fight" = TRUE; 
+if(this."trait:state" == "dead" \|\| this."trait:state" == "unconscious")return TRUE;
+\$target = ::find_target(); 
+
+if(!\$target) return TRUE;
+ 
+\$delay(3, TRUE, "e14b"); 
+ 
+Social(this, "sneer"); 
+\$delay(3, TRUE, "e954"); 
+ 
+Social(this, "lunge", "aggressively"); 
+\$delay(3, TRUE, "ac64"); 
+ 
+this."tmp:starting_fight" = nil; 
+ 
+if(!\$target \|\| \$target."base:environment" != this."base:environment") return TRUE; 
+Social(this, "demand", nil, "Gimme your coin! All of it!", nil, \$target); 
+ 
+this."tmp:starting_fight" = TRUE; 
+\$delay(3, TRUE, "94df"); 
+this."tmp:starting_fight" = nil; 
+ 
+if(!\$target \|\| \$target."base:environment" != this."base:environment") 
+  return TRUE; 
+ 
+/* Set them up for new combat */ 
+\$target."merry:inherit:act-pre:breakcombat" = \$\{Ironclaw:Lib:Combat:Cards:Combat\}; 
+\$target."merry:inherit:act-pre:fight" = \$\{Ironclaw:Lib:Combat:Cards:Combat\}; 
+\$target."merry:inherit:act-pre:pass" = \$\{Ironclaw:Lib:Combat:Cards:Combat\}; 
+ 
+/* Start the fight */ 
+/* Call(\$\{Ironclaw:Lib:Combat:Cards:Combat\}, "start_fight", \$attacker:this, \$target: \$actor); */ 
+/* Call(\$\{Ironclaw:Lib:Combat:Cards:Combat\}, "start_fight", \$attacker: \$actor, \$target: this); */ 
+ccombat::start_fight(\$attacker: \$target, \$target: this); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1412549317, "jominey", "E", 1412549418, "jominey", "E", 1412549428, "jominey", "E", 1412549681, "jominey", "E", 1412549876, "jominey", "E", 1412550032, "jominey", "E", 1412550063, "jominey", "E", 1412550144, "jominey", "E", 1412550243, "jominey", "E", 1412550328, "jominey", "E", 1439413735, "slurpeeslurp", "E", 1507931117, "jominey", "E", 1507932154, "jominey", "E", 1507932484, "jominey", "E", 1507932552, "jominey", "E", 1507932586, "jominey", "E", 1507932610, "jominey", "E", 1507932723, "jominey", "E", 1507932927, "jominey", "E", 1507933102, "jominey", "E", 1507933191, "jominey", "E", 1507933250, "jominey", "E", 1507933315, "jominey", "E", 1507933392, "jominey", "E", 1507933560, "jominey", "E", 1507934242, "jominey", "E", 1507934244, "jominey", "E", 1508092715, "jominey", "P", 1508092797, "jominey", "P", 1508092842, "jominey", "P", 1508092868, "jominey", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,203 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:inherit:lib:quest_cancel">
+         \<Shared:Systems:Quest:NIP:lib:quest-giver\>
+      </Core:Property>
+      <Core:Property property="merry:lib:tracker">
+         X[M] mapping current;
+mixed* quests, participants;
+object quest, person;
+string name, list, step, status, type, dest, status2, display, help, instructions;
+int i, show, shareable, cancel, share, unshare, j;
+
+if(\$evoke) \{
+    \$evoke = replace_strings(\$evoke, "\\"", "");
+\}
+
+list =  "+---------------------+------------+--------------+---------------------------------+\\n";
+list += "\|     QUEST NAME      \|    STEP    \|    STATUS    \|           DESTINATION           \|\\n";
+list += "+---------------------+------------+--------------+---------------------------------+";
+
+if(\$actor."quest:current") \{
+    current = \$actor."quest:current";
+\} else \{
+    current = ([ ]);
+\}
+
+quests = map_indices(current);
+
+show = 0;
+cancel = 0;
+share = 0;
+unshare = 0;
+
+for(i = 0; show == 0 \&\& cancel == 0 \&\& share == 0 \&\& unshare == 0 \&\& i \< sizeof(quests); i++) \{
+    quest = quests[i];
+    name = quests[i]."quest:name";
+    step = \$actor."quest:current"[quests[i]][0];
+    type = Get(quests[i], "quest:step:" + step)["action"];
+
+    if(Get(quests[i], "quest:step:" + step)["dest"] \&\& Obj(Get(quests[i], "quest:step:" + step)["dest"])) \{
+        dest = Describe(Get(quests[i], "quest:step:" + step)["dest"]);
+    \} else if(Get(\$actor, "quest:" + name + ":dest") \&\& Obj(Get(\$actor, "quest:" + name + ":dest"))) \{
+        dest = Describe(Get(\$actor, "quest:" + name + ":dest"));
+    \} else \{
+        dest = "Error!";
+    \}
+
+    instructions = Str(Get(quests[i], "quest:step:" + step)["short_instructions"]);
+    if(quest."quest:shareable") \{
+        shareable = quest."quest:shareable";
+    \} else \{
+        shareable = 0;
+    \}
+
+    if(FindMerry(\$\{Ironclaw:Quest:QuestExt\}, "lib", "type_" + type + "_status")) \{
+        status = Call(\$\{Ironclaw:Quest:QuestExt\}, "type_" + type + "_status", \$quest: quest, \$actor: \$actor);
+    \} else if(FindMerry(\$\{Shared:Systems:Quest:NIP:lib:quest-giver\}, "lib", "type_" + type + "_status")) \{
+        status = Call(\$\{Shared:Systems:Quest:NIP:lib:quest-giver\}, "type_" + type + "_status", \$quest: quest, \$actor: \$actor);
+    \} else \{
+        status = "Unavailable";
+        status2 = TAG("Unavailable  ", "assist");
+    \}
+
+    if(\$evoke \&\& strlen(\$evoke) \>= 4 \&\& \$evoke[0..3] == "show") \{
+        if(\$evoke \&\& contains(lower_case(\$evoke), lower_case(name))) \{
+            show = 1;
+        \}
+    \}
+
+    if(\$evoke \&\& strlen(\$evoke) \>= 6 \&\& \$evoke[0..5] == "cancel") \{
+        if(\$evoke \&\& contains(lower_case(\$evoke), lower_case(name))) \{
+            cancel = 1;
+        \}
+    \}
+
+    if(\$evoke \&\& strlen(\$evoke) \>= 5 \&\& \$evoke[0..4] == "share") \{
+        if(\$evoke \&\& contains(lower_case(\$evoke), lower_case(name))) \{
+            share = 1;
+        \}
+    \}
+
+    if(\$evoke \&\& strlen(\$evoke) \>= 6 \&\& \$evoke[0..6] == "unshare") \{
+        if(\$evoke \&\& contains(lower_case(\$evoke), lower_case(name))) \{
+            if(quest."quest:participants") \{
+                participants = quest."quest:participants";
+                for(j = 0; j \< sizeof(participants); j++) \{
+                    if(contains(lower_case(\$evoke), lower_case(Describe(participants[i])))) \{
+                        person = participants[j];
+                    \}
+                \}
+                unshare = 1;
+            \} else \{
+                EmitTo(\$actor, "There is no one to unshare that quest with.");
+                return FALSE;
+            \}
+        \}
+    \}
+
+    if(contains(status, "Incomplete")) \{
+        status2 = TAG("Incomplete   ", "imp");
+    \} else if(contains(status, "Complete")) \{
+        status2 = TAG("Complete     ", "assist-alert");
+    \} else \{
+        status2 = TAG("Unavailable  ", "assist");
+    \}
+
+    list += "\\n\| " + UnSAM(ParseXML(replace_strings(UnSAM(this."sam:show_more"), "NAME", name))) + pad_right("", 19-strlen(name)) + " \| " +
+            pad_right(\$actor."quest:current"[quests[i]][0], 11)[0..10] + "\| " +
+            pad_right(status2, 13) + "\| " +
+            pad_right(dest, 32) + "\|  ";
+\}
+
+list += "\\n+---------------------+------------+--------------+---------------------------------+";
+
+if(!\$evoke \|\| \$evoke[0..3] == "list") \{
+    if(!\$actor."quest:current" \|\| !map_sizeof(\$actor."quest:current")) \{
+        EmitTo(\$actor, PRE("You are not on any quests."));
+        return FALSE;
+    \}
+
+    EmitTo(\$actor, Str(PRE(list)));
+    return FALSE;
+\}
+
+if(show == 1) \{
+    if(!\$timeremaining) \{
+        \$timeremaining = "--:--:--";
+    \}
+
+    display = pad_right("QUEST: " + name + " - STEP " + step, 65) + " " + UnSAM(ParseXML(replace_strings(UnSAM(this."sam:cancel"), "NAME", name))) + "\\n" +
+              "--------------------------------------------------------------------------------\\n" +
+              " STEP DETAILS: \\n" +
+              "    Type:        " + pad_right(type, 20) + "Started On:     " + Str(ctime(\$actor."quest:current"[quest][1])[0..19]) + "\\n" +
+              "    Status:      " + pad_right("", 20) + "Time Remaining: " + Str(\$timeremaining) + "\\n" +
+              "" + status + "\\n" +
+              "    Destination: " + pad_right(dest, 20) + "\\n" +
+              "    \\n" +
+              "-----------------------------[  INSTRUCTIONS  ]---------------------------------\\n" +
+              "    " + instructions + "\\n" +
+              "--------------------------------------------------------------------------------\\n";
+              
+    EmitTo(\$actor, Str(PRE(display)));
+    return FALSE;
+\}
+
+if(cancel == 1) \{
+    ::quest_cancel(\$quest: quest, \$actor: \$actor);
+    return FALSE;
+\}
+
+if(share == 1) \{
+    ::share_quest(\$quest: quest, \$actor: \$actor);
+    return FALSE;
+\}
+
+if(unshare == 1) \{
+    ::unshare_quest(\$quest: quest, \$actor: \$actor, \$who: person);
+    return FALSE;
+\}
+
+EmitTo(\$actor, "Show help");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1305774193, "jominey", "E", 1305774281, "jominey", "E", 1305774313, "jominey", "E", 1305774338, "jominey", "E", 1305774359, "jominey", "E", 1305774539, "jominey", "R", 1305774549, "jominey", "E", 1305774646, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="sam:cancel">
+         X[S] \<acmd cmd="@quest \\"cancel NAME"\>[Cancel Quest]\</acmd\>
+      </Core:Property>
+      <Core:Property property="sam:share">
+         X[S] \<acmd cmd="@quest \\"share NAME"\>[Share Quest]\</acmd\>
+      </Core:Property>
+      <Core:Property property="sam:show_more">
+         X[S] \<acmd cmd="@quest \\"show NAME"\>NAME\</acmd\>
+      </Core:Property>
+      <Core:Property property="sys:sync:idpsource">
+         "ironclaw"
+      </Core:Property>
+      <Core:Property property="sys:sync:igdipro">
+         "propose"
+      </Core:Property>
+      <Core:Property property="sys:sync:proposing-revision">
+         1305774646
+      </Core:Property>
+      <Core:Property property="sys:sync:source-server">
+         "ironclaw"
+      </Core:Property>
+      <Core:Property property="sys:sync:woename">
+         "Shared:Systems:Quest:QuestTracker"
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes>
+      <Notes:Category cat="QA" catstate="Open">
+        <Notes:Note ix="1305774549" state="Open" user="jominey">
+           -Create @quest command.
+-Call "tracker" script from merry:global:command.
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Core:PropertyContainer>
+</object>

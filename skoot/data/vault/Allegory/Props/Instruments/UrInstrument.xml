@@ -1,0 +1,164 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="instrument"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="instruments"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="musical"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             musical instrument
+          </Base:Description>
+          <Base:Description type="look">
+             A musical instrument.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:play">
+         X[M] float skill; 
+mixed emit, emit1, emit2; 
+ 
+if(Int(\$actor."skill:academic:music") \>= 24) \{ 
+    if(\$evoke) \{ 
+        if(sizeof(explode(\$evoke, "freemote")) == 2) \{ 
+            emit = explode(\$evoke, "freemote")[1]; 
+            EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + emit, "social:third")); 
+ 
+            return FALSE; 
+        \} 
+    \} 
+\} 
+ 
+/* The player wants to play this instrument */ 
+skill = ceil(Flt(\$actor."skill:academic:music")/4.0); 
+emit = Get(\$this, "descriptions:playing:" + Str(Int(skill))); 
+ 
+/* Choose one of the possible descriptions */ 
+if(!emit) \{ 
+  EmitTo(\$actor, "Error in musical instrument."); 
+  return FALSE; 
+\}  
+ 
+emit = UnSAM(emit); 
+ 
+/* Replace words in the string */ 
+emit1 = replace_strings(emit, 
+  "ACTOR_POSSESSIVE", \$actor."base:possessive", 
+  "ACTOR_OBJECTIVE", \$actor."base:objective", 
+  "ACTOR_PRONOUN", \$actor."base:pronoun", 
+  "ACTOR", Describe(\$actor), 
+  "INSTRUMENT_FULL", Describe(\$this), 
+  "INSTRUMENT", Describe(\$this, \$actor)); 
+   
+emit2 = replace_strings(emit, 
+  "ACTOR_POSSESSIVE", "your", 
+  "ACTOR_OBJECTIVE", "your", 
+  "ACTOR_PRONOUN", "you", 
+  "ACTOR", "you", 
+  "INSTRUMENT_FULL", Describe(\$this, \$actor, \$actor), 
+  "INSTRUMENT", Describe(\$this, nil, nil, STYLE_NONPOSS)); 
+   
+emit2 = replace_strings(emit2, "you's", "your"); 
+ 
+EmitTo(\$actor, TAG(capitalize(emit2), "social:first")); 
+EmitIn(\$actor."base:environment", TAG(emit1, "social:third"), \$actor); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:play-dob">
+         X[M] return Call(\$this, "play");
+      </Core:Property>
+      <Core:Property property="merry:react-pre:paint-iob">
+         X[M] if((sizeof(Match(\$actor, "paint")) == 0) \&\& (sizeof(Match(\$actor, "paintbrush")) == 0)) \{                        
+  EmitTo(\$actor, "You need a paintbrush and some paint.");                        
+  return FALSE;                        
+\} else if(sizeof(Match(\$actor, "paintbrush")) == 0) \{                        
+  EmitTo(\$actor, "You need a paintbrush.");                        
+  return FALSE;                        
+\} else if(sizeof(Match(\$actor, "paint")) == 0) \{                        
+  EmitTo(\$actor, "You need some paint.");                        
+  return FALSE;                        
+\}       
+  
+if(\$this."base:environment" != \$actor) \{  
+  EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + " to paint on it.");  
+  return FALSE;  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:paint-iob">
+         X[M] if(\$dob \&\& NRefOb(\$dob[0])) \{  
+    Call(\$\{Allegory:Lib:Crafting:Custom:Painting\}, "paint", \$item: \$this, \$brief: Describe(\$dob[0]));  
+    return TRUE;  
+\} else \{  
+    Popup(\$actor, \$\{Allegory:Lib:Crafting:Custom:Painting\}, "html:index", \$actor: \$actor, \$action: "paint", \$item: Str(\$this), \$using: Str(NRefOb(\$using[0])));  
+\}
+      </Core:Property>
+      <Core:Property property="merry:react:play-dob">
+         X[M] Call(\$this, "play"); 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Allegory:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:condition">
+         X[M] return Call(\$\{Allegory:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Allegory:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:wood:material">
+         X[M] return Call(\$\{Allegory:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1597545807, "jominey", "E", 1597546144, "jominey", "E", 1597546203, "jominey", "E", 1597546272, "jominey", "E", 1604283898, "jominey", "E", 1642034645, "sendnoodlez", "X" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

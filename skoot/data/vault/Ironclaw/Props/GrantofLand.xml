@@ -1,0 +1,177 @@
+<object clone="/base/obj/thing" owner="lidiab">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.001" density="0.01"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="grant"/>
+            <Base:SName sname="deed"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="grants"/>
+            <Base:PName pname="deeds"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="land"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             grant of land
+          </Base:Description>
+          <Base:Description type="look">
+             This is a land grant, {? | $(this.trait:granteename) | certifying  that the grantee, $(this.trait:granteename), herein named} {? | $(this.trait:grantorhouse) | has been rewarded with a gift of land, or privileges from the great nation of the $(this.trait:grantorhouse), | which can be filled and signed, certifying that a gift of land or privileges has been given by an authority of a great nation as reward for faithful service to their chosen factor, typically given with the earning of rank.}  {? | $(this.trait:grantorname) |approved by $(this.trait:grantorname). The bottom, right hand corner of this document bears an official, beribboned seal, indicating that this grant has been approved by the Arch Duke of $(this.trait:grantorhouse).| This grant has not yet been approved, making it worthless.}<br/>[OOC: Grantee my grant NAME of person being granted land. <br/>[OOC: ‘House my grant + House name’ -  to add where this deed is being granted from] <br/>[OOC: Sign to add your approval]
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:trash">1</Core:Property>
+      <Core:Property property="export:writable">1</Core:Property>
+      <Core:Property property="merry:react-post:offer-what">
+         X[M] \$target = \$who[0];
+
+/* are we redeeming this note for money */
+
+if(!\$target.banker) \{
+  /* Target is not a banker, continue normally */
+  return TRUE;
+\}
+
+/* Check if the account is still open */
+if(!\$this."trait:debtor") \{
+  Social( \$target, "tell", nil, "I'm really sorry to tell you, this account is no longer open.", nil, (\{ \$actor \}) );
+  return TRUE;
+\}
+
+/* Check there is money in this account */
+if(!\$this."trait:debtor"."trait:money" \|\| (\$this."trait:debtor"."trait:money" \<= 0) ) \{
+  Social( \$target, "tell", nil, "Hmm, this account is in the red. You'll have to wait for more money to be deposited before I can honor this note.", nil, (\{ \$actor \}) );
+  return TRUE;
+\}
+
+if(\$this."trait:debtor"."trait:money" \< \$this."trait:value") \{
+  Social( \$target, "tell", nil, "That account doesn't have enough credit to fully pay for the note. I'll give you what it has.", nil, (\{ \$actor \}) );
+  EmitTo(\$actor, Describe(\$target)+" adjusts "+Describe(\$this, nil, \$actor)+".");
+  EmitIn(\$actor."base:environment", Describe(\$target)+" adjusts "+Describe(\$this)+".", \$actor);
+
+  /* set the new value of the note */
+  \$this."trait:value" -= \$this."trait:debtor"."trait:money";
+
+  /* set how much money to give to the note holder */
+  \$amount = \$this."trait:debtor"."trait:money";
+  \$this."trait:debtor"."trait:money" = 0;
+  if(Int(\$this."trait:value") == 100) \{
+    \$this."trait:valuename" = "one denar";
+  \} else \{
+    \$this."trait:valuename" = desc_cardinal(Int(\$this."trait:value"/100))+" denarii";
+  \}
+\} else \{
+  EmitTo(\$actor, Describe(\$target)+" collects "+Describe(\$this, nil, \$actor)+".");
+  EmitIn(\$actor."base:environment", Describe(\$target)+" collects "+Describe(\$this)+".", \$actor);
+
+  /* set how much money to give to the note holder */
+  \$this."trait:debtor"."trait:money" -= \$this."trait:value";
+  \$amount = \$this."trait:value";
+
+  /* note paid off, slay it */
+  Slay(\$this);
+\}
+Social( \$target, "inform", nil, "I've transferred "+ironclaw::describe_money(\$amount: \$amount)+" to your account.", nil, (\{ \$actor \}) );
+
+\$actor."trait:money" = Int(\$actor."trait:money")+\$amount;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:grantee-what">
+         X[M] if(\$this."base:environment" != \$actor) \{
+  EmitTo(\$actor, "You must be holding "+Describe(\$this, nil, \$actor)+" to fill it out.");
+  return FALSE;
+\}
+
+if(\$this."trait:value") \{
+  EmitTo(\$actor, Describe(\$this, nil, \$actor)+" has already been filled out for "+\$this."trait:granteename"+".");
+  return FALSE;
+\}
+
+/* get the amount to fill this out for */
+\$amount = \$evoke[1..strlen(\$evoke)-2];
+if(sscanf(\$amount, "%d", \$amount)) \{
+  \$amount = Int(\$amount)*100;
+  \$this."trait:granteename" = \$granteename;
+  if(\$amount \< 100) \{
+    EmitTo(\$actor, "What are you playing at? Write in a name!");
+    return FALSE;
+  \}
+  \$this."trait:granteename" = \$granteename;
+  EmitTo(\$actor, "You fill out "+Describe(\$this, nil, \$actor)+" for "+\$granteename+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" fills out "+Describe(\$this, \$actor)+".", \$actor);
+\} else \{
+  EmitTo(\$actor, "That is not valid input. Try something like: grantee my grant 'Cosmo - if you wanted to fill out the grant to reward lands to Cosmo.");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:sign-what">
+         X[M] if(\$this."base:environment" != \$actor) \{
+  EmitTo(\$actor, "You must be holding "+Describe(\$this, nil, \$actor)+" to sign it.");
+  return FALSE;
+\}
+
+if(\$this."trait:debtorname") \{
+  EmitTo(\$actor, Describe(\$this, nil, \$actor)+" has already been signed.");
+  return FALSE;
+\}
+
+\$this."trait:grantorname" = Describe(\$actor);
+\$this."trait:grantorname" = \$actor;
+
+/* add adjectives for the signer */
+Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: \$this, \$(hook-oldvalue): nil, \$(hook-property): Describe(\$actor));
+
+EmitTo(\$actor, "You sign "+Describe(\$this, nil, \$actor)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" signs "+Describe(\$this)+".", \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1107209474, "zwoc", "E", 1141211195, "tonyd", "E", 1141211213, "tonyd", "E", 1141211224, "tonyd", "E", 1141211252, "tonyd", "E", 1141211336, "tonyd", "E", 1141212468, "tonyd", "E", 1141212647, "tonyd", "E", 1141213357, "tonyd", "P", 1141213417, "tonyd", "P", 1141213500, "tonyd", "P", 1141213600, "tonyd", "P", 1141215893, "tonyd", "P", 1141215995, "tonyd", "E", 1141216234, "tonyd", "P", 1141217018, "tonyd", "P", 1141217051, "tonyd", "P", 1141217397, "tonyd", "P", 1141217600, "tonyd", "P", 1141217886, "tonyd", "P", 1141217907, "tonyd", "P", 1141218560, "tonyd", "P", 1141219018, "tonyd", "P", 1141219134, "tonyd", "P", 1141219296, "tonyd", "P", 1141219518, "tonyd", "P", 1141219784, "tonyd", "E", 1141219993, "tonyd", "P", 1141220019, "tonyd", "P", 1141220203, "tonyd", "P", 1141220593, "tonyd", "P", 1141220760, "tonyd", "P", 1141220837, "tonyd", "P", 1141220898, "tonyd", "P", 1141220943, "tonyd", "P", 1141221042, "tonyd", "P", 1141221110, "tonyd", "P", 1141221256, "tonyd", "P", 1141221323, "tonyd", "P", 1141253853, "tonyd", "P", 1141423941, "tunk_bodin", "X", 1141424855, "lunamoon", "E", 1141424941, "lunamoon", "E", 1141435587, "tonyd", "P", 1172083176, "tunk_bodin", "E", 1186140169, "tonyd", "P", 1190930644, "rorschakovacs", "E", 1203347211, "slurpeeslurp", "E", 1203347231, "slurpeeslurp", "E", 1203347315, "slurpeeslurp", "E", 1203347352, "slurpeeslurp", "E", 1214610690, "necate", "E", 1214610708, "necate", "E", 1237847414, "morwenlorelie", "R", 1238209937, "morwenlorelie", "E", 1360656686, "tonyd", "E", 1360906661, "tonyd", "E", 1360909592, "tonyd", "P", 1360909628, "tonyd", "P", 1360909817, "tonyd", "P", 1360909875, "tonyd", "P", 1360909955, "tonyd", "P", 1360910007, "tonyd", "P", 1360910070, "tonyd", "P", 1360910090, "tonyd", "P", 1360910111, "tonyd", "P", 1360910132, "tonyd", "P", 1360910151, "tonyd", "P", 1379230379, "tonyd", "E", 1535749332, "lidiab", "K", 1535749688, "lidiab", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

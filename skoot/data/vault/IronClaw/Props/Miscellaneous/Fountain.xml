@@ -1,0 +1,151 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(IronClaw:Props:Stonemason:UrStonemasonContainer)"/>
+    <Base:Bulk immobile="false" mass="0.5" density="2.5"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1" verb2="contain" verb3="contains"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="false" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="fountain"/>
+            <Base:SName sname="statue"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="fountains"/>
+            <Base:PName pname="statues"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions/>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="water" prime="false" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="false" before="true" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="water"/>
+            <Base:SName sname="liquid"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="waters"/>
+            <Base:PName pname="liquids"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             the water in the fountain
+          </Base:Description>
+          <Base:Description type="look">
+             Water trickles from the uppermost layer of the fountain down into the basin.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "fountain"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "Water trickles from its uppermost layer down into the basin."
+      </Core:Property>
+      <Core:Property property="merry:react-pre:refill-iob">
+         X[M] /* D=Refill first appropriate container in actor's inventory from this vessel. */       
+constant THE = STYLE_DEFINITE \| STYLE_NONPOSS;       
+object liquid, container, refiller, holder;       
+int    potential;       
+
+\$water = \$\{Allegory:Props:Drinks:NonAlcoholic:Liquids:Water\};
+
+if(NRefDetail(\$iob[0]) != "water") \{
+    EmitTo(\$actor, "You can not refill anything from " + Describe(\$iob[0]) + ".");
+    return FALSE;
+\}
+
+if(!\$dob \|\| !sizeof(\$dob)) \{
+    EmitTo(\$actor, "What did you want to refill?");
+    return FALSE;
+\}
+
+if(sizeof(\$dob) \> 1) \{
+    EmitTo(\$actor, "You can only refill one thing at a time.");
+    return FALSE;
+\}
+
+\$cup = NRefOb(\$dob[0]);
+
+if(sizeof(\$cup."base:inventory")) \{
+    if(\$cup."base:inventory"[0]."base:urparent" != \$\{Allegory:Props:Drinks:NonAlcoholic:Liquids:Water\}) \{
+        EmitTo(\$actor, "You must empty " + Describe(\$cup, nil, nil, STYLE_NONPOSS) + " before filling it with water.");
+        return FALSE;
+    \} else \{
+        \$filledwater = \$cup."base:inventory"[0];
+    \}
+\}
+     
+
+if(!\$cup."sys:shared:consumable:vessel") \{
+    EmitTo(\$actor, Describe(\$cup, nil, nil, STYLE_NONPOSS) + " is not a vessel that will hold water.");
+    return FALSE;
+\}    
+
+\$brim = \$water."base:actualdensity" * \$cup."base:intrinsiccapacity" * 1000.0;
+\$brim -= 0.0001;
+
+if(!\$filledwater) \{
+    \$filledwater = Spawn(\$water);
+    \$filledwater."base:environment" = \$cup;
+\}
+\$quantity = 1.0;
+\$filledwater."base:intrinsicmass" = \$brim * \$quantity;
+
+shared_consumable::consumable_set(\$what: \$filledwater);
+         
+EmitTo(\$actor, "You collect some water in " + Describe(\$cup, nil, nil, STYLE_NONPOSS) + ".");   
+    
+EmitIn(\$actor."base:environment", Describe(\$actor) + " collects some water in " + Describe(\$cup, nil, nil, STYLE_NONPOSS) + ".", \$actor);  
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1539820630, "jominey", "E", 1539820636, "jominey", "K", 1539820642, "jominey", "E", 1539820643, "jominey", "E", 1539820645, "jominey", "E", 1539820663, "jominey", "E", 1539820678, "jominey", "E", 1539820690, "jominey", "E", 1539820705, "jominey", "E", 1648177385, "ezralee", "K", 1648177408, "ezralee", "E", 1648177440, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

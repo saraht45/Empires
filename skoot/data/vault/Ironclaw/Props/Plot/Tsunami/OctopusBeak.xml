@@ -1,0 +1,285 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="beak"/>
+            <Base:SName sname="chitin"/>
+            <Base:SName sname="piece"/>
+            <Base:SName sname="fragment"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="beaks"/>
+            <Base:PName pname="pieces"/>
+            <Base:PName pname="fragments"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="chitin"/>
+          <Base:Adjective adjective="none"/>
+          <Base:Adjective adjective="octopus"/>
+          <Base:Adjective adjective="shattered"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:shape) piece of a shattered octopus beak
+          </Base:Description>
+          <Base:Description type="examine">
+             A $(this.trait:shape) piece of octopus beak has broken off. The broken piece of chitin is exceptionally strong. It might be possible to <acmd tag="command" cmd="transform my octopus beak">transform</acmd> it into something useful.
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.trait:shape) fragment of great octopus beak.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:merry:act:start">
+         X[M] \$shapes = Get(\$this, "trait:shapes");          
+\$sz_s = sizeof(\$shapes);          
+\$ran = random(\$sz_s);          
+\$shape = \$shapes[\$ran];          
+Set(\$this, "trait:shape", \$shape);          
+return TRUE;
+      </Core:Property>
+      <Core:Property property="export:merry:setprop-post:trait:shape">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="export:trait:options">
+         ([ "elongated":(\{ "hilt", "spearhead", "javelin head", "pestle", "hairbrush", "dice" \}), "flat":(\{ "plate", "buttons", "hand fan", "comb", "ear cuff", "ring" \}), "jagged":(\{ "dagger blade", "stiletto", "jeweler knife", "needles", "serpent hairsticks", "paddle hairsticks" \}), "spherical":(\{ "inkwell", "bowl", "scroll folder", "beads", "mortar", "kettle hat" \}) ])
+      </Core:Property>
+      <Core:Property property="export:trait:shape">
+         "none"
+      </Core:Property>
+      <Core:Property property="export:trait:shapes">
+         (\{ "jagged", "flat", "elongated", "spherical" \})
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] \$shapes = Get(\$this, "trait:shapes");          
+\$sz_s = sizeof(\$shapes);          
+\$ran = random(\$sz_s);          
+\$shape = \$shapes[\$ran];          
+Set(\$this, "trait:shape", \$shape);          
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:transform-dob">
+         X[M] if(\$dob \&\& sizeof(\$dob) \> 1) \{          
+EmitTo(\$actor, "You may only transform " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ " by itself. Please try again or type - transform my beak - for more information.");          
+return FALSE;          
+\}          
+\$env_o = Get(\$this, "base:environment");          
+if(\$env_o != \$actor) \{          
+EmitTo(\$actor, "You must be holding " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ " in order to complete this action.");          
+return FALSE;          
+\}          
+\$options_map = Get(\$this, "trait:options");         
+\$options_types = map_indices(\$options_map);         
+\$shape = Get(\$this, "trait:shape");         
+\$options = \$options_map[\$shape];          
+\$list = implode(\$options, ", ");          
+if(!\$(raw-evoke)) \{          
+EmitTo(\$actor, "Command: transform my octopus beak '\<item from list\>.");          
+EmitTo(\$actor, "Possible transformations include: " +\$list+ ".");          
+return FALSE;          
+\}         
+\$choice = \$(raw-evoke);         
+if(!member(\$choice, \$options)) \{         
+EmitTo(\$actor, "That is not a viable option for this item.");         
+EmitTo(\$actor, "Command: transform my octopus beak '\<item from list\>.");          
+EmitTo(\$actor, "Possible transformations include: " +\$list+ ".");          
+return FALSE;          
+\}          
+\$color = "translucent";      
+\$material = "chitin";       
+if(\$choice == "dagger blade") \{      
+\$object = Spawn(\$\{Allegory:Props:Weapons:Crafting:Blades:UrDaggerBlade\});      
+Set(\$object, "trait:brief", "a dagger blade");      
+Set(\$object, "trait:type", "dagger");      
+Set(\$object, "trait:bladedescription", "The source of this blade was a giant octopus beak, granting the blade its unique coloring.");      
+\}      
+if(\$choice == "stiletto") \{      
+\$object = Spawn(\$\{Allegory:Props:Weapons:Bladed:Knives:Light:Stiletto\});      
+Set(\$object, "trait:brief", "a stiletto");      
+Set(\$object, "trait:type", "stiletto");      
+Set(\$object, "trait:bladedescription", "The source of this stiletto was a giant octopus beak, granting the blade its unique coloring.");      
+\}      
+if(\$choice == "jeweler knife") \{      
+\$object = Spawn(\$\{Allegory:Props:Tools:Jeweler:Knife\});      
+\}      
+if(\$choice == "serpent hairsticks") \{      
+\$object = Spawn(\$\{IronClaw:Props:Furniture:Misc:Hairsticks:Serpent\});      
+Set(\$object, "trait:brief", "hand-carved serpent hairsticks");      
+Set(\$object, "trait:examine", "It is approximately 1/4 of an inch thick. Each stick has been crafted from a giant octopus beak, granting the unique coloring.");      
+\}      
+if(\$choice == "paddle hairsticks") \{      
+\$object = Spawn(\$\{IronClaw:Props:Furniture:Misc:Hairsticks:Paddle\});      
+Set(\$object, "trait:brief", "paddle-shaped hairsticks");      
+Set(\$object, "trait:examine", "It is approximately 1/4 of an inch thick. Each stick has been crafted from a giant octopus beak, granting the unique coloring.");      
+\}      
+if(\$choice == "plate") \{      
+\$object = Spawn(\$\{Allegory:Props:Blacksmith:Kitchenware:Dishes:Plate\});      
+Set(\$object, "trait:brief", "dinner plate");      
+Set(\$object, "trait:examine", "It is a plate with a diameter of twelve inches with slightly raised edges that bear deeply etched markings. It has been crafted from a giant octopus beak, granting the unique coloring.");      
+\}      
+if(\$choice == "hand fan") \{      
+\$object = Spawn(\$\{Ironclaw:Props:Misc:Items:HandFan\});      
+Set(\$object, "trait:picture", "several octopi");      
+Set(\$object, "trait:look", "This is an implement of semi-circular chitin.");      
+Set(\$object, "trait:examine", "This is an implement of semi-circular chitin designed for waving lightly in the hand to create a cooling current of air about a person.");      
+\}      
+if(\$choice == "comb") \{      
+\$object = Spawn(\$\{Allegory:Props:Tools:Hairstylist:Comb\});      
+Set(\$object, "trait:examine", "It is a long strip of chitin with thin teeth jutting from it.");      
+\}      
+if(\$choice == "ear cuff") \{      
+\$object = Spawn(\$\{Allegory:Props:Jewelry:Earrings:Cuff\});      
+\$material = "translucent chitin";      
+Set(\$object, "trait:etching", "a giant, angry octopus");      
+\}      
+if(\$choice == "ring") \{      
+\$object = Spawn(\$\{Allegory:Props:Jewelry:Rings:Ring\});      
+\$material = "translucent chitin";      
+Set(\$object, "trait:etching", "a giant, angry octopus");      
+\}      
+if(\$choice == "hilt") \{      
+\$object = Spawn(\$\{Allegory:Props:Weapons:Crafting:Hilts:UrSwordHilt\});      
+Set(\$object, "trait:hiltdescription", "A simple cruciform device that serves to protect the wielders hand without getting in the way during fighting. This is an older style of guard, popular on large two-handed swords and antiques.");      
+Set(\$object, "trait:type", "crossguard");      
+\}      
+if(\$choice == "spearhead") \{      
+\$object = Spawn(\$\{Allegory:Props:Weapons:Crafting:Pole:UrSpearHead\});      
+Set(\$object, "trait:brief", "spearhead");      
+\}      
+if(\$choice == "javelin head") \{      
+\$object = Spawn(\$\{Allegory:Props:Weapons:Crafting:Pole:UrSpearHead\});      
+Set(\$object, "trait:type", "javelin");      
+Set(\$object, "trait:headdescription", "The blade is small, measuring only six inches in length. Intended mainly as a weapon thrown at close range, it could also serve as a light spear in a pinch.");      
+\}      
+if(\$choice == "pestle") \{      
+\$object = Spawn(\$\{IronClaw:Props:Blacksmith:Gardening:Pestle\});      
+Set(\$object, "trait:examine", "The bottom is thicker and used for grinding grain or other like materials. The handle tapers smoothly. It has been crafted from a giant octopus beak, granting the unique coloring.");      
+\}      
+if(\$choice == "hairbrush") \{      
+\$object = Spawn(\$\{IronClaw:Props:Blacksmith:Accessories:HairBrush\});      
+Set(\$object, "trait:examine", "It has a long cylindrical handle, and an ample amount of horsehair bristles protruding from one side of the head. It was crafted from the shattered beak of an octopus.");      
+\}      
+if(\$choice == "dice") \{      
+\$object = Spawn(\$\{IronClaw:Props:Blacksmith:Misc:Dice\});      
+Set(\$object, "trait:dotstyle", "octopi");      
+\}      
+if(\$choice == "inkwell") \{      
+\$object = Spawn(\$\{IronClaw:Props:Writing:Tools:Carpenter:Inkwell\});      
+Set(\$object, "trait:ink", "squidish black");      
+\}      
+if(\$choice == "bowl") \{      
+\$object = Spawn(\$\{IronClaw:Props:Cooking:Dishes:WoodenBowl\});      
+Set(\$object, "trait:variation", "octopus");      
+\}      
+if(\$choice == "mortar") \{      
+\$object = Spawn(\$\{IronClaw:Props:Blacksmith:Gardening:Mortar\});      
+Set(\$object, "trait:examine", "It has a diameter of five inches and stands about the same in height. It is commonly used to hold something to be ground with a pestle. It has been crafted from a giant octopus beak, granting the unique coloring.");      
+\}      
+if(\$choice == "kettle hat") \{      
+\$object = Spawn(\$\{Ironclaw:Props:Armorsmith:Plate:Head:KettleHat\});      
+Set(\$object, "trait:examine", "It is a type of helmet made from chitin in the shape of a hat. The only common element is a wide brim that afforded extra protection for the wearer. It was worn by troops of all types, but most commonly by infantry. The wide brim gave good protection against blows from above, such as from cavalry sabres, and were very useful in siege warfare as the wide brim would protect the wearer from projectiles shot or dropped from above.");      
+\}      
+if(\$choice == "scroll folder") \{      
+\$object = Spawn(\$\{Ironclaw:Props:Containers:ScrollFolder\});      
+\}      
+if(\$choice == "needles") \{      
+\$object = Spawn(\$\{Allegory:Props:Tools:Seamstress:Needle\});      
+\$object2 = Spawn(\$\{Allegory:Props:Tools:Seamstress:Needle\});      
+\$object3 = Spawn(\$\{Allegory:Props:Tools:Seamstress:Needle\});      
+Set(\$object2, "trait:color", \$color);      
+Set(\$object3, "trait:color", \$color);      
+Set(\$object2, "trait:material", \$material);      
+Set(\$object3, "trait:material", \$material);      
+Set(\$object2, "base:environment", \$actor);      
+Set(\$object3, "base:environment", \$actor);      
+\}      
+if(\$choice == "buttons") \{      
+\$object = Spawn(\$\{Allegory:Props:Clothing:Parts:Button\});      
+\$object2 = Spawn(\$\{Allegory:Props:Clothing:Parts:Button\});      
+\$object3 = Spawn(\$\{Allegory:Props:Clothing:Parts:Button\});      
+Set(\$object2, "trait:color", \$color);      
+Set(\$object3, "trait:color", \$color);      
+Set(\$object2, "trait:material", \$material);      
+Set(\$object3, "trait:material", \$material);      
+Set(\$object2, "base:environment", \$actor);      
+Set(\$object3, "base:environment", \$actor);      
+\}      
+if(\$choice == "beads") \{      
+\$object = Spawn(\$\{IronClaw:Props:Crafting:Parts:Bead\});      
+\$object2 = Spawn(\$\{IronClaw:Props:Crafting:Parts:Bead\});      
+\$object3 = Spawn(\$\{IronClaw:Props:Crafting:Parts:Bead\});      
+Set(\$object2, "trait:color", \$color);      
+Set(\$object3, "trait:color", \$color);      
+Set(\$object2, "trait:material", \$material);      
+Set(\$object3, "trait:material", \$material);      
+Set(\$object2, "base:environment", \$actor);      
+Set(\$object3, "base:environment", \$actor);      
+\}      
+\$delay(0.5, FALSE, "7815");  
+Set(\$object, "trait:color", \$color);      
+Set(\$object, "trait:material", \$material);      
+Set(\$object, "base:environment", \$actor);      
+EmitTo(\$actor, "You chip away at your " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ " and create something new.");     
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " chips away at " +\$actor."base:possessive"+" "+Describe(\$this, nil, nil, STYLE_NONPOSS)+ " and creates something new.", \$actor);     
+/* slay code */      
+\$slay_check = name(\$this);      
+if(contains(\$slay_check, "[")) \{      
+Slay(\$this);      
+\}      
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:shape">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1307042934, "tunk_bodin", "X", 1307049588, "tunk_bodin", "X", 1307055062, "tunk_bodin", "X", 1307055381, "tunk_bodin", "X", 1307055835, "tunk_bodin", "X", 1307056369, "tunk_bodin", "X", 1307056651, "tunk_bodin", "X", 1309665725, "morwenlorelie", "R", 1310337761, "tunk_bodin", "X" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:options">
+         ([ "elongated":(\{ "hilt", "spearhead", "javelin head", "pestle", "hairbrush", "dice" \}), "flat":(\{ "plate", "buttons", "hand fan", "comb", "ear cuff", "ring" \}), "jagged":(\{ "dagger blade", "stiletto", "jeweler knife", "needles", "serpent hairsticks", "paddle hairsticks" \}), "spherical":(\{ "inkwell", "bowl", "scroll folder", "beads", "mortar", "kettle hat" \}) ])
+      </Core:Property>
+      <Core:Property property="trait:shape">"none"</Core:Property>
+      <Core:Property property="trait:shapes">
+         (\{ "jagged", "flat", "elongated", "spherical" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

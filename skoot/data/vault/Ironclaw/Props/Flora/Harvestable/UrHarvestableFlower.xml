@@ -1,0 +1,205 @@
+<object clone="/base/obj/thing" owner="morwenlorelie">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.0025" density="0.8"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="true"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="false" under="false" on="true" inside="false" near="true" over="true" behind="false" before="false" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="plant"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="plants"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             potted $(this.trait:color) $(this.trait:flowertype) $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="examine">
+             The $(this.trait:flowertype) $(this.trait:brief) is sitting in a fairly large pot.<sbr/> This plant has $[if($this."trait:quantity" == 0) { return "no flowers"; } else if ($this."trait:quantity" == 1) { return "one flower"; } else { return desc_cardinal($this."trait:quantity")+ " flowers"; }] ready to be picked.
+          </Base:Description>
+          <Base:Description type="look">
+             The $(this.trait:flowertype) $(this.trait:brief) is sitting in a fairly large pot.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:harvestable:harvestname">
+         (\{ "pick", "picks", "pickable" \})
+      </Core:Property>
+      <Core:Property property="export:harvestable:item">
+         \<Ironclaw:Props:Gardening:Flowers:UrFlower\>
+      </Core:Property>
+      <Core:Property property="export:harvestable:name">
+         (\{ "flower", "flowers" \})
+      </Core:Property>
+      <Core:Property property="export:harvestable:properties">
+         (\{ (\{ "trait:brief", "violet" \}), (\{ "trait:color", "red", "blue", "green", "purple", "violet", "crimson" \}) \})
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "plant"
+      </Core:Property>
+      <Core:Property property="export:trait:flowertype">
+         "violet"
+      </Core:Property>
+      <Core:Property property="export:trait:quality">
+         4
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         5
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "flowers"
+      </Core:Property>
+      <Core:Property property="merry:lib:getcolor">
+         X[M] if(\$this."harvestable:properties") \{
+    if(sizeof(\$this."harvestable:properties"[1]) \> 2) \{
+        \$color = \$this."harvestable:properties"[1][1];
+        \$this."trait:color" = \$color;
+        Set(\$this, "details:default:adjectives:" + \$color, TRUE);
+    \} else \{
+        \$color = "";
+    \}
+\} else \{
+    \$color = "";
+\}
+
+return \$color;
+      </Core:Property>
+      <Core:Property property="merry:lib:harvest">
+         X[M] object tmp_ob;
+
+/* check that someone isn't holding the plant */
+tmp_ob = \$this;
+while(tmp_ob = tmp_ob."base:environment") \{
+  if(tmp_ob."base:volition" \&\& tmp_ob != \$actor) \{
+    EmitTo(\$actor, "You cannot harvest "+Describe(\$this)+" while it is being held by "+Describe(tmp_ob)+".");
+    return FALSE;
+  \}
+\}
+
+if(\$actor."room:partition" != \$this."room:partition") \{
+ EmitTo(\$actor, "You must approach "+Describe(\$this)+" before you can harvest it.");
+ return FALSE;
+\}
+
+/* check if there are flowers available */
+if(\$this."trait:quantity" \< 1) \{
+  /*EmitTo(\$actor, "There are no "+\$this."harvestable:harvestname"[1]+" "+\$this."harvestable:name"[1]+" on "+Describe(\$this)+".");*/
+  EmitTo(\$actor, "There are no "+\$this."harvestable:name"[1]+" on "+Describe(\$this)+".");
+  return FALSE;
+\}
+
+/* reduce the number of flowers on the plant */
+\$this."trait:quantity" -= 1;
+
+/* create the flower object */
+\$object = Spawn(\$this."harvestable:item");
+/* set the properties in the flower */
+for(\$i=0;\$i\<sizeof(\$this."harvestable:properties");\$i++) \{
+  Set(\$object, \$this."harvestable:properties"[\$i][0], \$this."harvestable:properties"[\$i][random(sizeof(\$this."harvestable:properties"[\$i])-1)+1]);
+\}
+/* set the quality in the flower */
+\$object."trait:quality" = \$this."trait:quality";
+
+/* set snames and pnames in the flower */
+Set(\$object, "details:default:sname:"+\$this."harvestable:name"[0]+":local", 1);
+Set(\$object, "details:default:pname:"+\$this."harvestable:name"[1]+":local", 1);
+/* set based on trait:brief, too */
+Set(\$object, "details:default:sname:"+\$object."trait:brief"+":local", 1);
+Set(\$object, "details:default:pname:"+\$object."trait:brief"+"s:local", 1);
+
+/* give the flower to the player */
+\$object."base:environment" = \$actor;
+
+/* emit message to player and room */
+EmitTo(\$actor, "You "+\$this."harvestable:harvestname"[0]+" "+Describe(\$object, nil, nil, STYLE_NONPOSS)+" from "+Describe(\$this, nil, nil, STYLE_NONPOSS)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" "+\$this."harvestable:harvestname"[1]+" "+Describe(\$object, nil, nil, STYLE_NONPOSS)+" from "+Describe(\$this, nil, nil, STYLE_NONPOSS)+".", \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:regenerate-harvestable">
+         X[M] /* stop when we hit the quality of the plant */
+if(\$this."trait:quantity" \>= \$this."trait:quality") return TRUE;
+
+/* we're already regenerating flowers */
+if(\$this."regenerating:harvestable") return TRUE;
+
+/* not already regenerating flowers, start regenerating */
+\$this."regenerating:harvestable" = 1;
+
+/* wait a while, then add a flower */
+while(\$this."trait:quantity" \< \$this."trait:quality") \{
+  /* wait one day */
+  \$delay((60*60*24), TRUE, "9d85");
+  /* add a flower if appropraite */
+  if(\$this."trait:quantity" \< \$this."trait:quality")
+    \$this."trait:quantity" += 1;
+\}
+
+/* stop regenerating */
+\$this."regenerating:harvestable" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:harvest-dob">
+         X[M] Call(\$this, "harvest");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:pick-dob">
+         X[M] Call(\$this, "harvest");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quality">
+         X[M] /* stop when we hit the quality of this plant */
+if(\$this."trait:quantity" \< \$this."trait:quality") Call(\$this, "regenerate-harvestable");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quantity">
+         X[M] /* stop when we hit the quality of this plant */
+if(\$this."trait:quantity" \< \$this."trait:quality") Call(\$this, "regenerate-harvestable");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1147072792, "tonyd", "E", 1147072816, "tonyd", "E", 1147073134, "tonyd", "E", 1147073615, "tonyd", "P", 1147073638, "tonyd", "P", 1147073697, "tonyd", "P", 1147073855, "tonyd", "P", 1147073964, "tonyd", "P", 1147073991, "tonyd", "P", 1147074079, "tonyd", "P", 1147074106, "tonyd", "P", 1147074231, "tonyd", "P", 1147074604, "tonyd", "P", 1147074845, "tonyd", "P", 1147074951, "tonyd", "P", 1147074968, "tonyd", "P", 1147075044, "tonyd", "P", 1147075207, "tonyd", "P", 1147075469, "tonyd", "P", 1147075658, "tonyd", "P", 1147075704, "tonyd", "P", 1147075884, "tonyd", "P", 1147076583, "tonyd", "P", 1147077144, "tonyd", "P", 1147077814, "tonyd", "P", 1147077843, "tonyd", "P", 1147077880, "tonyd", "P", 1147155938, "tonyd", "E", 1147676537, "tonyd", "E", 1176778610, "tonyd", "P", 1176778655, "tonyd", "P", 1230216613, "morwenlorelie", "R", 1250906032, "tonyd", "E", 1250907911, "tonyd", "P", 1253168094, "jominey", "E", 1253168112, "jominey", "E", 1271648914, "jominey", "K", 1271648937, "jominey", "E", 1271648946, "jominey", "E", 1271649119, "jominey", "E", 1271649127, "jominey", "K", 1271649223, "jominey", "E", 1271649480, "jominey", "E", 1272595393, "jominey", "E", 1272597792, "jominey", "E", 1272597816, "jominey", "E", 1282787265, "jominey", "K", 1287000348, "morwenlorelie", "E", 1287000467, "morwenlorelie", "R", 1327968439, "jominey", "R", 1347221997, "jominey", "R", 1347231014, "jominey", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:quantity">4</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,84 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="zell">
+  <SkotOS:MerAcHa action_id="look" verb="OBJ(Zell:Verbs:look)">
+    <Core:PCProperties>
+      <Core:Property property="merry:global-desc:action">
+         X[M] if (\$what == nil \|\| sizeof(\$what) == 1) \{
+  \$rob."desc:look:args" = (\{ \$what ? \$what[0] : nil, FALSE \});
+
+  if (\$what == nil) \{
+    \$(verb-extra:pe) = "around";
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global-pre:action">
+         X[M] /* convert old \$nref calls */
+
+if (\$what == nil \&\& \$nref != nil) \{
+  \$what = (\{ \$nref \});
+  \$roles = (\{ "what" \});
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global:action">
+         X[M] string description, beginning, middle, end, wielding;
+object main, off;
+
+/* convert old \$nref calls */
+
+if (\$what == nil \&\& \$nref != nil) \{
+  \$what = (\{ \$nref \});
+  \$roles = (\{ "what" \});
+\}
+
+if(!\$target) return TRUE;
+
+if(NRefDetail(\$target) == "default") \{
+    \$target = NRefOb(\$target); 
+    
+    if(!NRefOb(\$target)."combat:weapon:mainhand" \&\& !NRefOb(\$target)."combat:weapon:offhand") return TRUE;
+
+    description = UnSAM(ParseXML("\\\<describe-view type=\\"look\\" view=\\"OBJ(" + Str(\$target) + ")\\"/\\\>"));
+
+    if(\$actor == \$target) \{
+        EmitTo(\$actor, TAG("You look at yourself.", "social:first"));
+    \} else \{
+        EmitTo(\$actor, TAG("You look at " + Describe(\$target) + ".", "social:first"));
+    \}
+
+    if(\$target."combat:weapon:mainhand" \&\& \$target."combat:weapon:offhand") \{
+        main = \$target."combat:weapon:mainhand";
+        off = \$target."combat:weapon:offhand";
+
+        if(main == off) \{
+            wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + " both hands";
+        \} else \{
+            wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " main hand and " + Describe(off, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " off hand";
+        \}
+    \} else if(\$target."combat:weapon:mainhand" \&\& !\$target."combat:weapon:offhand") \{
+        main = \$target."combat:weapon:mainhand";
+        wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " main hand";
+    \} else if(\$target."combat:weapon:offhand" \&\& !\$target."combat:weapon:mainhand") \{
+        off = \$target."combat:weapon:offhand";
+        wielding = Describe(off, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " off hand";
+    \} else if(!main \&\& !off \&\& \$target."base:combat:weapon") \{
+        main = \$target."base:combat:weapon";
+        wielding = Describe(main, nil, nil, STYLE_NONPOSS) + " in " + Str(\$target."base:possessive") + " main hand";
+    \}
+
+    sscanf(description, "%s is wielding %s. %s", beginning, middle, end);
+
+    description = beginning + " is wielding " + wielding + ". " + end;
+    EmitTo(\$actor, UnSAM(ParseXML(description)));
+
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1056571886, "zell", "E", 1056572192, "zell", "E", 1056572285, "zell", "E", 1056572460, "zell", "E", 1056572750, "zell", "E", 1056574210, "zell", "E", 1056574325, "zell", "E", 1056574375, "zell", "E", 1056574405, "zell", "E", 1056574454, "zell", "E", 1056574548, "zell", "E", 1056658385, "zell", "E", 1566609365, "jominey", "E", 1566611820, "jominey", "E", 1566611848, "jominey", "E", 1566611871, "jominey", "E", 1566779686, "jominey", "E", 1566779731, "jominey", "E", 1566779765, "jominey", "E", 1566779869, "jominey", "E", 1566781412, "jominey", "E", 1566925224, "jominey", "E", 1573527352, "jominey", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

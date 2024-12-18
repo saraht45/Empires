@@ -1,0 +1,80 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="!log" evoke="optional" audible="false" private="false" secret="true" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="raw" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* log a character to a file */
+/* save the log in a player-friendly format to avoid abuse */
+string name;
+
+if(!\$(raw:words)) \{
+  EmitTo(\$actor, "Which character do you wish to log?");
+  EmitTo(\$actor, "Format: !log \<character\> 'reason");
+  return FALSE;
+\}
+
+common::parse_raw();
+\$char = ((\$r1 = common::lookup(\$name: implode(\$(raw:words), " "))) ? \$r1 : nil);
+
+if(!\$char) \{
+  EmitTo(\$actor, "Unknown character!");
+  EmitTo(\$actor, "Format: !log \<character\> 'reason");
+  return FALSE;
+\}
+
+if(!\$evoke) \{
+  EmitTo(\$actor, "Please provide a reason why you are recording this log.");
+  EmitTo(\$actor, "Format: !log \<character\> 'reason");
+  return FALSE;
+\}
+\$reason = \$evoke;
+
+
+/* get character name */
+name = name(\$char)[15..];
+/* does the logging whatsit exist? */
+if(!Obj("Ironclaw:Lib:Characters:Logs:"+name))
+  catch(Call(\$\{Lib:objects\}, "create_of_type", \$name: "Ironclaw:Lib:Characters:Logs:"+name, \$type: "propcontainer"));
+
+\$log = Obj("Ironclaw:Lib:Characters:Logs:"+name);
+
+if(\$char."logging:record") \{
+  EmitTo(\$actor, "Logging continuing (with a new log entry) on: "+Describe(\$char)+". Reason: "+\$reason);
+\} else \{
+  EmitTo(\$actor, "Logging started on: "+Describe(\$char)+". Reason: "+\$reason);
+\}
+
+\$char."logging:record" = time();
+Set(\$log, Str(\$char."logging:record"), (\{ Str(\$reason) \}) );
+
+\$this_time = \$char."logging:record";
+\$char."merry:inherit:act-pre:command%logging" = \$\{Ironclaw:Lib:Characters:Policing\};
+\$char."merry:inherit:react-pre:command%logging" = \$\{Ironclaw:Lib:Characters:Policing\};
+
+/* wait two hours */
+\$delay(60*60*2, FALSE, "d9f9");
+
+if(!\$char) return FALSE;
+if(\$char."logging:record" == \$this_time) \{
+  \$char."merry:inherit:act-pre:command%logging" = nil;
+  \$char."merry:inherit:react-pre:command%logging" = nil;
+  EmitTo(\$actor, "Logging stopping on: "+Describe(\$char)+".");
+  \$char."logging:record" = nil;
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1192805880, "rorschakovacs", "E", 1217302577, "tonyd", "P", 1217302588, "tonyd", "E", 1217302600, "tonyd", "E", 1217302615, "tonyd", "E", 1217302620, "tonyd", "E", 1217302622, "tonyd", "E", 1217302640, "tonyd", "E", 1217302667, "tonyd", "E", 1217302748, "tonyd", "E", 1217302756, "tonyd", "E", 1217302855, "tonyd", "P", 1217302892, "tonyd", "P", 1217302961, "tonyd", "E", 1217302968, "tonyd", "E", 1217302983, "tonyd", "E", 1217302998, "tonyd", "E", 1217303027, "tonyd", "E", 1217303030, "tonyd", "E", 1217303066, "tonyd", "E", 1217303069, "tonyd", "E", 1217303120, "tonyd", "P", 1217303177, "tonyd", "P", 1217303362, "tonyd", "P", 1217303393, "tonyd", "P", 1217303460, "tonyd", "P", 1217303574, "tonyd", "P", 1217303660, "tonyd", "P", 1217303702, "tonyd", "P", 1217303896, "tonyd", "P", 1217303943, "tonyd", "P", 1217304770, "tonyd", "P", 1275477924, "tonyd", "P", 1275477984, "tonyd", "P", 1275478011, "tonyd", "P", 1275478057, "tonyd", "P", 1275478086, "tonyd", "P", 1275481425, "tonyd", "P", 1309201987, "tunk_bodin", "R" \})
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

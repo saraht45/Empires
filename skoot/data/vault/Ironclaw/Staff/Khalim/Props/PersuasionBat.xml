@@ -1,0 +1,171 @@
+<object clone="/base/obj/thing" owner="abigail">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCrafting)"/>
+    <Base:Bulk immobile="false" mass="0.3" density="1"/>
+    <Base:Container flexible="true" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="true" under="false" on="false" inside="true" near="true" over="false" behind="false" before="false" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="bat"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="bats"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="baseball"/>
+          <Base:Adjective adjective="persuasion"/>
+          <Base:Adjective adjective="skill"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             persuasion bat
+          </Base:Description>
+          <Base:Description type="examine">
+             A persuasion bat.  This is a baseball bat which has the words "Persuasion Bat" scrawled on the side in black Sharpie marker.  You're pretty sure that if you hit someone with it, it will persuade them to be better at things.
+          </Base:Description>
+          <Base:Description type="look">
+             A persuasion bat.  This is a baseball bat which has the words "Persuasion Bat" scrawled on the side in black Sharpie marker.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="true" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="waist"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:trash">0</Core:Property>
+      <Core:Property property="merry:react:poke-dob">
+         X[M] string *folders, *characters, *rooms;
+object char, room;
+int i, j, k, count;
+
+count = 0;
+
+\$folder = "Chatters:IC";
+
+folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+for(i=0;i\<sizeof(folders);i++) \{
+  \$folder = "Chatters:IC:"+folders[i];
+  characters = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+  for(j=0;j\<sizeof(characters);j++) \{
+    char = Obj("Chatters:IC:"+folders[i]+":"+characters[j]);
+
+    /* Should we ignore this character because they are mothballed? */
+    if(char.mothballed) continue;
+    /* Should we mothball this character?                           */
+    if(Int(char."cdat:lastlogin")+(60*60*24*60) \< time()) \{
+      char.mothballed = TRUE;
+      continue;
+    \} else \{
+      char.mothballed = nil;
+    \}
+
+
+    if(!char.mothballed)
+    \{
+      count++;
+
+      if(char."trait:favor")
+      \{
+        if (Int(char."trait:favor") \> 0)
+        \{
+          EmitTo(\$actor, "Positive Favor: " + Describe(char) + " - " + Str(char."trait:favor"));
+        \}
+      \}
+
+      /*if(char."trait:favor:promotion")
+      \{
+        EmitTo(\$actor, "Eligible for Promotion: " + Describe(char));
+      \}*/
+    \}
+  \}
+\}
+
+EmitTo(\$actor, "Number of Active Characters Checked: " + count);
+      </Core:Property>
+      <Core:Property property="merry:react:swing-dob">
+         X[M] \$owner = ironclaw::find_owner(\$object: this);
+
+\$target = NRefOb(\$iob[0]);
+
+if(!\$evoke) \{
+EmitTo(\$actor, "The correct syntax is: swing my bat at [target] '[skill or career] [ranks]. i.e. swing my bat at khalim 'soldier 24.");
+return FALSE;
+\}
+else
+\{
+  \$explode = explode(\$evoke, " ");
+  \$skill = replace_strings(\$explode[0], "\\"", "");
+  \$rank = Int(replace_strings(\$explode[1], "\\"", ""));
+
+  EmitTo(\$actor, "Length: " + sizeof(\$explode));
+  EmitTo(\$actor, "Skill: " + \$skill);
+  EmitTo(\$actor, "Ranks: " + \$rank);
+  EmitTo(\$actor, "Rank Typeof: " + typeof(\$rank));
+
+  EmitTo(\$actor, "Evoke: " + \$evoke);
+
+  \$careersDB = \$\{Ironclaw:Lib:Teaching:newCareersDB\};
+  \$careersList = map_indices(\$careersDB."*");
+  \$careersList -= (\{ "revisions" \});
+
+  EmitTo(\$actor, "Careers: ");
+
+  for(\$i = 0; \$i \< sizeof(\$careersList); \$i++)
+  \{
+    EmitTo(\$actor, \$careersList[\$i]);
+  \}
+
+  \$skillsDB = \$\{Ironclaw:Lib:Teaching:SkillsDB\};
+  \$skillsList = map_indices(\$skillsDB."*");
+  \$skillsList -= (\{ "revisions" \});
+
+  EmitTo(\$actor, "Skills: ");
+
+  for(\$i = 0; \$i \< sizeof(\$skillsList); \$i++)
+  \{
+    EmitTo(\$actor, \$skillsList[\$i]);
+  \}
+\}
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1420571369, "abigail", "E", 1420572251, "abigail", "E", 1420572662, "abigail", "E", 1420572842, "abigail", "E", 1420572929, "abigail", "E", 1420572972, "abigail", "E", 1420573353, "abigail", "E", 1420574363, "abigail", "E", 1420574466, "abigail", "E", 1420577338, "abigail", "E", 1420577544, "abigail", "E", 1420577572, "abigail", "E", 1420577685, "abigail", "E", 1420577900, "abigail", "E", 1420577936, "abigail", "E", 1420641107, "abigail", "E", 1420641189, "abigail", "E", 1420641221, "abigail", "E", 1420641267, "abigail", "E", 1420641332, "abigail", "E", 1420641382, "abigail", "E", 1420641413, "abigail", "E", 1420641445, "abigail", "E", 1420641481, "abigail", "E", 1420641521, "abigail", "E", 1420641545, "abigail", "E", 1420641565, "abigail", "E", 1420642107, "abigail", "E", 1420642146, "abigail", "E", 1420642227, "abigail", "E", 1425180663, "abigail", "E", 1425181248, "abigail", "E", 1425181575, "abigail", "E", 1425181629, "abigail", "E", 1425183407, "abigail", "E", 1425183504, "abigail", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

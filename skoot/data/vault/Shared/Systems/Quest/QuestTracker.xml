@@ -1,0 +1,292 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:tracker">
+         X[M] mapping current;
+mixed* quests, participants;
+object quest, person;
+string name, list, step, status, type, dest, status2, display, help, instructions;
+int i, show, shareable, cancel, share, unshare, j;
+
+if(\$evoke) \{
+    \$evoke = replace_strings(\$evoke, "\\"", "");
+\}
+
+list =  "+---------------------+------------+--------------+---------------------------------+\\n";
+list += "\|     QUEST NAME      \|    STEP    \|    STATUS    \|           DESTINATION           \|\\n";
+list += "+---------------------+------------+--------------+---------------------------------+";
+
+if(\$actor."quest:current") \{
+    current = \$actor."quest:current";
+\} else \{
+    current = ([ ]);
+\}
+
+quests = map_indices(current);
+
+show = 0;
+cancel = 0;
+share = 0;
+unshare = 0;
+
+for(i = 0; show == 0 \&\& cancel == 0 \&\& share == 0 \&\& unshare == 0 \&\& i \< sizeof(quests); i++) \{
+    quest = quests[i];
+    name = quests[i]."quest:name";
+    step = \$actor."quest:current"[quests[i]][0];
+    type = Get(quests[i], "quest:step:" + step)["action"];
+
+    if(Get(quests[i], "quest:step:" + step)["dest"] \&\& Obj(Get(quests[i], "quest:step:" + step)["dest"])) \{
+        dest = Describe(Get(quests[i], "quest:step:" + step)["dest"]);
+    \} else if(Get(\$actor, "quest:" + name + ":dest") \&\& Obj(Get(\$actor, "quest:" + name + ":dest"))) \{
+        dest = Describe(Get(\$actor, "quest:" + name + ":dest"));
+    \} else \{
+        dest = "Error!";
+    \}
+
+    instructions = Str(Get(quests[i], "quest:step:" + step)["short_instructions"]);
+
+    \$temp1 = explode(instructions, " ");
+    \$temp2 = "";
+
+    \$z = 0;
+    for(\$x = 0; \$x \< sizeof(\$temp1); \$x++) \{
+        \$z++;
+        \$temp2 += \$temp1[\$x] + " ";
+        if(\$z == 12) \{
+            \$temp2 += "\\n    ";
+            \$z = 0;
+        \}
+    \}
+
+    instructions = \$temp2;
+
+    if(quest."quest:shareable") \{
+        shareable = quest."quest:shareable";
+    \} else \{
+        shareable = 0;
+    \}
+
+  if(Obj("Data:quest")) \{
+    \$data = Obj("Data:quest");
+    \$dir = Get(\$data, "quest:directory");
+    if(Obj(\$dir + "QuestExt") \&\& FindMerry(Obj(\$dir + "QuestExt"), "lib", "type_" + type + "_status")) \{
+        status = Call(Obj(\$dir + "QuestExt"), "type_" + type + "_status", \$quest: quest, \$actor: \$actor);
+    \} else if(FindMerry(Obj("Shared:Systems:Quest:NIP:lib:quest-giver"), "lib", "type_" + type + "_status")) \{
+        status = Call(Obj("Shared:Systems:Quest:NIP:lib:quest-giver"), "type_" + type + "_status", \$quest: quest, \$actor: \$actor);
+    \} else \{
+        status = "Unavailable";
+        status2 = TAG("Unavailable  ", "assist");
+    \}
+  \}
+
+    if(\$evoke \&\& strlen(\$evoke) \>= 4 \&\& \$evoke[0..3] == "show") \{
+        if(\$evoke \&\& contains(lower_case(\$evoke), lower_case(name))) \{
+            show = 1;
+        \}
+    \}
+
+    if(\$evoke \&\& strlen(\$evoke) \>= 6 \&\& \$evoke[0..5] == "cancel") \{
+        if(\$evoke \&\& contains(lower_case(\$evoke), lower_case(name))) \{
+            cancel = 1;
+        \}
+    \}
+
+    if(\$evoke \&\& strlen(\$evoke) \>= 5 \&\& \$evoke[0..4] == "share") \{
+        if(\$evoke \&\& contains(lower_case(\$evoke), lower_case(name))) \{
+            share = 1;
+        \}
+    \}
+
+    if(\$evoke \&\& strlen(\$evoke) \>= 7 \&\& \$evoke[0..6] == "unshare") \{
+        if(\$evoke \&\& contains(lower_case(\$evoke), lower_case(name))) \{
+            if(quest."quest:participants") \{
+                participants = quest."quest:participants";
+                for(j = 0; j \< sizeof(participants); j++) \{
+                    if(contains(lower_case(\$evoke), lower_case(Describe(participants[i])))) \{
+                        person = participants[j];
+                    \}
+                \}
+                unshare = 1;
+            \} else \{
+                EmitTo(\$actor, "There is no one to unshare that quest with.");
+                return FALSE;
+            \}
+        \}
+    \}
+
+    if(contains(status, "Incomplete")) \{
+        status2 = TAG("Incomplete   ", "imp");
+    \} else if(contains(status, "Complete")) \{
+        status2 = TAG("Complete     ", "assist-alert");
+    \} else \{
+        status2 = TAG("Unavailable  ", "assist");
+    \}
+
+    list += "\\n\| " + UnSAM(ParseXML(replace_strings(UnSAM(this."sam:show_more"), "NAME", name))) + pad_right("", 19-strlen(name)) + " \| " +
+            pad_right(\$actor."quest:current"[quests[i]][0], 11)[0..10] + "\| " +
+            pad_right(status2, 13) + "\| " +
+            pad_right(dest, 32) + "\|  ";
+\}
+
+
+list += "\\n+---------------------+------------+--------------+---------------------------------+";
+
+if(!\$evoke \|\| \$evoke[0..3] == "list") \{
+    /* What about mini-quests? */
+    if(\$actor."quest:miniquests" \&\& map_sizeof(\$actor."quest:miniquests")) \{
+      string line, emptyline, remainingline;
+      emptyline = "\|                                                                                 \|\\n";
+      \$miniquest =  "+-----------------------------------------------------------------------------------+\\n";
+      \$miniquest += "\| QUEST                                                                             \|\\n";
+      \$miniquest += "+-----------------------------------------------------------------------------------+\\n";
+      for(i=0;i\<map_sizeof(\$actor."quest:miniquests");i++) \{
+        mapping quest;
+        \$quest = \$actor."quest:miniquests"[map_indices(\$actor."quest:miniquests")[i]];
+        line = "Name: ";
+        line += \$quest["name"] ? \$quest["name"] : map_indices(\$actor."quest:miniquests")[i];
+        while(strlen(line)) \{
+          if(strlen(line) \> strlen(emptyline)-2) \{
+            \$miniquest += "\| "+ line[0..strlen(emptyline)-4] + "-\|\\n";
+            line = line[strlen(emptyline)-3..];
+          \} else \{
+            \$miniquest += "\| "+ line + emptyline[strlen(line)..];
+            line = "";
+          \}
+        \}
+        if(\$quest["description"]) \{
+          line = "Description: ";
+          line += \$quest["description"];
+          while(strlen(line)) \{
+            if(strlen(line) \> strlen(emptyline)-2) \{
+              \$miniquest += "\| "+ line[0..strlen(emptyline)-4] + "-\|\\n";
+              line = line[strlen(emptyline)-3..];
+            \} else \{
+              \$miniquest += "\| "+ line + emptyline[strlen(line)..];
+              line = "";
+            \}
+          \}
+        \}
+        if(\$quest["reward"]) \{
+          line += "Reward: ";
+          line += \$quest["reward"];
+          while(strlen(line)) \{
+            if(strlen(line) \> strlen(emptyline)-2) \{
+              \$miniquest += "\| "+ line[0..strlen(emptyline)-4] + "-\|\\n";
+              line = line[strlen(emptyline)-3..];
+            \} else \{
+              \$miniquest += "\| "+ line + emptyline[strlen(line)..];
+              line = "";
+            \}
+          \}
+        \}
+        if(\$quest["expires"]) \{
+          line += "Expires: ";
+          line += replace_strings(days(\$quest["expires"]-time()), "d", "days", "h", "hours", "m", "minutes");
+          while(strlen(line)) \{
+            if(strlen(line) \> strlen(emptyline)-2) \{
+              \$miniquest += "\| "+ line[0..strlen(emptyline)-4] + "-\|\\n";
+              line = line[strlen(emptyline)-3..];
+            \} else \{
+              \$miniquest += "\| "+ line + emptyline[strlen(line)..];
+              line = "";
+            \}
+          \}
+        \}
+        \$miniquest += "+-----------------------------------------------------------------------------------+\\n";
+      \}
+    \} else \{
+      \$miniquest =  nil;
+    \}
+
+
+    if(!\$actor."quest:current" \|\| !map_sizeof(\$actor."quest:current")) \{
+        if(\$miniquest)
+          EmitTo(\$actor, PRE(\$miniquest));
+        else
+          EmitTo(\$actor, PRE("You are not on any quests."));
+        return FALSE;
+    \}
+
+    if(\$miniquest)
+      EmitTo(\$actor, PRE(\$miniquest));
+
+    EmitTo(\$actor, Str(PRE(list)));
+    return FALSE;
+\}
+
+if(show == 1) \{
+    if(!\$timeremaining) \{
+        \$timeremaining = "--:--:--";
+    \}
+
+    display = pad_right("QUEST: " + name + " - STEP " + step, 65) + " " + UnSAM(ParseXML(replace_strings(UnSAM(this."sam:cancel"), "NAME", name))) + "\\n" +
+              "--------------------------------------------------------------------------------\\n" +
+              " STEP DETAILS: \\n" +
+              "    Type:        " + pad_right(type, 20) + "Started On:     " + Str(ctime(\$actor."quest:current"[quest][1])[0..19]) + "\\n" +
+              "    Status:      " + pad_right("", 20) + "Time Remaining: " + Str(\$timeremaining) + "\\n" +
+              "" + status + "\\n" +
+              "    Destination: " + pad_right(dest, 20) + "\\n" +
+              "    \\n" +
+              "-----------------------------[  INSTRUCTIONS  ]---------------------------------\\n" +
+              "    " + instructions + "\\n" +
+              "--------------------------------------------------------------------------------\\n";
+
+    EmitTo(\$actor, Str(PRE(display)));
+    return FALSE;
+\}
+
+if(cancel == 1) \{
+    if(Obj(Str(\$this.quest_cancel))) \{
+        Call(Obj(\$this.quest_cancel), "quest_cancel", \$quest: quest, \$actor: \$actor);
+    \}
+    return FALSE;
+\}
+
+if(share == 1) \{
+    ::share_quest(\$quest: quest, \$actor: \$actor);
+    return FALSE;
+\}
+
+if(unshare == 1) \{
+    ::unshare_quest(\$quest: quest, \$actor: \$actor, \$who: person);
+    return FALSE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="quest_cancel">
+         "Shared:Systems:Quest:NIP:lib:quest-giver"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1305774193, "jominey", "E", 1305774281, "jominey", "E", 1305774313, "jominey", "E", 1305774338, "jominey", "E", 1305774359, "jominey", "E", 1305774539, "jominey", "R", 1305774549, "jominey", "E", 1305774646, "jominey", "E", 1306112962, "jominey", "E", 1306113007, "jominey", "E", 1306113150, "jominey", "E", 1306113242, "jominey", "E", 1306113249, "jominey", "E", 1306113361, "jominey", "E", 1315274578, "tonyd", "E", 1315274795, "tonyd", "E", 1315274886, "tonyd", "E", 1315275182, "tonyd", "P", 1315275394, "tonyd", "P", 1315275456, "tonyd", "P", 1315275499, "tonyd", "P", 1315275534, "tonyd", "P", 1315275541, "tonyd", "P", 1315275559, "tonyd", "P", 1315275593, "tonyd", "P", 1315275682, "tonyd", "P", 1315275714, "tonyd", "P", 1315275725, "tonyd", "P", 1315275735, "tonyd", "P", 1315275818, "tonyd", "P", 1315275849, "tonyd", "P", 1315275943, "tonyd", "P", 1315275996, "tonyd", "P", 1315276036, "tonyd", "P", 1315276045, "tonyd", "P", 1315276098, "tonyd", "P", 1315276144, "tonyd", "P", 1315276187, "tonyd", "P", 1315276197, "tonyd", "P", 1315276212, "tonyd", "P", 1315276241, "tonyd", "P", 1315276259, "tonyd", "P", 1315276269, "tonyd", "P", 1315276278, "tonyd", "P", 1315276287, "tonyd", "P", 1315276295, "tonyd", "P", 1315276310, "tonyd", "P", 1315276316, "tonyd", "P", 1315276323, "tonyd", "P", 1315276329, "tonyd", "P", 1315276336, "tonyd", "P", 1315276363, "tonyd", "P", 1315276392, "tonyd", "P", 1315276426, "tonyd", "P", 1315276440, "tonyd", "P", 1315276456, "tonyd", "P", 1315276555, "tonyd", "P", 1315276600, "tonyd", "P", 1315276622, "tonyd", "P", 1315276640, "tonyd", "P", 1315276650, "tonyd", "P", 1315276670, "tonyd", "P", 1315276796, "tonyd", "P", 1315276809, "tonyd", "P", 1315276828, "tonyd", "P", 1315276889, "tonyd", "P", 1315276920, "tonyd", "P", 1315276931, "tonyd", "P", 1315276941, "tonyd", "P", 1315276953, "tonyd", "P", 1315276986, "tonyd", "P", 1315282042, "tonyd", "P", 1353380173, "jominey", "E", 1353380219, "jominey", "E", 1353380253, "jominey", "E", 1353380296, "jominey", "E", 1353380531, "jominey", "E", 1357348527, "jominey", "E", 1357348615, "jominey", "E", 1357348664, "jominey", "E", 1357348722, "jominey", "E", 1357348792, "jominey", "E", 1357348827, "jominey", "E", 1357348888, "jominey", "E", 1357349041, "jominey", "E", 1357349164, "jominey", "E", 1360131815, "tonyd", "E", 1360131890, "tonyd", "E", 1537042726, "jominey", "E", 1537042773, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="sam:cancel">
+         X[S] \<acmd cmd="@quest \\"cancel NAME"\>[Cancel Quest]\</acmd\>
+      </Core:Property>
+      <Core:Property property="sam:share">
+         X[S] \<acmd cmd="@quest \\"share NAME"\>[Share Quest]\</acmd\>
+      </Core:Property>
+      <Core:Property property="sam:show_more">
+         X[S] \<acmd cmd="@quest \\"show NAME"\>NAME\</acmd\>
+      </Core:Property>
+      <Core:Property property="sys:sync:idpsource">
+         "ironclaw"
+      </Core:Property>
+      <Core:Property property="sys:sync:igdipro">
+         "propose"
+      </Core:Property>
+      <Core:Property property="sys:sync:proposing-revision">
+         1305774646
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes>
+      <Notes:Category cat="QA" catstate="Open">
+        <Notes:Note ix="1305774549" state="Open" user="jominey">
+           -Create @quest command.
+-Call "tracker" script from merry:global:command.
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Core:PropertyContainer>
+</object>

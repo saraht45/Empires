@@ -1,0 +1,242 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tunk_bodin">
+  <Socials:Verb imp="@match" evoke="forbidden" audible="false" private="true" secret="true" obscured="true" target-abstracts="false" disabled="false" ooc="false" raw_verb="true">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* redesigned the command as of Nov 02 2010 */
+\$msg = "Please provide a single noun to be matched. Example: @match " +TAG("bead", "assist")+ " \\n Additionally, a single adjective may be included. Example: @match " +TAG("red", "imp")+ " " +TAG("bead", "assist");
+
+/* if no line, output help msg */
+if(!\$line) \{
+EmitTo(\$actor, \$msg);
+return FALSE;
+\}
+
+/* SEEK WORDS: use of an adjective and/or noun */
+
+\$linearr = explode(\$line, " ");
+\$sz = sizeof(\$linearr);
+if(\$sz == 1) \{
+\$noun = \$linearr[0];
+\} else if(\$sz == 2) \{
+\$adj = \$linearr[0];
+\$noun = \$linearr[1];
+\} else \{
+EmitTo(\$actor, \$msg);
+return FALSE;
+\}
+
+/* setting empty variables */
+\$inchat = (\{ \});
+\$inhand = (\{ \});
+\$inenv = (\{ \});
+
+/* ACTOR START: stream through actor details for matches */ 
+/* snag details of the chatter */
+\$char = \$actor."base:details";
+if(sizeof(\$char) \> 0) \{
+   for(\$i = 0; \$i \< sizeof(\$char); \$i++) \{
+      if(Get(\$actor, "details:" +\$char[\$i]+ ":sname:" +\$noun) == TRUE \|\| Get(\$actor, "details:" +\$char[\$i]+ ":pname:" +\$noun) == TRUE) \{
+         /* Check if they gave an adjective */
+         /* dont show hidden details - nested in adj check */
+         if(\$adj) \{
+            if(Get(\$actor, "details:" +\$char[\$i]+ ":adjectives:" +\$adj) == TRUE) \{
+               if(Get(\$actor, "details:" +\$char[\$i]+ ":hidden") == FALSE) \{
+                  /* grab the NRef for ease later */
+                  \$detail = NewNRef(\$actor, \$char[\$i]);
+                  \$inchat += (\{ \$detail \});
+               \}
+            \}
+         \} else \{
+            if(Get(\$actor, "details:" +\$char[\$i]+ ":hidden") == FALSE) \{
+               /* grab the NRef for ease later */
+               \$detail = NewNRef(\$actor, \$char[\$i]);
+               \$inchat += (\{ \$detail \});
+            \}
+         \}
+      \}
+    \}
+\}
+/* ACTOR END */
+/* INVENTORY START: stream through inventory details for matches */
+\$stuffobs = \$actor."base:deep-inventory";
+if(sizeof(\$stuffobs) \> 0) \{
+   for(\$i = 0; \$i \< sizeof(\$stuffobs); \$i++) \{
+      /* snag details of each object */ 
+      \$stuffdet = \$stuffobs[\$i]."base:details"; 
+      if(sizeof(\$stuffdet) \> 0) \{
+         for(\$j = 0; \$j \< sizeof(\$stuffdet); \$j++) \{ 
+            if(\$stuffdet[\$j] != nil \&\& Get(\$stuffobs[\$i], "details:" +\$stuffdet[\$j]+ ":sname:" +\$noun) == TRUE \|\| Get(\$stuffobs[\$i], "details:" +\$stuffdet[\$j]+ ":pname:" +\$noun) == TRUE ) \{
+               /* Check if they gave an adjective */
+               /* dont show hidden details - nested in adj check */
+
+               if(\$adj) \{
+                  if(Get(\$stuffobs[\$i], "details:" +\$stuffdet[\$j]+ ":adjectives:" +\$adj) == TRUE) \{
+                     if(Get(\$stuffobs[\$i], "details:" +\$stuffdet[\$j]+ ":hidden") == FALSE) \{
+                        /* grab the NRef for ease later */
+                        \$detail = NewNRef(\$stuffobs[\$i], \$stuffdet[\$j]);
+                        /* remove actor from this list */
+                        \$inhand += (\{ \$detail \});
+                     \}
+                  \}
+               \} else \{
+                     if(Get(\$stuffobs[\$i], "details:" +\$stuffdet[\$j]+ ":hidden") == FALSE) \{
+                        /* grab the NRef for ease later */
+                        \$detail = NewNRef(\$stuffobs[\$i], \$stuffdet[\$j]);
+                        /* remove actor from this list */
+                        \$inhand += (\{ \$detail \});
+                    \}
+               \}
+            \}
+         \}
+      \}
+   \}
+\}
+/* INVENTORY END */
+/* ENVIRONMENT START: stream through location details for matches */
+\$ishere = \$actor."base:environment";
+\$here = \$ishere."base:details";
+if(sizeof(\$here) \> 0) \{
+   for(\$i = 0; \$i \< sizeof(\$here); \$i++) \{
+      if(Get(\$ishere, "details:" +\$here[\$i]+ ":sname:" +\$noun) == TRUE \|\| Get(\$ishere, "details:" +\$here[\$i]+ ":pname:" +\$noun) == TRUE) \{
+        /* Check if they gave an adjective */
+        /* dont show hidden details - nested in adj check */
+        if(\$adj) \{
+            if(Get(\$ishere, "details:" +\$here[\$i]+ ":adjectives:" +\$adj) == TRUE) \{
+               if(Get(\$ishere, "details:" +\$here[\$i]+ ":hidden") == FALSE) \{
+                  /* grab the NRef for ease later */
+                  \$detail = NewNRef(\$ishere, \$here[\$i]);
+                  \$inenv += (\{ \$detail \});
+                \}
+            \}
+        \} else \{
+               if(Get(\$ishere, "details:" +\$here[\$i]+ ":hidden") == FALSE) \{
+                  /* grab the NRef for ease later */
+                  \$detail = NewNRef(\$ishere, \$here[\$i]);
+                  \$inenv += (\{ \$detail \});
+                \}
+        \}
+      \}
+   \}
+\}
+
+/* snag objects in actors location */
+if(\$actor."base:environment") \{
+\$nearobs = \$actor."base:environment"."base:inventory"; 
+\}
+if(sizeof(\$nearobs) \> 0) \{
+   for(\$i = 0; \$i \< sizeof(\$nearobs); \$i++) \{
+      /* snag details of each object */
+      \$neardet = \$nearobs[\$i]."base:details";
+      if(sizeof(\$neardet) \> 0) \{
+         for(\$j = 0; \$j \< sizeof(\$neardet); \$j++) \{
+            if(Get(\$nearobs[\$i], "details:" +\$neardet[\$j]+ ":sname:" +\$noun) == TRUE \|\| Get(\$nearobs[\$i], "details:" +\$neardet[\$j]+ ":pname:" +\$noun) == TRUE) \{
+              /* Check if they gave an adjective */
+              /* dont show hidden details - nested in adj check */
+              if(\$adj) \{
+                  if(Get(\$nearobs[\$i], "details:" +\$neardet[\$j]+ ":adjectives:" +\$adj) == TRUE) \{
+                      if(Get(\$nearobs[\$i], "details:" +\$neardet[\$j]+ ":hidden") == FALSE) \{
+                        /* grab the NRef for ease later */
+                         \$detail = NewNRef(\$nearobs[\$i], \$neardet[\$j]);
+                         /* remove actor from this list */
+                         if(NRefOb(\$detail) != \$actor) \{
+                            \$inenv += (\{ \$detail \});
+                         \}
+                      \}
+                  \}
+               \} else \{
+                  if(Get(\$nearobs[\$i], "details:" +\$neardet[\$j]+ ":hidden") == FALSE) \{
+                     /* grab the NRef for ease later */
+                     \$detail = NewNRef(\$nearobs[\$i], \$neardet[\$j]);
+                     /* remove actor from this list */
+                     if(NRefOb(\$detail) != \$actor) \{
+                        \$inenv += (\{ \$detail \});
+                     \}
+                  \}
+               \}
+           \}
+        \}
+     \}
+   \}
+\}
+/* ENVIRONMENT END */
+/* MSG START: return results with location */
+/* return for chatter results */
+if(sizeof(\$inchat) \> 0) \{
+   \$count = 1;
+   EmitTo(\$actor, "Parts of your body which match \\"" +TAG(\$line, "imp")+ "\\" include: \\n");
+   for(\$i = 0; sizeof(\$inchat) \> \$i; \$i++) \{
+      if(NRefDetail(\$inchat[\$i]) == "default") \{
+         \$env = TAG("This is you!", "assist");
+       \} else \{
+        \$env = TAG("A detail of - ", "assist") + TAG("You!", "imp");
+       \}
+      \$tmp = Describe( \$inchat[\$i], nil, nil, STYLE_NONPOSS );
+      EmitTo(\$actor, \$count+ ".) " +\$tmp+ " : " +\$env);
+      \$count += 1;
+   \}
+   EmitTo(\$actor, "\\n");
+\}
+
+/* return for inventory results */
+if(sizeof(\$inhand) \> 0) \{
+   \$count = 1;
+   EmitTo(\$actor, "Items and details in your inventory which match \\"" +TAG(\$line, "imp")+ "\\" include: \\n");
+   for(\$i = sizeof(\$inhand) -1 ; \$i \>= 0; \$i--) \{
+      if(NRefDetail(\$inhand[\$i]) == "default") \{
+         if(NRefOb(\$inhand[\$i])."base:environment" == \$actor) \{
+            \$env = TAG("located on - ", "imp") + TAG("You!", "assist");
+         \} else \{
+            \$env = TAG("located in - ", "imp") + Describe(NRefOb(\$inhand[\$i])."base:environment", nil, nil, STYLE_NONPOSS);
+         \}
+       \} else \{ 
+         if(NRefOb(\$inhand[\$i])."base:environment" == \$actor) \{
+            \$env = TAG("A detail of - ", "assist") +Describe(NRefOb(\$inhand[\$i]), nil, nil, STYLE_NONPOSS )+ " : " +TAG("located on - ", "imp") + TAG("You!", "assist");
+         \} else \{
+         \$env = TAG("A detail of - ", "assist") +Describe(NRefOb(\$inhand[\$i]), nil, nil, STYLE_NONPOSS )+ " : " +TAG("located in - ", "imp")+Describe(NRefOb(\$inhand[\$i])."base:environment", nil, nil, STYLE_NONPOSS);
+         \}
+       \}
+      \$tmp = Describe( \$inhand[\$i], nil, nil, STYLE_NONPOSS );
+      EmitTo(\$actor, \$count+ ".) " +\$tmp+ " : " +\$env);
+      \$count += 1;
+   \}
+   EmitTo(\$actor, "\\n");
+\}
+
+/* return for environment results */
+if(sizeof(\$inenv) \> 0) \{
+   \$count = 1;
+   EmitTo(\$actor, "Items and details in your area which match \\"" +TAG(\$line, "imp")+ "\\" include: \\n");
+   for(\$i = 0; sizeof(\$inenv) \> \$i; \$i++) \{
+      if(NRefDetail(\$inenv[\$i]) == "default") \{
+         \$env = TAG("located in - ", "imp") +Describe(\$ishere);
+       \} else if(NRefOb(\$inenv[\$i]) == \$ishere) \{
+         \$env = TAG("A detail of - ", "assist") +Describe(NRefOb(\$inenv[\$i]))+ " : " +TAG("located in - ", "imp") + "Rinascita";
+       \} else \{
+         \$env = TAG("A detail of - ", "assist") +Describe(NRefOb(\$inenv[\$i]))+ " : " +TAG("located in - ", "imp") + Describe(NRefOb(\$inenv[\$i])."base:environment");
+       \}
+      \$tmp = Describe( \$inenv[\$i], nil, nil, STYLE_NONPOSS );
+      EmitTo(\$actor, \$count+ ".) " +\$tmp+ " : " +\$env);
+      \$count += 1;
+   \}
+   EmitTo(\$actor, "\\n");
+\}
+
+/* Here we send the output if no match is found */
+if(sizeof(\$inchat) == 0 \&\& sizeof(\$inhand) == 0 \&\& sizeof(\$inenv) == 0) \{
+EmitTo(\$actor, "No matches found for \\"" +TAG(\$line, "imp")+ "\\" in, around, or near you. \\n");
+EmitTo(\$actor, "If you feel this message is in error, please \\"" +TAG("@bug", "imp")+ "\\" with a full explanation.");
+\}
+/* MSG END */
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1288717510, "tunk_bodin", "X", 1388920516, "pp74", "X", 1572230760, "jominey", "P", 1572230814, "jominey", "P", 1572230859, "jominey", "P", 1572230886, "jominey", "P", 1572231393, "jominey", "P", 1572231440, "jominey", "P", 1572231495, "jominey", "P", 1630363217, "sendnoodlez", "E" \})
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

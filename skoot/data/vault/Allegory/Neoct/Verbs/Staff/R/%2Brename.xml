@@ -1,0 +1,190 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+rename" evoke="optional" audible="false" private="true" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="from" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="to" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="to"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /*
+ * An AE-specific +(n)rename command.
+ */
+int    i, sz_i;
+string old_name, new_name, *bits, *snames, *adjectives, *names, fullname;
+object *bodies, body, *list;
+
+if (!\$(from:words) \|\| !\$(to:words)) \{
+    EmitTo(\$actor, "Usage: " + \$imperative + " \<from name\> to \<to name\>\\n");
+    return nil;
+\}
+
+old_name = implode(\$(from:words), " ");
+new_name = implode(\$(to:words), " ");
+
+bodies = Get(\$\{UserAPI:UDatD\}, "all-bodies:" + old_name);
+if (!bodies \|\| !sizeof(bodies)) \{
+    EmitTo(\$actor, \$imperative + ": Unable to find \\"" + old_name + "\\".\\n");
+    return nil;
+\}
+
+if (sizeof(bodies) \> 1) \{
+    EmitTo(\$actor,
+           \$imperative + ": There is more than one body that matches \\"" + old_name + "\\":\\n");
+    for (i = 0, sz_i = sizeof(bodies); i \< sz_i; i++) \{
+        EmitTo(\$actor, "  " + name(bodies[i]) + " (" + Describe(bodies[i]) + ")\\n");
+    \}
+    return nil;
+\}
+
+body = bodies[0];
+bits = explode(new_name, " ");
+for (i = 0, sz_i = sizeof(bits); i \< sz_i; i++) \{
+    int j, sz_j;
+
+    for (j = 0, sz_j = strlen(bits[i]); j \< sz_j; j++) \{
+        switch (bits[i][j]) \{
+        case 'a'..'z':
+            break;
+        default:
+            EmitTo(\$actor,
+                   \$imperative + ": Invalid new name, word " + (i + 1) + " contains '" +
+                   bits[i][j..j] + "'\\n");
+            return nil;
+        \}
+    \}
+\}
+list = Get(\$\{UserAPI:UDatD\}, "all-bodies:" + new_name);
+if (list \&\& sizeof(list) \> 0) \{
+    if (sizeof(list) \> 1) \{
+        EmitTo(\$actor,
+               \$imperative + ": There already are " + sizeof(list) + " characters  matching \\"" +
+               new_name + "\\":\\n");
+        for (i = 0, sz_i = sizeof(list); i \< sz_i; i++) \{
+            EmitTo(\$actor, "  " + name(list[i]) + " (" + Describe(list[i]) + ")\\n");
+        \}
+    \} else \{
+        EmitTo(\$actor,
+               \$imperative + ": There already is a \\"" + new_name + "\\": " + name(list[0]) + "\\n");
+    \}
+    return nil;
+\}
+
+if (sizeof(bits) \> 3) \{
+    EmitTo(\$actor, \$imperative + ": Names of more than 3 parts are not supported.\\n");
+    return nil;
+\}
+
+
+EmitTo(\$actor, "Renaming " + name(body) + " ...\\n");
+
+snames     = body."details:default:snames:local";
+adjectives = body."details:default:adjectives:local";
+
+EmitTo(\$actor, "Removing these singular names: " + dump_value(snames) + "\\n");
+EmitTo(\$actor, "Removing these adjectives: " + dump_value(adjectives) + "\\n");
+
+/* Removing the snames and adjectives. */
+for (i = 0, sz_i = sizeof(snames); i \< sz_i; i++) \{
+    Set(body, "details:default:sname:" + snames[i], FALSE);
+\}
+
+for (i = 0, sz_i = sizeof(adjectives); i \< sz_i; i++) \{
+    Set(body, "details:default:adjective:" + adjectives[i], FALSE);
+\}
+
+/* Removing the references to the old names in the UDatD */
+names = Call(\$\{UserAPI:UDatD\}, "query_names_of_body", \$body: body);
+EmitTo(\$actor, "Removing these UDatD references: " + dump_value(names) + "\\n");
+for (i = 0, sz_i = sizeof(names); i \< sz_i; i++) \{
+    Call(\$\{UserAPI:UDatD\}, "remove_name_for_body", \$body: body, \$name: names[i]);
+\}
+
+/* Add the new snames and adjectives (if appropriate) */
+EmitTo(\$actor, "Adding these singular names: " + dump_value(bits) + "\\n");
+for (i = 0, sz_i = sizeof(bits); i \< sz_i; i++) \{
+    Set(body, "details:default:sname:" + bits[i], TRUE);
+\}
+
+Set(body, "details:default:sname:pc", TRUE);
+Set(body, "details:default:pname:pc", TRUE);
+
+if(body."base:gender" == 1) \{
+    Set(body, "details:default:sname:man", TRUE);
+    Set(body, "details:default:sname:male", TRUE);
+    Set(body, "details:default:pname:men", TRUE);
+    Set(body, "details:default:pname:males", TRUE);
+\}
+
+if(body."base:gender" == 2) \{
+    Set(body, "details:default:sname:woman", TRUE);
+    Set(body, "details:default:sname:female", TRUE);
+    Set(body, "details:default:pname:women", TRUE);
+    Set(body, "details:default:pname:females", TRUE);
+\}
+
+if (sz_i \> 1) \{
+    EmitTo(\$actor, "Adding these adjectives: " + dump_value(bits[..sz_i - 2]) + "\\n");
+    for (i = 0; i \< sz_i - 1; i++) \{
+        Set(body, "details:default:adjective:" + bits[i], TRUE);
+    \}
+\}
+
+switch (sizeof(bits)) \{
+case 1:
+    names = (\{ bits[0] \});
+    break;
+case 2:
+    names = (\{ bits[0],
+               bits[0] + " " + bits[1],
+               bits[0] + "/" + bits[1] \});
+    break;
+case 3:
+    names = (\{ bits[0],
+               bits[0] + " " + bits[1],
+               bits[0] + " " + bits[2],
+               bits[0] + " " + bits[1] + " " + bits[2],
+               bits[0] + "/" + bits[1] + "/" + bits[2] \});
+    break;
+\}
+
+EmitTo(\$actor, "Adding these UDatD references: " + dump_value(names) + "\\n");
+for (i = 0, sz_i = sizeof(names); i \< sz_i; i++) \{
+    Call(\$\{UserAPI:UDatD\}, "add_name_for_body", \$body: body, \$name: names[i]);
+\}
+
+/*if(bodies[0]."theatre:id")
+  bodies[0]."core:objectname" = "Chatters:"+bodies[0]."theatre:id"+":" + bits[0][.. 1] + ":" + implode(bits, "_");
+else */
+  bodies[0]."core:objectname" = "Chatters:AE:" + bits[0][.. 1] + ":" + implode(bits, "_");
+bodies[0]."skotos:charid" = implode(bits, "/");
+
+for (i = 0, sz_i = sizeof(bits); i \< sz_i; i++) \{
+    bits[i] = capitalize(bits[i]);
+\}
+fullname = implode(bits, " ");
+
+EmitTo(\$actor, "New full name: " + fullname + ".\\n");
+body."trait:name:full" = fullname;
+body."trait:brief" = fullname;
+body."skotos:playercapname" = fullname;
+body."skotos:charname" = fullname;
+
+EmitTo(\$actor, "Done!\\n");
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1435296428, "jominey", "E", 1435296447, "jominey", "E", 1435296543, "jominey", "X", 1435296593, "jominey", "X", 1435296704, "jominey", "E", 1435296741, "jominey", "E", 1453872910, "tonyd", "E", 1453873004, "tonyd", "R", 1571976792, "jominey", "E", 1571976803, "jominey", "R", 1572744777, "jominey", "E", 1572744874, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

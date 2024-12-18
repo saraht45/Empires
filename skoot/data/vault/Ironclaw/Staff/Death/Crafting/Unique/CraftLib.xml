@@ -1,0 +1,151 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="abc:notes">
+         X[M] /* Incorporate adjectives based on QUALITY */ 
+/* 1-3 = poor,poorly */ 
+/* 4-6 = no adjective */ 
+/* 7-9 = well-constructed */ 
+/* 10-12 = expertly crafted */ 
+ 
+/* Give WEAR \& TEAR to objects */ 
+/* use time for now - use later */ 
+/* allow them to be repaired or maintenanced */ 
+ 
+/* Reclaim and or STRIP vital parts */ 
+/* leave trash items in the wake */ 
+ 
+/* give a TIME DELAY to each crafting step */ 
+/* delay based on skill is an option */ 
+/* standard delay based on item is an option */ 
+/* combination of both is an option */ 
+ 
+/* crafting is an ACTIVE process */ 
+/* they will continue to input commands to complete a project */ 
+/* no more insta-items */ 
+ 
+/* implement BLUEBOOKING of crafted items */ 
+/* progress only while offline */ 
+/* they can use active crafting while online */ 
+/* institute a simple system to start */ 
+/* que up a list */ 
+/* # of items in list based on skill and item level */ 
+/* time to complete based on skill and item level */
+      </Core:Property>
+      <Core:Property property="merry:lib:get:material">
+         X[M] /* spawn generic object */   
+\$object = Spawn(\$\{Ironclaw:Staff:Death:Crafting:Unique:CraftMaterial\});   
+/* set type */   
+Set(\$object, "trait:objecttype", \$objecttype);   
+/* set color */   
+Set(\$object, "trait:color", \$color);   
+/* set snames */   
+\$sizes = sizeof(\$sn);   
+for(\$i=0; \$i\<\$sizes; ++\$i) \{   
+\$tmp = \$sn[\$i];   
+Set(\$object, "details:default:sname:"+\$tmp, 1);   
+\}   
+/* set pnames */   
+\$sizep = sizeof(\$pn);   
+for(\$i=0; \$i\<\$sizep; ++\$i) \{   
+\$tmp = \$pn[\$i];   
+Set(\$object, "details:default:pname:"+\$tmp, 1);   
+\}   
+/* set adjectives */   
+\$sizea = sizeof(\$adj);   
+for(\$i=0; \$i\<\$sizea; ++\$i) \{   
+\$tmp = \$adj[\$i];   
+Set(\$object, "details:default:adjective:"+\$tmp, 1);   
+\}   
+/* set descs */   
+\$append = "A material used in crafting.";   
+\$brief = \$color + " " +\$objecttype;   
+\$look = "A " +\$brief+ ".";   
+\$examine = \$look+ " " +\$append;   
+Set(\$object, "trait:brief", \$brief);   
+Set(\$object, "trait:look", \$look);   
+Set(\$object, "trait:examine", \$examine);   
+/* Set smell and taste */   
+if(\$scent) Set(\$object, "trait:smell", \$scent);   
+if(\$taste) Set(\$object, "trait:taste", \$taste);   
+/* place in actor inventory */   
+Set(\$object, "base:environment", \$actor);   
+/* transfer scripts */   
+/* we need set merry reacts here based on objecttype or source such as weave, craft, alter, etc */   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:project:continue">
+         X[M] EmitTo(\$actor, "Got to project continue.");  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:project:start">
+         X[M] EmitTo(\$actor, "Got to project start.");  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:project:verify">
+         X[M] /* passed variables \$dobi (object), \$iobi (object), \$imperative (string) */       
+/* if there is no iob, we dont have anything to do */      
+if(!\$iobi) \{      
+EmitTo(\$actor, "What are weaving this into?");      
+return FALSE;      
+\}      
+/* if there is no dob, we dont have anything to do */      
+if(!\$dobi) \{      
+EmitTo(\$actor, "What are weaving into this?");      
+return FALSE;      
+\}      
+/* set DB */        
+\$db = \$\{Ironclaw:Staff:Death:Crafting:Unique:CraftDB\};        
+/* imperative will determine if we are using the correct items by calling [imperative]:usables */       
+\$tmp = \$imperative+ ":usables";       
+\$usables = Get(\$db, \$tmp);       
+/* need to get the objecttypes */      
+if(\$dobi."trait:objecttype") \{      
+\$dobtype = Get(\$dobi, "trait:objecttype");      
+\} else \{      
+\$dobtype = "none";      
+\}      
+if(\$iobi."trait:objecttype") \{      
+\$iobtype = Get(\$iobi, "trait:objecttype");      
+\} else \{      
+\$iobtype = "none";      
+\}      
+/* if both items are listed in usables, we are starting a new project */       
+if(member(\$dobtype, \$usables) \&\& member(\$iobtype, \$usables)) \{     
+/* go to project:start */     
+Call(\$\{Ironclaw:Staff:Death:Crafting:Unique:CraftLib\}, "project:start", \$actor: \$actor, \$imperative: \$imperative, \$dobi: \$dobi, \$iobi: \$iobi);  
+return FALSE;    
+\}      
+/* if neither, then they shouldn't be here */      
+if(!member(\$dobtype, \$usables) \&\& !member(\$iobtype, \$usables)) \{     
+EmitTo(\$actor, "Neither item is a craftable material to be used in this project.");     
+return FALSE;     
+\}       
+/* so at least one is a craft material. Find it and set it. */    
+if(member(\$dobtype, \$usables)) \{    
+\$mat = Obj(\$dobi);    
+\$proj = Obj(\$iobi);    
+\} else \{    
+\$mat = Obj(\$iobi);    
+\$proj = Obj(\$dobi);    
+\}    
+/* We need to verify the other is an incomplete project of the same imperative */    
+/* grab project list */   
+\$tmp = \$imperative+ ":projects";       
+\$projs = Get(\$db, \$tmp);   
+if(!member(\$proj, \$projs)) \{   
+EmitTo(\$actor, "Neither item is an incomplete project to be used with this material.");   
+return FALSE;   
+\}   
+/* go to project:continue */    
+Call(\$\{Ironclaw:Staff:Death:Crafting:Unique:CraftLib\}, "project:continue", \$actor: \$actor, \$imperative: \$imperative, \$mat: \$mat, \$proj: \$proj);  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1306546335, "tunk_bodin", "X" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

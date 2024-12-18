@@ -1,0 +1,124 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:publish">
+         X[M] \$editor = \$par["editor"];
+\$newspaper = \$par["newspaper"];
+\$obname = \$par["obname"];
+
+\$newspaper."base:urparent" = \$\{Allegory:Props:Writing:PrintingPress:UrNewspaper\};
+\$newspaper."core:ur:parent" = \$\{Allegory:Props:Writing:PrintingPress:UrNewspaper\};
+\$newspaper."base:objectname" = \$obname;
+\$newspaper."core:objectname" = \$obname;
+\$newspaper."base:environment" = nil;
+\$newspaper."trait:published" = time();
+\$newspaper."trait:editor" = \$editor; /* This determines which guild gets profit. If no guild, individual gets profit. */
+
+\$names = explode(UnSAM(Get(\$newspaper, "trait:page00:title")), " ");
+
+for(\$i = 0; \$i \< sizeof(\$names); \$i++) \{
+    if(\$i \< (sizeof(\$names)-1)) \{
+        Set(\$newspaper, "details:default:adjective:" + \$names[\$i], TRUE);
+    \} else \{
+        Set(\$newspaper, "details:default:sname:" + \$names[\$i], TRUE);
+    \}
+\}
+
+\$tradinglist = \$\{Allegory:NPCs:NIPs:TradingLists:General:Crier\};
+
+\$data = ([ "object":\$newspaper ]);
+ 
+Set(\$tradinglist, "tradingitem:" + Str(\$obname), \$data);
+ 
+EmitTo(\$editor, capitalize(Describe(\$this)) + " gathers up the press sheets with a nod, \\"We will run this for you right away!\\"");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:publish_decline">
+         X[M] \$editor = \$par["editor"];
+\$newspaper = \$par["newspaper"];
+
+EmitTo(\$actor, "You decide to not publish " + Describe(\$newspaper, nil, nil, STYLE_NONPOSS) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_newspaper">
+         X[M] string papername, obname, timestamp, month, nextmonth, month2;
+string * pages;
+int i, day, year;
+NRef detail;
+mapping months, months2, monthnum;
+
+/* Make sure it is filled out */
+pages = (\{ "page00", "page01", "page02", "page03", "page04", "page05", "page06", "page07" \});
+for(i = 0; i \< sizeof(pages); i++) \{
+    detail = NewNRef(\$newspaper, pages[i]);
+    if(!Get(\$newspaper, "trait:" + pages[i]) \|\| UnSAM(Get(\$newspaper, "trait:" + pages[i])) == "" \|\|
+       !Get(\$newspaper, "trait:" + pages[i] + ":title") \|\| UnSAM(Get(\$newspaper, "trait:" + pages[i] + ":title")) == "") \{
+        EmitTo(\$editor, Describe(detail) + " is incomplete. You must fill it out before submitting it for publication.");
+        return FALSE;
+    \}
+
+    Set(\$newspaper, "export:trait:" + pages[i], Get(\$newspaper, "trait:" + pages[i]));
+    Set(\$newspaper, "export:trait:" + pages[i] + ":title", Get(\$newspaper, "trait:" + pages[i] + ":title"));
+\}
+
+months = ([ "January":"February", "February":"March", "March":"April", "April":"May", "May":"June", "June":"July", "July":"August", "August":"September", "September":"October", "October":"November", "November":"December", "December":"January" ]);
+
+months2 = ([ "Jan":"January", "Feb":"February", "Mar":"March", "Apr":"April", "May":"May", "Jun":"June", "Jul":"July", "Aug":"August", "Sep":"September", "Oct":"October", "Nov":"November", "Dec":"December" ]);
+
+monthnum = ([ "January":"01", "February":"02", "March":"03", "April":"04", "May":"05", "June":"06", "July":"07", "August":"08", "September":"09", "October":"10", "November":"11", "December":"12" ]);
+
+timestamp = rfc_1123_date(time());
+
+month = months2[explode(timestamp, " ")[2]];
+month2 = monthnum[month];
+day = Int(explode(timestamp, " ")[1]);
+year = Int(explode(timestamp, " ")[3]);
+
+papername = UnSAM(Get(\$newspaper, "trait:page00:title"));
+obname = "Allegory:Props:Writing:PrintingPress:Newspapers:" + year + ":" + month + ":" + replace_strings(papername, " ", "", "'", "", ",", "");
+
+if(Obj(obname)) \{
+    EmitTo(\$editor, "A newspaper with that name has already been submitted this month.");
+    return FALSE;
+\}
+
+if(day \<= 7) \{
+    nextmonth = months[month];
+\} else \{
+    nextmonth = months[month];
+    nextmonth = months[nextmonth];
+\}
+
+\$question = "Are you sure you want to publish " + papername + "? It will be available for purchase for 5 florins until the first of " + Str(nextmonth) + ". Your guild will receive the money for the sales, or if you have no guild, the money will be deposited into your personal bank account.";
+
+interaction::question(\$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "publish", \$no_fun: "publish_decline", \$expire_fun: "publish_decline", \$par: ([ "newspaper":\$newspaper, "editor":\$editor, "obname":obname ]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:offer-who%printingpress">
+         X[M] object newspaper;
+
+if(sizeof(\$what) \> 1) \{
+    EmitTo(\$actor, "You can only offer one thing at a time to " + Describe(\$this) + ".");
+    return FALSE;
+\}
+
+newspaper = NRefOb(\$what[0]);
+
+if(newspaper."base:urparent" == \$\{Allegory:Props:Writing:PrintingPress:NewspaperTemplate\}) \{
+    Call(\$\{Allegory:Lib:PrintingPress\}, "run_newspaper", \$newspaper: newspaper, \$editor: \$actor);
+    return FALSE;
+\} 
+
+EmitTo(\$actor, capitalize(Describe(\$this)) + " can't do anything with " + Describe(newspaper, nil, nil, STYLE_NONPOSS) + ".");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1573354269, "jominey", "E", 1573354368, "jominey", "E", 1573354432, "jominey", "E", 1573354433, "jominey", "E", 1573354439, "jominey", "E", 1573354446, "jominey", "E", 1573354521, "jominey", "E", 1573354733, "jominey", "E", 1573354758, "jominey", "E", 1573356195, "jominey", "E", 1573356326, "jominey", "E", 1573356408, "jominey", "E", 1573357643, "jominey", "E", 1573357753, "jominey", "E", 1573358061, "jominey", "E", 1573359621, "jominey", "E", 1573360182, "jominey", "P", 1573360264, "jominey", "P", 1573360412, "jominey", "P", 1573360425, "jominey", "P", 1573360515, "jominey", "P", 1573360601, "jominey", "E", 1573360811, "jominey", "E", 1573361001, "jominey", "E", 1573361347, "jominey", "P", 1573361476, "jominey", "P", 1573361797, "jominey", "P", 1573362503, "jominey", "E", 1573362614, "jominey", "E", 1574135540, "jominey", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

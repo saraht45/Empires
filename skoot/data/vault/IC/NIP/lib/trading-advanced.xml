@@ -1,0 +1,1639 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(IC:NIP:lib:trading-advanced-step2)"/>
+    <Core:PCProperties>
+      <Core:Property property="dependency:needs">
+         (\{ \<Lib:NIP:lib:trading\> \})
+      </Core:Property>
+      <Core:Property property="done:message">
+         "The advanced trading has been added. TWiki shall have glorious details about this library. Azrael will write them. He promised."
+      </Core:Property>
+      <Core:Property property="init:merry">
+         (\{ "react:take", "lib:handler:ask", "lib:handler:ask-for", "react-post:offer-who" \})
+      </Core:Property>
+      <Core:Property property="merry:lib:check_price">
+         X[M] /* checks if actor is allowed to buy this item */
+int stock, price, k;
+float multiplier;
+
+/* sanity checking */
+if(!\$inventory) return nil;
+if(!\$item) return nil;
+if(!\$stockchange) \$stockchange = 0;
+
+if(!(\$info = Get(\$inventory, \$item))) return nil;
+
+/* is there any of this item in stock */
+stock = 0;
+if(!\$info["stock"]) \{
+  if(\$info["sharedstock"] \&\& typeof(\$info["sharedstock"]) == T_STRING) \{
+    stock = Int(Get(\$inventory, \$info["sharedstock"]));
+    if(\$stockchange)
+      stock += Int(Get(\$inventory, "holding:"+\$info["sharedstock"]));
+  \} else if(\$info["sharedstock"] \&\& typeof(\$info["sharedstock"]) == T_ARRAY) \{
+    stock = Int(Get(\$info["sharedstock"][0], "holding:"+\$info["sharedstock"][1]));
+    if(\$stockchange)
+      stock += Int(Get(\$info["sharedstock"][0], \$info["sharedstock"][1]));
+  \}
+\} else \{
+  stock = \$info["stock"];
+  if(\$stockchange)
+    stock += Int(Get(\$inventory, "holding:"+\$item));
+\}
+if(!stock \&\& \$stockchange == 0)
+  /* none in stock */
+  return nil;
+
+/* check if the item won't be sold */
+if(\$stockchange == 0 \&\& \$info["noselling"]) return nil;
+
+/* check if the item won't be bought */
+if(\$stockchange != 0 \&\& !\$info["buying"]) return nil;
+
+/* check if item should be hidden */
+if(\$stocklisting \&\& \$info["hidden"])
+  return nil;
+
+/* check if we have a price */
+if(typeof(\$info["price"]) == T_INT) \{
+  price = \$info["price"];
+\} else \{
+  if(\$stocklisting)
+    return nil;
+  return 0;
+\}
+
+/* does the price vary based on stock */
+if(stock != -1 \&\& \$info["maxstock"]) \{
+  /* add the stockchange */
+  stock += \$stockchange;
+  /* calculate the multiplier */
+  if(\$info["minstock"]) \{
+    stock -= \$info["minstock"];
+    if(stock \< 0) stock = 0;
+    /*multiplier = Flt(\$info["maxstock"]-stock-\$info["minstock"])/Flt(\$info["maxstock"]-\$info["minstock"]);*/
+    multiplier = Flt(\$info["maxstock"]-stock-\$info["minstock"]);
+    if(multiplier \< 0.0) multiplier = 0.0;
+    multiplier = multiplier/Flt(\$info["maxstock"]-\$info["minstock"]);
+  \} else \{
+    multiplier = Flt(\$info["maxstock"]-stock);
+    if(multiplier \< 0.0) multiplier = 0.0;
+    multiplier = multiplier/Flt(\$info["maxstock"]);
+  \}
+  /* include the multiplier */
+  price = Int(Flt(price)*multiplier);
+\}
+
+/* does the price vary based on skills? */
+/* sanity check the skill array wasn't misnamed */
+if(!\$info["skill"] \&\& \$info["skills"]) \{
+ \$info["skill"] = \$info["skills"];
+ \$info["skills"] = nil;
+\}
+if(typeof(\$info["skill"]) != T_ARRAY)
+ \$info["skill"] = Arr(\$info["skill"]);
+
+if(\$info["skill-level"] \&\& \$info["skill"]) \{
+ \$counter = 0;
+ /* sanity check */
+ if(\$info["skill-level"] \<= 0)
+  \$info["skill-level"] = 1;
+ /* count the skills that \$actor has */
+ for(k=0;k\<sizeof(\$info["skill"]);k++)
+  \$counter += Int(Get(\$actor, \$info["skill"][k]));
+ /* subtract the bad skills the \$actor has */
+ if(\$info["badskill"]) \{
+  \$info["badskill"] = Arr(\$info["badskill"]);
+  for(k=0;k\<sizeof(\$info["badskill"]);k++)
+   \$counter -= Int(Get(\$actor, \$info["badskill"][k]));
+ \}
+ 
+ /* if they have no skill, the merchant will lie and say they don't have it */
+ if(\$counter \< 1) return nil;
+
+ /* do we have enough skill, or should we increase the cost of this item? */
+ if(\$info["skill-level"] \> \$counter) \{
+
+  /* avoid divide-by-zero crashes */
+  /* we just assume they always get at least skill 1, even if they don't have the skills */
+  /* this check is unnecessary, since a \$counter of 0 will already return nil. Left in incase someone changes that code later. */
+  if(\$counter \< 1) \$counter = 1;
+
+  /* calculate the price */
+  price = Int(Flt(price) * ( Flt(\$info["skill-level"]) / Flt(\$counter) ) );
+ \}
+\}
+
+/* is there a minimum price? */
+if(\$info["minprice"] \&\& price \< \$info["minprice"]) price = \$info["minprice"];
+
+/* reduce the offered price based on trading skill */
+if(\$stockchange \&\& price \> 0 \&\& !\$info["notrading"]) \{
+  k = 0;
+  if(\$actor."trading:tradingroll") \{
+    if(\$actor."trading:tradingroll"[1] + 60*60*8 \> time())
+      k = \$actor."trading:tradingroll"[0];
+  \}
+  if (k==0) \{
+    k = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "social:trading" \}), \$bonus: Int(\$actor."trait:mind"));
+    \$actor."trading:tradingroll" = (\{ k, time() \});
+  \}
+
+  price = Int(Flt(k*4*price)/100.0);
+\}
+
+return price;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_price_for_offer">
+         X[M] /*
+  D=Code to allow advanced traders to calculate the cost they will offer to players
+
+  The trader needs to have advanced trading lists.
+*/
+
+int price;
+mapping additions;
+string *inv_ind;
+
+int found, i, sz, j, jx, k, l, lx;
+mixed *matches, bestmatch;
+mapping finalmatches;
+mixed *wanted;
+
+if(!\$what) return nil;
+if(!\$inventories) return nil;
+
+/* Step through the advanced trading list inventories and see if we find any matches we want */
+matches = (\{ \}); /* the possible sales that we've found */
+
+if(\$inventories \&\& sizeof(\$inventories)) \{
+  /* add items to the list of things the merchant wants */
+  sz = sizeof(\$inventories);
+  for(i=0;i\<sz;i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(\$inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if this item matches */
+      \$info = Get(\$inventories[i], inv_ind[j]);
+      /* CHECK FOR NEW TRADING */
+      if(typeof(\$info) == T_MAPPING) \{
+      /* using new trading */
+      /* CHECK FOR NEW TRADING DONE */
+
+      found = FALSE;
+      for(k=0;!found \&\& k\<sizeof(\$what);k++)\{
+        if(!\$info["object"] \|\| \$what[k]."core:ur:parent" == \$info["object"]) \{
+          /* object parent matches */
+          found = TRUE;
+          /* are there any settings that need to match? */
+          if(\$info["properties"]) \{
+            lx = sizeof(\$info["properties"]);
+            for(l=0;found\&\&l\<lx;l++) \{
+              if(!member(Get(\$what[k], \$info["properties"][l][0]), \$info["properties"][l]))
+                found = FALSE;
+            \}
+          \}
+          /* add to the list of potentials */
+          if(found) \{
+            \$info = copy(\$info);
+            \$info["generated:obj"] = \$inventories[i];
+            \$info["generated:name"] = inv_ind[j];
+            matches \|= (\{ \$info \});
+          \}
+        \}
+      \}
+
+      /* CHECK FOR NEW TRADING */
+      \}
+      /* CHECK FOR NEW TRADING DONE */
+    \}
+  \}
+\}
+
+/* did we find any potential matches? */
+wanted = (\{ \});
+finalmatches = ([ ]);
+
+if(!sizeof(matches)) return (\{ price, wanted, ([ ]) \});
+
+/* for each item, go through our list of matches, and find the highest priority match */
+/* (highest priority as in lowest number. So priority 1 is better than priority 3) */
+jx = sizeof(matches);
+for(i=0;i\<sizeof(\$what);i++)\{
+  bestmatch = nil;
+  for(j=0;j\<jx;j++) \{
+    found = FALSE;
+    \$info = matches[j];
+    if(\$info["buying"] \&\& (!\$info["object"] \|\| \$what[i]."core:ur:parent" == \$info["object"])) \{
+      /* object parent matches */
+      found = TRUE;
+      /* are there any settings that need to match? */
+      if(\$info["properties"]) \{
+        lx = sizeof(\$info["properties"]);
+        for(l=0;found\&\&l\<lx;l++) \{
+          if(!member(Get(\$what[i], \$info["properties"][l][0]), \$info["properties"][l]))
+            found = FALSE;
+        \}
+      \}
+    \}
+    if(found) \{
+      /* do we already have a match? */
+      /* is this a better priority match than we had? */
+      if(bestmatch) \{
+        if(!bestmatch["priority"]) \{
+          if(\$info["priority"] \&\& \$info["priority"] \<= 100)
+            bestmatch = \$info;
+        \} else \{
+          if((\$info["priority"] \&\& \$info["priority"] \< bestmatch["priority"])
+          \|\| (!\$info["priority"] \&\& bestmatch["priority"] \> 100))
+            bestmatch = \$info;
+        \}
+      \} else \{
+        bestmatch = \$info;
+      \}
+    \}
+  \}
+  if(bestmatch) \{
+    wanted \|= (\{ \$what[i] \});
+    if(finalmatches[Str(bestmatch["generated:obj"])+":"+bestmatch["generated:name"]]) \{
+      finalmatches[Str(bestmatch["generated:obj"])+":"+bestmatch["generated:name"]][0]++;
+    \} else \{
+      finalmatches[Str(bestmatch["generated:obj"])+":"+bestmatch["generated:name"]] = (\{ 1, bestmatch["generated:obj"], bestmatch["generated:name"] \});
+    \}
+  \}
+\}
+
+/* finalmatches now contains the information about which trading items these will sell as */
+/* calculate the value of the sold goods */
+price = 0;
+if(wanted \&\& sizeof(wanted)) \{
+  inv_ind = map_indices(finalmatches);
+  sz = sizeof(inv_ind);
+  for(i=0;i\<sz;i++) \{
+    jx = finalmatches[inv_ind[i]][0];
+    for(j=1;j\<=jx;j++) \{
+      price += Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: finalmatches[inv_ind[i]][1], \$item: finalmatches[inv_ind[i]][2], \$stockchange: j);
+    \}
+  \}
+
+\}
+
+return (\{ price, wanted, finalmatches \});
+      </Core:Property>
+      <Core:Property property="merry:lib:core_trading_deduct">
+         X[M] /*
+
+  D=Deduct money from \$actor, based on a specific CDO (cash data object).
+
+  Required arguments:
+    \$CDO   (object): The CDO reference.
+    \$query (int):    The amount of money requested.
+    \$item  (object): The item being sold.
+    \$actor (object): The person for which money should be deducted.
+
+  Return values:
+    TRUE if the purchase went OK. FALSE if not.
+    (core_trading_deduct will emit a message to \$actor if things go bad)
+
+*/
+
+constant prefix = Str(\$option."cash:prefix");
+constant suffix = Str(\$option."cash:suffix");
+
+string message, npc;
+
+npc = Describe(this);
+
+/*
+ * Firstly, query the purchase to ensure the actor has
+ * cash to pay for it.
+ */
+
+if( !::core_trading_query_assets() )
+\{
+  /*
+   * Not enough cash.
+   */
+  message = \$option."cash:announce-shortage";
+  if( !message )
+    message = \$CDO."cash:announce-shortage";
+  if( !message )
+    message = "You do not have enough \$(name) for \$(item).";
+  message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+  EmitTo( \$actor, message );
+  return FALSE;
+\}
+
+\{
+
+  /*
+   * Enough cash. Firstly, find the most accurate amount of
+   * money with as little change back as possible.
+   */
+
+  int   physical, sz, i;
+  int rest, sum, prest, f;
+  int *range, *worth;
+  object *snatched, *change, *objects;
+  mapping currency, cobject;
+  string money;
+
+  physical = \$option."cash:physical";
+  change   = (\{ \});
+  snatched = (\{ \});
+
+  if( \$cash_intrinsic )
+  \{
+    /*
+     * Well, that's easy. No change, and the ability to
+     * split freely. Credit cards rock! :)
+     */
+    Set(\$actor, \$cash_intrinsic, Int(Get(\$actor, \$cash_intrinsic))-\$query);
+    \$using                      = nil;
+    \$option                     = \$CDO;
+    sum                         = \$query;
+  \} else if( !physical )
+  \{
+    /*
+     * Well, that's easy. No change, and the ability to
+     * split freely. Credit cards rock! :)
+     */
+    \$value_hits."cash:balance" -= \$query;
+    \$using                      = \$value_hits;
+    sum                         = \$query;
+
+  \} else \{
+    /*
+     * Physical payment, including bills and coins and
+     * returned change and such.
+     * ---
+     * The \$value_hits property will, in the case of
+     * physical, be a mapping with the values;
+     * ([ \<worth\> : (\{ \<physical object(s)\>, ... \}) ])
+     */
+    cobject  = \$option."cash:object";
+    currency = reverse_mapping( cobject );
+    range    = \$option."cash:range";
+    worth    = map_indices( \$value_hits ); /* \<-- needed? */
+    sz       = sizeof( range );
+    sum      = 0;
+    rest     = \$query;
+
+    for( i = sz-1; i \> -1;  i-- )
+      if( \$value_hits[ range[i] ] )
+        while( rest \> 0 \&\& sizeof( \$value_hits[ range[i] ] ))
+        \{
+          sum                     += range[i];
+          rest                    -= range[i];
+          snatched                += (\{ \$value_hits[ range[i] ][0] \});
+          \$value_hits[ range[i] ] = \$value_hits[ range[i] ][1..];
+        \}
+
+    /*
+     * Now, the actor is probably about to hand out unnecessary
+     * change for the purchase. So we'll step through the
+     * offered (snatched) array and remove excess additions.
+     */
+    sz = sizeof( snatched );
+    for( i = sz-1; i \> -1; i-- )
+    \{
+      f = cobject[ snatched[i]."core:ur:parent" ];
+      if( rest + f \< 1 )
+      \{
+        sum         -= f;
+        rest        += f;
+        snatched[i] = nil;
+      \}
+      if( rest == 0 )
+        i = -1;
+    \}
+    snatched -= (\{ nil \});
+
+    if( rest \> 0 \|\| !sizeof( snatched ))
+    \{
+      /*
+       * Not enough cash.
+       * (In reality, we've already checked whether actor
+       * has cash -- and they do. Something went awry
+       * with paying/etc. So we say "no cash" and let them
+       * assist or similar, so this obvious bug can be
+       * dealt with.
+       */
+      message = \$option."cash:announce-shortage";
+      if( !message )
+        message = \$CDO."cash:announce-shortage";
+      if( !message )
+        message = "You do not have enough \$(name) for \$(item).";
+      message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+      EmitTo( \$actor, message );
+      return FALSE;
+    \}
+
+    /*
+     * The NPC has unlimited amount of money, which
+     * makes paying back fairly simple. Step from
+     * biggest-worth to lowest-worth and keep adding
+     * until we have an exact match of the to-be returned
+     * in change.
+     */
+
+    rest  = -rest;
+    prest = rest;
+    sz    = sizeof( range );
+
+    for( i = 0; i \< sz; i++ )
+      while( range[i] \<= rest )
+      \{
+        rest -= range[i];
+        change += (\{ Spawn( currency[ range[i] ] ) \});
+      \}
+
+    if( rest \>= 1 )
+    \{
+      EmitTo( \$actor, "[OOC: You have been given TOO LITTLE change back. This is NOT an IC occurence, but rather a miscalculation! Assist about this immediately, and include this message! You're missing: " + Str(rest) + "; the NPC in question is: "+dump_value(this)+"; property \\"change:fault\\".]" );
+      this."change:fault" = dump_value(\$actor)+" lost "+Str(rest)+" "+ctime(time())+".";
+    \}
+
+    \$using = snatched;
+  \}
+
+  message = \$option."cash:announce-pay";
+  if( !message )
+    message = "You pay \$(npc) \$(prefix)\$(paid)\$(suffix).";
+
+  money = ::core_clean_currency(\$value: sum);
+
+  if(\$using) \{
+   message = replace_strings( message, "\$(npc)", npc, "\$(prefix)", prefix, "\$(suffix)", suffix, "\$(paid)", money, "\$(using)", Describe(\$using, nil, \$actor) );
+  \} else \{
+   message = replace_strings( message, "\$(npc)", npc, "\$(prefix)", prefix, "\$(suffix)", suffix, "\$(paid)", money, "\$(using)", "your money pouch" );
+  \}
+  EmitTo( \$actor, message );
+  /*
+   * Slay the money used to pay for the item,
+   * if any.
+   */
+  sz = sizeof( snatched );
+  for( i = 0; i \< sz; i++ ) \{
+    snatched[i].pending_slayage = TRUE;
+    Slay( snatched[i] );
+  \}
+
+  if( sizeof(change) )
+  \{
+    /*
+     * We're giving the actor back some cash in change.
+     * Emit appropriately, according to the settings in
+     * the CDO.
+     */
+    message = \$CDO."cash:announce-change";
+    if( !message )
+      message = \$option."cash:announce-change";
+    if( !message )
+      message = "\$(npc) gives you back \$(prefix)\$(change)\$(suffix) in change.";
+
+    money = ::core_clean_currency(\$value: prest);
+
+    message = replace_strings( message, "\$(npc)", npc, "\$(prefix)", prefix, "\$(suffix)", suffix, "\$(change)", money );
+    EmitTo( \$actor, message );
+
+    /*
+     * Physically put the change in the actor's inventory.
+     */
+    sz = sizeof( change );
+    for( i = 0; i \< sz; i++ )
+      change[i]."base:environment" = \$actor;
+  \}
+
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:core_trading_query_assets">
+         X[M] /*
+
+  D=Query an object on their assets, based on a specific CDO (cash data object).
+
+  Required arguments:
+    \$CDO   (object): The CDO reference.
+    \$query (int):    The amount of money requested. In the case of US currency, 1 dollar = 100 (cents).
+    \$actor (object): The person who's assets are to be examined.
+
+  Return values:
+    TRUE if the requested amount of money is found. FALSE if not.
+
+  Note:
+    This function is called by the "deduct" function to prepare for the
+    actual purchase. It examines the actor and finds out the most default
+    valid payment alternative and sets the data.
+
+*/
+
+/*
+ * Base sanity checks.
+ */
+if( !\$CDO )
+  /*
+   * No Cash Data Object.
+   * Revert to "You can't afford..."
+   */
+  return FALSE;
+
+if( !\$query )
+  /*
+   * No money request?
+   * Anyone can afford nil bucks!
+   * Revert to "Afford."
+   */
+  return TRUE;
+
+\{
+  /*
+   * Find our options in the CDO, and step through the list
+   * left-\>right until we find a method of payment which
+   * 1) the actor has available, and 2) the actor can afford
+   * the full payment using.
+   * Support for divided payment is unallowed.
+   */
+
+  object *cash_options, *inv;
+  int i, j, sz, isz, physical;
+  int val;
+  mixed v;
+
+  /*
+   * Not doing deep-inventory; if the actor has his cred card
+   * or cash in a pocket or similar, chances are he doesn't want
+   * to use it.
+   */
+  inv = \$actor."base:inventory";
+  isz = sizeof( inv );
+
+  cash_options = \$CDO."cash:options";
+  sz = sizeof( cash_options );
+  \$valid = (\{ \});
+
+  for( i = 0; i \< sz; i++ ) \{
+    \$option = cash_options[i];
+    physical = \$option."cash:physical";
+    val = 0;
+    \$value_hits = ([ ]);
+
+    \$cash_object = (physical ? \$option."cash:object" : ([ \$option."cash:object" : TRUE ]));
+
+    for( j = 0; j \< isz; j++ ) \{
+      if(!inv[j].pending_slayage \&\& ( v = \$cash_object[ inv[j]."core:ur:parent" ] ) != nil )
+        if( physical ) \{
+          if( \$value_hits[ v ] )
+            \$value_hits[ v ] += (\{ inv[j] \});
+          else
+            \$value_hits[ v ] = (\{ inv[j] \});
+
+          val += Int( v );
+        \} else \{
+          /*
+           * Non-physical payment; we only allow one "check"
+           * here -- that is a weakness that may have to be
+           * addressed eventually.
+           */
+          val = Int( inv[j]."cash:balance" );
+          \$value_hits = inv[j];
+          j = isz;
+        \}
+
+    \}
+
+    if( val )
+    \{
+      /*
+       * We found worth in the current payment option --
+       * did we find enough to return a "yes"?
+       */
+      \$valid += (\{ \$option \});
+      if( val \>= \$query )
+        /*
+         * We got it. Return a confirmed.
+         */
+        return TRUE;
+
+    \}
+     else
+    if( !i )
+      \$valid += (\{ \$option \});
+  \}
+
+  /*
+   * They don't seem to be carrying any cash so far
+   * Check if there is an intrinsic property in their bodies allowing them to pay
+   */
+  if(\$CDO."cash:intrinsic") \{
+   \$cash_intrinsic = \$CDO."cash:intrinsic";
+   if(Int(Get(\$actor, \$CDO."cash:intrinsic")) \>= \$query) return TRUE;
+  \}
+
+  /*
+   * We've gone through every payment alternative and
+   * found nothing. Report this.
+   */
+  \$option = cash_options[0];
+
+  return FALSE;
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:decrease_stock">
+         X[M] /* decrease the number of items in stock */
+return ::increase_stock(\$inventory: \$inventory, \$item: \$item, \$amount: -1*\$amount);
+      </Core:Property>
+      <Core:Property property="merry:lib:handler:ask">
+         X[M] /*
+ * D=This script is part of the core of the ask \<npc\> for \<item\> functionality.
+ *
+ * This script is called when no item is specified. A message stating which items the NPC can hand out will be displayed.
+ */
+mapping objects;
+object *inventories;
+string  list, and, *items, *inv_ind, output;
+object  *ind;
+int     denied, i, j, jx;
+
+objects = this."nip:trait:present:objects";
+
+/* Do we have anything to offer? */
+
+/* check the normal trading list */
+if (!objects \|\| !map_sizeof(objects)) \{
+  /* Nope. */
+  objects = ([ ]);
+\}
+
+/* gather a list of items available so far */
+ind = map_indices(objects);
+items = (\{ \});
+for (i = 0; i \< sizeof(ind); i++)
+        items \|= (\{ Describe( ind[i] ) \});
+
+/* now check the advanced trading lists */
+inventories = Arr(this."nip:trait:trading-advanced:inventories");
+if(inventories \&\& sizeof(inventories)) \{
+  /* add items to the list */
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* add these items to our objects list */
+    inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+
+    for(j=0;j\<jx;j++) \{
+      if(\$info = Get(inventories[i], inv_ind[j])) \{
+
+        /* NEW TRADING CHECK */
+        if(typeof(\$info) == T_MAPPING) \{
+        /* NEW TRADING CHECK DONE */
+
+        /* check if the actor is allowed this item */
+        if(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inventories[i], \$item: inv_ind[j], \$stocklisting: TRUE) != nil)\{
+          if(\$info["name"]) \{
+            items \|= (\{ \$info["name"] \});
+          \} else \{
+            items \|= (\{ Describe(\$info["object"]) \});
+          \}
+        \}
+
+        /* NEW TRADING CHECK */
+        \}
+        /* NEW TRADING CHECK DONE */
+
+      \}
+    \}
+  \}
+\}
+
+/* Do we have anything to offer? */
+output = "";
+if (sizeof(items)) \{
+  list = "";
+  and = "";
+  for (i = 0; i \< sizeof(items); i++) \{
+    list += and + items[i];
+    and = i+2 \< sizeof( items ) ? ", " : " or ";
+  \}
+
+  output = Describe(this, nil, nil, STYLE_DEFINITE) + " can give you " + list;
+
+\}
+
+/* will we buy anything? */
+items = (\{ \});
+if(inventories \&\& sizeof(inventories)) \{
+  /* add items to the list */
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* does this inventory have a buying list? */
+    if(inventories[i]."messages:buying:override")\{
+      items \|= (\{ inventories[i]."messages:buying:override" \});
+    \} else \{
+      if(inventories[i]."messages:buying")
+        items \|= (\{ inventories[i]."messages:buying" \});
+
+      /* add these items to our objects list */
+
+
+
+
+
+      inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+      jx = sizeof(inv_ind);
+      for(j=0;j\<jx;j++) \{
+        /* check if the actor can buy this item */
+        if(\$info = Get(inventories[i], inv_ind[j])) \{
+          /* NEW TRADING CHECK */
+          if(typeof(\$info) == T_MAPPING) \{
+          /* NEW TRADING CHECK DONE */
+
+          /* check if the actor can buy this item */
+          if(\$info["buying"] \&\& !\$info["hidden"] \&\& !\$info["buyhidden"]) \{
+            if(\$info["name"]) \{
+              items \|= (\{ \$info["name"] \});
+            \} else \{
+              items \|= (\{ Describe(\$info["object"]) \});
+            \}
+
+          \}
+
+          /* NEW TRADING CHECK */
+          \}
+          /* NEW TRADING CHECK DONE */
+          
+        \}
+      \}
+    \}
+  \}
+\}
+
+/* Do we have anything to offer? */
+if (sizeof(items)) \{
+  if(output == "") \{
+    output += Describe(this, nil, nil, STYLE_DEFINITE) + " will buy ";
+  \} else \{
+    output += ", and will buy ";
+  \}
+
+  list = "";
+  and = "";
+  for (i = 0; i \< sizeof(items); i++) \{
+    list += and + items[i];
+    and = i+2 \< sizeof( items ) ? ", " : " or ";
+  \}
+  output += list;
+\}
+
+
+if(output != "") \{
+  output += ".";
+  EmitTo(\$actor, output);
+  return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:handler:ask-for">
+         X[M] /*
+
+  D=Replacement for the "presents" lib 'ask-for' handler, this script will take into account cost of item. The ability to hand out "free" things is lost, however, and a customized merge of this and the presents v. is required in order to implement such.
+  Contact me if you are in need of this. Currently, I see no requirement for it which is why I am not putting the feature in right away. kalle@marrach.skotos.net
+
+  This script will look for a few values in the object being offered. This object will _need_ to have these values set, otherwise the NPC will not be able to sell them:
+
+    nip:item:cost  (int) - the cost of this item.
+
+  If the property "nip:trait:trading:list" is set to an object, that object will be handed out to people by request, containing a price list.
+  Additionally, the property "nip:trait:trading:detail" may be set, if the detail which should be written upon is not the prime detail of the "nip:trait:trading:list" object.
+  The property "nip:trait:trading:head" can be set to some text that is appended before the price list.
+  The property "nip:trait:trading:foot" can be set to some text appended after the price list.
+
+*/
+string adjective;
+int cost;
+
+/* and for the lower code */
+string adverb;
+string  list, and, *items, *inv_ind;
+int     denied;
+
+/* new code */
+mixed objects;
+object CDO;
+string word, *adjectives, message;
+object *ind, *matches;
+int i, sz, j, jx;
+
+object *inventories;
+mixed info, *inv_matches;
+
+
+objects = this."nip:trait:present:objects";
+CDO     = this."nip:trait:trading:object";
+
+/* Grab global properties from CDO. */
+\$hide_decimals = CDO."cash:hide-decimals";
+
+if( !CDO )
+\{
+  /*
+   * We don't have a Cash Data Object!
+   * Give the actor a lame "out of stock" message
+   * and, if they're SH enabled, a hint as to why.
+   */
+  EmitTo( \$actor, "Unfortunately, "+Describe(this)+" is currently out of stock on everything! Come back later." );
+  if( \$actor."udat:host" )
+    EmitTo( \$actor, "[\<StoryHost\> HINT]: This nipper doesn't have a cash data object. The property for this object is 'nip:trait:trading:object' and should point to an object set up accordingly. See Builder's TWiki for further information on this subject." );
+  return FALSE;
+\}
+
+
+/* Pick the LAST word from \$(for:words), as someone could be funny,
+   and type 'ask cook for a deliciously prepared cookie' but keep the
+   rest in case we need to go into adjective details. */
+
+word = \$(for:words)[ sizeof( \$(for:words) )-1 ];
+
+if( sizeof( \$(for:words) ) \> 1 )
+  adjectives = \$(for:words)[0 .. sizeof( \$(for:words) )-2 ];
+else
+  adjectives = (\{ \});
+
+/* Step through the presents list objects and see if we find any matches for 'word' */
+
+/* Do we have anything to sell? */
+if( !objects \|\|
+    !map_sizeof( objects ))
+  /* Nope. */
+  objects = ([ ]);
+
+ind = map_indices( objects );
+matches = (\{ \});
+sz = sizeof( ind );
+
+for( i = 0; i \< sz; i++ )
+\{
+  if( arr_to_set( objects[ind[i]] )[word] )\{
+    /* Found a match. */
+
+    /*
+     * We are not doing a "spam check", since the \$actor
+     * is paying for each item anyway.
+     */
+    matches += (\{ ind[i] \});
+  \}
+\}
+
+/* Step through the advanced trading list inventories and see if we find any matches for 'word' */
+inventories = Arr(this."nip:trait:trading-advanced:inventories");
+inv_matches = (\{ \});
+if(inventories \&\& sizeof(inventories)) \{
+  for(i=0;i\<sizeof(inventories);i++) \{
+    /* check through inventories for matches */
+    inv_ind = map_indices(prefixed_map(inventories[i]."*", "tradingitem:"));
+    jx = sizeof(inv_ind);
+    for(j=0;j\<jx;j++) \{
+      /* check if this item matches */
+      info = Get(inventories[i], inv_ind[j]);
+
+      /* NEW ADV TRADING CODE CHECK */
+      if(typeof(info) == T_MAPPING) \{
+      /* NEW ADV TRADING CODE CHECK DONE */
+
+      /* does this match? */
+      if(info["names"] \&\& !info["noselling"]) \{
+        if(member(word, Arr(info["names"])))
+          inv_matches += (\{ (\{ inventories[i], inv_ind[j] \}) \});
+      \} else if (!info["noselling"]) \{
+        /* no names provided. check sname */
+        if(Get(info["object"], "details:default:sname:"+word))
+          inv_matches += (\{ (\{ inventories[i], inv_ind[j] \}) \});
+      \}
+
+      /* NEW ADV TRADING CODE CHECK */
+      \}
+      /* NEW ADV TRADING CODE CHECK DONE */
+
+    \}
+  \}
+\}
+
+/* if we have an item matched */
+if( sizeof( matches ) + sizeof( inv_matches ) ) \{
+  /* if there is more than one item matched, try to work out which one based on adjectives */
+  if( adjectives \&\& sizeof(adjectives) \&\& (sizeof(matches)+sizeof(inv_matches)) \> 1 )
+  \{
+    /* strip invalid choices from the matches list */
+    for( i = 0; i \< sizeof( matches ); i++ ) \{
+      for(j=0;j\<sizeof(adjectives)\&\&matches[i];j++) \{
+        if( !arr_to_set( Get( matches[i], "details:"+NRefDetail(matches[i])+":adjectives" ))[adjectives[j]] )
+          matches[i] = nil;
+      \}
+    \}
+    matches -= (\{ nil \});
+
+    /* strip invalid choices from the inventories list */
+    for( i = 0; i \< sizeof( inv_matches ); i++ ) \{
+      info = Get(inv_matches[i][0], inv_matches[i][1]);
+      for(j=0;j\<sizeof(adjectives)\&\&inv_matches[i];j++) \{
+        if(info["adjectives"]) \{
+          if(!member(adjectives[j], Arr(info["adjectives"])))
+            inv_matches[i] = nil;
+        \} else \{
+          /* no names provided. check adjectives */
+          if(!Get(info["object"], "details:default:adjective:"+adjectives[j]))
+          /*if(!member(adjectives[j], Get(info["object"], "details:default:adjectives")))*/
+            inv_matches[i] = nil;
+        \}
+      \}
+    \}
+    inv_matches -= (\{ nil \});
+  \}
+
+  /* if we still have more than one choice */
+
+  if( sizeof( matches ) + sizeof( inv_matches ) \>= 1 ) \{
+    /* pick one */
+    /* give inventory lists priority */
+    if(sizeof(inv_matches)) \{
+      j = FALSE;
+      while(sizeof(inv_matches) \&\& !j) \{
+        i = random( sizeof( inv_matches ));
+        if(typeof(Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inv_matches[i][0], \$item: inv_matches[i][1])) != T_NIL) \{
+          inv_matches = (\{ inv_matches[i] \});
+          j = TRUE;
+        \} else \{
+          inv_matches[i] = nil;
+          inv_matches -= (\{ nil \});
+        \}
+      \}
+      matches = (\{ \});
+    \} else \{
+      matches = (\{ matches[random( sizeof( matches ))] \});
+      inv_matches = (\{ \});
+    \}
+  \}
+
+  /* if we chose to use the presents list, sell or give the item */
+  if( sizeof( matches ))
+  \{
+    /*
+     * We have found a matching item for the \$actor.
+     * Let's check if it's got valid cost settings.
+     */
+    \$item = Spawn( matches[0] );
+
+    if( typeof( \$item."nip:item:cost" ) != T_INT )
+    \{
+      /*
+       * Nope. Let's say it's "out of stock", and additionally,
+       * if \$actor is a storyhost, give him advise on why.
+       */
+      EmitTo( \$actor, "Unfortunately, "+Describe(\$item)+" is currently out of stock." );
+      if( \$actor."udat:host" )
+        EmitTo( \$actor, "[\<StoryHost\> HINT]: This is because the item does not have a cost setting.\\nThe property for this setting is 'nip:item:cost'. However, set 'export:nip:item:cost' to ensure that all UrChildren get the property as well." );
+      Slay( \$item );
+      return FALSE;
+    \}
+
+    cost = \$item."nip:item:cost";
+
+    if( !cost )
+    \{
+      /*
+       * This item is free.
+       */
+      \$spam = this."npc:spam:presents";
+      if( \$spam \&\&
+          \$spam[\$actor] \&\&
+          \$spam[\$actor] + 30 \> time() ) \{
+        EmitTo( \$actor, "You just asked "+Describe( this )+" for something. Please ask again later." );
+        Slay( \$item );
+        return FALSE;
+      \}
+      this."npc:spam:presents" = \$spam ? \$spam + ([ \$actor : time() ]) : ([ \$actor : time() ]);
+
+      EmitIn( this."base:environment", Describe( this ) + " gives " + Describe( \$actor ) + " " + Describe( \$item ) + ".", \$actor );
+      EmitTo( \$actor, Describe( this ) + " gives you " + Describe( \$item ) + "." );
+      \$item."base:environment" = \$actor;
+      return FALSE;
+    \}
+
+    /*
+     * There is a 'cost' value. Good! Let's see if
+     * \$actor has the proper amount of cash.
+     */
+    if( ::core_trading_query_assets(\$CDO: CDO, \$query: cost))
+    \{
+      /*
+       * The actor has enough cash to pay for this item.
+       * Grand! Let's offer it to him and set a temp-hook
+       * in the object we sell for a react. We hold it for 60
+       * seconds before we slay it and consider the trade aborted.
+       * Additionally, we announce the price to actor.
+       */
+      \$item."merry:inherit:react:take" = FindMerry( this, "react", "take" );
+      \$item."base:environment" = this;
+      \$item."nip:item:cdo" = CDO;
+
+      Act( this, "offer", \$who: \$actor, \$what: (\{ \$item \}) );
+
+      message = CDO."cash:announce-cost";
+      if( !message )
+        message = "This will cost you \$(prefix)\$(cost)\$(suffix).";
+
+      message = replace_strings( message, "\$(prefix)", Str(\$option."cash:prefix"), "\$(suffix)", Str(\$option."cash:suffix"), "\$(cost)", ::core_clean_currency(\$value: cost) );
+      EmitTo( \$actor, message );
+
+      \$delay(60, FALSE, "78bb");
+      if( \$item \&\&
+          \$item."base:environment" == this )
+        Slay(\$item);
+    \} else \{
+      /*
+       * Not enough cash.
+       */
+      message = \$option."cash:announce-shortage";
+      if( !message )
+        message = CDO."cash:announce-shortage";
+      if( !message )
+        message = "You do not have enough \$(name) for \$(item).";
+      message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+
+      EmitTo( \$actor, message );
+      Slay(\$item);
+    \}
+
+    return FALSE;
+  \} else if( sizeof( inv_matches )) \{
+    /* if we chose to use the advanced trading inventory list, sell or give the item */
+
+    /*
+     * We have found a matching item for the \$actor.
+     * Let's check if it's got valid cost settings.
+     */
+    inv_matches = inv_matches[0];
+    cost = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: inv_matches[0], \$item: inv_matches[1]);
+    if(!(info = Get(inv_matches[0], inv_matches[1]))) \{
+      EmitTo(\$actor, "OOC: An error occured. Please @bug this and provide information about what you were attempting to purchase.");
+      return TRUE;
+    \}
+
+    /* make sure they don't grab too many items too quickly */
+    if( !cost ) \{
+      /*
+       * This item is free.
+       */
+      \$spam = this."npc:spam:presents";
+      if( \$spam \&\&
+          \$spam[\$actor] \&\&
+          \$spam[\$actor] + 30 \> time() ) \{
+        EmitTo( \$actor, "You just asked "+Describe( this )+" for something. Please ask again later." );
+        return FALSE;
+      \}
+    \}
+
+
+    /* spawn the item */
+    \$item = Spawn( info["object"] );
+    \$item."nip:item:cost" = cost;
+
+    /* set any special properties this item may have */
+    if(info["properties"]) \{
+      sz = sizeof(info["properties"]);
+      for(i=0;i\<sz;i++) \{
+        Set(\$item, info["properties"][i][0], info["properties"][i][random(sizeof(info["properties"][i])-1)+1]);
+      \}
+    \}
+    if(info["sellproperties"]) \{
+      sz = sizeof(info["sellproperties"]);
+      for(i=0;i\<sz;i++) \{
+        Set(\$item, info["sellproperties"][i][0], info["sellproperties"][i][random(sizeof(info["sellproperties"][i])-1)+1]);
+      \}
+    \}
+
+    if( !cost )
+    \{
+      this."npc:spam:presents" = \$spam ? \$spam + ([ \$actor : time() ]) : ([ \$actor : time() ]);
+      EmitIn( this."base:environment", Describe( this ) + " gives " + Describe( \$actor ) + " " + Describe( \$item ) + ".", \$actor );
+      EmitTo( \$actor, Describe( this ) + " gives you " + Describe( \$item ) + "." );
+      \$item."base:environment" = \$actor;
+
+      /* if there is a limited quantity of the item, reduce the number of items */
+      if(info["stock"] \> 0) \{
+        /* reduce the quantity of this item available */
+        info["stock"]--;
+      \} else if (info["sharedstock"] \&\& typeof(info["sharedstock"]) == T_STRING) \{
+        /* reduce the quantity of this item available */
+        Set(inv_matches[0], info["sharedstock"], Get(inv_matches[0], info["sharedstock"])-1);
+      \} else if (info["sharedstock"] \&\& typeof(info["sharedstock"]) == T_ARRAY) \{
+        /* reduce the quantity of this item available */
+        Set(info["sharedstock"][0], info["sharedstock"][1], Get(info["sharedstock"][0], info["sharedstock"][1])-1);
+      \}
+
+      return FALSE;
+    \}
+
+    /*
+     * There is a 'cost' value. Good! Let's see if
+     * \$actor has the proper amount of cash.
+     */
+    if( ::core_trading_query_assets(\$CDO: CDO, \$query: cost))
+    \{
+      /*
+       * The actor has enough cash to pay for this item.
+       * Grand! Let's offer it to him and set a temp-hook
+       * in the object we sell for a react. We hold it for 60
+       * seconds before we slay it and consider the trade aborted.
+       * Additionally, we announce the price to actor.
+       */
+      \$item."merry:inherit:react:take" = FindMerry( this, "react", "take" );
+      \$item."base:environment" = this;
+      \$item."nip:item:cdo" = CDO;
+
+      Act( this, "offer", \$who: \$actor, \$what: (\{ \$item \}) );
+
+      message = CDO."cash:announce-cost";
+      if( !message )
+        message = "This will cost you \$(prefix)\$(cost)\$(suffix).";
+      message = replace_strings( message, "\$(prefix)", Str(\$option."cash:prefix"), "\$(suffix)", Str(\$option."cash:suffix"), "\$(cost)", ::core_clean_currency(\$value: cost) );
+      EmitTo( \$actor, message );
+
+      /* if there is a limited quantity of the item, record that this item is unavailable */
+      \$holding = nil;
+      if(info["stock"] \> 0) \{
+        /* reduce the quantity of this item available */
+        info["stock"]--;
+        /* set a holding property, for bookkeeping */
+        \$holding = (\{ "stock", inv_matches[0], "holding:"+inv_matches[1] \});
+      \} else if (info["sharedstock"] \&\& typeof(info["sharedstock"]) == T_STRING) \{
+        /* reduce the quantity of this item available */
+        Set(inv_matches[0], info["sharedstock"], Get(inv_matches[0], info["sharedstock"])-1);
+        /* set a holding property, for bookkeeping */
+        \$holding = (\{ "sharedstock", inv_matches[0], "holding:"+info["sharedstock"] \});
+      \} else if (info["sharedstock"] \&\& typeof(info["sharedstock"]) == T_ARRAY) \{
+        /* reduce the quantity of this item available */
+        Set(info["sharedstock"][0], info["sharedstock"][1], Get(info["sharedstock"][0], info["sharedstock"][1])-1);
+        /* set a holding property, for bookkeeping */
+        \$holding = (\{ "distantstock", info["sharedstock"][0], "holding:"+info["sharedstock"][1] \});
+      \}
+      if(\$holding \&\& Get(\$holding[1], \$holding[2])) \{
+        Set(\$holding[1], \$holding[2], Get(\$holding[1], \$holding[2])+1);
+      \} else if(\$holding) \{
+        Set(\$holding[1], \$holding[2], 1);
+      \}
+
+      \$inv_matches = inv_matches;
+      \$delay(30, FALSE, "7b6d");
+      inv_matches = \$inv_matches;
+      info = Get(inv_matches[0], inv_matches[1]);
+
+      if(\$holding) \{
+        /* increase the number of items remaining */
+        if(\$holding[0] == "stock") \{
+          info["stock"]++;
+        \} else if (\$holding[0] == "sharedstock") \{
+          /* increase the quantity of this item available */
+          Set(inv_matches[0], info["sharedstock"], Get(inv_matches[0], info["sharedstock"])+1);
+        \} else if (\$holding[0] == "distantstock") \{
+          /* increase the quantity of this item available */
+          Set(info["sharedstock"][0], info["sharedstock"][1], Get(info["sharedstock"][0], info["sharedstock"][1])+1);
+        \}
+        /* remove holding marker */
+        if(Get(\$holding[1], \$holding[2]) \> 1) \{
+          Set(\$holding[1], \$holding[2], Get(\$holding[1], \$holding[2])-1);
+        \} else \{
+          Set(\$holding[1], \$holding[2], nil);
+        \}
+      \}
+
+      if( \$item \&\&
+          \$item."base:environment" == this )
+        Slay(\$item);
+
+    \} else \{
+      /*
+       * Not enough cash.
+       */
+      message = \$option."cash:announce-shortage";
+      if( !message )
+        message = CDO."cash:announce-shortage";
+      if( !message )
+        message = "You do not have enough \$(name) for \$(item).";
+      message += " It costs \$(prefix)\$(cost)\$(suffix).";
+      message = replace_strings( message, "\$(name)", \$option."cash:name", "\$(item)", Describe(\$item) );
+      message = replace_strings( message, "\$(prefix)", Str(\$option."cash:prefix"), "\$(suffix)", Str(\$option."cash:suffix"), "\$(cost)", ::core_clean_currency(\$value: cost) );
+
+      EmitTo( \$actor, message );
+      Slay(\$item);
+    \}
+
+    return FALSE;
+  \}
+\}
+
+
+/*
+ * Found nothing so far. See if we have a price menu.
+ * Maybe that's what's being requested.
+ */
+if( this."nip:trait:trading:list" )
+\{
+  /*
+   * An object is set, at least.
+   */
+  object o;
+  string prime;
+
+  o = this."nip:trait:trading:list";
+  prime = NRefDetail( o );
+
+  if(( !adjective \|\|
+       Get( o, "details:" + prime + ":adjective:" + adjective )) \&\&
+      Get( o, "details:" + prime + ":sname:" + word ))
+  \{
+    /*
+     * Seems they asked for a menu!
+     * Create one.
+     */
+    string detail, prefix, suffix;
+    object *list;
+
+    \$option = CDO."cash:options"[0];
+    prefix  = \$option."cash:prefix";
+    suffix  = \$option."cash:suffix";
+    o       = Spawn( o );
+    detail  = this."nip:trait:trading:detail";
+    if( !detail )
+      detail = prime;
+
+    /*
+     * Let's write the head (if any).
+     */
+    o."nip:item:head" = this."nip:trait:trading:head";
+
+    /*
+     * Print menu.
+     */
+    list = map_indices( objects );
+    sz   = sizeof( list );
+
+    \$content = (\{ (\{ "item", "price" \}) \});
+
+    for( i = 0; i \< sz; i++ )
+      \$content += (\{ (\{ Describe( list[i] ), (prefix ? prefix : "") + ::core_clean_currency(\$value: list[i]."nip:item:cost") + (suffix ? " " + suffix : "") \}) \});
+
+    o."nip:item:list" = ascii::table(\$ignoreseparator: "top bottom left right");
+
+    /*
+     * Write the foot, if any.
+     */
+    o."nip:item:foot" = this."nip:trait:trading:foot";
+
+    /*
+     * Set the inherit replacement for read.
+     */
+    Set( o, "merry:inherit:react:read-what", \$\{MOVED:20080918-114107:Lib:NIP:lib:trading\} );
+
+    /*
+     * Move into trade NPC's environment and offer to actor.
+     */
+    o."base:environment" = this;
+    Act( this, "offer", \$who: \$actor, \$what: (\{ o \}) );
+    \$delay(60, FALSE, "4309");
+    if( o \&\&
+        o."base:environment" == this )
+      Slay( o );
+    return FALSE;
+  \}
+\}
+
+/* Found nothing. */
+EmitTo( \$actor, Describe( this ) + " doesn't have that. Try 'ask "+Describe( this ) + "'." );
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:increase_stock">
+         X[M] /* increase the number of items in stock */
+if(!\$inventory) return FALSE;
+if(!\$item) return FALSE;
+if(!\$amount) return TRUE;
+
+if(!(\$info = Get(\$inventory, \$item))) return FALSE;
+
+if(typeof(\$info["stock"]) == T_INT) \{
+  if(\$info["stock"] == -1) return TRUE;
+  \$info["stock"] += \$amount;
+  if(\$info["stock"] \< 0) \$info["stock"] = 0;
+\} else if(\$info["sharedstock"] \&\& typeof(\$info["sharedstock"]) == T_STRING) \{
+  if(Int(Get(\$inventory, \$info["sharedstock"])) == -1) return TRUE;
+  Set(\$inventory, \$info["sharedstock"], Int(Get(\$inventory, \$info["sharedstock"]))+\$amount);
+  if(Int(Get(\$inventory, \$info["sharedstock"])) \< 0)
+    Set(\$inventory, \$info["sharedstock"], 0);
+\} else if(\$info["sharedstock"] \&\& typeof(\$info["sharedstock"]) == T_ARRAY) \{
+  if(!\$info["sharedstock"][0]) return FALSE;
+  if(Int(Get(\$info["sharedstock"][0], \$info["sharedstock"][1])) == -1) return TRUE;
+  Set(\$info["sharedstock"][0], \$info["sharedstock"][1], Int(Get(\$info["sharedstock"][0], \$info["sharedstock"][1]))+\$amount);
+  if(Int(Get(\$info["sharedstock"][0], \$info["sharedstock"][1])) \< 0)
+    Set(\$info["sharedstock"][0], \$info["sharedstock"][1], 0);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:offer_accepted">
+         X[M] /* verified that we want to sell item(s) */
+
+int price, i, sz, j, jx;
+string *inv_ind;
+
+/* check they still have all the items they initially offered */
+\$tmp = sizeof(\$par["wanted"]);
+\$par["wanted"] -= (\{ nil \});
+if(sizeof(\$par["wanted"]) != \$tmp) \{
+  EmitTo(\$actor, "You seem to have lost some of the items from the trade. Try offering a new trade again.");
+  return FALSE;
+\}
+
+\$what = \$par["items"];
+\$what -= (\{ nil \});
+for(i=0;i\<sizeof(\$what);i++) \{
+  if(NRefOb(\$what[i])."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You are not holding "+Describe(\$what[i], nil, \$actor)+".");
+    return FALSE;
+  \}
+  \$what[i] = NRefOb(\$what[i]);
+\}
+
+/* check the price and items */
+
+price = 0;
+inv_ind = map_indices(\$par["prematches"]);
+sz = sizeof(inv_ind);
+for(i=0;i\<sz;i++) \{
+  jx = \$par["prematches"][inv_ind[i]][0];
+  for(j=1;j\<=jx;j++) \{
+    price += Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price", \$inventory: \$par["prematches"][inv_ind[i]][1], \$item: \$par["prematches"][inv_ind[i]][2], \$stockchange: j);
+  \}
+\}
+
+if(price != \$par["price"]) \{
+  /* the original offer and the current offer don't match */
+  \$price = price;
+  \$delay(0.1, TRUE, "b735");
+  \$question = "The trading offer has changed. Would you like to sell "+Describe(\$par["items"], nil, \$actor)+" for "+dump_value(\$price)+"?";
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": \$par["trader"], "price": \$price, "wanted": \$par["wanted"], "prematches":\$par["prematches"], "items":\$par["items"]]));
+  return TRUE;
+\}
+
+/* make the trade */
+EmitTo(\$actor, "You hand "+Describe(\$par["items"], nil, \$actor)+" to "+Describe(\$par["trader"])+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" hands "+Describe(\$par["items"], \$actor)+" to "+Describe(\$par["trader"])+".", \$actor);
+/* pay the player */
+if(price)
+  ::pay_money(\$npc: Describe(\$par["trader"]), \$amount: price, \$cdo: \$par["trader"]."nip:trait:trading:object", \$economy_tracking: \$par["trader"]."economy:tracking");
+/* remove the items and update the trading DB */
+for(i=0;i\<sizeof(\$par["wanted"]);i++)
+  Slay(\$par["wanted"][i]);
+/* increase quantity in stock */
+for(i=0;i\<sz;i++) \{
+  ::increase_stock(\$inventory: \$par["prematches"][inv_ind[i]][1], \$item: \$par["prematches"][inv_ind[i]][2], \$amount: \$par["prematches"][inv_ind[i]][0]);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:offer_denied">
+         X[M] /* decide not to sell this item */
+
+/*
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": this, "price": \$tmp[0], "wanted": \$tmp[1], "items":items, \$inventories: Arr(this."nip:trait:trading-advanced:inventories")]));
+*/
+
+EmitTo(\$actor, "You decide not to sell "+Describe(\$par["items"], nil, \$actor)+" to "+Describe(\$par["trader"])+".");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:offer_expired">
+         X[M] /* decide not to sell this item */
+
+/*
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": this, "price": \$tmp[0], "wanted": \$tmp[1], "items":items, \$inventories: Arr(this."nip:trait:trading-advanced:inventories")]));
+*/
+
+EmitTo(\$actor, Describe(\$par["trader"])+"'s offer to buy "+Describe(\$par["items"], nil, \$actor)+" has expired.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:pay_money">
+         X[M] /* hand out money */
+int i;
+
+/* this is the simple version, that doesn't use clever kalle-code */
+
+if(!\$amount) return TRUE;
+
+/* update the economy tracker */
+\$tracker = \$\{Ironclaw:Lib:Economy:economy\};
+\$tracker."moneypool:pc" += \$amount;
+\$tracker."moneypool:npc" -= \$amount;
+if(\$economy_tracking)
+  Set(\$tracker, Str(\$economy_tracking), Int(Get(\$tracker, Str(\$economy_tracking)))+\$amount);
+
+if(!\$npc) \$npc = "the merchant";
+
+\$coins = (\{ \});
+/*EmitTo(\$actor, dump_value(\$amount));*/
+while(\$amount \>= 2400) \{
+  /* spawn aureals */
+  \$coins += (\{ Spawn(\$\{Allegory:Props:Finance:Cash:Lira\}) \});
+  \$amount -= 2400;
+\}
+while(\$amount \>= 100) \{
+  /* spawn denarii */
+  \$coins += (\{ Spawn(\$\{Allegory:Props:Finance:Cash:Florin\}) \});
+  \$amount -= 100;
+\}
+while(\$amount \>= 10) \{
+  /* spawn denarii */
+  \$coins += (\{ Spawn(\$\{Ironclaw:Props:Finance:Cash:10\}) \});
+  \$amount -= 10;
+\}
+while(\$amount \>= 1) \{
+  /* spawn denarii */
+  \$coins += (\{ Spawn(\$\{Ironclaw:Props:Finance:Cash:1\}) \});
+  \$amount -= 1;
+\}
+
+if(sizeof(\$coins)) \{
+  EmitTo(\$actor, \$npc+" hands "+Describe(\$coins)+" to you.");
+  EmitIn(\$actor."base:environment", \$npc+" hands "+Describe(\$coins)+" to "+Describe(\$actor)+".", \$actor);
+\}
+
+/* move the coins to the actors inventory */
+for(i=0;i\<sizeof(\$coins);i++)
+  \$coins[i]."base:environment" = \$actor;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:offer-who">
+         X[M] /*
+
+  D=Code to allow advanced traders purchase items from other characters.
+
+  The trader needs to have advanced trading lists.
+
+  This script will look for a few values in the object being offered. This object will _need_ to have these values set, otherwise the NPC will not be able to sell them:
+
+    nip:item:cost  (int) - the cost of this item.
+
+  If the property "nip:trait:trading:list" is set to an object, that object will be handed out to people by request, containing a price list.
+  Additionally, the property "nip:trait:trading:detail" may be set, if the detail which should be written upon is not the prime detail of the "nip:trait:trading:list" object.
+  The property "nip:trait:trading:head" can be set to some text that is appended before the price list.
+  The property "nip:trait:trading:foot" can be set to some text appended after the price list.
+
+*/
+
+object CDO, *inventories;
+string *inv_ind;
+int price, denied, i, sz, j, jx, k, l, lx, item_count, holding;
+float multiplier;
+mixed *wanted, *properties;
+
+mixed objects;
+string word, adjective, message;
+object *ind, *matches, *items;
+int cost;
+
+if(!\$what) return TRUE;
+
+CDO     = this."nip:trait:trading:object";
+
+/* Grab global properties from CDO. */
+\$hide_decimals = CDO."cash:hide-decimals";
+
+if( !CDO )
+\{
+  /*
+   * We don't have a Cash Data Object!
+   * Give the actor a lame "out of stock" message
+   * and, if they're SH enabled, a hint as to why.
+   */
+  EmitTo( \$actor, "Unfortunately, "+Describe(this)+" is not buying anything! Come back later." );
+  if( \$actor."udat:host" )
+    EmitTo( \$actor, "[\<StoryHost\> HINT]: This nipper doesn't have a cash data object. The property for this object is 'nip:trait:trading:object' and should point to an object set up accordingly. See Builder's TWiki for further information on this subject." );
+  return FALSE;
+\}
+
+\$tmp = Call(\$\{IC:NIP:lib:trading-advanced\}, "check_price_for_offer", \$inventories: Arr(this."nip:trait:trading-advanced:inventories"));
+
+if(!\$tmp) return TRUE;
+
+/*EmitTo(\$actor, "Wanted: "+dump_value(\$tmp[1]));
+EmitTo(\$actor, "final price: "+dump_value(\$tmp[0]));*/
+
+
+/* remove the offer so the player doesn't have to revoke */
+Call(\$this, "base:removeoffer", \$from: \$actor);
+
+if(!sizeof(\$tmp[1])) \{
+  /* don't have anything the NIP wants */
+  /* check what items the NIP will buy */
+    /* NOT WRITTEN YET */
+    /* Arr(this."nip:trait:trading-advanced:inventories") */
+  EmitTo(\$actor, Describe(\$this)+" isn't interested in buying "+Describe(\$what, nil, \$actor)+".");
+\} else \{
+  /*EmitTo(\$actor, "Offering to buy");*/
+  items = (\{ \});
+  for(i=0;i\<sizeof(\$tmp[1]);i++)\{
+    /*items += (\{ NewNRef(\$tmp[1][i][0], "default") \});*/
+    items += (\{ NewNRef(\$tmp[1][i], "default") \});
+  \}
+  \$question = Describe(\$this)+" is willing to buy "+Describe(items, nil, \$actor)+" for ";
+  if(\$tmp[0] == 0) \{
+    \$question += "nothing";
+  \} else \{
+    switch(\$tmp[0]/100) \{
+      case 0:
+        \$question += "0 denarii";
+        break;
+      case 1:
+        \$question += "1 denar";
+        break;
+      default:
+        \$question += Str(\$tmp[0]/100)+" denarii";
+    \}
+    switch(\$tmp[0]%100/10) \{
+      case 0:
+        break;
+      case 1:
+        \$question += ", 1 bronze";
+        if(\$tmp[0]%10 == 0) \$question += " bit";
+        break;
+      default:
+        \$question += ", "+Str(\$tmp[0]%100/10)+" bronze";
+        if(\$tmp[0]%10 == 0) \$question += " bits";
+    \}
+    switch(\$tmp[0]%10) \{
+      case 0:
+        break;
+      case 1:
+        \$question += " and 1 brass bit";
+        break;
+      default:
+        \$question += " and "+Str(\$tmp[0]%10)+" brass bits";
+    \}
+  \}
+  \$question += " - do you wish to make this trade?";
+
+
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": this, "price": \$tmp[0], "wanted": \$tmp[1], "prematches": \$tmp[2], "items":items]));
+
+
+  /*
+  interaction::question(\$expires: 80, \$env: "TRUE", \$yes_ob: \$\{IC:NIP:lib:trading-advanced\}, \$no_ob: \$\{IC:NIP:lib:trading-advanced\}, \$expire_ob: \$\{IC:NIP:lib:trading-advanced\}, \$yes_fun: "offer_accepted", \$no_fun: "offer_denied", \$expire_fun: "offer_expired", \$par: ([ "trader": this, "price": \$tmp[0], "wanted": \$tmp[1], "additions": \$tmp[2], "items":items, "inventories": Arr(this."nip:trait:trading-advanced:inventories")]));
+  */
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:take">
+         X[M] /*
+ * D=Accept and pay for an object.
+ */
+object CDO;
+
+CDO = this."nip:item:cdo";
+
+/* Grab global properties from CDO. */
+\$hide_decimals = CDO."cash:hide-decimals";
+
+if (!CDO) \{
+        EmitTo(\$actor, "Oops! No CDO. This is a bug. :(");
+        return FALSE;
+\}
+
+if (Call(this."base:environment", "core_trading_deduct", \$CDO: CDO, \$query: this."nip:item:cost", \$item: this)) \{
+  /* update the economy tracker */
+  \$tracker = \$\{Ironclaw:Lib:Economy:economy\};
+  \$tracker."moneypool:npc" += this."nip:item:cost";
+  \$tracker."moneypool:pc" -= this."nip:item:cost";
+  if(this."base:environment" \&\& this."base:environment"."economy:tracking")
+    Set(\$tracker, Str(this."base:environment"."economy:tracking"), Int(Get(\$tracker, Str(this."base:environment"."economy:tracking"))) - Int(this."nip:item:cost") );
+
+  this."merry:inherit:react:take" = nil;
+  this."nip:item:cdo" = nil;
+  return TRUE;
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1201080243, "tonyd", "P", 1201080267, "tonyd", "P", 1201080526, "tonyd", "P", 1201080535, "tonyd", "P", 1201080544, "tonyd", "P", 1201080557, "tonyd", "P", 1201080573, "tonyd", "P", 1201081001, "tonyd", "P", 1201081056, "tonyd", "P", 1201081084, "tonyd", "P", 1201081098, "tonyd", "P", 1201081351, "tonyd", "P", 1201081389, "tonyd", "P", 1201081566, "tonyd", "P", 1201081581, "tonyd", "P", 1201081595, "tonyd", "P", 1201081643, "tonyd", "P", 1201081766, "tonyd", "P", 1201081838, "tonyd", "P", 1201082053, "tonyd", "P", 1201082057, "tonyd", "P", 1201082091, "tonyd", "P", 1201082260, "tonyd", "P", 1201082282, "tonyd", "P", 1201083172, "tonyd", "P", 1201085449, "tonyd", "P", 1201085576, "tonyd", "P", 1201085615, "tonyd", "P", 1201085868, "tonyd", "P", 1201085992, "tonyd", "P", 1201086093, "tonyd", "P", 1201086188, "tonyd", "P", 1201086311, "tonyd", "P", 1201086392, "tonyd", "P", 1201086598, "tonyd", "P", 1201086653, "tonyd", "P", 1201086676, "tonyd", "P", 1201086770, "tonyd", "P", 1201086833, "tonyd", "P", 1201086897, "tonyd", "P", 1201086957, "tonyd", "P", 1201087022, "tonyd", "P", 1201087097, "tonyd", "P", 1201087316, "tonyd", "P", 1201087582, "tonyd", "P", 1201088031, "tonyd", "P", 1201088061, "tonyd", "P", 1201088076, "tonyd", "P", 1201088292, "tonyd", "P", 1201088526, "tonyd", "P", 1201088551, "tonyd", "P", 1201088665, "tonyd", "P", 1201088736, "tonyd", "P", 1201088827, "tonyd", "P", 1201088937, "tonyd", "P", 1201088961, "tonyd", "P", 1201089183, "tonyd", "P", 1201089428, "tonyd", "P", 1201089475, "tonyd", "P", 1201089548, "tonyd", "P", 1201089581, "tonyd", "P", 1201089717, "tonyd", "P", 1201089807, "tonyd", "P", 1201090621, "tonyd", "P", 1201090673, "tonyd", "P", 1201091682, "tonyd", "P", 1201091950, "tonyd", "P", 1201092150, "tonyd", "P", 1201092173, "tonyd", "P", 1201092317, "tonyd", "E", 1201094146, "tonyd", "P", 1201094155, "tonyd", "P", 1201094423, "tonyd", "P", 1201094464, "tonyd", "P", 1201094628, "tonyd", "P", 1201094666, "tonyd", "P", 1201094982, "tonyd", "P", 1201095122, "tonyd", "P", 1201095139, "tonyd", "P", 1201095192, "tonyd", "P", 1201095256, "tonyd", "E", 1201095281, "tonyd", "P", 1201095309, "tonyd", "P", 1201095403, "tonyd", "P", 1201097351, "tonyd", "P", 1201097384, "tonyd", "P", 1201097422, "tonyd", "P", 1201097429, "tonyd", "P", 1201097527, "tonyd", "P", 1201097592, "tonyd", "P", 1201098155, "tonyd", "P", 1201098182, "tonyd", "P", 1201098237, "tonyd", "P", 1201098900, "tonyd", "P", 1201098918, "tonyd", "P", 1201098936, "tonyd", "P", 1201098973, "tonyd", "P", 1201099062, "tonyd", "P", 1201099089, "tonyd", "P", 1201099167, "tonyd", "P", 1201099339, "tonyd", "P", 1201099700, "tonyd", "P", 1201099771, "tonyd", "P", 1201099801, "tonyd", "P", 1201100387, "tonyd", "P", 1201100402, "tonyd", "P", 1201100573, "tonyd", "P", 1201100622, "tonyd", "P", 1201100640, "tonyd", "P", 1201100692, "tonyd", "P", 1201100814, "tonyd", "P", 1201100845, "tonyd", "P", 1201101017, "tonyd", "E", 1201174184, "tonyd", "P", 1201174709, "tonyd", "P", 1201225499, "tonyd", "P", 1201225525, "tonyd", "P", 1201225673, "tonyd", "P", 1201225700, "tonyd", "P", 1201226197, "tonyd", "P", 1201226695, "tonyd", "P", 1201227676, "tonyd", "P", 1201227707, "tonyd", "P", 1201228184, "tonyd", "P", 1201229038, "tonyd", "P", 1201229514, "tonyd", "P", 1201229523, "tonyd", "P", 1201229594, "tonyd", "P", 1201229752, "tonyd", "P", 1201229805, "tonyd", "P", 1201229850, "tonyd", "P", 1201229868, "tonyd", "P", 1201232692, "tonyd", "P", 1201232874, "tonyd", "P", 1201233230, "tonyd", "P", 1201233819, "tonyd", "P", 1201233851, "tonyd", "P", 1201234663, "tonyd", "P", 1201234869, "tonyd", "P", 1201234930, "tonyd", "P", 1201236180, "tonyd", "P", 1201236210, "tonyd", "P", 1201237666, "tonyd", "P", 1201237739, "tonyd", "P", 1201237827, "tonyd", "P", 1201237928, "tonyd", "P", 1201237989, "tonyd", "P", 1201238026, "tonyd", "P", 1201238137, "tonyd", "P", 1201238150, "tonyd", "P", 1201238168, "tonyd", "P", 1201238332, "tonyd", "P", 1201238448, "tonyd", "P", 1201238497, "tonyd", "P", 1201238721, "tonyd", "P", 1201240005, "tonyd", "P", 1201240055, "tonyd", "P", 1201240210, "tonyd", "P", 1201240369, "tonyd", "P", 1201240441, "tonyd", "P", 1201240671, "tonyd", "P", 1201417044, "tonyd", "P", 1201417394, "tonyd", "P", 1201417737, "tonyd", "P", 1201417801, "tonyd", "P", 1201417824, "tonyd", "P", 1201417936, "tonyd", "P", 1201418018, "tonyd", "P", 1201418051, "tonyd", "P", 1201418106, "tonyd", "P", 1201419401, "tonyd", "P", 1201419734, "tonyd", "P", 1201419850, "tonyd", "P", 1201420051, "tonyd", "P", 1201420088, "tonyd", "P", 1201420297, "tonyd", "P", 1201420447, "tonyd", "P", 1201420487, "tonyd", "P", 1201420508, "tonyd", "P", 1201420651, "tonyd", "P", 1201420656, "tonyd", "P", 1201420694, "tonyd", "P", 1201420737, "tonyd", "P", 1201420772, "tonyd", "P", 1201420813, "tonyd", "P", 1201420984, "tonyd", "P", 1201421086, "tonyd", "P", 1201421156, "tonyd", "P", 1201421206, "tonyd", "P", 1201421264, "tonyd", "P", 1201422497, "tonyd", "P", 1201422541, "tonyd", "P", 1201422623, "tonyd", "P", 1201424200, "tonyd", "P", 1201424215, "tonyd", "P", 1201424229, "tonyd", "P", 1201424501, "tonyd", "P", 1201424624, "tonyd", "P", 1201424706, "tonyd", "P", 1201424728, "tonyd", "P", 1201424750, "tonyd", "P", 1201424771, "tonyd", "P", 1201424809, "tonyd", "P", 1201424830, "tonyd", "P", 1201424891, "tonyd", "P", 1201424919, "tonyd", "P", 1201424969, "tonyd", "P", 1201425010, "tonyd", "P", 1201425038, "tonyd", "P", 1201425072, "tonyd", "P", 1201425147, "tonyd", "P", 1201425235, "tonyd", "P", 1201425332, "tonyd", "P", 1201425586, "tonyd", "P", 1201425653, "tonyd", "P", 1201425738, "tonyd", "P", 1201425748, "tonyd", "P", 1201425786, "tonyd", "P", 1201425929, "tonyd", "P", 1201425990, "tonyd", "P", 1201426039, "tonyd", "P", 1201426113, "tonyd", "P", 1201426175, "tonyd", "P", 1201426220, "tonyd", "P", 1201426259, "tonyd", "P", 1201426316, "tonyd", "P", 1201426482, "tonyd", "P", 1201426596, "tonyd", "P", 1201426637, "tonyd", "P", 1201430703, "tonyd", "P", 1201430739, "tonyd", "P", 1201431144, "tonyd", "P", 1201431199, "tonyd", "P", 1201431421, "tonyd", "P", 1201431480, "tonyd", "P", 1201431629, "tonyd", "P", 1201431665, "tonyd", "P", 1201431732, "tonyd", "P", 1201431873, "tonyd", "P", 1201432131, "tonyd", "P", 1201432165, "tonyd", "P", 1201432170, "tonyd", "P", 1201432186, "tonyd", "P", 1201432192, "tonyd", "P", 1201432201, "tonyd", "P", 1201432784, "tonyd", "P", 1201432844, "tonyd", "P", 1201432883, "tonyd", "P", 1201432967, "tonyd", "P", 1201432997, "tonyd", "P", 1201433021, "tonyd", "P", 1201433072, "tonyd", "P", 1201433207, "tonyd", "P", 1201433226, "tonyd", "P", 1201433322, "tonyd", "P", 1201433337, "tonyd", "P", 1201433367, "tonyd", "P", 1201433439, "tonyd", "P", 1201433611, "tonyd", "P", 1201433648, "tonyd", "P", 1201433710, "tonyd", "P", 1201433789, "tonyd", "P", 1201433838, "tonyd", "P", 1201433856, "tonyd", "P", 1201433885, "tonyd", "P", 1201434318, "tonyd", "P", 1201434959, "tonyd", "P", 1201435380, "tonyd", "P", 1201435399, "tonyd", "P", 1201435544, "tonyd", "P", 1201435595, "tonyd", "P", 1201435700, "tonyd", "P", 1201435755, "tonyd", "P", 1201435813, "tonyd", "P", 1201435837, "tonyd", "P", 1201435919, "tonyd", "P", 1201435987, "tonyd", "P", 1201436012, "tonyd", "P", 1201436039, "tonyd", "P", 1201438183, "tonyd", "P", 1201438479, "tonyd", "P", 1201438565, "tonyd", "P", 1201438596, "tonyd", "P", 1201438629, "tonyd", "P", 1201442362, "tonyd", "P", 1201442471, "tonyd", "P", 1201442476, "tonyd", "P", 1201442503, "tonyd", "P", 1201442537, "tonyd", "P", 1201442636, "tonyd", "P", 1201442649, "tonyd", "P", 1201442729, "tonyd", "P", 1201568763, "tonyd", "P", 1201568809, "tonyd", "P", 1201568912, "tonyd", "P", 1205653671, "tonyd", "E", 1205653703, "tonyd", "E", 1205660077, "tonyd", "P", 1205660124, "tonyd", "E", 1205660199, "tonyd", "E", 1205662296, "tonyd", "P", 1205662344, "tonyd", "P", 1205662469, "tonyd", "P", 1205662590, "tonyd", "P", 1205662668, "tonyd", "P", 1205662689, "tonyd", "P", 1205662718, "tonyd", "P", 1205662734, "tonyd", "P", 1232180262, "tonyd", "E", 1232181067, "tonyd", "P", 1232181157, "tonyd", "P", 1232181201, "tonyd", "P", 1232181232, "tonyd", "P", 1232181266, "tonyd", "P", 1232181287, "tonyd", "P", 1232181309, "tonyd", "P", 1232181499, "tonyd", "P", 1232181562, "tonyd", "P", 1232181748, "tonyd", "P", 1232182047, "tonyd", "P", 1232182250, "tonyd", "P", 1232182299, "tonyd", "P", 1232182365, "tonyd", "P", 1232182396, "tonyd", "P", 1232182471, "tonyd", "P", 1232182488, "tonyd", "P", 1232182502, "tonyd", "P", 1232182535, "tonyd", "P", 1232182616, "tonyd", "P", 1232182705, "tonyd", "P", 1232182746, "tonyd", "P", 1232182775, "tonyd", "P", 1232182790, "tonyd", "P", 1232182847, "tonyd", "P", 1232182879, "tonyd", "P", 1232182913, "tonyd", "P", 1232182987, "tonyd", "P", 1232183021, "tonyd", "P", 1232183060, "tonyd", "P", 1232183083, "tonyd", "P", 1232183115, "tonyd", "P", 1232183135, "tonyd", "P", 1232183184, "tonyd", "P", 1232183212, "tonyd", "P", 1232183288, "tonyd", "P", 1232183366, "tonyd", "P", 1232183406, "tonyd", "P", 1232183422, "tonyd", "P", 1232183490, "tonyd", "P", 1232183521, "tonyd", "P", 1232183599, "tonyd", "P", 1232183686, "tonyd", "P", 1232183729, "tonyd", "P", 1232183885, "tonyd", "P", 1232183906, "tonyd", "P", 1232185407, "tonyd", "P", 1232185485, "tonyd", "P", 1232185718, "tonyd", "P", 1232185742, "tonyd", "P", 1276077158, "tonyd", "E", 1276077267, "tonyd", "E", 1276077586, "tonyd", "P", 1276077611, "tonyd", "P", 1276077947, "tonyd", "P", 1276077958, "tonyd", "E", 1276078034, "tonyd", "E", 1276078157, "tonyd", "P", 1276078369, "tonyd", "P", 1276078586, "tonyd", "P", 1276078633, "tonyd", "P", 1276078696, "tonyd", "P", 1276078846, "tonyd", "E", 1276078871, "tonyd", "P", 1276080523, "tonyd", "P", 1276080687, "tonyd", "E", 1276080786, "tonyd", "P", 1276080869, "tonyd", "E", 1276081016, "tonyd", "P", 1276081068, "tonyd", "P", 1276081148, "tonyd", "P", 1276081209, "tonyd", "P", 1276081251, "tonyd", "P", 1276081315, "tonyd", "P", 1276081331, "tonyd", "P", 1276081844, "tonyd", "P", 1276081888, "tonyd", "P", 1276081947, "tonyd", "P", 1276081962, "tonyd", "P", 1276082693, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="{author}">
+         "Tony Demetriou"
+      </Core:Property>
+      <Core:Property property="{email}">
+         "azrael@ironclaw.skotos.net"
+      </Core:Property>
+      <Core:Property property="{rev}">2</Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,922 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act:start">
+         X[M] Call(this, "age_food");    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:add_ingredient">
+         X[M] int i;
+
+\$max = Int(Get(\$this, "trait:accepts")[NRefOb(\$detail)."trait:objecttype"]);
+
+if(!NRefOb(\$detail)."trait:name") \{
+    EmitTo(\$actor, "You cannot add " + NRefOb(\$detail)."trait:objecttype" + " to " + Describe(\$this) + ".");
+    \$accepted -= (\{ \$detail \});
+    return FALSE;
+\}
+
+if(\$ingredients = Get(\$this, "ingredients:" + NRefOb(\$detail)."trait:objecttype")) \{
+    if(sizeof(\$ingredients) \&\& sizeof(\$ingredients) \>= \$max) \{
+        EmitTo(\$actor, "You cannot add more " + NRefOb(\$detail)."trait:objecttype" + " to " + Describe(\$this) + ".");
+        \$accepted -= (\{ \$detail \});
+        return FALSE;
+    \}
+
+    for(i = 0; i \< sizeof(\$ingredients); i++) \{
+        if(\$ingredients[i] == NRefOb(\$detail)."trait:name") \{
+            EmitTo(\$actor, "You cannot add another " + NRefOb(\$detail)."trait:name" + " to " + Describe(\$this) + ".");
+            \$accepted -= (\{ \$detail \});
+            return FALSE;
+        \}
+    \}
+\}
+
+if(!\$ingredients) \$ingredients = (\{ \});
+
+\$thing = NRefOb(\$detail);
+\$ingredients += (\{ UnSAM(NRefOb(\$detail)."trait:name") \});
+
+\$adjectives = explode(UnSAM(NRefOb(\$detail)."trait:name"), " ");
+for(i = 0; i \< sizeof(\$adjectives); i++) \{
+    Set(\$this, "details:default:adjective:" + \$adjectives[i], TRUE);
+\}
+
+Set(\$this, "ingredients:" + NRefOb(\$detail)."trait:objecttype", \$ingredients);
+
+\$type = "";
+\$scent = "";
+\$taste = "";
+\$accepts = map_indices(\$this."trait:accepts");
+\$allIngredients = (\{ \});
+\$allScents = (\{ \});
+\$allTastes = (\{ \});
+
+\$num = 0;
+for(i = 0; i \< sizeof(\$accepts); i++) \{
+    if(\$temp = Get(\$this, "ingredients:" + \$accepts[i])) \{
+        \$num += sizeof(\$temp);
+    \}
+\}
+
+for(i = 0; i \< sizeof(\$accepts); i++) \{
+    if(\$temp = Get(\$this, "ingredients:" + \$accepts[i])) \{
+        if(sizeof(\$temp) \> 1 \&\& \$num \> 2) \{
+            \$allIngredients += (\{ \$accepts[i] \});
+        \} else \{
+            if(sizeof(\$temp) == 1) \{
+                \$allIngredients += (\{ \$temp[0] \});
+            \} else \{
+                \$allIngredients += (\{ \$temp[0], \$temp[1] \});
+            \}
+        \}
+
+        for(\$j = 0; \$j \< sizeof(\$temp); \$j++) \{
+            \$allScents += (\{ \$temp[\$j] \});
+            \$allTastes += (\{ \$temp[\$j] \});
+        \}
+    \}
+\}
+
+\$type = common::string_list(\$list: \$allIngredients);
+\$scent = common::string_list(\$list: \$allScents);
+\$taste = common::string_list(\$list: \$allTastes);
+\$ingredients = common::string_list(\$list: \$allTastes);
+
+/* Save the object data */
+Set(\$this, "trait:type", \$type);
+/*Set(\$this, "trait:smell", UnSAM(\$this."trait:smell") + ", with added notes of " + \$scent);
+Set(\$this, "trait:taste", \$this."trait:taste" + ", with added notes of " + \$scent); */
+Set(\$this, "trait:ingredients", \$ingredients);
+
+/* Slay the object */
+Slay(NRefOb(\$detail));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:add_object_to_mapping">
+         X[M] /*
+  D=Add sname/pname/adjective data to a set of mappings.
+*/
+NRef dest;
+string det, *strings, *details;
+int i, j, jsz, sz;
+
+if( \$all_details ) \{
+  details = \$ob."base:details";
+  sz = sizeof( details );
+\} else \{
+  details = (\{ NRefDetail(\$ob) \});
+  sz = 1;
+\}
+
+for( i = 0; i \< sz; i++ ) \{
+
+    det = details[i];
+    dest = NewNRef( \$ob, det );
+    \$destinations++;
+    \$destination[\$destinations] = dest;
+    strings = Get( \$ob, "details:"+det+":snames" ); 
+    jsz = sizeof( strings );
+    if( !\$snames[\$destinations] ) \{
+      \$snames[\$destinations] = ([ ]);
+      \$pnames[\$destinations] = ([ ]);
+      \$adjectives[\$destinations] = ([ ]);
+    \}
+
+    for( j = 0; j \< jsz; j++ ) \{
+      \$snames[\$destinations] += ([ strings[j] : TRUE ]); 
+
+      \$pname = Get( \$ob, "details:"+det+":sname:"+strings[j] );
+      if( typeof(\$pname) == T_STRING )
+        \$pnames[\$destinations] += ([ \$pname : TRUE ]);
+    \}
+    strings = Get( \$ob, "details:"+det+":adjectives" );
+    jsz = sizeof( strings );
+    for( j = 0; j \< jsz; j++ )
+      \$adjectives[\$destinations] += ([ strings[j] : TRUE ]);
+
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:age_food">
+         X[M] int delay;    
+    
+\$delay(15, TRUE, "14fc");    
+    
+/* If this isn't a spawn */    
+if(sscanf(name(\$this), "[%*s]#%*d") != 2)    
+  return TRUE;    
+    
+if(\$this."details:default:description:brief:fresh")    
+\{    
+  if(\$this."trait:age:fresh" \|\| \$this."trait:setprop:fresh")    
+  \{    
+    delay = \$this."trait:age:fresh"*60;    
+  \} else \{    
+    delay = 24*60*60;    
+  \}    
+    
+  /* set fresh descriptions */    
+  if(\$this."details:default:description:brief:fresh")    
+    \$this."details:default:description:brief" = \$this."details:default:description:brief:fresh";    
+  if(\$this."details:default:description:pbrief:fresh")    
+    \$this."details:default:description:pbrief" = \$this."details:default:description:pbrief:fresh";    
+  if(\$this."details:default:description:look:fresh")    
+    \$this."details:default:description:look" = \$this."details:default:description:look:fresh";    
+  if(\$this."details:default:description:examine:fresh")    
+    \$this."details:default:description:examine" = \$this."details:default:description:examine:fresh";    
+  if(\$this."details:default:description:taste:fresh")    
+    \$this."details:default:description:taste" = \$this."details:default:description:taste:fresh";    
+  if(\$this."details:default:description:smell:fresh")    
+    \$this."details:default:description:smell" = \$this."details:default:description:smell:fresh";    
+    
+  /* set the fresh properties */    
+  if(\$this."trait:setprop:fresh")    
+  \{    
+    for(\$i = 0; \$i \< sizeof(\$this."trait:setprop:fresh"); \$i++)    
+    \{    
+      Set(\$this, \$this."trait:setprop:fresh"[\$i][0], \$this."trait:setprop:fresh"[\$i][1]);    
+    \}    
+  \}    
+    
+    
+  \$delay(delay, TRUE, "684e");    
+    
+  /* unset fresh descriptions */    
+  \$this."details:default:description:brief" = nil;    
+  \$this."details:default:description:pbrief" = nil;    
+  \$this."details:default:description:look" = nil;    
+  \$this."details:default:description:examine" = nil;    
+  \$this."details:default:description:taste" = nil;    
+  \$this."details:default:description:smell" = nil;    
+\}    
+    
+/* set the normal properties */    
+if(\$this."trait:setprop")    
+\{    
+  for(\$i = 0; \$i \< sizeof(\$this."trait:setprop"); \$i++)    
+  \{    
+    Set(\$this, \$this."trait:setprop"[\$i][0], \$this."trait:setprop"[\$i][1]);    
+  \}    
+\}    
+    
+if(\$this."details:default:description:brief:old" \|\| \$this."trait:setprop:old")    
+\{    
+
+  if(\$this."trait:age:old")    
+  \{    
+    delay = \$this."trait:age:old"*60;    
+  \} else \{    
+    delay = 2*24*60*60;    
+  \}    
+    
+  \$delay(delay, TRUE, "30eb");    
+    
+  /* set the old descriptions */    
+  if(\$this."details:default:description:brief:old")    
+    \$this."details:default:description:brief" = \$this."details:default:description:brief:old";    
+  if(\$this."details:default:description:pbrief:old")    
+    \$this."details:default:description:pbrief" = \$this."details:default:description:pbrief:old";    
+  if(\$this."details:default:description:look:old")    
+    \$this."details:default:description:look" = \$this."details:default:description:look:old";    
+  if(\$this."details:default:description:examine:old")    
+    \$this."details:default:description:examine" = \$this."details:default:description:examine:old";  
+ 
+    \$this."details:default:description:taste" = \$this."details:default:description:taste:old";    
+  if(\$this."details:default:description:smell:old")    
+    \$this."details:default:description:smell" = \$this."details:default:description:smell:old";    
+    
+  /* set the old properties */    
+  if(\$this."trait:setprop:old")    
+  \{    
+    for(\$i = 0; \$i \< sizeof(\$this."trait:setprop:old"); \$i++)    
+    \{    
+      Set(\$this, \$this."trait:setprop:old"[\$i][0], \$this."trait:setprop:old"[\$i][1]);    
+    \}    
+  \}    
+    
+\}    
+    
+if(\$this."trait:age:slay")    
+\{    
+  delay = \$this."trait:age:slay"*60;    
+\} else \{    
+  delay = 14*24*60*60;    
+\} 
+
+\$delay(delay, TRUE, "2aaa");    
+    
+/* slay the food */    
+if(\$this."base:environment")\{    
+  if(\$this."trait:age:slay:message")    
+  \{    
+    EmitTo(\$this."base:environment", Describe(\$this)+" "+\$this."trait:age:slay:message");    
+  \} else \{    
+    EmitTo(\$this."base:environment", Describe(\$this)+" crumbles and dissipates into nothing.");    
+  \}    
+\}    
+    
+/* Check the object is a spawn before slaying it */    
+/* If this isn't a spawn */    
+if(sscanf(name(\$this), "[%*s]#%*d") == 2)    
+  Slay(\$this);    
+    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_food_target">
+         X[M] /*
+  Simulation of a non-raw verb role, so as to be able to figure out one/many objects by in-game specification, such as "all my blue apples" or "george's thirteenth garment" etc.
+
+  Supported syntax =
+    [all] [[\<target\>'s\|my] [\<object\>'s [...]]] [numeric] [adjective(s)] [sname/pname] [and ...]
+
+  Supported arguments:
+    \$prime_source: defaults to nil. If set, it will be the environment in which the object(s) will be sought for.
+
+*/
+
+constant PHASE_PRE = 0;
+constant PHASE_OBJ = 1;
+
+NRef *targets, *tmp;
+int numerical, i, j, jsz, sz, all, *res;
+object source, *list;
+string det, word, rest, *tpoint, *words, *strings;
+mapping targetMap;
+
+if(!\$point)  return nil;
+
+/*
+ * Divide by the "and" keyword and resolve each
+ * individually and add to chain.
+ */
+tpoint = explode( \$point, " and " );
+if( sizeof( tpoint ) \> 1 ) \{
+    targets = (\{ \});
+    for( i = 0; i \< sizeof( tpoint ); i++ )
+        if( (tmp = ::point(\$point: tpoint[i], \$prime_source: \$prime_source)) )
+            targets += tmp;
+        else
+            return nil;
+    return targets;
+\}
+
+/*
+ * Divide possessive references.
+ */
+
+all = !!\$all;
+source = nil;
+
+if( !\$prime_source \&\& strlen(\$point)\>4 \&\& \$point[..3] == "all " ) \{
+    all = TRUE;
+    \$point = \$point[4..];
+\}
+
+while( sscanf( \$point, "%s'%s", word, rest ) == 2 ) \{
+    if( rest[..1] == "s " )
+        rest = rest[2..];
+    else
+        rest = rest[1..];
+    targets = ::point(\$point: word, \$prime_source: \$prime_source, \$all: all);
+    if( sizeof( targets ) != 1 )
+        return nil;
+    \$prime_source = NRefOb(targets[0]);
+    \$point = rest;
+\}
+
+\$destinations = -1;
+\$destination = ([ ]);
+
+if( !\$prime_source \&\& strlen(\$point)\>3 \&\& \$point[..2] == "my " ) \{
+    \$point = \$point[3..];
+    source = \$actor;
+\} else
+    source = \$prime_source;
+
+/*
+ * Find numeric targeting.
+ */
+
+words = explode( \$point, " " );
+
+word = words[0];
+sz = strlen(word);
+
+numerical = 0;
+
+if( sz \> 2 \&\& (word[sz-3..] == "1st" \|\| word[sz-3..] == "2nd" \|\| word[sz-3..] == "3rd" \|\| word[sz-2..] == "th") \&\& !common::isnan(\$value: word[..sz-3]) ) \{
+    numerical = Int(word[..sz-3]);
+    words = words[1..];
+\}
+
+\$adjectives = ([ ]);
+\$snames = ([ ]);
+\$pnames = ([ ]);
+
+if( source ) \{
+    /*
+     * Add source inventory to list, including source's details.
+     */
+    list = source."base:inventory";
+    sz = sizeof( list );
+    for( i = 0; i \< sz; i++ )  \{
+        ::add_object_to_mapping(\$ob: list[i], \$all_details: list[i] == source);
+    \}
+\} else \{
+    /*
+     * Add actor's inventory to list.
+     */
+    list = \$actor."base:inventory";
+    sz = sizeof( list );
+    for( i = 0; i \< sz; i++ )
+        ::add_object_to_mapping(\$ob: list[i], \$all_details: FALSE);
+
+    /*
+     * Additionally, add room's inventory to list, including actor details.
+     */
+    list = \$actor."base:environment"."base:inventory";
+    sz = sizeof(list);
+    for(i = 0; i \< sz; i++)
+        ::add_object_to_mapping(\$ob: list[i], \$all_details: list[i] == \$actor);
+
+    /*
+     * And room's details.
+     */
+    ::add_object_to_mapping(\$ob: \$actor."base:environment", \$all_details: TRUE);
+
+    /*
+     * Check for scanned targets
+     */
+    if(\$actor."combat:scanning") \{
+        targetMap = \$actor."combat:scanning:targets";
+        targets = map_indices(targetMap);
+        for(i = 0; i \< sizeof(targets); i++) \{
+            ::add_object_to_mapping(\$ob: targets[i], \$all_details: TRUE);
+        \}
+    \}
+\}
+
+sz = sizeof( words );
+
+jsz = \$destinations;
+if( sz \> 1 ) \{
+    for( j = 0; j \<= jsz; j++ ) \{
+        if( \$destination[j] ) \{
+            if( !\$adjectives[j] ) \{
+                \$destination[j] = nil;
+            \} else \{
+                for( i = 0; i \< sz-1; i++ ) \{
+                    word = words[i];
+                    if(word != "my" \&\& !\$adjectives[j][word])\{
+                        \$destination[j] = nil;
+                        i = sz-1;
+                    \}
+                \}
+            \}
+        \}
+    \}
+\}
+
+word = words[sizeof(words)-1];
+
+res = map_indices( \$destination );
+jsz = sizeof( res );
+
+for( j = 0; j \< jsz; j++ )
+    if( !\$snames[res[j]][word] \&\& !\$pnames[res[j]][word] )\{
+        \$destination[res[j]] = nil;
+    \}
+
+if( numerical ) \{
+    \$result = map_values( \$destination );
+    if( numerical \> sizeof( \$result ))
+        return nil;
+    else
+        return (\{ \$result[numerical-1] \});
+\}
+
+return map_values( \$destination );
+      </Core:Property>
+      <Core:Property property="merry:lib:point">
+         X[M] /*
+  Simulation of a non-raw verb role, so as to be able to figure out one/many objects by in-game specification, such as "all my blue apples" or "george's thirteenth garment" etc.
+
+  Supported syntax =
+    [all] [[\<target\>'s\|my] [\<object\>'s [...]]] [numeric] [adjective(s)] [sname/pname] [and ...]
+
+  Supported arguments:
+    \$prime_source: defaults to nil. If set, it will be the environment in which the object(s) will be sought for.
+
+*/
+
+constant PHASE_PRE = 0;
+constant PHASE_OBJ = 1;
+
+NRef *targets, *tmp;
+int numerical, i, j, jsz, sz, all, *res;
+object source, *list;
+string det, word, rest, *tpoint, *words, *strings;
+
+if( !\$point )
+  return nil;
+
+/*
+ * Divide by the "and" keyword and resolve each
+ * individually and add to chain.
+ */
+tpoint = explode( \$point, " and " );
+if( sizeof( tpoint ) \> 1 ) \{
+  targets = (\{ \});
+  for( i = 0; i \< sizeof( tpoint ); i++ )
+    if( (tmp = ::point(\$point: tpoint[i], \$prime_source: \$prime_source)) )
+      targets += tmp;
+    else
+      return nil;
+  return targets;
+\}
+
+/*
+ * Divide possessive references.
+ */
+
+all = !!\$all;
+source = nil;
+
+if( !\$prime_source \&\& strlen(\$point)\>4 \&\& \$point[..3] == "all " ) \{
+  all = TRUE;
+  \$point = \$point[4..];
+\}
+
+while( sscanf( \$point, "%s'%s", word, rest ) == 2 ) \{
+  if( rest[..1] == "s " ) 
+    rest = rest[2..];
+  else
+    rest = rest[1..];
+  targets = ::point(\$point: word, \$prime_source: \$prime_source, \$all: all); 
+  if( sizeof( targets ) != 1 )
+    return nil;
+  \$prime_source = NRefOb(targets[0]);
+  \$point = rest;
+\}
+
+\$destinations = -1;
+\$destination = ([ ]);
+
+if( !\$prime_source \&\& strlen(\$point)\>3 \&\& \$point[..2] == "my " ) \{ 
+  \$point = \$point[3..];
+  source = \$actor;
+\} else
+  source = \$prime_source;
+
+/*
+ * Find numeric targeting.
+ */
+
+words = explode( \$point, " " );
+
+word = words[0];
+sz = strlen(word);
+ 
+numerical = 0;
+
+if( sz \> 2 \&\& (word[sz-3..] == "1st" \|\| word[sz-3..] == "2nd" \|\| word[sz-3..] == "3rd" \|\| word[sz-2..] == "th") \&\& !common::isnan(\$value: word[..sz-3]) ) \{
+  numerical = Int(word[..sz-3]);
+  words = words[1..];
+\}
+
+\$adjectives = ([ ]);
+\$snames = ([ ]);
+\$pnames = ([ ]);
+
+if( source ) \{
+  /*
+   * Add source inventory to list, including source's details.
+   */
+  list = source."base:inventory";
+  sz = sizeof( list );
+  for( i = 0; i \< sz; i++ )
+    ::add_object_to_mapping(\$ob: list[i], \$all_details: list[i] == source);
+
+\} else \{
+  /*
+   * Add actor's inventory to list.
+   */
+  list = \$actor."base:inventory";
+  sz = sizeof( list );
+  for( i = 0; i \< sz; i++ )
+    ::add_object_to_mapping(\$ob: list[i], \$all_details: FALSE);
+
+  /*
+   * Additionally, add room's inventory to list, including actor details.
+   */
+  list = \$actor."base:environment"."base:inventory";
+  sz = sizeof( list );
+  for( i = 0; i \< sz; i++ )
+    ::add_object_to_mapping(\$ob: list[i], \$all_details: list[i] == \$actor);
+
+  /*
+   * And room's details.
+   */
+  ::add_object_to_mapping(\$ob: \$actor."base:environment", \$all_details: TRUE);
+\} 
+
+sz = sizeof( words );
+
+jsz = \$destinations;
+if( sz \> 1 ) \{
+  for( j = 0; j \< jsz; j++ )
+    if( \$destination[j] )
+      if( !\$adjectives[j] )
+        \$destination[j] = nil;
+      else
+        for( i = 0; i \< sz-1; i++ ) \{
+          word = words[i];
+          if( !\$adjectives[j][word] )\{
+            \$destination[j] = nil;
+            i = sz-1;
+          \}
+        \}
+\}
+
+word = words[sizeof(words)-1];
+
+res = map_indices( \$destination );
+jsz = sizeof( res );
+
+for( j = 0; j \< jsz; j++ )
+  if( !\$snames[res[j]][word] \&\& !\$pnames[res[j]][word] )\{
+    \$destination[res[j]] = nil;
+  \}
+
+if( numerical ) \{
+  \$result = map_values( \$destination );
+  if( numerical \> sizeof( \$result ))
+    return nil;
+  else
+    return (\{ \$result[numerical-1] \});
+\}
+
+return map_values( \$destination );
+      </Core:Property>
+      <Core:Property property="merry:lib:serve">
+         X[M] /* \$whole */
+/* \$action */
+/* \$singleOb */
+
+\$single = Spawn(\$singleOb);
+\$single."base:environment" = \$actor;
+
+\$single."trait:type" = \$whole."trait:type";
+\$single."trait:ingredients" = \$whole."trait:ingredients";
+\$single."trait:seasoning" = \$whole."trait:seasoning";
+\$single."trait:spreadable" = \$whole."trait:spreadable";
+\$single."trait:spread:description" = \$whole."trait:spread:description";
+\$single."trait:spread" = \$whole."trait:spread";
+\$single."trait:spread:smell" = \$whole."trait:spread:smell";
+\$single."trait:spread:taste" = \$whole."trait:spread:taste";
+\$single."trait:state" = \$whole."trait:state";
+\$single."trait:icing" = \$whole."trait:icing";
+\$single."trait:flavor" = \$whole."trait:flavor";
+\$single."trait:decoration" = \$whole."trait:decoration";
+
+if((\$whole."trait:state" == "roasted" \|\| \$whole."trait:state" == "smoked" \|\| \$whole."trait:state" == "fried") \&\& \$single."trait:cooked:examine") \{
+    \$single."trait:examine" = \$single."trait:cooked:examine";
+    \$single."trait:look" = \$single."trait:cooked:look";
+    \$single."trait:taste" = \$single."trait:cooked:taste";
+    \$single."trait:smell" = \$single."trait:cooked:smell";
+\}
+
+\$single."trait:smell" = \$whole."trait:smell";
+\$single."trait:taste" = \$whole."trait:taste";
+
+if(\$whole."trait:accepts") \{
+    \$ingredients = map_indices(\$whole."trait:accepts");
+
+    for(\$i = 0; \$i \< sizeof(\$ingredients); \$i++) \{
+        Set(\$single, "ingredients:" + \$ingredients[\$i], Get(\$whole, "ingredients:" + \$ingredients[\$i]));
+    \}
+\}
+
+\$single."consumable:effects" = \$whole."consumable:effects";
+
+\$whole."trait:quantity" = Int(\$whole."trait:quantity") - 1;
+
+if(Int(\$whole."trait:quantity") \<= 0) \{
+    \$thing = explode(Describe(\$single, nil, nil, STYLE_NONPOSS), " ");
+    \$thing[0] = nil;
+    \$thing -= (\{ nil \});
+    \$thing = implode(\$thing, " ");
+    EmitTo(\$actor, TAG("You " + \$action + " the final " + Str(\$thing) + " from " + Describe(\$whole, nil, nil, STYLE_NONPOSS) + ".", "social:first"));
+    EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " " + \$action + "s the final " + Str(\$thing) + " from " + Describe(\$whole, nil, nil, STYLE_NONPOSS) + ".", "social:third"), \$actor);
+    Slay(\$whole);
+    return FALSE;
+\}
+
+EmitTo(\$actor, TAG("You " + \$action + " " + Describe(\$single, nil, nil, STYLE_NONPOSS) + " from " + Describe(\$whole, nil, nil, STYLE_NONPOSS) + ".", "social:first"));
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " " + \$action + "s " + Describe(\$single, nil, nil, STYLE_NONPOSS) + " from " + Describe(\$whole, nil, nil, STYLE_NONPOSS) + ".", "social:third"), \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:update">
+         X[M] \$delay(1, TRUE, "7dac");
+
+/* STEP 1: Remove all local snames, pnames, and adjectives */
+
+\$t = (\{ "sname", "pname", "adjective" \});
+
+for(\$i = 0; \$i \< sizeof(\$t); \$i++ ) \{
+    \$name = \$t[\$i];
+    SetVar(\$name, Get(\$container, "details:default:" + \$name + "s:local"));
+
+    for(\$j = 0; \$j \< sizeof(GetVar(\$name)); \$j++) \{
+        Set(\$container, "details:default:" + \$name + ":" + GetVar(\$name)[\$j], nil);
+    \}
+\}
+
+/* STEP 2: Add back all snames, pnames, and adjectives that were inherited from crafting */
+
+\$container."trait:color" = \$container."trait:color";
+\$container."trait:material" = \$container."trait:material";
+
+/* STEP 3: Add snames, pnames, adjectives of container contents */
+
+\$inventory = \$container."base:inventory";
+
+if(!sizeof(\$inventory)) return TRUE;
+
+for(\$i = 0; \$i \< sizeof(\$inventory); \$i++) \{
+    if(\$inventory[\$i]."base:edible") \{
+        \$food = NRefOb(\$inventory[\$i]);
+        \$t = (\{ "sname", "pname", "adjective" \});
+
+        for(\$j = 0; \$j \< sizeof(\$t); \$j++) \{
+            \$name = \$t[\$j];
+            SetVar(\$name, Get(\$food, "details:default:" + \$name + "s"));
+
+            for(\$k = 0; \$k \< sizeof(GetVar(\$name)); \$k++) \{
+                Set(\$container, "details:default:" + \$name + ":" + GetVar(\$name)[\$k], TRUE);
+            \}
+        \}
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:add-iob">
+         X[M] return Call(\$\{Allegory:Lib:Crafting:Lib\}, "add", \$addition: \$dob, \$target: \$iob);
+      </Core:Property>
+      <Core:Property property="merry:react-post:add-iob%1234">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:examine-what">
+         X[M] if(\$actor."trait:tips-disabled") return TRUE;
+
+if(\$this."trait:sliceable") \{
+    \$help = "Use the 'slice' or 'cut' command to remove a serving.";
+\}
+
+if(\$this."trait:grabable") \{
+    \$help = "Use the 'grab' command to remove a serving.";
+\}
+
+if(\$this."trait:scoopable") \{
+    \$help = "Use the 'scoop' command to remove a serving.";
+\}
+
+if(\$help) EmitTo(\$actor, TAG("[OOC TIP: " + \$help + "]", "imp"));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:place-where%foodcontainer">
+         X[M] return Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "update", \$container: \$this);
+      </Core:Property>
+      <Core:Property property="merry:react-pre:add-iob">
+         X[M] if(!\$dob) return TRUE;  
+ 
+return Call(\$\{Allegory:Lib:Crafting:Lib\}, "valid-check", \$addition: \$dob, \$object: \$iob);
+      </Core:Property>
+      <Core:Property property="merry:react-pre:add-iob%1234">
+         X[M] int i;
+
+if(!\$dob \|\| !sizeof(\$dob)) return TRUE;
+
+if(!NRefOb(\$dob[0])."trait:objecttype") \{
+    EmitTo(\$actor, "You cannot add " + Describe(NRefOb(\$dob[0]), nil, nil, STYLE_NONPOSS) + " to " + Describe(\$this, nil, nil, STYLE_NONPOSS) + ".");
+    return FALSE;
+\}
+
+if(Get(\$this, "alteration:add:default:" + NRefOb(\$dob[0])."trait:objecttype")) \{
+    return TRUE;
+\} 
+
+if(!\$this."trait:accepts" \|\| !map_sizeof(\$this."trait:accepts")) \{
+    EmitTo(\$actor, "You cannot add anything to " + Describe(\$this, nil, nil, STYLE_NONPOSS) + ".");
+    return FALSE;
+\}
+
+\$accepts = map_indices(\$this."trait:accepts");
+
+\$accepted = (\{ \});
+\$notaccepted = (\{ \});
+for(i = 0; i \< sizeof(\$dob); i++) \{
+    if(member(Str(NRefOb(\$dob[i])."trait:objecttype"), \$accepts)) \{
+        \$accepted \|= (\{ \$dob[i] \});
+    \} else \{
+        \$notaccepted \|= (\{ \$dob[i] \});
+    \}
+    /* sanity check: check they have no child objects */
+    if(NRefOb(\$dob[i])."core:ur:firstchild") \{
+    EmitTo(\$actor, "You cannot add " + Describe(NRefOb(\$dob[i]), nil, nil, STYLE_NONPOSS) + " to " + Describe(\$this, nil, nil, STYLE_NONPOSS) + ".");
+        return FALSE;
+    \}
+\}
+
+if(!sizeof(\$accepted)) \{
+    EmitTo(\$actor, "You cannot add " + Describe(\$dob, nil, nil, STYLE_NONPOSS) + " to " + Describe(\$this, nil, nil, STYLE_NONPOSS) + ".");
+    return FALSE;
+\}
+
+\$dob = \$accepted;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:command%foodcontainer">
+         X[M] return Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "update", \$container: \$this);
+      </Core:Property>
+      <Core:Property property="merry:react-pre:empty-dob%foodcontainer">
+         X[M] return Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "update", \$container: \$this);
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take-from%foodcontainer">
+         X[M] return Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "update", \$container: \$this);
+      </Core:Property>
+      <Core:Property property="merry:react:add-iob%1234">
+         X[M] int i;
+
+/* sanity check */
+if(!\$dob \|\| !sizeof(\$dob)) return TRUE;
+
+if(Get(\$this, "alteration:add:default:" + NRefOb(\$dob[0])."trait:objecttype")) \{
+    return TRUE;
+\}
+
+for(i = 0; i \< sizeof(\$dob); i++) \{
+    ::add_ingredient(\$detail: \$dob[i]);
+\}
+
+EmitTo(\$actor, TAG("You add " + Describe(\$accepted, nil, nil, STYLE_NONPOSS) + " to " + Describe(\$this, nil, nil, STYLE_NONPOSS) + ".", "social:first"));
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " adds " + Describe(\$accepted, nil, nil, STYLE_NONPOSS) + " to " + Describe(\$this, nil, nil, STYLE_NONPOSS) + ".", "social:third"), \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:cut-dob">
+         X[M] if(!\$this."trait:sliceable") return TRUE;
+
+return Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "serve", \$whole: \$this, \$singleOb: \$this."trait:sliceable", \$action: "cut");
+      </Core:Property>
+      <Core:Property property="merry:react:dip-into">
+         X[M] if(sizeof(\$dob) \> 1) \{
+    EmitTo(\$actor, "You can only dip one thing at a time.");
+    return FALSE;
+\}
+
+\$dipped = NRefOb(\$dob[0]);
+
+if(\$dipped."trait:dipped") \{
+    EmitTo(\$actor, Describe(\$dipped, nil, nil, STYLE_NONPOSS) + " has already been dipped in " + Str(\$dipped."trait:dipped") + ".");
+    return FALSE;
+\}
+
+\$dipped."trait:dipped" = \$this."trait:name";
+\$dipped."trait:taste" = UnSAM(\$dipped."trait:taste") + " and " + UnSAM(\$this."trait:taste");
+\$dipped."trait:smell" = UnSAM(\$dipped."trait:smell") + " and " + UnSAM(\$this."trait:smell");
+
+\$this."trait:quantity" = Int(\$this."trait:quantity") - 10;
+
+if(Int(\$this."trait:quantity") \<= 10) \{
+    Slay(\$this);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:grab-dob">
+         X[M] if(!\$this."trait:grabable") return TRUE;
+
+return Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "serve", \$whole: \$this, \$singleOb: \$this."trait:grabable", \$action: "grab");
+      </Core:Property>
+      <Core:Property property="merry:react:scoop-dob">
+         X[M] if(!\$this."trait:scoopable") return TRUE;
+
+return Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "serve", \$whole: \$this, \$singleOb: \$this."trait:scoopable", \$action: "scoop");
+      </Core:Property>
+      <Core:Property property="merry:react:slice-dob">
+         X[M] if(!\$this."trait:sliceable") return TRUE;
+
+return Call(\$\{Allegory:Lib:Consumables:FoodScripts\}, "serve", \$whole: \$this, \$singleOb: \$this."trait:sliceable", \$action: "cut");
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:brief">
+         X[M] if(\$(hook-oldvalue)) \{
+    \$old = \$(hook-oldvalue);
+    \$oldnames = explode(\$old, " ");
+    for(\$i = 0; \$i \< sizeof(\$oldnames); \$i++) \{
+        if(\$i == (sizeof(\$oldnames)-1)) \{
+            Set(\$this, "details:default:sname:" + \$oldnames[\$i], FALSE);
+            Set(\$this, "details:default:pname:" + \$oldnames[\$i] + "s", FALSE);
+        \} else \{
+            Set(\$this, "details:default:adjective:" + \$oldnames[\$i], FALSE);
+        \}
+    \}
+\}
+
+\$new = \$(hook-value);
+\$newnames = explode(\$new, " ");
+for(\$i = 0; \$i \< sizeof(\$newnames); \$i++) \{
+    if(\$i == (sizeof(\$newnames)-1)) \{
+        if(\$newnames[\$i] == "ribs") \{
+            Set(\$this, "details:default:sname:rib", TRUE);
+            Set(\$this, "details:default:pname:ribs", TRUE);
+        \} else if(\$newnames[\$i] == "carcass") \{
+            Set(\$this, "details:default:sname:carcass", TRUE);
+            Set(\$this, "details:default:pname:carcasses", TRUE);
+        \} else \{
+            Set(\$this, "details:default:sname:" + \$newnames[\$i], TRUE);
+            Set(\$this, "details:default:pname:" + \$newnames[\$i] + "s", TRUE);
+        \}
+    \} else \{
+        Set(\$this, "details:default:adjective:" + \$newnames[\$i], TRUE);
+    \}
+    if(\$newnames[\$i] == "slice" \|\| \$newnames[\$i] == "strip" \|\| \$newnames[\$i] == "chunk" \|\| \$newnames[\$i] == "serving" \|\| \$newnames[\$i] == "rack") \{
+        Set(\$this, "details:default:sname:" + \$newnames[\$i], TRUE);
+        Set(\$this, "details:default:pname:" + \$newnames[\$i] + "s", TRUE);
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:state">
+         X[M] if(\$(hook-oldvalue)) \{
+    \$old = \$(hook-oldvalue);
+    \$oldnames = explode(\$old, " ");
+    for(\$i = 0; \$i \< sizeof(\$oldnames); \$i++) \{
+        Set(\$this, "details:default:adjective:" + \$oldnames[\$i], FALSE);
+    \}
+\}
+
+if(\$(hook-value)) \{
+    \$new = \$(hook-value);
+    \$newnames = explode(\$new, " ");
+    for(\$i = 0; \$i \< sizeof(\$newnames); \$i++) \{
+        Set(\$this, "details:default:adjective:" + \$newnames[\$i], TRUE);
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1595459967, "jominey", "E", 1595460043, "jominey", "E", 1595467659, "jominey", "E", 1595471115, "jominey", "E", 1595511515, "jominey", "E", 1595511575, "jominey", "P", 1595514310, "jominey", "E", 1595769928, "jominey", "E", 1595770094, "jominey", "E", 1596652686, "jominey", "E", 1596652722, "jominey", "E", 1596652931, "jominey", "E", 1596652961, "jominey", "E", 1596652992, "jominey", "E", 1596653002, "jominey", "E", 1596653149, "jominey", "E", 1596653332, "jominey", "E", 1596653361, "jominey", "E", 1596653507, "jominey", "E", 1596653655, "jominey", "E", 1596653678, "jominey", "E", 1596653743, "jominey", "E", 1596653916, "jominey", "E", 1596653933, "jominey", "E", 1596653941, "jominey", "E", 1596653944, "jominey", "E", 1596653995, "jominey", "E", 1596654043, "jominey", "E", 1596654643, "jominey", "E", 1596654992, "jominey", "E", 1596655888, "jominey", "E", 1596655991, "jominey", "E", 1596658740, "jominey", "E", 1596661210, "jominey", "E", 1596661232, "jominey", "E", 1596661316, "jominey", "E", 1596661380, "jominey", "E", 1596661486, "jominey", "E", 1596661541, "jominey", "E", 1596661625, "jominey", "E", 1596661689, "jominey", "E", 1596661755, "jominey", "P", 1596661809, "jominey", "P", 1596661848, "jominey", "P", 1596661877, "jominey", "P", 1596661914, "jominey", "P", 1596663162, "jominey", "E", 1596663204, "jominey", "E", 1596663236, "jominey", "E", 1596663259, "jominey", "E", 1596663283, "jominey", "E", 1596663319, "jominey", "E", 1596663452, "jominey", "E", 1596663708, "jominey", "E", 1596663743, "jominey", "E", 1596663773, "jominey", "E", 1596663833, "jominey", "E", 1596663888, "jominey", "E", 1596663942, "jominey", "E", 1596663978, "jominey", "E", 1596664046, "jominey", "E", 1596938416, "jominey", "E", 1596938432, "jominey", "E", 1596938485, "jominey", "E", 1601761279, "jominey", "E", 1699576558, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

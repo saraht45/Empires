@@ -1,0 +1,163 @@
+<object clone="/base/obj/thing" owner="tunk_bodin">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Plants:Urs:Part:UrLeaf)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="true"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="leaf"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="leaves"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="tobacco"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:state) {? | $(this.trait:flavor) |$(this.trait:flavor)-flavored |} tobacco leaf
+          </Base:Description>
+          <Base:Description type="look">
+             The {? | $(this.trait:flavor) |$(this.trait:flavor)-flavored |} tobacco leaf. It can be rolled into a cigar.
+          </Base:Description>
+          <Base:Description type="pbrief">
+             $(this.trait:state) {? | $(this.trait:flavor) | $(this.trait:flavor)-flavored |} tobacco leaves
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="bak:export:alteration:add:default:flavor">
+         ([ "adj-prop":(\{ "trait:flavor", "trait:type" \}), "properties":(\{ (\{ "trait:flavor", "trait:type" \}) \}), "skill":"gardener", "stopvalue":(\{ "trait:flavor", nil \}) ])
+      </Core:Property>
+      <Core:Property property="bak:merry:react-post:roll-dob">
+         X[M] EmitTo(\$actor, "You roll your tobacco leaf into a tight, thick cigar."); 
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " rolls a tobacco leaf into a tight, thick cigar.", \$actor); 
+\$cigar = Spawn(\$\{IronClaw:Props:Crafting:Smoking:Cigar\}); 
+\$cigar."base:environment" = \$actor; 
+
+\$cigar."trait:setprop:fresh" = (\{ (\{ "trait:smell", \$this."trait:smell" \}), (\{ "trait:taste", \$this."trait:taste" \}), (\{ "details:default:adjective:fresh", 1 \}) \});
+\$cigar."trait:flavor" = \$this."trait:flavor";
+
+Set(\$cigar, "details:default:adjective:" + Str(\$this."trait:flavor"),  TRUE);
+Set(\$cigar, "details:default:adjective:" + Str(\$this."trait:flavor") + "-flavored",  TRUE);
+Slay(\$this);
+      </Core:Property>
+      <Core:Property property="bak:merry:react-post:shred-dob">
+         X[M] EmitTo(\$actor, "You shred your tobacco leaf and place the pieces into a small pouch."); 
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " shreds a tobacco leaf and places the pieces into a small pouch.", \$actor); 
+\$cigar = Spawn(\$\{Ironclaw:Props:Shredding:ChewingTobacco:Generic\}); 
+\$cigar."base:environment" = \$actor; 
+\$cigar."trait:flavor" = \$this."trait:flavor";
+\$cigar."trait:taste" = \$this."trait:taste";
+\$cigar."trait:smell" = \$this."trait:smell";
+Set(\$cigar, "details:default:adjective:" + Str(\$this."trait:flavor"),  TRUE);
+Set(\$cigar, "details:default:adjective:" + Str(\$this."trait:flavor") + "-flavored",  TRUE);
+Slay(\$this);
+      </Core:Property>
+      <Core:Property property="bak:merry:react-pre:add-iob">
+         X[M] /*
+** \$iob = leaf
+** \$dob = paste
+*/
+
+if(!\$iob) return TRUE;
+if(!sizeof(\$iob)) return TRUE;
+if(sizeof(\$iob) \> 1) \{
+    EmitTo(\$actor, "You can only do that to one thing at a time.");
+    return FALSE;
+\}
+
+\$leaf = NRefOb(\$iob[0]);
+
+if(!\$dob) return TRUE;
+if(!sizeof(\$dob)) return TRUE;
+if(sizeof(\$dob) \> 1) \{
+    EmitTo(\$actor, "You can only do that to one thing at a time.");
+    return FALSE;
+\}
+
+\$paste = NRefOb(\$dob[0]);
+
+if(\$paste."base:urparent" != \$\{Ironclaw:Props:Plot:Spider:Paste\}) return TRUE;
+if(NRefOb(\$leaf)."trait:flavor") \{
+    EmitTo(\$actor, "There's no point flavoring "+Describe(\$leaf, nil, \$actor)+", as it is already "+\$paste."trait:type"+" flavored.");
+    return FALSE;
+\}
+
+\$leaf = NRefOb(\$iob[0]);
+\$paste = NRefOb(\$dob[0]);
+
+  EmitTo(\$actor, "You flavor "+Describe(\$leaf, nil, \$actor)+" with "+Describe(\$paste, nil, \$actor)+".");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" flavors "+Describe(\$leaf, \$actor)+" with "+Describe(\$paste, \$actor)+".", \$actor);
+
+  \$leaf."trait:flavor" = Str(\$paste."trait:type");
+  \$leaf."trait:taste" = Str(\$leaf."trait:taste") + " and " + \$paste."trait:taste";
+  \$leaf."trait:smell" = Str(\$leaf."trait:smell") + " and " + \$paste."trait:smell";
+  Set(\$leaf, "details:default:adjective:" + Str(\$paste."trait:type"),  TRUE);
+  Set(\$leaf, "details:default:adjective:" + Str(\$paste."trait:type") + "-flavored",  TRUE);
+
+  Slay(\$paste);
+  return FALSE;
+      </Core:Property>
+      <Core:Property property="export:alteration:add:default:flavor">
+         ([ "adj-prop":(\{ "trait:flavor", "trait:material" \}), "properties":(\{ (\{ "trait:flavor", "trait:material" \}) \}), "skill":"gardener", "stopvalue":(\{ "trait:flavor", nil \}) ])
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "a harsh, earthy fragrance that stings your nose"
+      </Core:Property>
+      <Core:Property property="export:trait:taste">
+         "harsh"
+      </Core:Property>
+      <Core:Property property="export:trait:type">
+         "tobacco"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1418711010, "jominey", "E", 1418711020, "jominey", "E", 1419208780, "jominey", "E", 1419208908, "jominey", "E", 1436497968, "jominey", "E", 1436498002, "jominey", "E", 1568328868, "sendnoodlez", "R", 1568329014, "sendnoodlez", "X", 1568329047, "sendnoodlez", "E", 1568329052, "sendnoodlez", "E", 1593439644, "jominey", "R", 1594848245, "jominey", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:objecttype">
+         "tobaccoleaf"
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes>
+      <Notes:Category cat="QA" catstate="Open">
+        <Notes:Note ix="1568329047" state="Open" user="sendnoodlez">
+           Nicotiana tabacum
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Base:Thing>
+</object>

@@ -1,0 +1,235 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:calculate_armor">
+         X[M] \$inventory = \$actor."base:inventory";
+
+\$rating = 0;
+\$penalty = 0;
+for(\$i = 0; \$i \< sizeof(\$inventory); \$i++) \{
+  /* Don't count broken armor. */
+  if(!\$inventory[\$i]."trait:broken") \{
+    if(\$inventory [\$i]."base:clothing:worn" \&\& \$inventory[\$i]."armor:rating") \{
+        \$rating += Int(\$inventory[\$i]."armor:rating");
+    \}
+
+    if(\$inventory [\$i]."base:clothing:worn" \&\& \$inventory[\$i]."armor:penalty") \{
+        \$penalty += Int(\$inventory[\$i]."armor:penalty");
+    \}
+  \}
+\}
+
+\$skill = Int(\$actor."career:combat:armor") + Int(\$actor."skill:combat:armor");
+
+if(\$actor."base:urparent" == \$\{Allegory:Bodies:Mainbody\}) \$skill = Int(\$actor."trait:strength")*2;
+
+if(\$penalty \> \$skill) \{
+    \$actor."combat:armor:penalty" = Int(\$penalty - \$skill);
+\} else \{
+    \$actor."combat:armor:penalty" = 0;
+\}
+
+\$actor."combat:armor:rating" = \$rating;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:calculate_hp">
+         X[M] /* Return the item's HP. */
+
+if(!\$this."trait:quality") \{
+  \$this."trait:quality" = 4;
+\}
+
+return Int(\$this."trait:quality") * 10;
+      </Core:Property>
+      <Core:Property property="merry:react-post:unwear%armor">
+         X[M] /*
+This function sets the statistics when armor is removed
+*/
+
+/* set the new armor coverring settings for this armor */
+\$tmpArray = Arr(\$actor."combat:armor:covers");
+\$tmpArray -= Arr(this."armor:covers");
+Set(\$actor, "combat:armor:covers", \$tmpArray);
+
+Call(\$\{Ironclaw:Lib:Combat:Armor\}, "calculate_armor");
+
+return TRUE;
+
+/* remove armor bonus to the player */
+\$actor."combat:armor:rating" = \$actor."combat:armor:rating" - Int(this."armor:rating");
+
+/* remove the armor penalty */
+if(typeof(this."armor:penalty") == 1) \{
+  \$actor."combat:armor:penalty" = \$actor."combat:armor:penalty" - Int(this."armor:penalty");
+\} else \{
+  \$actor."combat:armor:penalty" = \$actor."combat:armor:penalty" - Int(this."armor:rating");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:wear%armor">
+         X[M] Call(\$\{Ironclaw:Lib:Combat:Armor\}, "calculate_armor");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:repair-dob">
+         X[M] if(!\$this."trait:damage") \{
+    EmitTo(\$actor, Describe(\$this) + " does not need to be repaired.");
+    return FALSE;
+\}
+
+if(!\$actor."skill:career:blacksmith" \&\& !\$actor."skill:career:weaponsmith" \&\& !\$actor."skill:career:armorsmith") \{
+    EmitTo(\$actor, "You don't know how to do that.");
+    return FALSE;
+\}
+
+\$env = \$actor."base:environment"."base:inventory";
+\$env2 = \$actor."base:environment";
+\$inv = \$actor."base:inventory";
+
+\$anvilfound = 0;
+\$hammerfound = 0;
+
+for(\$i = 0; \$i \< sizeof(\$env); \$i++) \{
+    if(\$env[\$i]."trait:objecttype" == "anvil") \$anvilfound = 1;
+    if(\$env[\$i]."trait:objecttype" == "hammer") \$hammerfound = 1;
+\}
+
+for(\$i = 0; \$i \< sizeof(\$inv); \$i++) \{
+    if(\$inv[\$i]."trait:objecttype" == "anvil") \$anvilfound = 1;
+    if(\$inv[\$i]."trait:objecttype" == "hammer") \$hammerfound = 1;
+\}
+
+if(!\$anvilfound) \{
+    EmitTo(\$actor, "You need an anvil to do that.");
+    return FALSE;
+\}
+
+if(!\$hammerfound) \{
+    EmitTo(\$actor, "You need a hammer to do that.");
+    return FALSE;
+\}
+
+if(\$actor."trait:repairing") \{
+    EmitTo(\$actor, "Please finish your current repair before starting a new one.");
+    return FALSE;
+\}
+
+\$actor."trait:repairing" = 1;
+
+EmitTo(\$actor, "You begin to repair " + Describe(\$this, nil, \$actor) + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " begins to repair " + Describe(\$this, \$actor) + ".", \$actor);
+
+for(\$i = 0; \$i \< 12; \$i++) \{
+    \$delay(10, FALSE, "ac0d");
+
+    if(\$this."base:environment" != \$actor) \{
+        EmitTo(\$actor, "You must be holding " + Describe(\$this) + " to repair it.");
+        \$actor."trait:repairing" = nil;
+
+        return FALSE;
+    \}
+
+    if(\$actor."base:environment" != \$env2) \{
+        EmitTo(\$actor, "You need to stay in one place if you want to repair " + Describe(\$this, nil, \$actor) + ".");
+        \$actor."trait:repairing" = nil;
+
+        return FALSE;
+    \}
+\}
+
+\$roll = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "alteration:metalworking" \}), \$bonus: "trait:mind");
+
+\$hp = ::calculate_hp();
+
+\$this."trait:damage" = Int(\$this."trait:damage") - \$roll;
+if(\$this."trait:damage" \< 0) \$this."trait:damage" = 0;
+if(\$this."trait:damage" \< \$hp) \$this."trait:broken" = nil;
+
+EmitTo(\$actor, "You finish repairing " + Describe(\$this, nil, \$actor) + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " finishes repairing " + Describe(\$this, \$actor) + ".", \$actor);
+
+\$actor."trait:repairing" = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:wear%armor">
+         X[M] /*
+This function sets the statistics when armor is worn
+*/
+if(\$this."trait:broken") \{
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is broken. You need to repair it first.");
+    return FALSE;
+\}
+
+/* checks the actor is not trying to wear this armor over other armor */
+if(!\$actor."combat:armor:covers")
+  \$actor."combat:armor:covers" = (\{\});
+
+if(!\$actor."combat:defenceitems")
+  \$actor."combat:defenceitems" = (\{\});
+
+\$tmpArray = Arr(this."armor:covers");
+\$tmpArray \&= \$actor."combat:armor:covers";
+if(sizeof(\$tmpArray) \> 0) \{
+    EmitTo(\$actor, "You already have armor on your " + this."armor:covers"[0]);
+    return FALSE;
+\}
+
+/* Okay to wear armor so set the stats */
+\$tmpArray = Arr(this."armor:covers");
+\$tmpArray \|= \$actor."combat:armor:covers";
+\$actor."combat:armor:covers" = \$tmpArray;
+
+/* set the defense items */
+if(this."combat:defenceitem") \{
+  \$tmpArray = (\{ this \});
+  \$tmpArray += \$actor."combat:defenceitems";
+  \$actor."combat:defenceitems" = \$tmpArray;
+\}
+
+return TRUE;
+
+/* give armor bonus/penalty to the player */
+\$actor."combat:armor:rating" = Int(\$actor."combat:armor:rating") + Int(this."armor:rating");
+
+/* give armor penalty */
+if(typeof(this."armor:penalty") == 1) \{
+  \$actor."combat:armor:penalty" = Int(\$actor."combat:armor:penalty") + Int(this."armor:penalty");
+\} else \{
+  \$actor."combat:armor:penalty" = Int(\$actor."combat:armor:penalty") + Int(this."armor:rating");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:damage">
+         X[M] \$hp = ::calculate_hp();
+\$damage = Int(\$this."trait:damage");
+
+\$fighter = \$this."base:holder";
+
+if(\$damage \>= \$hp) \{
+    \$this."trait:broken" = 1;
+    EmitTo(\$fighter, Describe(\$this, nil, \$fighter) + " has broken!");
+    EmitIn(\$fighter."base:environment", Describe(\$this) + " has broken!", \$fighter);
+
+    if(\$this."base:wielded-by") \{
+        Act(\$fighter, "remove", \$articles: (\{ \$this \}));
+    \}
+
+    Call(\$\{Ironclaw:Lib:Combat:Armor\}, "calculate_armor", \$actor: \$fighter);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1167100886, "tonyd", "P", 1167100947, "tonyd", "P", 1167100980, "tonyd", "P", 1167101020, "tonyd", "P", 1167101115, "tonyd", "P", 1167101176, "tonyd", "P", 1167101243, "tonyd", "P", 1167101301, "tonyd", "P", 1167101336, "tonyd", "P", 1167101471, "tonyd", "P", 1167101560, "tonyd", "P", 1167101673, "tonyd", "P", 1168323569, "tonyd", "P", 1172482099, "tonyd", "E", 1172482850, "tonyd", "E", 1172482869, "tonyd", "E", 1172926457, "tonyd", "E", 1172926505, "tonyd", "E", 1172926684, "tonyd", "E", 1233068837, "jominey", "E", 1233068873, "jominey", "E", 1233068897, "jominey", "E", 1233068952, "jominey", "E", 1233069182, "jominey", "E", 1233069229, "jominey", "E", 1233069292, "jominey", "E", 1233069375, "jominey", "E", 1233069397, "jominey", "E", 1233069440, "jominey", "E", 1233069459, "jominey", "E", 1233069486, "jominey", "E", 1233069500, "jominey", "E", 1233069552, "jominey", "E", 1342571423, "jominey", "E", 1342571463, "jominey", "E", 1342571762, "jominey", "E", 1342572066, "jominey", "E", 1342572123, "jominey", "E", 1342572143, "jominey", "E", 1342572383, "jominey", "E", 1342572856, "jominey", "E", 1343512103, "jominey", "E", 1343512209, "jominey", "E", 1343531999, "jominey", "E", 1343532187, "jominey", "E", 1343532263, "jominey", "E", 1343532760, "jominey", "E", 1378579840, "jominey", "E", 1378579906, "jominey", "E", 1378579973, "jominey", "E", 1378580006, "jominey", "E", 1378580020, "jominey", "E", 1378580083, "jominey", "E", 1378580101, "jominey", "E", 1378580838, "jominey", "E", 1378581032, "jominey", "E", 1567207972, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

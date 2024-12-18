@@ -1,0 +1,3025 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:character">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */ 
+  ::popup_initialize(); 
+  return nil;]
+\</z\>
+\<h1\>Character information for \$[capitalize(\$charname)]\</h1\>
+\<p\>What should go on this page? If you have any ideas of what you'd find useful, @idea them!\<br/\>
+Some ideas are below. I'll build in these features as I have time. ~ Azrael\</p\>
+\<p\>Character:\</p\>
+\<ul\>
+\<li\>What is your background and history\</li\>
+\<li\>What social rank are you\</li\>
+\<li\>What other information is there about you (age, religion marital status)\</li\>
+\<li\>money, income \\\& expenses\</li\>
+\<li\>Lodgings\</li\>
+\<li\>List skills, learning points, etc.\</li\>
+\<li\>Section for general notes\</li\>
+\</ul\>
+\{? \| \$(guild) \|
+\<h2\>Guild Information\</h2\>
+\<p\>You are
+\$[if(\$guild.leader == \$char) return "the guild leader"; return "a member";]
+of \$(guild.fullname).\</p\>
+\<span id="tokenswitch" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:block;"\>\<strong\>\\\> NPC Tokens\</strong\>\</span\>
+\<span id="tokenswitch2" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:none;"\>\<strong\>v NPC Tokens\</strong\>\</span\>
+\<span id="tokenlist" style="display:none;"\>
+\<p\>\<strong\>What NPC tokens are you willing to produce for your guild?\</strong\>\<br/\>
+\$[/* let the PC hide token production from their guild leader */ 
+int i; 
+object db; 
+string output; 
+db = \$\{Ironclaw:Lib:Teaching:newCareersDB\}; 
+/* figure out what tokens they can make */ 
+\$careers = map_indices(prefixed_map(\$char."*", "skill:career")); 
+\$tokens = (\{ \}); 
+for(i=0;i\<sizeof(\$careers);i++) \{ 
+ \$info = Get(db, \$careers[i][13..strlen(\$careers[i])-1]); 
+ if(\$info) \{ 
+  \$tokens += Arr(\$info["tokens"]); 
+ \} 
+\} 
+\$tokens -= (\{ nil \}); 
+\$tokens = map_indices(arr_to_set(\$tokens)); 
+output = ""; 
+for(i=0;i\<sizeof(\$tokens);i++) \{ 
+ output += "\<input type=\\"checkbox\\""; 
+ if(!member(\$tokens[i], Arr(\$char."npc:hidetokens"))) 
+  output += " checked=\\"1\\""; 
+ output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'nil\|"+name(\$char)+"\|"+\$tokens[i]+"\|subarr\|npc:hidetokens\|You are once again creating "+\$tokens[i]+" tokens for your guild.'); \} else \{ run_script('editmember_setval', 'nil\|"+name(\$char)+"\|"+\$tokens[i]+"\|addarr\|npc:hidetokens\|You are no longer creating "+\$tokens[i]+" tokens for your guild.'); \}\\"/\>"; 
+ output += " "+\$tokens[i]+" tokens\<br/\>"; 
+\} 
+  
+return output;]
+\</p\>
+\</span\>
+\}
+\<p\>Social:\</p\>
+\<ul\>
+\<li\>Your social rank is that of a \$[if(\$char."rank:name") return \$char."rank:name"; return "freedman";].\</li\>
+\<li\>Is there any news from your land holdings?\</li\>
+\<li\>Information from criminal record.\</li\>
+\</ul\>
+\\\<!--
+\\\<span id="tokenswitch" class="clickable" onclick="display_block('tokenlist', 'list_tokens'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:block;"\\\>\\\<strong\\\>\\\\\\\> NPC Tokens\\\</strong\\\>\\\</span\\\>
+\\\<span id="tokenswitch2" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:none;"\\\>\\\<strong\\\>v NPC Tokens\\\</strong\\\>\\\</span\\\>
+\\\<span id="tokenlist" style="display:none;"\\\>\\\</span\\\>
+\\\<span class="clickable" onclick="display_block('memberlist', 'list_members', 'active');"\\\>\\\<u\\\>Active Members\\\</u\\\>\\\</span\\\>
+\\\<span id="memberlist" style="display:none;"\\\>\\\</span\\\>
+\\\$[/*run_script('editmember_setval', 'AUTHNEEDED/nil\\\|MEMBER/\\\$char\\\|VALUE\\\|addarr\\\|guild:authority\\\|Authority to change bluebooked jobs granted.');*/return nil;]
+\\\<div id="land_question"\\\>\\\$[return nil; Call(\\\$\\\{Ironclaw:Lib:Guilds:Questions\\\}, "land_question")]\\\</div\\\>
+\\\<p\\\>\\\$[dump_value(args)]\\\</p\\\>--\\\>
+      </Core:Property>
+      <Core:Property property="html:display_guild">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */       
+  ::popup_initialize();       
+  return nil;]
+\$[/* get some information about this guild */    
+if(\$guild \&\& Obj("Ironclaw:Guilds:"+\$guild)) \{       
+  \$guild = Obj("Ironclaw:Guilds:"+\$guild);       
+\} else \{       
+  error("No guild found. Please choose one from the list.");      
+\}      
+      
+if(\$guild) \{       
+  \$guildname = name(\$guild)[16..strlen(name(\$guild))-1];       
+  \$guildpages = Obj("Ironclaw:Guilds:Pages:new:"+\$guildname);       
+  if(!\$guildpages) \{       
+    \$guildpages = Duplicate(\$\{Ironclaw:Guilds:Pages:default_page\});       
+    \$guildpages."core:objectname" = "Ironclaw:Guilds:Pages:new:"+\$guildname;       
+  \}       
+\}      
+      
+/* Check the players rank in this guild */       
+\$guildrank = nil;      
+if(\$actor.guild \&\& \$actor.guild == \$guild) \{      
+  \$guildrank = 3;      
+  if(\$actor."guild:rank")      
+    \$guildrank = \$actor."guild:rank";      
+\}      
+\$guildleader = nil;      
+if(\$actor == \$guild.leader) \{      
+  if(\$guildrank != 1 \&\& \$actor.guild == \$guild) \{      
+    \$actor."guild:rank" = 1;      
+    \$guildrank = 1;      
+  \}      
+  \$guildleader = 1;      
+\}      
+return nil;]
+\{? \| \$[\$guildrank \|\| \$page == "guest"] \|
+\{?when\| \$(page) \| main \| 
+\<p\>Welcome to the guild pages. We're working on stuff. Isn't it fun?\</p\>
+                       \| guest \| 
+\<h2\>Guild Manifesto\</h2\>
+\$[Str(\$guild.manifesto)]
+                       \| guild_settings \| 
+\$[Call(this, "general_script", \$script: "show_guild_settings", \$vars: "active")]
+                       \| members \| 
+\<p\>Show: \<strong\>
+\<span class="clickable" onclick="display_block('memberlist', 'list_members', 'active');"\>\<u\>Active Members\</u\>\</span\>
+- \<span class="clickable" onclick="display_block('memberlist', 'list_members', 'all');"\>\<u\>All Members\</u\>\</span\>
+- \<span class="clickable" onclick="display_block('memberlist', 'list_members', 'edit');"\>\<u\>Edit Members\</u\>\</span\>
+\</strong\>\</p\>
+\<span id="memberlist"\>\$[Call(this, "general_script", \$script: "list_members", \$vars: "active")]\</span\>
+                       \| npc \| 
+\<span id="tokenswitch" class="clickable" onclick="display_block('tokenlist', 'list_tokens'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:block;"\>\<strong\>\\\> Guild Tokens\</strong\>\</span\>
+\<span id="tokenswitch2" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:none;"\>\<strong\>v Guild Tokens\</strong\>\</span\>
+\<span id="tokenlist" style="display:none;"\>\</span\>
+\<span id="teacherswitch" class="clickable" onclick="display_block('teacherlist', 'list_npc_teacher'); switch_block('teacherswitch'); switch_block('teacherswitch2');" style="display:block;"\>\<strong\>\\\> Guild Teacher\</strong\>\</span\>
+\<span id="teacherswitch2" class="clickable" onclick="switch_block('teacherlist'); switch_block('teacherswitch'); switch_block('teacherswitch2');" style="display:none;"\>\<strong\>v Guild Teacher\</strong\>\</span\>
+\<span id="teacherlist" style="display:none;"\>\</span\>
+                       \| trading \| 
+\<span id="trading_notices"\>\</span\>
+\<span id="auctionswitch" class="clickable" onclick="display_block('auctionlist', 'show_auction'); switch_block('auctionswitch'); switch_block('auctionswitch2');" style="display:block;"\>\<strong\>\\\> Auction\</strong\>\</span\>
+\<span id="auctionswitch2" class="clickable" onclick="switch_block('auctionlist'); switch_block('auctionswitch'); switch_block('auctionswitch2');" style="display:none;"\>\<strong\>v Auction\</strong\>\</span\>
+\<span id="auctionlist" style="display:none;"\>\</span\>
+\<span id="inventoryswitch" class="clickable" onclick="display_block('inventorylist', 'list_inventory'); switch_block('inventoryswitch'); switch_block('inventoryswitch2');" style="display:block;"\>\<strong\>\\\> Inventory\</strong\>\</span\>
+\<span id="inventoryswitch2" class="clickable" onclick="switch_block('inventorylist'); switch_block('inventoryswitch'); switch_block('inventoryswitch2');" style="display:none;"\>\<strong\>v Inventory\</strong\>\</span\>
+\<span id="inventorylist" style="display:none;"\>\</span\>
+\<span id="tokenswitch" class="clickable" onclick="display_block('tokenlist', 'list_tokens'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:block;"\>\<strong\>\\\> Guild Tokens\</strong\>\</span\>
+\<span id="tokenswitch2" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:none;"\>\<strong\>v Guild Tokens\</strong\>\</span\>
+\<span id="tokenlist" style="display:none;"\>\</span\>
+\<span id="dealswitch" class="clickable" onclick="display_block('deallist', 'show_trading_deals'); switch_block('dealswitch'); switch_block('dealswitch2');" style="display:block;"\>\<strong\>\\\> Trading Deals\</strong\>\</span\>
+\<span id="dealswitch2" class="clickable" onclick="switch_block('deallist'); switch_block('dealswitch'); switch_block('dealswitch2');" style="display:none;"\>\<strong\>v Trading Deals\</strong\>\</span\>
+\<span id="deallist" style="display:none;"\>\</span\>
+                       \| property \| 
+\$[Call(this, "general_script", \$script: "show_guild_settings", \$vars: "active")]
+                       \| edit_page \| 
+    \{? \| \$[if(\$actor."guild:create_page") return TRUE; if(\$guildrank == 1) return TRUE; return nil;] \|
+      \{? \| \$(edit) \|
+        \<h2\>Editing an existing guild page\</h2\>
+      \|
+        \<h2\>Creating a new guild page\</h2\>
+      \}
+      \<zform actor="\$(actor)" guild="\$(guild)" guildpages="\$(guildpages)" edit="\$(edit)" charname="\$(charname)" guildname="\$(guildname)"\>
+        \{? \| \$(edit) \|
+          Page Title: \<input name="page_name" value="\$[\$edit[5..]]"/\>\<br/\>
+        \|
+          Page Title: \<input name="page_name" value="Guild Policies"/\>\<br/\>
+        \}
+        \{? \| \$(edit) \|
+          \$[\$editdata = Get(\$guildpages, Str(\$edit)); return nil;]
+          Access: \<select NAME="access" id="access"\>
+            \{? \| \$[if(\$editdata[0] == "members") return TRUE; return FALSE;] \|
+            \<option value="members" selected="1"\>Members Only\</option\>
+            \|
+            \<option value="members"\>Members Only\</option\>
+            \}
+            \{? \| \$[if(\$editdata[0] == "visitors") return TRUE; return FALSE;] \|
+            \<option value="visitors" selected="1"\>All Visitors\</option\>
+            \|
+            \<option value="visitors"\>All Visitors\</option\>
+            \}
+            \{? \| \$[if(\$editdata[0] == "hidden") return TRUE; return FALSE;] \|
+            \<option value="hidden" selected="1"\>Nobody (hidden)\</option\>
+            \|
+            \<option value="hidden"\>Nobody (hidden)\</option\>
+            \}
+          \</select\>\<br/\>
+          Content:\<br/\>
+          \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 200px" name="body"\>\$[\$editdata[1]]\</textarea\>\<br/\>
+          \<input type="submit" value="Edit page" class="submit-button"/\>
+        \|
+          Access: \<select NAME="access" id="access"\>
+            \<option value="members" selected="1"\>Members Only\</option\>
+            \<option value="visitors"\>All Visitors\</option\>
+            \<option value="hidden"\>Nobody (hidden)\</option\>
+          \</select\>\<br/\>
+          Content:\<br/\>
+          \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 200px" name="body"\>Our guild policy is to do the best that we can. And eat pudding. Lots of pudding.\</textarea\>\<br/\>
+          \<input type="submit" value="Create page" class="submit-button"/\>
+        \}
+        \<action\>
+          \$[/* save the changes to this page */      
+          \$az = \$\{Chatters:AE:az:azrael\};      
+          EmitTo(\$az, "ARGS: "+dump_value(args));      
+          \$editdata = Get(\$guildpages, Str(\$edit));      
+          EmitTo(\$az, "DATA: "+dump_value(\$editdata));      
+          \$editdata[0] = \$access;      
+          \$editdata[1] = \$body;      
+          Set(\$guildpages, Str(\$edit), \$editdata);      
+          return nil;]
+          \<redirect base="/SAM/Prop/Ironclaw:Lib:Guilds:New/index" actor="\$(charname)" guild="\$(guildname)" page="\$(edit)"/\>
+        \</action\>
+      \</zform\>
+    \|
+      You are not authorized to create new pages in this guild.
+    \}
+                       \| * \| 
+    \$[/* check if we can find this page or not */      
+    object pages;      
+    string *index, output;      
+    mixed page;      
+    int i;      
+    if(pages = Obj("Ironclaw:Guilds:Pages:new:"+Str(\$guildname))) \{      
+      if(page = Get(pages, \$page)) \{      
+        if(typeof(page) == T_ARRAY) \{      
+          /* are we authorised to view this? */      
+          if(page[0] == "visitors" \|\| \$guildrank) \{      
+            if(page[0] == "visitors") \{      
+              output =  "\<p\>[This page can be viewed by any visitors] [Edit page] [Delete page]\</p\>\\n";      
+              output += Str(page[1]);      
+              return output;      
+            \} else \{      
+              return Str(page[1]);      
+            \}      
+          \}      
+        \} else \{      
+          return "\<p\>[This page can be viewed by any visitors]\</p\>\\n"+Str(page);      
+        \}      
+      \}      
+    \}      
+    output = "\<p\>We don't know what this page is. Obviously, something went wrong. Hrmh.\</p\>";      
+    return output;]
+\}
+\<p\>[\<a href="index?actor=\$(charname)\\\&amp;guild=\$(guildname)\\\&amp;page=edit_page\\\&amp;edit=\$(page)"\>Edit this page\</a\>]\</p\>
+\|
+\<p\>You are not authorized to view this page.\</p\>
+\}
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:general_script">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>\$[Call(this, "general_script")]\</z\>
+      </Core:Property>
+      <Core:Property property="html:guildscript">
+         X[S] \<script type="text/javascript"\>
+function link_to_guildpage(guild, page, edit) \\\{
+  if(edit) \\\{
+   location = 'index?actor=\$(charname)\\\&guild='+guild+'\\\&page='+page+'\\\&edit='+edit;
+  \\\} else \\\{
+   location = 'index?actor=\$(charname)\\\&guild='+guild+'\\\&page='+page;
+  \\\}
+\\\}
+function display_guildpage(guild, page, edit) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  if(edit) \{
+    var url='display_guild?actor=\$(charname)\\\&guild='+guild+'\\\&page='+page+'\\\&edit='+edit;
+  \} else \{
+    var url='display_guild?actor=\$(charname)\\\&guild='+guild+'\\\&page='+page;
+  \}
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("page_block").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function display_character() \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='character?actor=\$(charname)';
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("body_content").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function details_display() \\\{
+  if(document.getElementById('show_details').style.display == "block") \\\{
+    document.getElementById("details_tab").innerHTML='\<b\>\\\> Show Details\</b\>';
+    document.getElementById('show_details').style.display = 'none';
+  \\\} else \\\{
+    document.getElementById("details_tab").innerHTML='v \<b\>Hide Details\</b\>';
+    document.getElementById('show_details').style.display = 'block';
+    show_bulk();
+  \\\}
+\\\}
+function voting_select(nominee) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script=voting_select\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+nominee;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\} else \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */       
+  ::popup_initialize();       
+  return nil;]
+\</z\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Guild pages: \$[capitalize(\$charname)]\</title\>
+  \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+  \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+  \$(this.html:javascript)
+  \$(this.html:guildscript)
+\</head\>
+\<body\>
+  \<div id="top_strip"\>
+    Character: \<a href="?actor=\$(charname)\\\&charinfo=1"\>\<u\>\$[capitalize(\$charname)]\</u\>\</a\>
+\{? \| \$(char.guild) \|
+    - Guild: \<a href="?actor=\$(charname)\\\&guild=\$[name(\$char.guild)[16..strlen(name(\$char.guild))-1]]"\>\<u\>\$(char.guild.shortname)\</u\>\</a\>
+\}
+    - View another guild:
+    \<select NAME="category" id="guildselect" onchange="document.location.href='index?actor=\$(charname)\\\&guild='+this.value;"\>
+\{? \| \$(char.guild) \|
+      \<option value="\$(guildname)"\>\\\&nbsp;\</option\>
+\|
+      \<option value=""\>\\\&nbsp;\</option\>
+\}
+      \$[/* get a list of all guilds */      
+        string output, *guilds;      
+        int i;      
+        guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Ironclaw:Guilds");      
+        output = "";      
+        for(i=0;i\<sizeof(guilds);i++) \{      
+          output += "\<option value=\\""+guilds[i]+"\\"\>"+guilds[i]+"\</option\>";      
+        \}      
+        return output;]
+    \</select\>
+    \$[/* get some information about this guild */      
+    if(\$guild \&\& Obj("Ironclaw:Guilds:"+\$guild)) \{      
+      \$guild = Obj("Ironclaw:Guilds:"+\$guild);      
+    \} else if (\$char.guild) \{      
+      \$guild = \$char.guild;      
+    \} else \{      
+      return nil;      
+    \}      
+    \$guildname = name(\$guild)[16..strlen(name(\$guild))-1];    
+    \$guildpages = Obj("Ironclaw:Guilds:Pages:"+\$guildname);      
+    if(!\$guildpages) \{      
+      \$guildpages = Duplicate(\$\{Ironclaw:Guilds:Pages:default_page\});      
+      \$guildpages."core:objectname" = "Ironclaw:Guilds:Pages:"+\$guildname;      
+    \}      
+      
+    /* Check the players rank in this guild */      
+    \$guildrank = nil;      
+    if(\$actor.guild \&\& \$actor.guild == \$guild) \{      
+      \$guildrank = 3;      
+      if(\$actor."guild:rank")      
+        \$guildrank = \$actor."guild:rank";      
+    \}      
+    return nil;]
+  \</div\>
+\{? \| \$[!\$guild \|\| \$charinfo] \|
+\$(this.html:character)
+\|
+\<h1\>\$(guild.fullname)\</h1\>
+\{? \| \$(guildrank) \|
+  \<div id="vote"\>
+    \<script type="text/javascript"\>
+      display_block("vote", "voting_display");
+    \</script\>
+  \</div\>
+\}
+\<p\>
+  \<select NAME="category" id="pageselect" onchange="link_to_guildpage('\$(guildname)', this.value);"\>
+    \{? \| \$(guildrank) \|
+      \<option value="main" selected="1"\>Main Page\</option\>
+      \<option value="guest"\>Guest Page\</option\>
+    \|
+      \<option value="main"\>Main Page\</option\>
+      \<option value="guest" selected="1"\>Guest Page\</option\>
+    \}
+    \<option value="guild_settings"\>Guild Settings\</option\>
+    \<option value="members"\>Members List\</option\>
+    \<option value="npc"\>Guild NPCs\</option\>
+    \<option value="trading"\>Guild Trading\</option\>
+    \<option value="property"\>Guild Property\</option\>
+    \$[/* list all the player-created pages for the guild */      
+    object pages;      
+    string *index, output;      
+    int i;      
+    if(pages = Obj("Ironclaw:Guilds:Pages:new:"+Str(\$guildname))) \{      
+      index = map_indices(prefixed_map(Get(pages, "*"), "page:"));      
+      output = "";      
+      for(i=0;i\<sizeof(index);i++) \{      
+        output += "\<option value=\\""+index[i]+"\\"\>"+index[i][5..]+"\</option\>\\n";      
+      \}      
+      return output;      
+    \}      
+    return "";]
+    \{? \| \$[if(\$actor."guild:create_page") return TRUE; if(\$guildrank == 1) return TRUE; return nil;] \|
+      \<option value="edit_page"\>Create New Page\</option\>
+    \}
+  \</select\>
+\</p\>
+\{? \| \$(page) \|
+  \<script type="text/javascript"\>
+    document.getElementById("pageselect").value = "\$(page)";
+  \</script\>
+\}
+\<div id="page_block"\>
+  \<script type="text/javascript"\>
+    display_guildpage("\$(guildname)", document.getElementById("pageselect").value, "\$(edit)");
+  \</script\>
+\</div\>
+\}
+\</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:javascript">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+function GetXmlHttpObject() \\\{
+  var xmlHttp;
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+function run_script(script, variables) \\\{
+  if(!script) return;
+  variables = escape(variables);
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\} else if(xmlHttp.responseText != "") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function display_block(block, script, variables) \\\{
+  if(!block) return;
+  if(!script) \\\{
+    document.getElementById("block").innerHTML="";
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById(block).innerHTML=xmlHttp.responseText;
+      document.getElementById(block).style.display = 'block';
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function switch_block(block) \\\{
+  if(!block) return;
+  if(document.getElementById(block).style.display == "block") \\\{
+    document.getElementById(block).style.display = 'none';
+  \\\} else \\\{
+    document.getElementById(block).style.display = 'block';
+  \\\}
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="merry:lib:general_script">
+         X[M] /* run some initial code */
+string output;
+int i, sz, j, jx;
+::popup_initialize();
+
+\$az = Obj("Chatters:IC:az:azrael");
+
+/* get some information about this guild */
+if(\$guild \&\& typeof(\$guild) == T_STRING \&\& Obj("Ironclaw:Guilds:"+\$guild)) \{
+  \$guild = Obj("Ironclaw:Guilds:"+\$guild);
+\} else if(\$guild \&\& typeof(\$guild) == T_OBJECT) \{
+  /* do nothing. We already have \$guild */
+\} else if (\$actor.guild) \{
+  \$guild = \$actor.guild;
+\} else \{
+  return "Error: No guild information passed to script.";
+\}
+
+\$guildname = name(\$guild)[16..strlen(name(\$guild))-1];
+/* Check the players rank in this guild */
+\$guildrank = nil;
+if(\$actor.guild \&\& \$actor.guild == \$guild) \{
+  if(\$actor == \$guild.leader) \{
+    \$guildrank = 1;
+    \$guildleader = 1;
+  \} else \{
+    \$guildrank = 3;
+    if(\$actor."guild:rank")
+      \$guildrank = \$actor."guild:rank";
+  \}
+\}
+\$guildleader = nil;
+if(\$actor == \$guild.leader)
+  \$guildleader = 1;
+
+/* set variables (if any) */
+if(typeof(\$vars) != T_ARRAY)
+  \$vars = explode(Str(\$vars), "\|");
+
+output = "";
+if(\$script == "change_members_auth") \{
+  /* only let members have access if they have authority */
+  if(!\$guildrank) return FALSE;
+  if(\$guildleader) return TRUE;
+  if(\$actor."guild:authority") \{
+    if(member(\$setting, \$actor."guild:authority"))
+      return TRUE;
+  \}
+  return FALSE;
+\} else if(\$script == "list_members") \{
+  /* only let them see the members list if they are in the guild */
+  if(!\$guildrank) return FALSE;
+  if(!sizeof(\$vars)) \$vars = (\{ "active" \});
+  output = "\<table border=\\"0\\"\>\\n";
+  output += "\<tr\>\<td\>\<strong\>Name\</strong\>\</td\>\<td\>\<strong\>Social Rank\</strong\>\</td\>\<td\>\<strong\>Position\</strong\>\</td\>\<td\>\<strong\>Notes\</strong\>\</td\>\<td\>\<strong\>Bluebooked Job\</strong\>";
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment"))
+    output += "\</td\>\<td\>\<strong\>Daily Payment\</strong\>";
+  output += "\</td\>\</tr\>\\n";
+  \$members = Arr(\$guild.members);
+  \$members -= (\{ nil \});
+  /* sort the members in terms of rank */
+  j = \$members[0]."rank:rank";
+  for(i=1;i\<sizeof(\$members);i++) \{
+    \$member = \$members[i];
+    if(\$member."rank:rank" \> j) \{
+      /* swap them */
+      \$members[i] = \$members[i-1];
+      \$members[i-1] = \$member;
+      if(i == 1) \{
+        j = \$member."rank:rank";
+        i = 0;
+      \} else \{
+        i -= 2;
+        j = \$members[i]."rank:rank";
+      \}
+    \} else \{
+      j = \$member."rank:rank";
+    \}
+  \}
+  \$guild.members = \$members;
+  for(i=0;i\<sizeof(\$members);i++) \{
+    \$member = \$members[i];
+    if(\$vars[0] != "active" \|\| Int(\$member."cdat:lastlogin")+60*60*24*5 \> time()) \{
+      /* display this character */
+      if(\$vars[0] == "edit") \{
+        output += "\<tr\>\<td\>\<u class=\\"clickable\\" onclick=\\"display_block('editmember"+Str(\$member."skotos:charname")+"', 'edit_members', '"+name(\$member)+"'); switch_block('editmember"+Str(\$member."skotos:charname")+"');\\"\>"+capitalize(Str(\$member."skotos:charname"))+"\</u\>";
+      \} else \{
+        output += "\<tr\>\<td\>"+capitalize(Str(\$member."skotos:charname"));
+      \}
+      output += "\</td\>\<td\>"+Str(\$member."rank:name");
+      output += "\</td\>\<td\>"+Str(\$member."guild:position");
+      output += "\</td\>\<td\>"+Str(\$member."guild:notes");
+      output += "\</td\>\<td\>";
+      if(\$member."guild:job") \{
+        output += Str(\$member."guild:job");
+      \} else \{
+        output += "earning";
+      \}
+      if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment")) \{
+        \$max = Int(\$member."trait:income")+Int(\$member."trait:extraincome");
+        if(\$member."guild:daily_payment" \&\& \$member."guild:daily_payment" \> \$max) \{
+          output += "\</td\>\<td\>"+Str(Flt(\$max)/100.0)+" denarii";
+        \} else \{
+          output += "\</td\>\<td\>"+Str(Flt(\$member."guild:daily_payment")/100.0)+" denarii";
+        \}
+      \}
+      output += "\</td\>\</tr\>\\n";
+      if(\$vars[0] == "edit") \{
+        output += "\<tr\>\<td colspan=3\>\<span id=\\"editmember"+Str(\$member."skotos:charname")+"\\" style=\\"display:none;\\"\>\</span\>\</td\>\</tr\>\\n";
+      \}
+    \}
+  \}
+  output += "\</table\>\\n";
+
+  /* recruit or release members */
+  if((\$guildleader \|\| \$char."guild:guild_recruiting") \&\& \$guildrank) \{
+   output += "\<br/\>Recruit a new member: ";
+   output += "\<input onchange=\\"run_script('recruit_member', this.value);\\"/\>\<br/\>\\n";
+   output += "\<br/\>Release a member ";
+   output += "\<select id=\\"release_member_honor\\"\\"\>\\n";
+   output += "\<option value=\\"honorable\\" selected=\\"1\\"\>honorably\</option\>\\n";
+   output += "\<option value=\\"dishonorable\\"\>dishonorably\</option\>\\n";
+   output += "\</select\>\\n";
+   output += " from service: ";
+   output += "\<input onchange=\\"display_block('release_member_confirm', 'release_member', this.value+'\|'+document.getElementById('release_member_honor').value);\\"/\>\<br/\>\\n";
+   output += "\<div id=\\"release_member_confirm\\"\>\</div\>\<br/\>\\n";
+  \}
+
+/*
+  output += "\<br/\>Release a member from service: ";
+  output += "\<select NAME=\\"editmember_inventory\\" id=\\"editmember_inventory\\" onchange=\\"run_script('editmember_setval', 'inventory\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:inventory');\\"\>\\n";
+  output += "\<option value=\\"honorable\\" selected=\\"1\\"\>honorably released from service\</option\>\\n";
+  output += "\<option value=\\"dishonorable\\"\>dishonorably released\</option\>\\n";
+  output += "\</select\>\\n";
+  output += "\<input value=\\""+Str(\$member."guild:position")+"\\" onchange=\\"run_script('editmember_setval', 'position\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:position');\\"/\>\<br/\>\\n";
+*/
+\} else if(\$script == "release_member") \{
+  /* are we allowed to? */
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members.";
+  /* check that this is a valid character */
+  if(sizeof(\$vars) \< 2) return "";
+  if(strlen(\$vars[0]) \< 1) return "";
+  if(strlen(\$vars[0]) \< 2) return "Unknown Character.";
+  \$vars[0] = lower_case(\$vars[0]);
+  \$victim = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]);
+  if(!\$victim) return "Unknown Character: "+\$vars[0]+".";
+  /* is \$victim a member of the guild? */
+  if(\$victim.guild != \$guild) \{
+    /* Are we forgiving them for a previous dishonorable discharge? */
+    if(\$vars[1] == "honorable" \&\& member(\$guild, Arr(\$victim."guild:betrayed"))) \{
+      output = capitalize(\$vars[0])+" is not a member of "+\$guild.fullname+", but was previously a member, and was dishonorably discharged.\<br/\>";
+      output += "Did you want to forgive "+capitalize(\$vars[0])+" and inform the guild administrators to wipe the dishonorable discharge clean?\<br/\>";
+      output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'forgive_member', '"+\$vars[0]+"');\\"\>Forgive "+capitalize(\$vars[0])+"\</u\>]";
+      output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>DON'T forgive "+capitalize(\$vars[0])+"\</u\>]";
+      return output;
+    \} else \{
+      return capitalize(\$vars[0])+" is not a member of "+\$guild.fullname+".";
+    \}
+  \}
+
+  /* release the member */
+  output = "Did you want to release "+capitalize(\$vars[0])+" from service";
+  if(\$vars[1] == "dishonorable")
+   output += ", and inform the guild administrators that the discharge was dishonorable";
+  output += "?\<br/\>";
+  if(\$vars[1] == "dishonorable") \{
+   output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'discharge_member', '"+\$vars[0]+"\|"+\$vars[1]+"');\\"\>Dishonorably discharge "+capitalize(\$vars[0])+"\</u\>]";
+   output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>Leave "+capitalize(\$vars[0])+" as a member\</u\>]";
+  \} else \{
+   output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'discharge_member', '"+\$vars[0]+"\|"+\$vars[1]+"');\\"\>Honorably discharge "+capitalize(\$vars[0])+"\</u\>]";
+   output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>Leave "+capitalize(\$vars[0])+" as a member\</u\>]";
+  \}
+  return output;
+\} else if(\$script == "discharge_member") \{
+  /* are we allowed to? */
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members.";
+  /* check that this is a valid character */
+  if(sizeof(\$vars) \< 1 \|\| strlen(\$vars[0]) \< 2) return "Unknown Character.";
+  \$vars[0] = lower_case(\$vars[0]);
+  \$victim = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]);
+  if(!\$victim) return "Unknown Character: "+\$vars[0]+".";
+  /* is \$victim a member of the guild? */
+  if(\$victim.guild != \$guild) return capitalize(\$vars[0])+" is no longer a member of this guild.";
+  if(\$vars[1] == "honorable") \{
+   Call(\$this, "leave_guild", \$member: \$victim, \$honorable: TRUE);
+   EmitTo(\$victim, "You have been honorably discharged from "+\$guild.fullname+".");
+   return capitalize(\$vars[0])+" has been honorably discharged from "+\$guild.fullname+".";
+  \} else \{
+   Call(\$this, "leave_guild", \$member: \$victim);
+   EmitTo(\$victim, "You have been dishonorably discharged from "+\$guild.fullname+".");
+   return capitalize(\$vars[0])+" has been dishonorably discharged from "+\$guild.fullname+".";
+  \}
+\} else if(\$script == "forgive_member") \{
+  /* are we allowed to? */
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members.";
+  /* check that this is a valid character */
+  if(sizeof(\$vars) \< 1 \|\| strlen(\$vars[0]) \< 2) return "Unknown Character.";
+  \$vars[0] = lower_case(\$vars[0]);
+  \$victim = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]);
+  if(!\$victim) return "Unknown Character: "+\$vars[0]+".";
+  /* did \$victim betray the guild? */
+  \$victim."guild:betrayed" = Arr(\$victim."guild:betrayed");
+  \$victim."guild:betrayed" -= (\{ \$guild \});
+  return "The guild records of "+capitalize(\$vars[0])+"'s dishonorable discharge have been removed.";
+\} else if(\$script == "recruit_member") \{
+  /* are they allowed to recruit? */
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to recruit members into this guild.";
+
+  /* are they recruiting a PC? */
+  if(!sizeof(\$vars)) return "Something went wrong when recruiting.";
+  \$vars[0] = lower_case(\$vars[0]);
+  \$recruitee = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]);
+  if(!\$recruitee) return "Unknown character: "+\$vars[0];
+
+  /* trying to recruit \$recruitee */
+  if(\$recruitee.guild == \$guild) return capitalize(\$vars[0])+" is already a member of this guild.";
+
+  /* slaves can't join guilds that aren't slavery guilds */
+  if(\$recruitee."trait:slave" \&\& !\$guild."trait:slave_trading_charter") return capitalize(\$vars[0])+" is a slave, and can only be traded to a guild with a slave trading charter.";
+
+  /* ask if they want to join */
+    /* EXTENSION: Make this work when they are offline as well */
+  if(!\$recruitee."udat:object") return capitalize(\$vars[0])+" is not logged into the game at the moment.";
+
+  if(\$recruitee.guild) \{
+    EmitTo(\$recruitee, capitalize(Str(\$char."skotos:charname"))+" invites you to join "+\$guild.fullname+".");
+    \$question = "Warning: You are currently a member of "+\$recruitee.guild.fullname+" - if you change guilds without first leaving your current guild, you will have forsaken your oaths of service. Do you want to join "+\$guild.fullname+"?";
+  \} else \{
+    \$question = capitalize(Str(\$char."skotos:charname"))+" invites you to join "+\$guild.fullname+". Would you like to join?";
+  \}
+  interaction::question(\$actor: \$recruitee, \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Guilds:New\}, \$no_ob: \$\{Ironclaw:Lib:Guilds:New\}, \$expire_ob: \$\{Ironclaw:Lib:Guilds:New\}, \$yes_fun: "join_guild", \$no_fun: "join_guild_denied", \$expire_fun: "join_guild_expire", \$par: ([ "sender": \$char, "guild": \$guild]));
+
+  return "You invite "+capitalize(\$vars[0])+" to join "+\$guild.fullname+".";
+\} else if(\$script == "edit_members") \{
+  /* what guild member is this? */
+  \$member = Obj(Str(\$vars[0]));
+  if(!\$member) return "Error: Unknown character.";
+  if(!\$member.guild \|\| \$member.guild != \$guild) return "Error: Character is not a member of this guild.";
+
+  /* Allow them to change the bluebooked job of the guild member */
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "job")) \{
+    if(\$guildleader) \{
+      output += "\<input type=\\"checkbox\\"";
+      if(member("job", Arr(\$member."guild:authority")))
+        output += " checked=\\"1\\"";
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|job\|addarr\|guild:authority\|Authority to change bluebooked jobs granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|job\|subarr\|guild:authority\|Authority to change bluebooked jobs revoked.'); \}\\"/\>";
+    \}
+
+    output += "Change Bluebooked Job \\n";
+    output += "\<select NAME=\\"editmember_job\\" id=\\"editmember_job\\" onchange=\\"run_script('editmember_setval', 'job\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:job');\\"\>\\n";
+    output += "\<option value=\\"earning\\"";
+    if(\$member."guild:job" == "earning") output += " selected=\\"1\\"";
+    \$max = Flt(Int(\$member."trait:income")+Int(\$member."trait:extraincome"))/100.0;
+    output += "\>Earning ("+Str(\$max)+")\</option\>\\n";
+    output += "\<option value=\\"working\\"";
+    if(\$member."guild:job" == "working") output += " selected=\\"1\\"";
+    output += "\>Working (1)\</option\>\\n";
+    /* gather a list of tokens the PC can produce */
+    \{
+     int found, i, j, k;
+     object db;
+     string *careers;
+     db = \$\{Ironclaw:Lib:Teaching:newCareersDB\};
+     \$jobs = (\{ \});
+     /* figure out what tokens they can make */
+     careers = map_indices(prefixed_map(\$member."*", "skill:career"));
+     for(i=0;i\<sizeof(careers);i++) \{
+      \$tmp = Get(db, careers[i][13..strlen(careers[i])-1]);
+      if(\$tmp) \{
+       found = FALSE;
+       for(j=0;j\<sizeof(\$jobs)\&\&!found;j++) \{
+        for(k=0;k\<sizeof(Arr(\$tmp["tokens"]));k++) \{
+         if(\$jobs[j][0] == Arr(\$tmp["tokens"])[k]) \{
+          \$jobs[j][1] += Int(Get(\$member, careers[i]));
+          found = TRUE;
+         \}
+        \}
+       \}
+       if(!found) \{
+        for(j=0;j\<sizeof(Arr(\$tmp["tokens"]));j++)
+         \$jobs += (\{ (\{ \$tmp["tokens"][j], Int(Get(\$member, careers[i])) \}) \});
+       \}
+      \}
+     \}
+    \}
+    for(i=0;i\<sizeof(\$jobs);i++) \{
+     if(!member(\$jobs[i][0], Arr(\$member."npc:hidetokens"))) \{
+      output += "\<option value=\\""+\$jobs[i][0]+"\\"";
+      if(\$member."guild:job" == \$jobs[i][0]) output += " selected=\\"1\\"";
+      output += "\>"+capitalize(Str(\$jobs[i][0]))+" (";
+      if(\$jobs[i][1] \>= 12) output += "12";
+      else output += Str(\$jobs[i][1]);
+      output += ")\</option\>\\n";
+     \}
+    \}
+    output += "\</select\>\\n";
+    output += "\<br/\>\\n";
+  \}
+
+  /* Allow them to change the position of the guild member */
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "position")) \{
+    if(\$guildleader) \{
+      output += "\<input type=\\"checkbox\\"";
+      if(member("position", Arr(\$member."guild:authority")))
+        output += " checked=\\"1\\"";
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|position\|addarr\|guild:authority\|Authority to change job position descriptions granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|position\|subarr\|guild:authority\|Authority to change job position descriptions revoked.'); \}\\"/\>";
+    \}
+    output += "Guild Position \\n";
+    output += "\<input value=\\""+Str(\$member."guild:position")+"\\" onchange=\\"run_script('editmember_setval', 'position\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:position');\\"/\>\<br/\>\\n";
+  \}
+
+  /* Allow them to change the notes of the guild member */
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "notes")) \{
+    if(\$guildleader) \{
+      output += "\<input type=\\"checkbox\\"";
+      if(member("notes", Arr(\$member."guild:authority")))
+        output += " checked=\\"1\\"";
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|notes\|addarr\|guild:authority\|Authority to change member notes granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|notes\|subarr\|guild:authority\|Authority to change member notes revoked.'); \}\\"/\>";
+    \}
+    output += "Change Notes \\n";
+    output += "\<input value=\\""+Str(\$member."guild:notes")+"\\" onchange=\\"run_script('editmember_setval', 'notes\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:notes');\\"/\>\<br/\>\\n";
+  \}
+
+  /* Allow them to change the daily payment of the guild member */
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment")) \{
+    if(\$guildleader) \{
+      output += "\<input type=\\"checkbox\\"";
+      if(member("daily_payment", Arr(\$member."guild:authority")))
+        output += " checked=\\"1\\"";
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|daily_payment\|addarr\|guild:authority\|Authority to change members daily payment granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|daily_payment\|subarr\|guild:authority\|Authority to change members daily payment revoked.'); \}\\"/\>";
+    \}
+    output += "Change Daily Payment \\n";
+    \$max = Int(\$member."trait:income")+Int(\$member."trait:extraincome");
+    \$max = Str(\$max/100)+"."+Str(\$max%100);
+    output += "\<input value=\\""+Str(Int(\$member."guild:daily_payment")/100)+"."+Int(\$member."guild:daily_payment")%100+"\\" onchange=\\"run_script('editmember_setval', 'daily_payment\|"+name(\$member)+"\|'+this.value*100+'\|setint\|guild:daily_payment');\\"/\> (cannot be more than "+\$max+")\<br/\>\\n";
+  \}
+
+
+  /* Allow them to change the inventory access of the guild member */
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "inventory")) \{
+    if(\$guildleader) \{
+      output += "\<input type=\\"checkbox\\"";
+      if(member("inventory", Arr(\$member."guild:authority")))
+        output += " checked=\\"1\\"";
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|inventory\|addarr\|guild:authority\|Authority to change inventory settings granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|inventory\|subarr\|guild:authority\|Authority to change inventory settings revoked.'); \}\\"/\>";
+    \}
+    output += "Access Guild Inventory? \\n";
+    output += "\<select NAME=\\"editmember_inventory\\" id=\\"editmember_inventory\\" onchange=\\"run_script('editmember_setval', 'inventory\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:inventory');\\"\>\\n";
+    output += "\<option value=\\"no access\\"";
+    if(\$member."guild:inventory" == "no access") output += " selected=\\"1\\"";
+    output += "\>No\</option\>\\n";
+    output += "\<option value=\\"access\\"";
+    if(\$member."guild:inventory" == "access") output += " selected=\\"1\\"";
+    output += "\>Yes\</option\>\\n";
+    output += "\</select\>\\n";
+    output += "\<br/\>\\n";
+  \}
+
+  /* Allow them to create new guild pages */
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "create_page")) \{
+    if(\$guildleader) \{
+      output += "\<input type=\\"checkbox\\"";
+      if(member("create_page", Arr(\$member."guild:authority")))
+        output += " checked=\\"1\\"";
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|create_page\|addarr\|guild:authority\|Authority to create new guild pages granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|create_page\|subarr\|guild:authority\|Authority to create new guild pages revoked.'); \}\\"/\>";
+    \}
+    output += "Create new guild pages? \\n";
+    output += "\<select NAME=\\"editmember_create_page\\" id=\\"editmember_create_page\\" onchange=\\"run_script('editmember_setval', 'create_page\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:create_page');\\"\>\\n";
+    output += "\<option value=\\"nil\\"";
+    if(!\$member."guild:create_page") output += " selected=\\"1\\"";
+    output += "\>No\</option\>\\n";
+    output += "\<option value=\\"access\\"";
+    if(\$member."guild:create_page" == "access") output += " selected=\\"1\\"";
+    output += "\>Yes\</option\>\\n";
+    output += "\</select\>\\n";
+    output += "\<br/\>\\n";
+  \}
+
+  /* Allow them to recruit and dismiss members */
+  output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_recruiting", \$message: "recruit and dismiss members");
+
+  /* Allow them to use guild resources for lessons */
+  output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_lessons", \$message: "pay NPC teacher from guild resources");
+
+  /* Allow them to buy skills for the NPC teacher */
+  output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_teacher_skills", \$message: "Buy skills for NPC teacher");
+
+  /* Allow them to edit the motd */
+  output += Call(this, "general_script", \$script: "edit_members_option", \$property: "edit_guildsettings_motd", \$message: "edit the MOTD");
+
+  if(output == "")
+    output += "You do not have authority to change any settings for the guild members.";
+\} else if(\$script == "edit_members_option") \{
+ /* Allow them to change an option for the member */
+ string output;
+ output = "";
+ if(Call(this, "general_script", \$script: "change_members_auth", \$setting: \$property)) \{
+  if(\$guildleader) \{
+   output += "\<input type=\\"checkbox\\"";
+   if(member(\$property, Arr(\$member."guild:authority")))
+    output += " checked=\\"1\\"";
+   output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|"+\$property+"\|addarr\|guild:authority\|Authority to choose who can "+Str(\$message)+" granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|"+\$property+"\|subarr\|guild:authority\|Authority to choose who can "+Str(\$message)+" revoked.'); \}\\"/\>";
+  \}
+  output += capitalize(Str(\$message))+" \\n";
+  output += "\<select NAME=\\"editmember_"+\$property+"\\" id=\\"editmember_"+\$property+"\\" onchange=\\"run_script('editmember_setval', '"+\$property+"\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:"+\$property+"\|Authority to "+Str(\$message)+" granted.');\\"\>\\n";
+  output += "\<option value=\\"nil\\"";
+  if(!Get(\$member, "guild:"+\$property)) output += " selected=\\"1\\"";
+  output += "\>No\</option\>\\n";
+  output += "\<option value=\\"access\\"";
+  if(Get(\$member, "guild:"+\$property) == "access") output += " selected=\\"1\\"";
+  output += "\>Yes\</option\>\\n";
+  output += "\</select\>\\n";
+  output += "\<br/\>\\n";
+ \}
+ return output;
+\} else if(\$script == "editmember_setval") \{
+  /*rank\|"+name(\$member)+"\|'+this.value+'\|setint\|guild:rank*/
+  /* first, check we have authority to change this value */
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: \$vars[0])) \{
+    \$member = Obj(\$vars[1]);
+    if(!\$member) return "Error: Unknown character.";
+    if(!\$member.guild \|\| \$member.guild != \$guild) return "Error: Character is not a member of this guild.";
+    if(\$vars[2] == "nil") \$vars[2] = nil;
+    if(\$vars[3] == "setstring") \{
+      Set(\$member, \$vars[4], \$vars[2]);
+    \} else if(\$vars[3] == "setint") \{
+      Set(\$member, \$vars[4], Int(\$vars[2]));
+    \} else if(\$vars[3] == "addarr") \{
+      if(!(\$arr = Get(\$member, \$vars[4]))) \{
+        Set(\$member, \$vars[4], (\{ \}));
+        \$arr = Get(\$member, \$vars[4]);
+      \}
+      \$arr \|= Arr(\$vars[2]);
+      Set(\$member, \$vars[4], \$arr);
+    \} else if(\$vars[3] == "subarr") \{
+      if(!(\$arr = Get(\$member, \$vars[4]))) \{
+        Set(\$member, \$vars[4], (\{ \}));
+        \$arr = Get(\$member, \$vars[4]);
+      \}
+      \$arr -= Arr(\$vars[2]);
+      Set(\$member, \$vars[4], \$arr);
+    \}
+    if(sizeof(\$vars) \> 5) \{
+     \$message = capitalize(Str(\$vars[5]));
+     if(!\$vars[2]) \$message = replace_strings(\$message, "granted", "revoked");
+     return capitalize(\$message);
+    \}
+    if(!\$vars[2]) \$vars[2] = "nothing";
+    return capitalize(Str(\$vars[0]))+" has been set to "+Str(\$vars[2])+".";
+  \}
+  return "Error: You do not have authority to make this change.";
+\} else if(\$script == "show_guild_settings") \{
+  output += "\<h2\>Guild Settings\</h2\>";
+
+  if(\$guildleader) \{
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_type');\\"\>\<strong\>\<u\>Guild Type\</u\>\</strong\>\</span\>";
+   output += "\<span id=\\"guild_type\\" style=\\"display:none;\\"\>";
+   output += "\<p\>Guild Type (noble/military/tradesmen/shady) - This code isn't yet functional.\</p\>";
+   output += "\</span\>\<br/\>";
+  \}
+
+  if(\$guildleader \|\| \$char."guild:edit_guildsettings_motd") \{
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('motd');\\"\>\<strong\>\<u\>Message of the Day\</u\>\</strong\>\</span\>";
+   output += "\<span id=\\"motd\\" style=\\"display:none;\\"\>";
+   output += "\<p\>Guild members will see this message when they log into the game.\<br/\>";
+   output += "\<textarea id=\\"motd_text\\" rows=5 cols=80\>"+Str(\$guild.motd)+"\</textarea\>\<br/\>";
+   output += "\<input type=\\"submit\\" value=\\"Submit\\" class=\\"clickable\\" onclick=\\"getElementById('motd_text').value += ' '; run_script('set_motd', getElementById('motd_text').value);\\"/\>\</p\>";
+   output += "\</span\>\<br/\>";
+  \}
+  if(\$guildleader) \{
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_page_header');\\"\>\<strong\>\<u\>Page Header\</u\>\</strong\>\</span\>";
+   output += "\<span id=\\"guild_page_header\\" style=\\"display:none;\\"\>";
+   output += "\<p\>This code isn't yet functional.\</p\>";
+   output += "\</span\>\<br/\>";
+  \}
+  if(\$guildleader) \{
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_page_footer');\\"\>\<strong\>\<u\>Page Footer\</u\>\</strong\>\</span\>";
+   output += "\<span id=\\"guild_page_footer\\" style=\\"display:none;\\"\>";
+   output += "\<p\>This code isn't yet functional.\</p\>";
+   output += "\</span\>\<br/\>";
+  \}
+
+  if(output == "")
+    output += "You do not have authority to change any settings for this guild.";
+\} else if(\$script == "set_motd") \{
+ if(\$guildleader \|\| \$char."guild:edit_guildsettings_motd") \{
+  \$guild.motd = replace_strings(Str(\$vars[0]), "\<", "\&lt;", "\>", "\&gt;");
+  return "Guild Message of the Day set.";
+ \}
+ return "Error: You are not authorized to set the guild Message of the Day.";
+\} else if(\$script == "list_tokens") \{
+  /* only let them see the tokens list if they are in the guild */
+  if(!\$guildrank) return FALSE;
+
+  \$token_list = map_indices(prefixed_map(\$guild."*", "tokens:"));
+  if(!sizeof(\$token_list)) return "This guild has no tokens.";
+
+  output = "\<table border=\\"0\\"\>\\n";
+  output += "\<tr\>\<td\>\<strong\>Token\</strong\>\</td\>\<td\>\<strong\>Quantity\</strong\>\</td\>\</tr\>\\n";
+  for(i=0;i\<sizeof(\$token_list);i++) \{
+    output += "\<tr\>\<td\>"+capitalize(\$token_list[i][7..strlen(\$token_list[i])-1])+"\</td\>\<td\>";
+    output += Str(Get(\$guild, \$token_list[i]))+"\</td\>\</tr\>\\n";
+  \}
+  output += "\</table\>\\n";
+\} else if(\$script == "show_auction") \{
+ string *guilds, *tokens;
+
+ /* only let them see the deals if they are in the guild */
+ if(!\$guildrank) return FALSE;
+ /* Are they allowed to make trades? */
+ /* EXTENSION - make this based on their guild position */
+ \$trader = nil;
+ if(\$guildleader \|\| \$char."guild:trader") \{
+   \$trader = TRUE;
+ \}
+
+ /* Display the items currently up for auction */
+ \$bidding_object = \$\{Ironclaw:Guilds:Trading:bidding\};
+ \$inventory_list = prefixed_map(\$bidding_object."*", "bidding:");
+ \$inventory_list = map_indices(\$inventory_list);
+ if(!sizeof(\$inventory_list)) \{
+  output += "\<p\>There is nothing to bid on right now.\</p\>\\n";
+ \} else \{
+  /* Show how much money they have available in the guild kitty */
+  if(\$trader)\{
+   output += "\<p\>Guild kitty: ";
+   i = Int(Flt(\$guild.kitty)/100.0);
+   if(i==1) \{
+    output += "1 denar.";
+   \} else \{
+    output += Str(i)+" denarii.";
+   \}
+   output += "\</p\>";
+  \}
+
+  /* Show the table of items up for auction */
+  output += "\<table border=1 cellspacing=0 cellpadding=10\>\<tr\>\<td\>Item\&nbsp;\&nbsp;\</td\>\<td\>Quantity\&nbsp;\&nbsp;\</td\>\<td\>Notes\&nbsp;\&nbsp;\</td\>\<td\>Recurring\</td\>\<td\>Transport\&nbsp;\&nbsp;\</td\>\<td\>Highest Bid\&nbsp;\&nbsp;\</td\>\<td\>Remaining time\</td\>\</tr\>";
+  /* for each item in the inventory... */
+  sz = sizeof(\$inventory_list);
+  for(i=0;i\<sz;i++) \{
+   \$item = Get(\$bidding_object, \$inventory_list[i]);
+   /* item */
+   output += "\<tr\>\<td\>"+\$item[2]+"\</td\>\<td\>";
+   /* quantity */
+   output += \$item[0]+"\</td\>\<td\>";
+   /* notes */
+   output += \$item[3]+"\</td\>\<td\>";
+   /* how often does this item recur? */
+   if(\$item[5]) \{
+    if(\$item[5][1] == -1) \{
+      output += "a new shipment";
+    \} else if(\$item[5][1] == 1) \{
+      output += "1 shipment";
+    \} else \{
+      output += Str(\$item[5][1])+" shipments, one sent";
+    \}
+    if(\$item[5][2] == 1) \{
+      output += " every day.";
+    \} else if(\$item[5][2] != 0) \{
+      output += " every "+Str(\$item[5][2])+" days";
+    \}
+   \} else if (\$item[1].stocktype) \{
+    /* NOT USED YET! */
+    switch(\$item[1].stocktype) \{
+      case "property":
+        output += "rent due once a week";
+        break;
+      default:
+        output += "Unknown stock type";
+        break;
+    \}
+   \} else \{
+    output += "-";
+   \}
+   output += "\</td\>\<td\>";
+   /* what is the mode of transport? */
+   if(\$item[5] \&\& \$item[5][0]) \{
+    output += \$item[5][0]+"\</td\>\<td\>";
+   \} else \{
+    output += "-\</td\>\<td\>";
+   \}
+   /* give bid price, and allow the chance to bid */
+   if(\$item[6]) \{
+    \$tmp = Str(\$item[6]);
+   \} else \{
+    \$tmp = "no bid";
+   \}
+   if(\$item[7] == \$guild) \{
+    \$tmp = "\<font color=\\"red\\"\>"+\$tmp+"\</font\>";
+   \} else \{
+    \$tmp = "\<font color=\\"blue\\"\>"+\$tmp+"\</font\>";
+   \}
+   if(\$guild == \$char.guild \&\& (\$guildrank == 1 \|\| \$char."guild:trader")) \{
+    \$biditem = \$inventory_list[i];
+    \$tmp = "\<ZLINK base=\\"/SAM/Prop/Ironclaw:Lib:Guilds:Guild/bid\\" char=\$(char) item=\$(biditem) guild=\$(guildname) page=\$(page)\>"+\$tmp+"\</ZLINK\>";
+   \}
+   output += UnSAM(ParseXML(\$tmp))+"\</td\>\<td\>";
+   /* display how much time is left to bid on this */
+   if(\$item[8]) \{
+    \$output = \$item[8] - time();
+    if(\$output \>= 0) \{
+      /* now work it out in seconds, hours, and days */
+      \$days = (\$output/(60*60*24));
+      if(\$days == 0) \{
+        \$days = nil;
+      \} else if(\$days == 1) \{
+        \$days = "1 day";
+      \} else \{
+        \$days = Str(\$days)+" days";
+      \}
+      \$hours = (\$output/(60*60))%24;
+      if(\$hours == 0) \{
+        \$hours = nil;
+      \} else if(\$hours == 1) \{
+        \$hours = "1 hour";
+      \} else \{
+        \$hours = Str(\$hours)+" hours";
+      \}
+      \$minutes = (\$output/60)%60;
+      if(\$minutes == 0) \{
+        \$minutes = nil;
+      \} else if(\$minutes == 1) \{
+        \$minutes = "1 minute";
+      \} else \{
+        \$minutes = Str(\$minutes)+" minutes";
+      \}
+      \$seconds = \$output%60;
+      if(\$seconds == 1) \{
+        \$seconds = "1 second";
+      \} else \{
+        \$seconds = Str(\$seconds)+" seconds";
+      \}
+
+      if(\$days \&\& \$hours) \{
+        \$output = \$days+", "+\$hours;
+      \} else if(\$days) \{
+        \$output = \$days;
+      \} else if (\$hours) \{
+        \$output = \$hours+", "+\$minutes;
+      \} else if (\$minutes) \{
+        \$output = \$minutes+", "+\$seconds;
+      \} else \{
+        \$output = \$seconds;
+      \}
+
+      /*content += \$output+" (estimate)\</td\>\</tr\>";*/
+
+      \$output = \$item[8] - time();
+
+    if((\$output/(60*60*24)) \>= 3) \{
+     \$output = Str(\$days)+" remaining.";
+
+    \} else if(((\$output+60*60*3)/(60*60*24)) \>= 1) \{
+     \$output = "less than three days remaining.";
+    \} else \{
+     \$output = "less than a day remaining.";
+    \}
+    output += \$output+"\</td\>\</tr\>";
+
+
+
+    \} else \{
+      output += "UNKNOWN\</td\>\</tr\>";
+    \}
+   \} else \{
+    output += "-\</td\>\</tr\>";
+   \}
+  \}
+  if(i\<sz-1) output += "\<br/\>";
+  output += "\</table\>";
+ \}
+\} else if(\$script == "show_trading_deals") \{
+ string *guilds, *tokens;
+
+ /* only let them see the deals if they are in the guild */
+ if(!\$guildrank) return FALSE;
+ if(\$guildleader \|\| \$char."guild:inventory") \{
+  output += "\<p\>\<b\>Transfer guild kitty to another guild\</b\> (kitty is currently at "+Str(Int(\$guild.kitty)/100)+" denarii)\<br/\>\\n";
+  output += "Transfer ";
+  output += "\<input NAME=\\"transfer_kitty_amount\\" id=\\"transfer_kitty_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  output += " denarii to ";
+
+  /* get a list of all guilds */
+  output += "\<select NAME=\\"transfer_kitty_guildlist\\" id=\\"transfer_kitty_guildlist\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Ironclaw:Guilds");
+  for(i=0;i\<sizeof(guilds);i++)
+   output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(guilds[i])+"\</option\>\\n";
+   /*output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(Get(Obj("Ironclaw:Guilds:" + guilds[i]), "fullname"))+"\</option\>\\n";*/
+  output += "\</select\>\\n";
+  output += " \<input type=\\"submit\\" value=\\"Send\\" class=\\"clickable\\" onclick=\\"run_script('do_kitty_transfer', getElementById('transfer_kitty_amount').value +'\|'+ getElementById('transfer_kitty_guildlist').value); getElementById('transfer_kitty_amount').value = '0';\\"/\>\</p\>";
+ \}
+
+ if(\$guildleader \|\| \$char."guild:inventory") \{
+  output += "\<p\>\<b\>Transfer guild tokens to another guild\</b\>\<br/\>\\n";
+  output += "Transfer ";
+  output += "\<input NAME=\\"transfer_token_amount\\" id=\\"transfer_token_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  /* get a list of all tokens */
+  output += "\<select NAME=\\"transfer_token_types\\" id=\\"transfer_token_types\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  tokens = map_indices(prefixed_map(Get(\$guild, "*"), "tokens:"));
+  for(i=0;i\<sizeof(tokens);i++)
+   output += "\<option value=\\""+tokens[i]+"\\"\>"+Str(tokens[i])[7..]+" ("+Str(Int(Get(\$guild, tokens[i])))+")\</option\>\\n";
+  output += "\</select\>\\n";
+  output += " tokens to ";
+
+  /* get a list of all guilds */
+  output += "\<select NAME=\\"transfer_token_guildlist\\" id=\\"transfer_token_guildlist\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Ironclaw:Guilds");
+  for(i=0;i\<sizeof(guilds);i++)
+   output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(guilds[i])+"\</option\>\\n";
+   /*output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(Get(Obj("Ironclaw:Guilds:" + guilds[i]), "fullname"))+"\</option\>\\n";*/
+  output += "\</select\>\\n";
+  output += " \<input type=\\"submit\\" value=\\"Send\\" class=\\"clickable\\" onclick=\\"run_script('do_token_transfer', getElementById('transfer_token_amount').value +'\|'+ getElementById('transfer_token_types').value +'\|'+ getElementById('transfer_token_guildlist').value); getElementById('transfer_token_amount').value = '0'; getElementById('transfer_token_types').value = '';\\"/\>\</p\>";
+ \}
+
+ if(\$guildleader \|\| \$char."guild:inventory") \{
+  output += "\<p\>\<b\>Convert working tokens to another token type\</b\>\<br/\>\\n";
+  output += "Convert ";
+  output += "\<input NAME=\\"convert_working_token_amount\\" id=\\"convert_working_token_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  output += " working tokens into ";
+  /* get a list of all tokens */
+  output += "\<select NAME=\\"convert_working_token_types\\" id=\\"convert_working_token_types\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  output += "\<option value=\\"academic\\"\>Academic\</option\>\\n";
+  output += "\<option value=\\"martial\\"\>Martial\</option\>\\n";
+  output += "\<option value=\\"society\\"\>Society\</option\>\\n";
+  output += "\<option value=\\"subterfuge\\"\>Subterfuge\</option\>\\n";
+  output += "\<option value=\\"trade\\"\>Trade\</option\>\\n";
+  output += "\</select\>\\n";
+  output += " tokens.";
+
+  output += " \<input type=\\"submit\\" value=\\"Convert\\" class=\\"clickable\\" onclick=\\"run_script('do_working_token_conversion', getElementById('convert_working_token_amount').value +'\|'+ getElementById('convert_working_token_types').value); getElementById('convert_working_token_amount').value = '0';\\"/\>\</p\>";
+ \}
+
+ /* allow the creation of new trading deals */
+  /* not written yet */
+
+ /* show any active trading deals */
+ output += "\<p\>There are no active trading deals\</p\>\\n";
+\} else if(\$script == "do_kitty_transfer") \{
+ /* Transfer money from one guild to the other */
+ if(!\$guildleader \&\& !\$char."guild:inventory") return nil;
+
+ /* sanity check that they requested the transfer properly */
+ if(!\$vars \|\| sizeof(\$vars) != 2) return nil;
+ if(!sscanf(\$vars[0], "%d", i))
+  return "Unknown amount of money to transfer.";
+ if(i\<=0)
+  return nil;
+ /* because a denar is "100" (for bits) multiply i by 100 before checking \& transferring */
+ i = i*100;
+ if(i\>Int(\$guild.kitty))
+  return "You don't have "+Str(i)+" denarii in your guild kitty.";
+ \$otherguild = Obj("Ironclaw:Guilds:"+\$vars[1]);
+ if(!\$otherguild)
+  return "Sorry, we can't find the guild you're trying to transfer money to.";
+ if(!\$otherguild.kitty) \$otherguild.kitty = 0;
+
+ /* all looks in order. Transfer the money */
+ \$guild.kitty -= i;
+ \$otherguild.kitty += i;
+
+ /* record the transfer */
+ if(!\$guild.transfers) \$guild.transfers = (\{ \});
+ \$guild.transfers += (\{ (\{ \$actor, i, \$otherguild, time() \}) \});
+ return Str(Int(i/100))+" denarii successfully transferred to the "+Str(\$otherguild.fullname)+".";
+\} else if(\$script == "do_token_transfer") \{
+ /* Transfer tokens from one guild to the other */
+ if(!\$guildleader \&\& !\$char."guild:inventory") return nil;
+
+ /* sanity check that they requested the transfer properly */
+ if(!\$vars \|\| sizeof(\$vars) != 3) return nil;
+ if(!sscanf(\$vars[0], "%d", i))
+  return "Unknown number of tokens to transfer.";
+ if(i\<=0)
+  return nil;
+ if(i\>Call(this, "general_script", \$script: "count_tokens", \$token: \$vars[1][7..]))
+  return "You don't have "+Str(i)+" "+Str(\$vars[1][7..])+" tokens in your guild kitty.";
+
+ \$otherguild = Obj("Ironclaw:Guilds:"+\$vars[2]);
+ if(!\$otherguild)
+  return "Sorry, we can't find the guild you're trying to transfer tokens to.";
+
+ /* all looks in order. Transfer the tokens */
+ /* subtract the tokens from this guild */
+ if(!Call( this, "general_script", \$script: "charge_tokens", \$token: \$vars[1][7..], \$amount: i))
+  return "Error taking tokens from the inventory.";
+ /* and add them to the new guild */
+ Set(\$otherguild, "tokens:"+explode(\$vars[1][7..], ":")[0], Int(Get(\$otherguild, "tokens:"+explode(\$vars[1][7..], ":")[0]))+i );
+
+ /* record the transfer */
+ if(!\$guild.token_transfers) \$guild.token_transfers = (\{ \});
+ \$guild.token_transfers += (\{ (\{ \$actor, i, \$vars[1][7..], \$otherguild, time() \}) \});
+ return Str(Int(i))+" "+Str(explode(\$vars[1][7..], ":")[0])+" tokens successfully transferred to the "+Str(\$otherguild.fullname)+".";
+\} else if(\$script == "list_npc_teacher") \{
+  /* only let them see the teacher list if they are in the guild */
+  if(!\$guildrank) return FALSE;
+
+  if(\$guild."npc:teacher") \{
+   /* CODE TO HANDLE OLD object-based NPC TEACHERS */
+   /* should be able to remove the old teachers, then assume that we'll always find a mapping */
+   if(typeof(\$guild."npc:teacher") == T_OBJECT) \{
+    \$teacher = ([ ]);
+    \$teacher["skills"] = Arr(\$guild."npc:teacher"."teaching:skills");
+   \} else if(typeof(\$guild."npc:teacher") == T_MAPPING) \{
+    \$teacher = \$guild."npc:teacher";
+   \}
+  \} else \{
+   \$teacher = ([ ]);
+  \}
+
+  if(\$teacher["name"]) \{
+   output = capitalize(\$teacher["name"]);
+  \} else \{
+   output = capitalize(\$guild.fullname)+" teacher";
+  \}
+  if(!\$teacher["skills"] \|\| !sizeof(\$teacher["skills"])) \{
+   output += " doesn't know anything useful to teach you.";
+  \} else \{
+   output += " can teach the following skills:\<br/\>\\n";
+   /* list skills */
+   /* gather categories */
+   \$categories = (\{ \});
+   for(\$i=0;\$i\<sizeof(\$teacher["skills"]);\$i++) \{
+    \$tmp = explode(\$teacher["skills"][\$i], ":");
+    if(sizeof(\$tmp) \>= 3)
+     \$categories \|= (\{ \$tmp[1] \});
+   \}
+   /* list the categories */
+   output += "\<select onchange=\\"display_block('skilllist', 'list_npc_teacher_skills', value);\\"\>\\n";
+   output += "\<option value=\\"nil\\"\>\</option\>\\n";
+   if(member("career", \$categories))
+    output += "\<option value=\\"career\\"\>Careers\</option\>\\n";
+   if(member("social", \$categories))
+    output += "\<option value=\\"social\\"\>Social\</option\>\\n";
+   if(member("academics", \$categories))
+    output += "\<option value=\\"academics\\"\>Academics\</option\>\\n";
+   if(member("lang", \$categories))
+    output += "\<option value=\\"lang\\"\>Languages\</option\>\\n";
+   if(member("mental", \$categories))
+    output += "\<option value=\\"mental\\"\>Mental\</option\>\\n";
+   if(member("hunting", \$categories))
+    output += "\<option value=\\"hunting\\"\>Hunting\</option\>\\n";
+   if(member("combat", \$categories))
+    output += "\<option value=\\"combat\\"\>Combat\</option\>\\n";
+   if(member("alteration", \$categories))
+    output += "\<option value=\\"alteration\\"\>Crafting\</option\>\\n";
+   if(member("thief", \$categories))
+    output += "\<option value=\\"thief\\"\>Thief\</option\>\\n";
+   output += "\</select\>\\n";
+
+   /* now list the skills in this category */
+   output += "\<span id=\\"skilllist\\"\>\<br/\>\\n";
+   output += Call(this, "general_script", \$script: "list_npc_teacher_skills");
+   output += "\</span\>\\n";
+
+  \}
+
+
+  /* if they should be able to add skills to the teacher */
+  if(\$guildleader \|\| member("guild_teacher_skills", Arr(\$char."guild:authority"))) \{
+   /* now list the skills in this category */
+   output += "Add new skills:\<br/\>\\n";
+   output += "\<span id=\\"teachlist\\"\>\\n";
+   output += Call(this, "general_script", \$script: "add_npc_teacher_skills");
+   output += "\</span\>\\n";
+  \}
+
+  /* if they should be able to see the teaching record */
+  if(\$guildleader \|\| member("guild_lessons", Arr(\$char."guild:authority"))) \{
+   if(!\$guild."costs:teaching") \$guild."costs:teaching" = ([ ]);
+   /* clear out the old records */
+    /* NOT CODED YET */
+   \$index = map_indices(\$guild."costs:teaching");
+   if(sizeof(\$index)) \{
+    output += "\<div id=\\"teaching_record\\"\>";
+    for(i=0;i\<sizeof(\$index);i++) \{
+     \$char = Obj(\$index[i]);
+     if(\$char) \{
+      if(\$char."skotos:playercapname") \{
+       output += Str(\$char."skotos:playercapname")+"\<br/\>";
+      \} else if(\$char."skotos:charname") \{
+       output += capitalize(Str(\$char."skotos:charname"))+"\<br/\>";
+      \} else \{
+       output += Describe(\$char)+"\<br/\>";
+      \}
+
+      \$info = \$guild."costs:teaching"[\$index[i]];
+      output += "\<ul\>";
+      for(\$j=0;\$j\<sizeof(map_indices(\$info));\$j++) \{
+       \$cost = \$info[map_indices(\$info)[\$j]][1];
+       if(\$cost == 1) \{
+        \$cost = "1 denar";
+       \} else \{
+        \$cost = Str(\$cost)+" denarii";
+       \}
+       output += "\<li\>"+Str(map_indices(\$info)[\$j])+" - "+\$cost+"\</li\>\\n";
+      \}
+      output += "\</ul\>";
+     \} else \{
+      output += "Deleted character\<br/\>\\n";
+     \}
+    \}
+    output += "\</div\>\\n";
+   \} else \{
+    output += "No records\\n";
+   \}
+  \}
+\} else if(\$script == "add_npc_teacher_skills") \{
+ /* list the skills (not the skill categories) for the NPC teacher */
+ /* only let them see if they are authorized */
+ if(!\$guildrank) return FALSE;
+ if(!\$guildleader \&\& !member("guild_teacher_skills", Arr(\$char."guild:authority")))
+  return FALSE;
+
+ if(\$guild."npc:teacher") \{
+  /* CODE TO HANDLE OLD object-based NPC TEACHERS */
+  /* should be able to remove the old teachers, then assume that we'll always find a mapping */
+  if(typeof(\$guild."npc:teacher") == T_OBJECT) \{
+   \$teacher = ([ ]);
+   \$teacher["skills"] = Arr(\$guild."npc:teacher"."teaching:skills");
+  \} else if(typeof(\$guild."npc:teacher") == T_MAPPING) \{
+   \$teacher = \$guild."npc:teacher";
+  \}
+ \} else \{
+  \$teacher = ([ ]);
+ \}
+
+ /* list the skills that can be added */
+ output += "\<select onchange=\\"display_block('addskilllist', 'confirm_adding_npc_teacher_skills', value);\\"\>\\n";
+ output += "\<option value=\\"\\"\>\</option\>\\n";
+
+ /* list the careers that can be added */
+ \$tmp = map_indices(Get(\$\{Ironclaw:Lib:Teaching:newCareersDB\}, "*"));
+ \$tmp -= (\{ "revisions" \});
+ for(i=0;i\<sizeof(\$tmp);i++) \{
+  /* don't list the skill if the teacher already knows it */
+  if(member("skill:career:"+\$tmp[i], Arr(\$teacher["skills"]))) \{
+   \$tmp -= (\{ \$tmp[i] \});
+   i--;
+  \} else \{
+   /* check guild requirements */
+   \$requirements = Get(\$\{Ironclaw:Lib:Teaching:newCareersDB\}, \$tmp[i])["guild_requirements"];
+   if(\$requirements) \{
+    /* does it meet the requirements? */
+    \$valid = TRUE;
+    for(j=0;j\<sizeof(\$requirements) \&\& \$valid;j++) \{
+     if(!member(Get(\$guild, \$requirements[j][0]), \$requirements[j])) \{
+      \$valid = nil;
+      \$tmp -= (\{ \$tmp[i] \});
+      i--;
+     \}
+    \}
+   \}
+  \}
+ \}
+ if(sizeof(\$tmp))
+  output += "\<option value=\\"\\"\>-=Careers=-\</option\>\\n";
+ for(i=0;i\<sizeof(\$tmp);i++)
+  output += "\<option value=\\"skill:career:"+\$tmp[i]+"\\"\>"+capitalize(\$tmp[i])+"\</option\>\\n";
+
+ /* list the skills that can be added */
+ \$tmp = map_indices(Get(\$\{Ironclaw:Lib:Teaching:SkillsDB\}, "*"));
+ \$tmp -= (\{ "revisions" \});
+
+ for(i=0;i\<sizeof(\$tmp);i++) \{
+  /* don't list the skill if the teacher already knows it */
+  if(member("skill:"+\$tmp[i], Arr(\$teacher["skills"]))) \{
+   \$tmp -= (\{ \$tmp[i] \});
+   i--;
+  \} else \{
+   /* check guild requirements */
+   \$requirements = Get(\$\{Ironclaw:Lib:Teaching:SkillsDB\}, \$tmp[i])["guild_requirements"];
+   if(\$requirements) \{
+    /* does it meet the requirements? */
+    \$valid = TRUE;
+    for(j=0;j\<sizeof(\$requirements) \&\& \$valid;j++) \{
+     if(!member(Get(\$guild, \$requirements[j][0]), \$requirements[j])) \{
+      \$valid = nil;
+      \$tmp -= (\{ \$tmp[i] \});
+      i--;
+     \}
+    \}
+   \}
+  \}
+ \}
+ if(sizeof(\$tmp))
+  output += "\<option value=\\"\\"\>-=Skills=-\</option\>\\n";
+ \$category = nil;
+ for(i=0;i\<sizeof(\$tmp);i++) \{
+  \$exploded = explode(\$tmp[i], ":");
+  \$skill_name = \$exploded[1];
+  if(\$exploded[0] != \$category) \{
+   \$category = \$exploded[0];
+   output += "\<option value=\\"\\"\>="+capitalize(\$category)+"=\</option\>\\n";
+  \}
+  output += "\<option value=\\"skill:"+\$tmp[i]+"\\"\>"+capitalize(\$skill_name)+"\</option\>\\n";
+ \}
+
+ output += "\</select\>\\n";
+
+ output += "\<span id=\\"addskilllist\\"\>\\n";
+ output += "\</span\>\\n";
+\} else if(\$script == "confirm_adding_npc_teacher_skills") \{
+ /* ask if they want to add this skill */
+ /* only let them see this if they are in the guild */
+ if(!\$guildrank) return FALSE;
+ if(!\$guildleader \&\& !member("guild_teacher_skills", Arr(\$char."guild:authority")))
+  return FALSE;
+
+ if(\$vars \&\& sizeof(\$vars)) \{
+  \$skill = \$vars[0];
+ \} else \{
+  return "";
+ \}
+
+ /* set the guild teacher */
+ if(\$guild."npc:teacher") \{
+  /* CODE TO HANDLE OLD object-based NPC TEACHERS */
+  /* should be able to remove the old teachers, then assume that we'll always find a mapping */
+  if(typeof(\$guild."npc:teacher") == T_OBJECT) \{
+   \$teacher = ([ ]);
+   \$teacher["skills"] = Arr(\$guild."npc:teacher"."teaching:skills");
+  \} else if(typeof(\$guild."npc:teacher") == T_MAPPING) \{
+   \$teacher = \$guild."npc:teacher";
+  \}
+ \} else \{
+  \$teacher = ([ ]);
+ \}
+
+ /* check the teacher doesn't already know this skill */
+ if(member(\$skill, Arr(\$teacher["skills"])))
+  return "Your guild teacher is already teaching that skill.";
+
+ \$explode = explode(\$skill, ":");
+ \$skill_name = \$explode[2];
+ /* any extra checks? */
+ /* does it meet the requirements? */
+ if(\$explode[1] == "career") \{
+  \$requirements = Get(\$\{Ironclaw:Lib:Teaching:newCareersDB\}, \$skill_name)["guild_requirements"];
+ \} else \{
+  \$requirements = Get(\$\{Ironclaw:Lib:Teaching:SkillsDB\}, \$explode[1]+":"+\$skill_name)["guild_requirements"];
+ \}
+ if(\$requirements) \{
+  for(i=0;i\<sizeof(\$requirements);i++) \{
+   EmitTo(\$actor, "Check "+dump_value(\$requirements[i]));
+   if(!member(Get(\$guild, \$requirements[i][0]), \$requirements[i])) return "This teacher isn't able to train members in "+\$skill_name+".\<br/\>\\n";
+  \}
+ \}
+
+ /* count academic tokens */
+ \$academic_tokens = Call(this, "general_script", \$script: "count_tokens", \$token: "academic");
+
+ output += "Your teacher already has "+Str(sizeof(Arr(\$teacher["skills"])))+" skills.\<br/\>\\n";
+ output += "So adding "+\$skill_name+" will cost "+Str((sizeof(Arr(\$teacher["skills"]))+1)*20)+" academic tokens.\<br/\>\\n";
+ output += capitalize(\$guild.fullname)+" has "+dump_value(\$academic_tokens)+" tokens.\<br/\>\\n";
+ if(Int(\$academic_tokens) \>= (sizeof(Arr(\$teacher["skills"]))+1)*20) \{
+  output += "[\<u class=\\"clickable\\" onclick=\\"display_block('addskilllist', 'confirm_add_npc_teacher_skills', '"+Str(\$skill)+"');\\"\>Add the "+\$skill_name+" skill now\</u\>]\<br/\>\\n";
+ \}
+ return output;
+\} else if(\$script == "confirm_add_npc_teacher_skills") \{
+ /* ask if they want to add this skill */
+ /* only let them see this if they are in the guild */
+ if(!\$guildrank) return FALSE;
+ if(!\$guildleader \&\& !member("guild_teacher_skills", Arr(\$char."guild:authority")))
+  return FALSE;
+
+ if(\$vars \&\& sizeof(\$vars)) \{
+  \$skill = \$vars[0];
+ \} else \{
+  return "";
+ \}
+
+ /* set the guild teacher */
+ if(\$guild."npc:teacher") \{
+  /* CODE TO HANDLE OLD object-based NPC TEACHERS */
+  /* should be able to remove the old teachers, then assume that we'll always find a mapping */
+  if(typeof(\$guild."npc:teacher") == T_OBJECT) \{
+   \$teacher = ([ ]);
+   \$teacher["skills"] = Arr(\$guild."npc:teacher"."teaching:skills");
+  \} else if(typeof(\$guild."npc:teacher") == T_MAPPING) \{
+   \$teacher = \$guild."npc:teacher";
+  \}
+ \} else \{
+  \$teacher = ([ ]);
+ \}
+
+ /* check the teacher doesn't already know this skill */
+ if(member(\$skill, Arr(\$teacher["skills"])))
+  return "Your guild teacher is already teaching that skill.";
+
+ \$explode = explode(\$skill, ":");
+ \$skill_name = \$explode[2];
+ /* any extra checks? */
+ /* does it meet the requirements? */
+ if(\$explode[1] == "career") \{
+  \$requirements = Get(\$\{Ironclaw:Lib:Teaching:newCareersDB\}, \$skill_name)["guild_requirements"];
+ \} else \{
+  \$requirements = Get(\$\{Ironclaw:Lib:Teaching:SkillsDB\}, \$explode[1]+":"+\$skill_name)["guild_requirements"];
+ \}
+ if(\$requirements) \{
+  for(i=0;i\<sizeof(\$requirements);i++) \{
+   if(!member(Get(\$guild, \$requirements[i][0]), \$requirements[i])) return "This teacher isn't able to train members in "+\$skill_name+".\<br/\>\\n";
+  \}
+ \}
+
+
+ /* charge the cost */
+ if(!Call( this, "general_script", \$script: "charge_tokens", \$token: "academic", \$amount: (sizeof(Arr(\$teacher["skills"]))+1)*20))
+  return "Your guild does not have enough academic tokens.";
+
+/* if( Int(\$guild."tokens:teacher") \>= (sizeof(Arr(\$teacher["skills"]))+1)*20) \{
+  \$guild."tokens:teacher" = Int(\$guild."tokens:teacher");
+  \$guild."tokens:teacher" -= (sizeof(Arr(\$teacher["skills"]))+1)*20;
+ \} else \{
+  return "Your guild does not have enough academic tokens.";
+ \}
+*/
+
+ /* add to the skill list */
+ \$teacher["skills"] = Arr(\$teacher["skills"]);
+ \$teacher["skills"] \|= (\{ \$skill \});
+
+ /* set the guild teacher */
+ if(\$guild."npc:teacher") \{
+  /* CODE TO HANDLE OLD object-based NPC TEACHERS */
+  /* should be able to remove the old teachers, then assume that we'll always find a mapping */
+  if(typeof(\$guild."npc:teacher") == T_OBJECT) \{
+   \$guild."npc:teacher"."teaching:skills" = \$teacher["skills"];
+  \} else if(typeof(\$guild."npc:teacher") == T_MAPPING) \{
+   \$teacher = \$teacher;
+  \}
+ \} else \{
+  \$guild."npc:teacher" = \$teacher;
+ \}
+
+ output += "The teacher now can offer lessons in "+\$skill_name+" - Please refresh this page to see it.\<br/\>\\n";
+
+ return output;
+
+ if(\$message = ironclaw::busy_check(\$character: \$actor))
+  return "You cannot take this lesson, you are already busy "+\$message+". If you wish to stop that action so you can take this lesson, use the in-game @stop command. [\<u class=\\"clickable\\" onclick=\\"display_block('skilllist_confirm', 'confirm_npc_teacher_skills', '"+\$vars[0]+"');\\"\>Try again\</u\>]";
+
+ \$skill_name = explode(\$subject, ":");
+
+ if(sizeof(\$skill_name) != 3) return "Something has gone wrong. Please @assist and report this.";
+ \$skill_name = \$skill_name[2];
+ \$level = Int(Get(\$actor, \$subject));
+ \$cost = Call(\$this, "general_script", \$script: "check_learning_cost", \$level: \$level+1);
+ output += "Studying this will raise you to level "+Str(\$level+1)+" in "+\$skill_name+".\<br/\>\\n";
+
+ if(\$char."guild:guild_lessons") \{
+  output += "This will cost "+Str(\$cost)+" learning points, and will cost your guild "+Str((\$level+1)*(\$level+1))+" denarii.\<br/\>\\n";
+  /* check if they can pay the costs */
+  if(Int(\$actor."student:learningpoints") \< \$cost) \{
+   output += "You currently only have "+Str(Int(\$actor."student:learningpoints"))+" learning points.\<br/\>\\n";
+   if(Int(\$guild.kitty) \< (\$level+1)*(\$level+1)*100)
+    output += "Your guild cannot afford this lesson.\<br/\>\\n";
+   return output;
+  \}
+  if(Int(\$guild.kitty) \< (\$level+1)*(\$level+1)*100) \{
+   /* can they pay it with their own money? */
+   if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) \{
+    output += "Your guild cannot afford this lesson.\<br/\>\\n";
+    return output;
+   \} else \{
+    output += "Your guild cannot afford the entire cost of this lesson. "+Str(Int(Flt((\$level+1)*(\$level+1)*100-Int(\$guild.kitty))/100.0))+" denarii will need to be paid from your personal bank account.\<br/\>\\n";
+   \}
+  \}
+ \} else \{
+  output += "This will cost "+Str(\$cost)+" learning points, and will cost you "+Str((\$level+1)*(\$level+1))+" denarii from your bank account to pay the teacher.\<br/\>\\n";
+  if(\$guildleader \|\| member("guild_lessons", Arr(\$char."guild:authority")))
+   output += "(However, you have authority to set who can get their lessons paid by the guild by going into the members list, then edit the settings. You should see the option \\"Pay NPC teacher from guild resources\\")\<br/\>\\n";
+  /* check if they can pay the costs */
+  if(Int(\$actor."student:learningpoints") \< \$cost) \{
+   output += "You currently only have "+Str(Int(\$actor."student:learningpoints"))+" learning points.\<br/\>\\n";
+   if(Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100)
+    output += "You cannot afford this lesson.\<br/\>\\n";
+   return output;
+  \}
+  if(Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) \{
+   output += "You cannot afford this lesson.\<br/\>\\n";
+   return output;
+  \}
+ \}
+ output += "[\<u class=\\"clickable\\" onclick=\\"display_block('skilllist_confirm', 'teach_npc_teacher_skills', '"+Str(\$subject)+"');\\"\>Study "+\$skill_name+" now\</u\>]";
+\} else if(\$script == "list_npc_teacher_skills") \{
+ /* list the skills (not the skill categories) for the NPC teacher */
+ /* only let them see the teacher list if they are in the guild */
+ if(!\$guildrank) return FALSE;
+
+ if(\$vars \&\& sizeof(\$vars)) \{
+  \$startcat = \$vars[0];
+ \} else \{
+  \$startcat = "nil";
+ \}
+
+ if(\$startcat == "undefined" \|\| \$startcat == "nil") return "";
+
+ if(\$guild."npc:teacher") \{
+  /* CODE TO HANDLE OLD object-based NPC TEACHERS */
+  /* should be able to remove the old teachers, then assume that we'll always find a mapping */
+  if(typeof(\$guild."npc:teacher") == T_OBJECT) \{
+   \$teacher = ([ ]);
+   \$teacher["skills"] = Arr(\$guild."npc:teacher"."teaching:skills");
+  \} else if(typeof(\$guild."npc:teacher") == T_MAPPING) \{
+   \$teacher = \$guild."npc:teacher";
+  \}
+ \} else \{
+  \$teacher = ([ ]);
+ \}
+
+ if(!\$teacher["skills"] \|\| !sizeof(\$teacher["skills"]))
+  return FALSE;
+
+ output += "\<select onchange=\\"display_block('skilllist_confirm', 'confirm_npc_teacher_skills', value);\\"\>\\n";
+
+ output += "\<option value=\\"\\"\>\</option\>\\n";
+ for(\$i=0;\$i\<sizeof(\$teacher["skills"]);\$i++) \{
+  \$tmp = explode(\$teacher["skills"][\$i], ":");
+  if(sizeof(\$tmp) \>= 3 \&\& \$tmp[1] == \$startcat) \{
+   output += "\<option value=\\""+\$teacher["skills"][\$i]+"\\"\>"+capitalize(\$tmp[2])+"\</option\>\\n";
+  \}
+ \}
+ output += "\</select\>\<br/\>\\n";
+ output += "\<div id=\\"skilllist_confirm\\"\>\</div\>\\n";
+\} else if(\$script == "confirm_npc_teacher_skills") \{
+ /* ask if they want to study this skill */
+ /* only let them see the teacher list if they are in the guild */
+ if(!\$guildrank) return FALSE;
+
+ if(\$vars \&\& sizeof(\$vars)) \{
+  \$subject = \$vars[0];
+ \} else \{
+  return "";
+ \}
+
+ if(\$message = ironclaw::busy_check(\$character: \$actor))
+  return "You cannot take this lesson, you are already busy "+\$message+". If you wish to stop that action so you can take this lesson, use the in-game @stop command. [\<u class=\\"clickable\\" onclick=\\"display_block('skilllist_confirm', 'confirm_npc_teacher_skills', '"+\$vars[0]+"');\\"\>Try again\</u\>]";
+
+ \$skill_name = explode(\$subject, ":");
+
+ if(sizeof(\$skill_name) != 3) return "Something has gone wrong. Please @assist and report this.";
+ \$skill_name = \$skill_name[2];
+ \$level = Int(Get(\$actor, \$subject));
+ \$cost = Call(\$this, "general_script", \$script: "check_learning_cost", \$level: \$level+1);
+ output += "Studying this will raise you to level "+Str(\$level+1)+" in "+\$skill_name+".\<br/\>\\n";
+
+ if(\$char."guild:guild_lessons") \{
+  output += "This will cost "+Str(\$cost)+" learning points, and will cost your guild "+Str((\$level+1)*(\$level+1))+" denarii.\<br/\>\\n";
+  /* check if they can pay the costs */
+  if(Int(\$actor."student:learningpoints") \< \$cost) \{
+   output += "You currently only have "+Str(Int(\$actor."student:learningpoints"))+" learning points.\<br/\>\\n";
+   if(Int(\$guild.kitty) \< (\$level+1)*(\$level+1)*100)
+    output += "Your guild cannot afford this lesson.\<br/\>\\n";
+   return output;
+  \}
+  if(Int(\$guild.kitty) \< (\$level+1)*(\$level+1)*100) \{
+   /* can they pay it with their own money? */
+   if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) \{
+    output += "Your guild cannot afford this lesson.\<br/\>\\n";
+    return output;
+   \} else \{
+    output += "Your guild cannot afford the entire cost of this lesson. "+Str(Int(Flt((\$level+1)*(\$level+1)*100-Int(\$guild.kitty))/100.0))+" denarii will need to be paid from your personal bank account.\<br/\>\\n";
+   \}
+  \}
+ \} else \{
+  output += "This will cost "+Str(\$cost)+" learning points, and will cost you "+Str((\$level+1)*(\$level+1))+" denarii from your bank account to pay the teacher.\<br/\>\\n";
+  if(\$guildleader \|\| member("guild_lessons", Arr(\$char."guild:authority")))
+   output += "(However, you have authority to set who can get their lessons paid by the guild by going into the members list, then edit the settings. You should see the option \\"Pay NPC teacher from guild resources\\")\<br/\>\\n";
+  /* check if they can pay the costs */
+  if(Int(\$actor."student:learningpoints") \< \$cost) \{
+   output += "You currently only have "+Str(Int(\$actor."student:learningpoints"))+" learning points.\<br/\>\\n";
+   if(Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100)
+    output += "You cannot afford this lesson.\<br/\>\\n";
+   return output;
+  \}
+  if(Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) \{
+   output += "You cannot afford this lesson.\<br/\>\\n";
+   return output;
+  \}
+ \}
+ output += "[\<u class=\\"clickable\\" onclick=\\"display_block('skilllist_confirm', 'teach_npc_teacher_skills', '"+Str(\$subject)+"');\\"\>Study "+\$skill_name+" now\</u\>]";
+\} else if(\$script == "teach_npc_teacher_skills") \{
+ /* going to learn the skill */
+ /* only let them see the teacher list if they are in the guild */
+ if(!\$guildrank) return FALSE;
+
+ if(\$vars \&\& sizeof(\$vars)) \{
+  \$subject = \$vars[0];
+ \} else \{
+  return "";
+ \}
+
+ if(\$message = ironclaw::busy_check(\$character: \$actor))
+  return "You cannot take this lesson, you are already busy "+\$message+". If you wish to stop that action so you can take this lesson, use the in-game @stop command. [\<u class=\\"clickable\\" onclick=\\"display_block('skilllist_confirm', 'confirm_npc_teacher_skills', '"+\$vars[0]+"');\\"\>Try again\</u\>]";
+
+ /* sanity check before teaching */
+ if(\$message = ironclaw::busy_check(\$character: \$actor))
+  return "You cannot take this lesson, you are already busy "+\$message+". If you wish to stop that action so you can take this lesson, use the in-game @stop command.";
+ \$skill_name = explode(\$subject, ":");
+ if(sizeof(\$skill_name) != 3) return "Something has gone wrong. Please @assist and report this.";
+ \$skill_name = \$skill_name[2];
+ \$level = Int(Get(\$actor, \$subject))+1;
+ \$cost = Call(\$this, "general_script", \$script: "check_learning_cost", \$level: \$level);
+ if(Int(\$actor."student:learningpoints") \< \$cost)
+  return "The lesson could not continue because you only have "+Str(Int(\$actor."student:learningpoints"))+" learning points.\\n";
+ if(!\$guild.kitty) \$guild.kitty = 0;
+ if(\$char."guild:guild_lessons") \{
+  if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< (\$level)*(\$level)*100)
+   return "Your guild cannot afford this lesson.";
+ \} else if(Int(\$actor."trait:money") \< (\$level)*(\$level)*100) \{
+  return "You cannot afford this lesson.";
+ \}
+ /* check that the teacher knows this (check again) */
+ if(!\$guild."npc:teacher") return "Your guild no longer has a teacher.";
+ /* CODE TO HANDLE OLD object-based NPC TEACHERS */
+ /* should be able to remove the old teachers, then assume that we'll always find a mapping */
+ if(typeof(\$guild."npc:teacher") == T_OBJECT) \{
+  if(!member(\$subject, Arr(\$guild."npc:teacher"."teaching:skills")))
+   return "Your guild teacher isn't able to teach that skill.";
+ \} else \{
+  if(!\$guild."npc:teacher"["skills"] \|\| !member(\$subject, \$guild."npc:teacher"["skills"]))
+   return "Your guild teacher isn't able to teach that skill.";
+ \}
+ /* check skill limits */
+ if(\$nsubject[1] == "career") \{
+  /* Check they don't learn over 48 levels in this skill */
+  /* temporarily do this check even if they aren't learning a career. Until all \>48 level people have dropped down to the right number of careers. */
+  int count, i;
+  string *list;
+  list = map_indices(prefixed_map(\$actor."*", "skill:career:"));
+  count = 0;
+  for(i=0;i\<sizeof(list);i++) \{
+   count += Int(Get(\$actor, list[i]));
+  \}
+  if(count \>= 48) \{
+   output = "You have too many careers to learn anything more. You may only have 48 ranks of careers (although you may have any number of skills).\<br/\>\\n";
+   output += "You will be unable to learn any more skills until you reduce the number of careers you have down to 48.";
+   return output;
+  \}
+ \} else if(\$level \> 24) \{
+  return "Your skill level is too high, you cannot learn any more.";
+ \}
+ /* start teaching the skill */
+ \$id = ironclaw::busy_start(\$character: \$actor, \$action: "practicing "+\$skill_name);
+ \$actor."teaching:npc:lesson_end_time" = time()+60*60*4;
+ if(\$actor."base:environment") \{
+  EmitTo(\$actor, "You begin to practice the "+\$skill_name+" skills that you were studying with your guild teacher.");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" begins to practice "+\$actor."base:possessive"+" "+\$skill_name+" skills.", \$actor);
+ \}
+ \$delay(60*3, "You begin to study "+\$skill_name+". If you wish to end this lesson early, just use the in-game @stop command.\<br/\>Other PCs near your character will be able to see you practicing this skill.\<br/\>The lesson will take around four hours, but you will continue studying "+\$skill_name+" even after you log off.", "0f5b");
+ while(time() \< \$actor."teaching:npc:lesson_end_time") \{
+  if(\$actor."busy:id" != \$id) return TRUE;
+  if(\$actor."base:environment") \{
+   EmitTo(\$actor, "You continue to practice "+\$skill_name+".");
+   EmitIn(\$actor."base:environment", Describe(\$actor)+" continues to practice "+\$actor."base:possessive"+" "+\$skill_name+" skills.", \$actor);
+  \}
+  \$delay(60*10+(random(10)*60), TRUE, "433d");
+ \}
+ if(\$actor."busy:id" != \$id) return TRUE;
+ ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+
+ /* another sanity check */
+
+ if(\$char."guild:guild_lessons") \{
+  if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< \$level*\$level*100)
+   return "Your guild cannot afford this lesson.";
+ \} else if(Int(\$actor."trait:money") \< \$level*\$level*100) \{
+  return "You cannot afford this lesson.";
+ \}
+
+ if(\$char."guild:guild_lessons") \{
+  if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< \$level*\$level*100) \{
+   if(\$actor."base:environment") \{
+    EmitTo(\$actor, "You finish practicing "+\$skill_name+", but don't increase your understanding. [OOC: Your guild can't afford to pay for the NPC lesson.]");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" finishes practicing "+\$skill_name+".", \$actor);
+   \} else \{
+    if(!\$actor."login:messages") \$actor."login:messages" = (\{ \});
+    \$actor."login:messages" \|= (\{ "You have finished practicing your "+\$skill_name+" skills, but don't increase your understanding. [OOC: Your guild couldn't afford to pay for the NPC lesson.]" \});
+   \}
+   return FALSE;
+  \}
+ \} else \{
+  if(Int(\$actor."trait:money") \< \$level*\$level*100) \{
+   if(\$actor."base:environment") \{
+    EmitTo(\$actor, "You finish practicing "+\$skill_name+", but don't increase your understanding. [OOC: You can't afford to pay for the NPC lesson.]");
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" finishes practicing "+\$skill_name+".", \$actor);
+   \} else \{
+    if(!\$actor."login:messages") \$actor."login:messages" = (\{ \});
+    \$actor."login:messages" \|= (\{ "You have finished practicing your "+\$skill_name+" skills, but don't increase your understanding. [OOC: You couldn't afford to pay for the NPC lesson.]" \});
+   \}
+   return FALSE;
+  \}
+ \}
+
+ /* another sanity check */
+ if(\$level != Int(Get(\$actor, \$subject))+1) return FALSE;
+
+ /* charge the cost and grant the skill */
+ if(Int(\$actor."student:learningpoints") \>= \$cost) \{
+  \$actor."student:learningpoints" -= \$cost;
+ \} else \{
+  return FALSE;
+ \}
+
+ if(\$char."guild:guild_lessons") \{
+  \$spent = 0;
+  if(Int(\$guild.kitty) \>= \$level*\$level*100) \{
+   \$guild.kitty -= \$level*\$level*100;
+   \$spent = \$level*\$level*100;
+   \$spent = Int(Flt(\$spent)/100.0);
+  \} else \{
+   /* take the money from both guild kitty and personal account */
+   \$spent = \$guild.kitty;
+   \$guild.kitty = 0;
+   \$actor."trait:money" -= (\$level*\$level*100 - \$spent);
+   \$spent = Int(Flt(\$spent)/100.0);
+  \}
+ \} else \{
+  \$actor."trait:money" -= \$level*\$level*100;
+ \}
+
+ Set(\$actor, \$subject, \$level);
+
+ /* record this in the guild */
+ if(\$char."guild:guild_lessons" \&\& \$spent) \{
+  if(!\$guild."costs:teaching") \$guild."costs:teaching" = ([ ]);
+  if(\$guild."costs:teaching"[name(\$actor)]) \{
+   \$info = \$guild."costs:teaching"[name(\$actor)];
+  \} else \{
+   \$info = ([ ]);
+  \}
+  if(\$info[\$skill_name] \&\& time() \< \$info[\$skill_name][0] + 60*60*24*14 ) \{
+   /* Add the cost of this lesson */
+   \$info[\$skill_name][0] = time();
+   \$info[\$skill_name][1] = \$info[\$skill_name][1] + \$spent;
+  \} else \{
+   /* add this lesson */
+   \$info[\$skill_name] = (\{ time(), \$spent \});
+  \}
+  \$guild."costs:teaching"[name(\$actor)] = \$info;
+ \}
+ return TRUE;
+\} else if(\$script == "check_learning_cost") \{
+ /* returns the cost of studying \$subject to level \$level */
+ if(!\$subject) return 0;
+ if(!\$level) return 0;
+ \$nsubject = explode(\$subject, ":");
+ if(sizeof(\$nsubject) != 3) return 0;
+ if(\$nsubject[1] == "career") \{
+  \$cost = \$level*10;
+  if(\$cost \> 100) \$cost = 100;
+ \} else if (\$nsubject[1] == "lang") \{
+  \$cost = \$level*3;
+  if(\$cost \> 30) \$cost = 30;
+ \} else \{
+  \$cost = \$level*5;
+  if(\$cost \> 50) \$cost = 50;
+ \}
+ \$cost = Int(Flt(\$cost)*1.1);
+ return \$cost;
+\} else if(\$script == "count_tokens") \{
+ /* count the number of tokens of this type in the guild */
+ int count;
+ count = 0;
+ if(!\$guild) return 0;
+ if(!\$token) return 0;
+ \$tmp = map_values(prefixed_map(Get(\$guild, "*"), "tokens:"+\$token));
+ for(\$count_tokens_i = 0; \$count_tokens_i \< sizeof(\$tmp); \$count_tokens_i++)
+  count += \$tmp[\$count_tokens_i];
+ return count;
+\} else if(\$script == "charge_tokens") \{
+ /* charge the specified number of tokens from the guild */
+ int count;
+ string special_token;
+ if(!\$amount) \{ return FALSE; \}
+ if(!\$guild) \{ return FALSE; \}
+ if(!\$token) \{ return FALSE; \}
+ \$amount = Int(\$amount);
+ /* Do they have enough tokens? */
+ if(\$amount \> Call(this, "general_script", \$script: "count_tokens", \$token: \$token)) return FALSE;
+ /* they have enough tokens. Start removing them */
+ count = \$amount;
+ if(Int(Get(\$guild, "tokens:"+\$token)) \>= \$amount) \{
+  /* pay in one lot */
+  Set(\$guild, "tokens:"+\$token, Int(Get(\$guild, "tokens:"+\$token))-count);
+  return TRUE;
+ \} else \{
+  /* pay from specialized-token types */
+  /* first take the non-specialized tokens */
+  count -= Int(Get(\$guild, "tokens:"+\$token));
+  Set(\$guild, "tokens:"+\$token, 0);
+  /* now get a list of other specialized token types */
+  \$token_types = map_indices(prefixed_map(Get(\$guild, "*"), "tokens:"+\$token));
+
+  while(count \&\& sizeof(\$token_types)) \{
+   \$tmp = random(sizeof(\$token_types));
+   special_token = \$token_types[\$tmp];
+   \$token_types -= (\{ \$token_types[\$tmp] \});
+   if(Int(Get(\$guild, special_token)) \>= count) \{
+    /* pay remainder in one lot */
+    Set(\$guild, special_token, Int(Get(\$guild, special_token))-count);
+    count = 0;
+   \} else \{
+    /* partially pay remainder */
+    count -= Int(Get(\$guild, special_token));
+    Set(\$guild, special_token, nil);
+   \}
+  \}
+ \}
+ if(!count) return TRUE;
+ return FALSE;
+\} else if(\$script == "do_working_token_conversion") \{
+ /* convert working tokens into another token type */
+ if(!\$guild) return FALSE;
+ if(!\$guildleader \&\& !\$char."guild:inventory") return FALSE;
+
+ if(!\$vars \|\| sizeof(\$vars) != 2) return FALSE;
+ \$vars[0] = Int(\$vars[0]);
+ if(\$vars[0] \<= 0) return TRUE;
+
+ /* does the guild have enough tokens? */
+ if(\$vars[0] \> Int(\$guild."tokens:working"))
+  return "You don't have enough working tokens to do that conversion. Sorry!";
+
+ /* charge the tokens */
+ \$guild."tokens:working" -= \$vars[0];
+ if(!\$guild."tokens:working") \$guild."tokens:working" = nil;
+ /* and give the new tokens */
+ Set(\$guild, "tokens:"+\$vars[1], Int(Get(\$guild, "tokens:"+\$vars[1]))+\$vars[0] );
+
+ return "Converted "+Str(\$vars[0])+" working tokens into "+\$vars[1]+" tokens.";
+\} else if(\$script == "list_inventory") \{
+  string *items;
+  object inventory;
+  /* only let them see the inventory list if they are in the guild */
+  if(!\$guildrank) return "You are not authorized to view this inventory.";
+  /* only let them take items or dump stock if they have access */
+  if(\$actor."guild:inventory" == "access" \|\| \$guildleader) \{
+    \$inv_editor = TRUE;
+  \} else \{
+    \$inv_editor = nil;
+  \}
+
+  if(!\$guild.inventory)\{
+    catch(Call(\$\{Lib:objects\}, "create_of_type", \$name: "Ironclaw:Guilds:Inventories:"+name(\$guild)[16..strlen(name(\$guild))-1], \$type: "propcontainer"));
+    \$guild.inventory = Obj("Ironclaw:Guilds:Inventories:"+name(\$guild)[16..strlen(name(\$guild))-1]);
+  \}
+  inventory = \$guild.inventory;
+
+  /* display the inventory for this guild */
+  items = map_indices(prefixed_map(inventory."*", "tradingitem:"));
+  if(!sizeof(items)) return "The warehouses are currently empty.";
+
+  output = "\<table border=\\"0\\"\>\\n";
+  output += "\<tr\>\<td colspan=";
+  if(\$inv_editor) \{
+    output += "5";
+  \} else \{
+    output += "3";
+  \}
+  output += "\>Guild kitty: \<strong\>"+Str(Int(\$guild.kitty)/100)+" denarii\</strong\>\</td\>\</tr\>\\n";
+  output += "\<tr\>\<td\>\<strong\>Quantity\</strong\>\</td\>\<td\>\<strong\>Item\</strong\>\</td\>\<td\>\<strong\>Notes\</strong\>\</td\>";
+  if(\$inv_editor)
+    output += "\<td\>\<strong\>Take Item\</strong\>\</td\>";
+  output += "\</tr\>\\n";
+
+
+  /* guild cloaks */
+  if(\$guild.cloak) \{
+    output += "\<tr\>\<td\>unlimited\</td\>\<td\>guild pin\</td\>\<td\>Wear your crest proudly!\</td\>";
+    if(\$inv_editor)
+      output += "\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', 'guildcloak');\\"\\\>take item\</u\>\</strong\>]\</td\>";
+    output += "\</tr\>";
+  \}
+
+  /* for each item in the inventory... */
+  sz = sizeof(items);
+  for(i=0;i\<sz;i++) \{
+    if(!Get(inventory, items[i])[1]) \{
+      /* None of this item left in the inventory. Clear it */
+      Set(inventory, items[i], nil);
+      Set(inventory, "settings:"+items[i]+":properties", nil);
+    \} else \{
+      output += "\<tr\>\<td\>";
+      if(Get(inventory, items[i])[1] == -1) \{
+        output += "unlimited";
+      \} else \{
+        output += Str(Get(inventory, items[i])[1]);
+      \}
+      output += "\</td\>\<td\>"+Get(inventory, items[i])[0]+"\</td\>\<td\>";
+      output += "\&nbsp;";
+      /* Allow them to take items if they have access */
+      if(\$inv_editor) \{
+        output += "\</td\>\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', '"+items[i]+"'); display_block('inventorylist', 'list_inventory');\\"\\\>take item\</u\>\</strong\>]";
+      \}
+      output += "\</td\>\</tr\>";
+    \}
+  \}
+
+  output += "\</table\>\\n";
+\} else if(\$script == "take_inv_item") \{
+  /* only let them take items if they are in the guild and have access */
+  if(!\$guildrank \|\| (\$actor."guild:inventory" != "access" \&\& !\$guildleader))
+    return "You do not have access to remove items from the guild inventory.";
+  if(!\$vars \|\| !sizeof(\$vars)) return "Unknown item.";
+
+  /* are they removing the guild cloak? */
+  /* AT SOME POINT WE PROBABLY WANT TO INCORPORATE GUILD CLOAKS AS NORMAL INV ITEMS */
+  if(\$vars[0] == "guildcloak" \&\& \$guild.cloak) \{
+    object item;
+    item = Spawn(\$guild.cloak);
+    item."base:environment" = \$actor;
+    item.guild = \$guild;
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \} else \{
+    /* if it's some other item */
+    object item;
+    int i, sz;
+    \$inventory = \$guild.inventory;
+    \$info = Get(\$inventory, \$vars[0]);
+    /* check there is stock */
+    if(\$info[1] == -1) \{
+      /* unlimited stock. Do nothing */
+    \} else if (!\$info[1]) \{
+      /* no stock */
+      return "There is no stock left in the guild inventory.";
+    \} else \{
+      /* reduce the stock */
+      \$info[1]--;
+    \}
+    item = Spawn(\$info[2]);
+    item."base:environment" = \$actor;
+    /* set quality */
+    /*
+    i=random(4)+random(4)+random(4)+random(4);
+    if(i\>8) i=random(4)+random(4)+random(4)+random(4);
+    if(i\<1) i=1;
+    item."trait:quality" = i;
+    */
+
+      \$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{"social:trading"\}), \$bonus: (\{ "trait:mind" \}));
+
+      if(\$result \> 12) \{
+          \$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{"social:trading"\}), \$bonus: (\{ "trait:mind" \}));
+          if(\$result \< 12) \$result = 12;
+      \}
+
+      \$result = \$result / 2;
+
+      if(\$result \< 1) \$result = 1;
+
+      item."trait:quality" = \$result;
+
+    /* set properties */
+    item.guild = \$guild;
+    if(\$props = Get(\$inventory, "settings:"+\$vars[0]+":properties")) \{
+      sz = sizeof(\$props);
+      for(i=0;i\<sz-1;i=i+2) \{
+        if(\$props[i] == "trait:quality" \|\| \$props[i] == "trait:quantity") \{
+            Set(item, \$props[i], Int(\$props[i+1]));
+        \} else \{
+            Set(item, \$props[i], \$props[i+1]);
+        \}
+      \}
+    \}
+
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \}
+  output = Describe(\$actor)+" could not find this item in the inventory."+dump_value(\$vars);
+\} else if(\$script == "voting_start") \{
+  /* is it valid to start a new vote? */
+  if(\$guild."vote:voting") return ::general_script(\$script: "voting_display");
+  \$valid = nil;
+  if(!\$guild.leader) \{
+    \$valid = TRUE;
+  \} else if(\$guild."vote:vp_guild") \{
+    if(Int(\$guild.leader."cdat:lastlogin")+60*60*24*30 \< time()) \$valid = TRUE;
+    if(Int(\$guild."vote:newleader:time")+60*60*24*30*3 \< time()) \$valid = TRUE;
+  \}
+  if(!\$valid) return ::general_script(\$script: "voting_display");
+  \$valid = nil;
+
+  /* Ok, so we can start a vote. Remove the old properties. */
+  \$guild."vote:begin" = nil;
+  \$guild."vote:nominations" = nil;
+  \$guild."vote:nominees" = (\{ \});
+  \$guild."vote:selections" = ([ ]);
+
+  /* what level should the nominations start at? */
+  /* count how many peers there are */
+  \$count = 0;
+  for(i=0;i\<sizeof(\$guild.members);i++) \{
+    if(\$guild.members[i] \&\& \$guild.members[i]."rank:rank" \>= 11 \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time())
+      \$count++;
+  \}
+  if(\$count \>= 3)
+    \$guild."vote:nominations" = 1;
+  if(!\$guild."vote:nominations") \{
+    /* count how many peers and gentry there are */
+    \$count = 0;
+    for(i=0;i\<sizeof(\$guild.members);i++) \{
+      if(\$guild.members[i] \&\& \$guild.members[i]."rank:rank" \>= 7 \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time())
+        \$count++;
+    \}
+    if(\$count \>= 3)
+      \$guild."vote:nominations" = 2;
+  \}
+  if(!\$guild."vote:nominations")
+    \$guild."vote:nominations" = 3;
+
+  /* start the vote */
+  \$id = time();
+  \$guild."vote:voting" = \$id;
+  \$delay(1, ::general_script(\$script: "voting_display"), "ab9d");
+  /* give a week for nominations */
+  \$delay(60*60*24*7, TRUE, "5f6a");
+  if(\$guild."vote:voting" != \$id) return FALSE;
+  if(!\$guild."vote:begin" \&\& \$guild."vote:nominations" == 1) \{
+    \$guild."vote:nominations"++;
+    \$delay(60*60*24*7, TRUE, "be18");
+    if(\$guild."vote:voting" != \$id) return FALSE;
+  \}
+  if(!\$guild."vote:begin" \&\& \$guild."vote:nominations" == 2) \{
+    \$guild."vote:nominations"++;
+  \}
+  if(!\$guild."vote:begin")
+    \$guild."vote:begin" = time();
+
+  /* Start final countdown */
+  /* give two weeks more */
+  \$time = \$guild."vote:begin"+60*60*24*7*2-time();
+  if(\$time \< 0) \$time = 0;
+  \$delay(\$time, TRUE, "f7f5");
+  if(\$guild."vote:voting" != \$id) return FALSE;
+
+  /* vote is over. Calculate winner. */
+  \$guild."vote:voting" = nil;
+  \$tmp = ([ ]);
+  for(i=0;i\<sizeof(map_indices(\$guild."vote:selections"));i++) \{
+    \$nominee = \$guild."vote:selections"[map_indices(\$guild."vote:selections")[i]];
+    if(\$tmp[\$nominee]) \{
+      \$tmp[\$nominee]++;
+    \} else \{
+      \$tmp[\$nominee] = 1;
+    \}
+  \}
+  if(!sizeof(map_indices(\$tmp))) \{
+    /* no winner. Should we destroy this guild? */
+    if(!\$guild."vote:vp_guild") \{
+      /* destroy the guild */
+      /* NOT WRITTEN YET */
+      /* would be nice to put the guild kitty and inventory up on the auction house, too */
+      EmitTo(\$az, "Should destroy "+dump_value(\$guild));
+      return TRUE;
+    \}
+    EmitTo(\$az, "Would destroy "+dump_value(\$guild)+", but it's a VP guild. Flag it for new membership, maybe using the quest system?");
+    return TRUE;
+  \}
+  /* find the winner */
+  \$max = 0;
+  \$winner = (\{ \});
+  for(i=0;i\<sizeof(map_indices(\$tmp));i++) \{
+    if(\$tmp[map_indices(\$tmp)[i]] \> \$max) \{
+      \$max = \$tmp[map_indices(\$tmp)[i]];
+      \$winner = (\{ map_indices(\$tmp)[i] \});
+    \} else if(\$tmp[map_indices(\$tmp)[i]] == \$max) \{
+      \$winner \|= (\{ map_indices(\$tmp)[i] \});
+    \}
+  \}
+  /* is there a tie? */
+  if(sizeof(\$winner) \> 1) \{
+    \$winner = (\{ \$winner[random(sizeof(\$winner))] \});
+  \}
+  /* set the new leader */
+  \$guild.leader = \$winner[0];
+  /* leave a message for the guild members */
+  \$guild."vote:newleader" = Str(capitalize(\$winner[0]."skotos:charname"));
+  \$guild."vote:newleader:time" = time();
+  return TRUE;
+\} else if(\$script == "voting_display") \{
+  /* sanity checking */
+  /* make sure a vote is happening */
+  if(!\$guild."vote:voting") \{
+    /* can they call for a vote? */
+    if(!\$guild.leader) \{
+      output += capitalize(Str(\$guild.fullname))+" has no current leader.\<br/\>\\n";
+      output += "\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here to call a vote for a new guildleader.\</u\>\<br/\>\\n";
+      return output;
+    \}
+    /* Are they a great house or VP guild? In that case, call for a vote if the leader is idle, or if it's been three months. */
+    if(\$guild."vote:vp_guild") \{
+      if(Int(\$guild.leader."cdat:lastlogin")+60*60*24*30 \< time()) \{
+        output += "The current guild leader, "+Str(\$guild.leader."skotos:playercapname")+", has not been seen in over a month.\<br/\>\\n";
+        output += "[\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here if you want to call a vote for a new guildleader.\</u\>]\<br/\>\\n";
+        return output;
+      \}
+      if(Int(\$guild."vote:newleader:time")+60*60*24*30*3 \< time()) \{
+        output += "It has been over three months since there was a vote for the guild leader.\<br/\>\\n";
+        output += "[\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here if you want to call a vote for a new guildleader.\</u\>]\<br/\>\\n";
+        return output;
+      \}
+    \}
+    /* was there a new leader appointed? */
+    if(\$guild."vote:newleader:time" \&\& \$guild."vote:newleader:time"+60*60*24*7 \> time())
+      return capitalize(Str(\$guild."vote:newleader"))+" has been appointed the new leader of "+Str(\$guild.fullname)+".";
+    return "";
+  \}
+  /* remove deleted candidates */
+  \$guild."vote:nominees" -= (\{ nil \});
+
+  output = "There is currently a vote for the leadership of "+\$guild.fullname+".\<br/\>";
+  /* vote based on rank */
+  if(\$guild."vote:nominations" == 2) \{
+    output += "Gentry, Knights, or Peers may nominate themselves.\<br/\>\\n";
+  \} else if(\$guild."vote:nominations" == 1) \{
+    output += "Peers (Barons and above) may nominate themselves.\<br/\>\\n";
+  \} else \{
+    output += "All guild members may nominate themselves.\<br/\>\\n";
+  \}
+
+  if(!member(\$actor, Arr(\$guild."vote:nominees"))) \{
+    /* actor isn't nominated for this vote */
+    /* check they have the right rank, and can nominate themselves */
+    if(Call(this, "general_script", \$script: "voting_check_nomination")) \{
+      output += "\<u class=\\"clickable\\" onclick=\\"run_script('voting_nominate'); display_block('vote', 'voting_display');\\"\>Click here to nominate "+Str(\$actor."skotos:playercapname")+" for the position of guildleader.\</u\>\<br/\>\\n";
+    \}
+  \}
+  if(sizeof(\$guild."vote:nominees")) \{
+    if(\$guild."vote:selections" \&\& \$guild."vote:selections"[name(\$actor)]) \{
+      output += "Your vote is for "+capitalize(Str(\$guild."vote:selections"[name(\$actor)]."skotos:charname"))+"\<br/\>\\n";
+      output += "Vote for \\n";
+    \} else \{
+      output += "Vote for one of the nominees \\n";
+    \}
+    output += "\<select NAME=\\"vote_preference\\" id=\\"vote_preference\\" onchange=\\"voting_select(this.value); display_block('vote', 'voting_display');\\"\>\\n";
+    if(\$guild."vote:selections" \&\& \$guild."vote:selections"[name(\$actor)]) \{
+      output += "Your vote is for \<br/\>\\n";
+      output += "\<option value=\\""+name(\$guild."vote:selections"[name(\$actor)])+"\\"\>"+capitalize(Str(\$guild."vote:selections"[name(\$actor)]."skotos:charname"))+"\</option\>\\n";
+    \} else \{
+      output += "\<option value=\\"nil\\"\>\&nbsp;\</option\>\\n";
+    \}
+    for(i=0;i\<sizeof(\$guild."vote:nominees");i++) \{
+      output += "\<option value=\\""+name(\$guild."vote:nominees"[i])+"\\"\>"+capitalize(Str(\$guild."vote:nominees"[i]."skotos:charname"))+"\</option\>\\n";
+    \}
+    output += "\</select\>\<br/\>\\n";
+  \} else \{
+    output += "There have not yet been any nominees for the position of guild leader.\<br/\>\\n";
+  \}
+  return output;
+\} else if(\$script == "voting_check_nomination") \{
+  /* check they have the right rank, and can nominate themselves * /
+  /* sanity check */
+  if(!\$guildrank) return FALSE;
+  if(!\$guild."vote:voting") return FALSE;
+
+  /* slaves can't be nominated */
+  if(\$actor."rank:rank" == 1) return FALSE;
+
+  /* if it's at stage three, any member can be nominated */
+  if(\$guild."vote:nominations" \>= 3) return TRUE;
+
+  /* vote based on rank */
+  if(\$guild."vote:nominations" == 2) \{
+    if(\$actor."rank:rank" \&\&
+      \$actor."rank:rank" \>= 7) return TRUE;
+  \} else \{
+    if(\$actor."rank:rank" \>= 11) return TRUE;
+  \}
+  return FALSE;
+\} else if(\$script == "voting_nominate") \{
+  /* nominate a PC for guild leader */
+  /* sanity check */
+  if(!\$guild."vote:voting") return FALSE;
+
+  if(!\$guild."vote:nominees") return "Error: The guild is not accepting nominations at this time.";
+
+  /* check their priority or rank vs what is being accepted */
+  if(!Call(this, "general_script", \$script: "voting_check_nomination")) return FALSE;
+
+  /* add them to the list */
+  \$guild."vote:nominees" \|= (\{ \$actor \});
+
+  /* set them to be voting for themselves */
+  \$guild."vote:selections"[name(\$actor)] = \$actor;
+
+  /* should we begin the vote? */
+  if(!\$guild."vote:begin" \&\& sizeof(\$guild."vote:nominees") == 3)
+    \$guild."vote:begin" = time();
+
+  return "Nomination accepted.";
+\} else if(\$script == "voting_select") \{
+  /* vote for someone */
+  /* sanity check */
+  if(!\$guildrank) return "You are not a member of this guild.";
+  if(!\$guild."vote:voting") return "No vote currently in progress";
+
+  \$nominee = Obj(\$vars[0]);
+  if(\$nominee) \{
+    /* set them to be voting for whoever they selected */
+    \$guild."vote:selections"[name(\$actor)] = \$nominee;
+    /* check if this wins the vote */
+    /* count active members of the guild */
+    \$count = 2;
+    for(i=0;i\<sizeof(\$guild.members);i++) \{
+      if(\$guild.members[i] \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time())
+        \$count++;
+    \}
+    /* we only need half the votes (1 more than half, hence starting \$count at 2) to win the vote */
+    \$count = \$count / 2;
+    /* now count how many people voted for this nominee */
+    \$newcount = 0;
+    for(i=0;i\<sizeof(map_indices(\$guild."vote:selections"));i++) \{
+      if(\$guild."vote:selections"[map_indices(\$guild."vote:selections")[i]] == \$nominee)
+        \$newcount++;
+    \}
+    if(\$newcount \>= \$count) \{
+      /* they have more than half the vote */
+      /* assign the new guild leader */
+      \$guild."vote:voting" = nil;
+      \$guild.leader = \$nominee;
+      /* leave a message for the guild members */
+      \$guild."vote:newleader" = Str(capitalize(\$nominee."skotos:charname"));
+      \$guild."vote:newleader:time" = time();
+    \}
+  \} else \{
+    return "Error: Could not find the member that you're voting for";
+  \}
+
+  return "Vote cast";
+\}
+
+if(output != "") return output;
+return "Error: Unknown script";
+      </Core:Property>
+      <Core:Property property="merry:lib:get_guild_vote_message">
+         X[M] /* run some initial code */  
+string output;  
+int i, sz, j, jx;  
+  
+/*\$az = Obj("Chatters:IC:az:azrael");*/  
+  
+/* do we have sensible variables? */  
+if(!\$actor) return nil;  
+if(!\$actor.guild) return nil;  
+\$guild = \$actor.guild;  
+output = "";  
+/* is the guild having a vote? */  
+if(\$guild."vote:voting") \{  
+  /* a vote is in progress */  
+  output += "\\nThere is currently a vote for the leadership of "+Str(\$guild.fullname)+". All members are being approached by servants gathering references for the new administrator.\\n[OOC: type @guild to open a popup window, where you should be able to nominate yourself, or vote for who you feel should run the guild.]\\n";  
+  if(!\$guild."settings:vote_by_rank") \{  
+    /* normal vote based on priority */  
+    if(\$guild."vote:nominations" == 2) \{  
+      output += "Members with guild priority 2 may nominate themselves.\\n";  
+    \} else if(\$guild."vote:nominations" == 1) \{  
+      output += "Members with guild priority 1 may nominate themselves.\\n";  
+    \} else \{  
+      output += "All guild members may nominate themselves.\\n";  
+    \}  
+  \} else \{  
+    /* vote based on rank */  
+    if(\$guild."vote:nominations" == 2) \{  
+      output += "Gentry, Knights, or Peers may nominate themselves.\\n";  
+    \} else if(\$guild."vote:nominations" == 1) \{  
+      output += "Peers (Baronets and above) may nominate themselves.\\n";  
+    \} else \{  
+      output += "All guild members may nominate themselves.\\n";  
+    \}  
+  \}  
+\}  
+  
+if(output == "" \&\& \$guild."vote:newleader:time" \&\& time() \< \$guild."vote:newleader:time"+ 60*60*24*7 ) \{  
+  /* The vote is recently done. Display the winner */  
+  output += "\\nThe leadership of "+Str(\$guild.fullname)+" has recently been transferred to "+Str(\$guild."vote:newleader")+".";  
+\}  
+  
+if(output == "") \{  
+  /* no guild message */  
+  return nil;  
+\}  
+  
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:initialize_guild_vote">
+         X[M] /* start a vote for the guild */  
+int i, sz;  
+if(!\$guild) return FALSE;  
+  
+\$az = \$\{Chatters:AE:az:azrael\};  
+  
+/* initialize the vote */  
+EmitTo(\$az, "Initializing the vote.");  
+  
+/* check the guild isn't already in a vote */  
+if(\$guild."vote:voting") return FALSE;  
+  
+\$guild."vote:voting" = TRUE;  
+  
+/* looking for nominations */  
+  
+/* are there enough nominations at stage 1? */  
+  
+/* count everyone active of priority 1 and 2 */  
+/* (or all the nobles and gentry, for a great house) */  
+\$pri1 = 0; \$pri2 = 0;  
+\$guild.members -= (\{ nil \});  
+if(\$guild."settings:vote_by_rank") \{  
+  /* base nominations on social rank */  
+  for(i=0;i\<sizeof(\$guild.members);i++) \{  
+    if(Int(\$guild.members[i]."rank:rank") \>= 10  
+    \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*21 \> time()) \{  
+      \$pri1++;  
+    \} else if(Int(\$guild.members[i]."rank:rank") \>= 7  
+    \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*21 \> time()) \{  
+      \$pri2++;  
+    \}  
+  \}  
+\} else \{  
+  /* base nominations on guild priority */  
+  for(i=0;i\<sizeof(\$guild.members);i++) \{  
+    if(Int(\$guild.members[i]."guild:rank") == 1  
+    \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*21 \> time()) \{  
+      \$pri1++;  
+    \} else if(Int(\$guild.members[i]."guild:rank") == 2  
+    \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*21 \> time()) \{  
+      \$pri2++;  
+    \}  
+  \}  
+\}  
+  
+/* what nominations are we accepting? */  
+\$guild."vote:nominees" = (\{ \});  
+\$guild."vote:selections" = ([ ]);  
+if(\$pri1 \>= 3) \{  
+  \$guild."vote:nominations" = 1;  
+\} else if(\$pri1 + \$pri2 \>= 3) \{  
+  \$guild."vote:nominations" = 2;  
+\} else \{  
+  \$guild."vote:nominations" = 3;  
+\}  
+/* delay until we have enough nominees, or until everyone can nominate themselves */  
+EmitTo(\$az, "Nominations are at: "+dump_value(\$guild."vote:nominations"));  
+\$delay(60*60*24*3, TRUE, "a278");  
+while(\$guild."vote:nominees" \&\& !\$guild."vote:begin"  
+      \&\& sizeof(\$guild."vote:nominees") \< 3 \&\& \$guild."vote:nominations" \< 3) \{  
+  \$guild."vote:nominations"++;  
+  EmitTo(\$az, "Not enough nominees. Increasing range.");  
+  EmitTo(\$az, "Nominations are at: "+dump_value(\$guild."vote:nominations"));  
+  \$delay(60*60*24*3, TRUE, "dbe3");  
+\}  
+  
+/* ok, we have enough nominees, or we've allowed everyone to nominate themselves */  
+/* check if the vote has already begun */  
+if(!\$guild."vote:begin" \&\& \$guild."vote:nominees") \{  
+  /* vote hasn't begun */  
+  /* do we have any nominees? */  
+  \$guild."vote:nominees" -= (\{ nil \});  
+  if(!sizeof(\$guild."vote:nominees")) \{  
+    /* No nominees! */  
+    /* give them the voting time to add someone */  
+    \$guild."vote:begin" = time();  
+  \} else if(sizeof(\$guild."vote:nominees") == 1) \{  
+    /* one nominee. Give them the guild. */  
+    EmitTo(\$az, "One nominee. Giving them leadership of the guild.");  
+    \$guild."vote:begin" = nil;  
+  \} else \{  
+    /* more than one nominee. Allow the vote to take place. */  
+    EmitTo(\$az, "Starting the vote");  
+    \$guild."vote:begin" = time();  
+  \}  
+\}  
+if(\$guild."vote:begin") \{  
+  /* wait until vote should end (two weeks) */  
+  EmitTo(\$az, "Delaying for end of vote");  
+  \$time = 60*60*24*7-time()+\$guild."vote:begin";  
+  if(\$time \< 0) \$time = 0;  
+  \$delay(\$time, TRUE, "2675");  
+  /* if the vote time ends, and the vote is no longer running, it is because the guild has already been assigned */  
+  if(!\$guild."vote:voting") return TRUE;  
+\}  
+  
+  
+/* vote completed */  
+EmitTo(\$az, "Vote completed.");  
+\$guild."vote:voting" = nil;  
+\$guild."outcome:of:vote" = \$guild."vote:selections";  
+  
+/* clean up the nominations array */  
+\$guild."vote:nominees" -= (\{ nil \});  
+/* make sure the nominees are still in the guild */  
+sz = \$guild."vote:nominees";  
+for(i=0;i\<sz;i++) \{  
+  \$nominee = \$guild."vote:nominees"[i];  
+  if(!\$nominee.guild \|\| \$nominee.guild != \$guild)  
+    \$guild."vote:nominees" -= (\{ \$nominee \});  
+\}  
+  
+if(!sizeof(\$guild."vote:nominees")) \{  
+  /* No nominees! Destroy the guild (or do whatever is appropriate) */  
+  \$guild.destroy = TRUE;  
+\} else if(sizeof(\$guild."vote:nominees") == 1) \{  
+    /* one nominee. Give them the guild. */  
+    \$chosen = \$guild."vote:nominees"[0];  
+\} else \{  
+  /* more than one nominee. Check who got the most votes */  
+  \$selections = map_values(\$guild."vote:selections");  
+  /* loop through the nominees, counting their votes */  
+  \$max = 0;  
+  sz = \$guild."vote:nominees";  
+  for(i=0;i\<sz;i++) \{  
+    \$nominee = name(\$guild."vote:nominees"[0]);  
+    \$count = 0;  
+    for(\$j=0;\$j\<sizeof(\$selections);\$j++) \{  
+      if(\$nominee == \$selections[\$j])  
+        \$count++;  
+    \}  
+    if(!\$chosen \|\| \$count \> \$max) \{  
+      \$chosen = \$nominee;  
+      \$max = \$count;  
+    \} else if(\$count == \$max) \{  
+      if(!random(2))  
+        \$chosen = \$nominee;  
+    \}  
+  \}  
+  if(!\$chosen) \{  
+    /* couldn't pick anyone. Destroy the guild */  
+    \$guild.destroy = TRUE;  
+  \}  
+\}  
+  
+/* assign the guild */  
+if(\$chosen) \{  
+  \$guild.leader = \$chosen;  
+  /* leave a message for the guild members */  
+  if(\$chosen."skotos:playercapname") \{
+      \$guild."vote:newleader" = Str(\$chosen."skotos:playercapname");  
+  \} else \{
+      \$guild."vote:newleader" = Str(capitalize(\$chosen."skotos:charname"));
+  \}
+  \$guild."vote:newleader:time" = time();  
+\}  
+  
+/* or destroy it */  
+if(\$guild.destroy) \{  
+  /* destroy this guild */  
+  /* NOT WRITTEN YET */  
+\}  
+  
+\$list = map_indices(prefixed_map(\$guild."*", "vote:"));  
+for(i=0;i\<sizeof(\$list);i++) \{  
+  Set(\$guild, \$list[i], nil);  
+\}  
+  
+if(\$chosen) \{  
+  /* this doesn't seem needed anymore */  
+  \$guild."vote:chosen" = Str(\$chosen."skotos:playercapname");  
+  \$guild."vote:end" = time();  
+\}  
+  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:join_guild">
+         X[M] /* check if they are currently a member of this guild */  
+if(\$actor.guild \&\& \$actor.guild == \$par["guild"]) \{  
+  EmitTo(\$actor, "You have joined "+\$par["guild"].shortname+". Type @guild to gain access to the guild pages.");  
+  return TRUE;  
+\}  
+  
+  
+/* check they don't have an alt in the guild */  
+if(\$par["guild"].members \&\& sizeof(\$par["guild"].members)) \{  
+  \$bodies = Udat::query_bodies_in_roster(\$user: \$actor."udat:name");  
+  for(\$i=0;\$i\<sizeof(\$bodies);\$i++) \{  
+    /* check this isn't an alt */  
+    if(member(\$bodies[\$i], \$par["guild"].members)) \{  
+      EmitTo(\$actor, "You cannot join "+\$par["guild"].shortname+" as you already have an alt ("+capitalize(Str(\$bodies[\$i]."skotos:charname"))+") in that guild.");  
+      return TRUE;  
+    \}  
+  \}  
+\}  
+  
+/* accepted offer to join the guild */  
+EmitTo(\$actor, "You have joined "+\$par["guild"].fullname+". Type @guild to gain access to the guild pages.");  
+  
+/* remove old guild properties from their body */  
+Call(\$this, "leave_guild", \$member: \$actor);  
+  
+/* set the actor to be in the new guild */  
+\$actor.guild = \$par["guild"];  
+\$par["guild"].members += (\{ \$actor \});  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:join_guild_denied">
+         X[M] /* decide not to join the new guild */  
+if(\$actor.guild) \{  
+ EmitTo(\$actor, "You decide to stay loyal to "+\$actor.guild.fullname+" and not join "+\$par["guild"].fullname+".");    
+\} else \{  
+ EmitTo(\$actor, "You decide not to join "+\$par["guild"].fullname+".");    
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:join_guild_expire">
+         X[M] EmitTo(\$actor, Describe(\$par["sender"])+"'s offer to join "+\$par["guild"].fullname+" has expired.");    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:leave_guild">
+         X[M] /* run code for when someone leaves their guild */
+
+/* check the variables */
+if(!\$member) return FALSE;
+if(!\$member.guild) return TRUE;
+
+/* were they honorably released? */
+if(!\$honorable) \{
+ if(\$member."guild:betrayed") \{
+  \$member."guild:betrayed" \|= (\{ \$member.guild \});
+ \} else \{
+  \$member."guild:betrayed" = (\{ \$member.guild \});
+ \}
+\}
+
+/* remove their manor room */
+if(\$member.guild == \$\{Allegory:Guilds:france\}) \{
+    if(\$member."virtualhome:avoirdupois:member") \{
+        \$room = \$member."virtualhome:avoirdupois:member";
+    \} else if(\$member."virtualhome:avoirdupois:noble") \{
+        \$room = \$member."virtualhome:avoirdupois:noble";
+    \}
+\} else if(\$member.guild == \$\{Allegory:Guilds:scotland\}) \{
+    if(\$member."virtualhome:bisclavret:member") \{
+        \$room = \$member."virtualhome:bisclavret:member";
+    \} else if(\$member."virtualhome:bisclavret:noble") \{
+        \$room = \$member."virtualhome:bisclavret:noble";
+    \}
+\} else if(\$member.guild == \$\{Allegory:Guilds:germany\}) \{
+    if(\$member."virtualhome:doloreaux:member") \{
+        \$room = \$member."virtualhome:doloreaux:member";
+    \} else if(\$member."virtualhome:doloreaux:noble") \{
+        \$room = \$member."virtualhome:doloreaux:noble";
+    \}
+\} else if(\$member.guild == \$\{Allegory:Guilds:italy\}) \{
+    if(\$member."virtualhome:rinaldi:member") \{
+        \$room = \$member."virtualhome:rinaldi:member";
+    \} else if(\$member."virtualhome:rinaldi:noble") \{
+        \$room = \$member."virtualhome:rinaldi:noble";
+    \}
+\}
+
+if(\$room) \{
+    Call(\$\{Allegory:Props:Keys:BoardHouse:UrRentingKey\}, "do_delete", \$room: \$room, \$actor: \$member, \$discharged: 1);
+\}
+
+/* remove them from the guild */
+\$member.guild.members -= (\{ \$member \});
+\$member.guild = nil;
+
+/* remove guild properties */
+\$list = map_indices(prefixed_map(\$member."*", "guild:"));
+\$list -= (\{ "guild:betrayed" \});
+for(\$i=0;\$i\<sizeof(\$list);\$i++) \{
+  Set(\$member, \$list[\$i], nil);
+\}
+
+/* Remove tokens */
+\$list = map_indices(prefixed_map(\$member."*", "tokens:"));
+for(\$i=0;\$i\<sizeof(\$list);\$i++) \{
+  Set(\$member, \$list[\$i], nil);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] /* checks the player isn't trying anything funny, and that we have all the information we need */
+/* returns the page we should look up */
+object *bodies;
+int i, sz;
+
+/* first basic sanity checks -- these should never happen */
+if (\$dat == nil) \{
+  error("page reached without a udat");
+\}
+if (\$name == nil) \{
+  error("page reached without a name");
+\}
+
+/* what is the character? */
+if(\$actor \&\& typeof(\$actor) == 3) \{
+  /* \$actor is a string. make it an object */
+  if(Obj(\$actor)) \{
+    \$actor = Obj(\$actor);
+  \} else \{
+    \$actor = Obj("Chatters:IC:"+\$actor[0..1]+":"+\$actor);
+  \}
+\}
+if(\$char \&\& typeof(\$char) == 3) \{
+  /* \$char is a string. make it an object */
+  if(Obj(\$char)) \{
+    \$char = Obj(\$char);
+  \} else \{
+    \$char = Obj("Chatters:IC:"+\$char[0..1]+":"+\$char);
+  \}
+\}
+if(!\$char \&\& \$actor)
+  \$char = \$actor;
+if(!\$actor \&\& \$char)
+  \$actor = \$char;
+
+
+if (!\$char) \{
+  error("No character specified");
+\}
+
+\$charname = name(\$char)[15..strlen(name(\$char))-1];
+
+/* Check the player isn't trying to access someone elses body */
+/* Check if the players roster of characters */
+bodies = Udat::query_bodies_in_roster(\$user: \$name);
+
+for(i = 0; i \< sizeof(bodies);)
+\{
+  if(bodies[i]."theatre:id" != "IC")
+  \{
+    bodies -= (\{ \$bodies[i] \});
+  \} else \{
+    i++;
+  \}
+\}
+
+bodies \&= (\{ \$char \});
+
+if(sizeof(bodies) \< 1 \&\& (\$name != "tonyd" \&\& \$name != "rastalabor")) \{
+  error("Body not found in character roster");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_bluebooked_jobs">
+         X[M] object *members;
+int i, sz;
+
+return TRUE;
+
+if(!\$guild) return TRUE;
+if(!\$guild.kitty) \$guild.kitty = 0;
+
+members = Arr(\$guild.members);
+members -= (\{ nil \});
+
+sz = sizeof(members);
+for(i=0;i\<sz;i++)
+ Call(\$\{Ironclaw:Lib:Guilds:BluebookedJobsDB\}, "run_job", \$char: members[i], \$guild: \$guild);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_bluebooked_payments">
+         X[M] object *members;
+int i, sz, j;
+
+if(!\$guild) return TRUE;
+if(!\$guild.kitty) \$guild.kitty = 0;
+
+members = Arr(\$guild.members);
+members -= (\{ nil \});
+
+sz = sizeof(members);
+for(i=0;i\<sz;i++)\{
+ /* pay any daily money to the member from the guild */
+ /* if they were absent more than 5 days, don't give daily payment */
+ if(Int(members[i]."cdat:lastlogin")+60*60*24*5 \> time() \&\& members[i]."guild:daily_payment") \{
+  \$amount = members[i]."guild:daily_payment";
+  \$amount = Int(Flt(\$amount)*Flt(Get(\$\{Ironclaw:Lib:Economy:economy\}, "economy:balance:income_multiplier")));
+  if(\$amount) \{
+   /* can the guild afford to pay it? */
+   if(\$guild.kitty \< \$amount)
+    \$amount = \$guild.kitty;
+   if(\$amount \< 0) \$amount = 0;
+   if(\$amount \> 0) \{
+    /* pay this to the PC */
+    \$guild.kitty -= \$amount;
+    members[i]."trait:money" += \$amount;
+   \} else \{
+    /* inform the PC that they were not paid */
+    /* NOT WRITTEN YET */
+   \}
+  \}
+ \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_collect_rent">
+         X[M] object *members;
+int i, sz, j;
+
+if(!\$guild) return TRUE;
+if(!\$guild.virtualroom) return TRUE;
+
+\$room = \$guild.virtualroom;
+\$rent = Int(Get(\$room, "roomcost"));
+
+/* Free rent for council members */
+\$councilDat = \$\{Ironclaw:Data:GuildCouncil:Members\};
+if(member(\$guild, \$councilDat.members)) return TRUE;
+
+if(!\$guild.kitty) \$guild.kitty = 0;
+
+if(\$guild.kitty \>= \$rent) \{
+    \$guild.kitty = Int(\$guild.kitty) - \$rent;
+\} else \{
+    Call(\$\{Ironclaw:Props:Keys:UrGuildRentingKey\}, "evict", \$guild: \$guild);
+    \$guild.virtualroom = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:run_daily_functions">
+         X[M] /* Run daily functions for guilds */
+int i;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+/* get a list of guilds */
+EmitTo(\$az, "Getting a list of guilds");
+/* get a list of all guilds */
+\$folder = "Allegory:Guilds";
+\$guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+for(i=0;i\<sizeof(\$guilds);i++) \{
+  \$guilds[i] = Obj("Allegory:Guilds:"+\$guilds[i]);
+\}
+
+/* run todays trading */
+for(\$guild_daily_functions_i=0;\$guild_daily_functions_i\<sizeof(\$guilds);\$guild_daily_functions_i++) \{
+  if(\$guilds[\$guild_daily_functions_i].mothballed) continue;
+
+  \$delay(0.0001, TRUE, "7ed2");
+  EmitTo(\$az, "guild: "+dump_value(\$guilds[\$guild_daily_functions_i]));
+
+  /* Is this guild inactive? */
+  \$members = Arr(\$guilds[\$guild_daily_functions_i].members);
+  \$inactive = TRUE;
+  for(\$i=0;\$i\<sizeof(\$members)\&\&\$inactive;\$i++) \{
+    if(\$members[\$i] \&\& !\$members[\$i].mothballed) \{
+      \$inactive = nil;
+    \}
+  \}
+  /* No active members. We should mothball this guild */
+  if(\$inactive) \{
+    \$guilds[\$guild_daily_functions_i].mothballed = TRUE;
+    continue;
+  \}
+
+
+/*
+  ::run_bluebooked_jobs(\$guild: \$guilds[\$guild_daily_functions_i]);
+  ::run_trading(\$guild: \$guilds[\$guild_daily_functions_i]);
+  ::run_bluebooked_payments(\$guild: \$guilds[\$guild_daily_functions_i]);
+  */
+
+  /* ::run_bluebooked_jobs(\$guild: \$guilds[\$guild_daily_functions_i]); */
+
+  Call(\$\{Allegory:Lib:Guilds:Guild\}, "run_trading", \$guild: \$guilds[\$guild_daily_functions_i]);
+  /* ::run_bluebooked_payments(\$guild: \$guilds[\$guild_daily_functions_i]); */
+  ::run_collect_rent(\$guild: \$guilds[\$guild_daily_functions_i]);
+\}
+
+/* check that their leader is still active */
+
+/* resolve any votes, and assign new leaders */
+
+EmitTo(\$az, "Guild maintenance done.");
+Set(\$this, "notes", "Guild maintenance last completed on " + Str(ctime(time())) + ".");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1168175436, "tonyd", "P", 1168175480, "tonyd", "P", 1168175515, "tonyd", "P", 1168175595, "tonyd", "P", 1168175641, "tonyd", "P", 1168175662, "tonyd", "P", 1168176352, "tonyd", "P", 1168176454, "tonyd", "P", 1168176500, "tonyd", "P", 1168176513, "tonyd", "P", 1168176575, "tonyd", "P", 1168176692, "tonyd", "P", 1168176719, "tonyd", "P", 1168176742, "tonyd", "P", 1168176755, "tonyd", "P", 1168176869, "tonyd", "P", 1168176883, "tonyd", "P", 1168176890, "tonyd", "P", 1168176898, "tonyd", "P", 1168176963, "tonyd", "P", 1168176974, "tonyd", "P", 1168178051, "tonyd", "P", 1168178063, "tonyd", "P", 1168178256, "tonyd", "P", 1168181389, "tonyd", "P", 1168181641, "tonyd", "P", 1168181667, "tonyd", "P", 1168181718, "tonyd", "P", 1168181939, "tonyd", "P", 1168181955, "tonyd", "P", 1168183361, "tonyd", "P", 1168183384, "tonyd", "P", 1168185727, "tonyd", "P", 1168227166, "tonyd", "P", 1168227202, "tonyd", "P", 1168227217, "tonyd", "P", 1168227535, "tonyd", "P", 1168227586, "tonyd", "P", 1168227724, "tonyd", "P", 1168227749, "tonyd", "P", 1168228148, "tonyd", "P", 1168228528, "tonyd", "P", 1168229690, "tonyd", "P", 1168229804, "tonyd", "P", 1168229998, "tonyd", "P", 1168230071, "tonyd", "P", 1168230392, "tonyd", "P", 1168230631, "tonyd", "P", 1168230753, "tonyd", "P", 1168231036, "tonyd", "P", 1168231125, "tonyd", "P", 1168231157, "tonyd", "P", 1168231283, "tonyd", "P", 1168231384, "tonyd", "P", 1168231407, "tonyd", "P", 1168231695, "tonyd", "P", 1168231720, "tonyd", "P", 1168231743, "tonyd", "P", 1168231834, "tonyd", "P", 1168231943, "tonyd", "P", 1168232161, "tonyd", "P", 1168232235, "tonyd", "P", 1168232281, "tonyd", "P", 1168232307, "tonyd", "P", 1168232341, "tonyd", "P", 1168232426, "tonyd", "P", 1168232636, "tonyd", "P", 1168232673, "tonyd", "P", 1168232980, "tonyd", "P", 1168233191, "tonyd", "P", 1168233204, "tonyd", "P", 1168233284, "tonyd", "P", 1168233310, "tonyd", "P", 1168233496, "tonyd", "P", 1168233523, "tonyd", "P", 1168234026, "tonyd", "P", 1168234108, "tonyd", "P", 1168234181, "tonyd", "P", 1168234230, "tonyd", "P", 1168234408, "tonyd", "P", 1168234556, "tonyd", "P", 1168234668, "tonyd", "P", 1168234791, "tonyd", "P", 1168234869, "tonyd", "P", 1168234954, "tonyd", "P", 1168234985, "tonyd", "P", 1168235035, "tonyd", "P", 1168235053, "tonyd", "P", 1168235516, "tonyd", "P", 1168236492, "tonyd", "P", 1168236658, "tonyd", "P", 1168236685, "tonyd", "P", 1168237004, "tonyd", "P", 1168237194, "tonyd", "P", 1168237210, "tonyd", "P", 1168237232, "tonyd", "P", 1168237252, "tonyd", "P", 1168237294, "tonyd", "P", 1168237331, "tonyd", "P", 1168237364, "tonyd", "P", 1168237467, "tonyd", "P", 1168237495, "tonyd", "P", 1168237514, "tonyd", "P", 1168238101, "tonyd", "P", 1168238565, "tonyd", "P", 1168238656, "tonyd", "P", 1168239092, "tonyd", "P", 1168239123, "tonyd", "P", 1168239180, "tonyd", "P", 1168240008, "tonyd", "P", 1168240127, "tonyd", "P", 1168240293, "tonyd", "P", 1168240406, "tonyd", "P", 1168241045, "tonyd", "P", 1168241078, "tonyd", "P", 1168241196, "tonyd", "P", 1168241285, "tonyd", "P", 1168241323, "tonyd", "P", 1168241361, "tonyd", "P", 1168241383, "tonyd", "P", 1168241398, "tonyd", "P", 1168241482, "tonyd", "P", 1168241628, "tonyd", "P", 1168241889, "tonyd", "P", 1168242076, "tonyd", "P", 1168242151, "tonyd", "P", 1168242437, "tonyd", "P", 1168243884, "tonyd", "P", 1168243926, "tonyd", "P", 1168244151, "tonyd", "P", 1168244789, "tonyd", "P", 1168245017, "tonyd", "P", 1168245185, "tonyd", "P", 1168245222, "tonyd", "P", 1168245272, "tonyd", "P", 1168245541, "tonyd", "P", 1168245925, "tonyd", "P", 1168245948, "tonyd", "P", 1168245980, "tonyd", "P", 1168246169, "tonyd", "P", 1168246578, "tonyd", "P", 1168246858, "tonyd", "P", 1168246928, "tonyd", "P", 1168246982, "tonyd", "P", 1168247000, "tonyd", "P", 1168247089, "tonyd", "P", 1168247250, "tonyd", "P", 1168247784, "tonyd", "P", 1168247939, "tonyd", "P", 1168247974, "tonyd", "P", 1168248147, "tonyd", "P", 1168248166, "tonyd", "P", 1168248322, "tonyd", "P", 1168248370, "tonyd", "P", 1168248780, "tonyd", "P", 1168249669, "tonyd", "P", 1168249808, "tonyd", "P", 1168250976, "tonyd", "P", 1168255728, "tonyd", "P", 1168255738, "tonyd", "P", 1168265263, "tonyd", "P", 1168265447, "tonyd", "P", 1168265480, "tonyd", "P", 1168341852, "tonyd", "P", 1168342314, "tonyd", "P", 1168345769, "tonyd", "P", 1168345903, "tonyd", "P", 1168490578, "tonyd", "P", 1168490645, "tonyd", "P", 1168490987, "tonyd", "P", 1168491063, "tonyd", "P", 1168499493, "tonyd", "P", 1168499603, "tonyd", "P", 1168499830, "tonyd", "P", 1168499949, "tonyd", "P", 1168513951, "tonyd", "P", 1168514008, "tonyd", "P", 1168514077, "tonyd", "P", 1168515606, "tonyd", "P", 1168518009, "tonyd", "P", 1168518319, "tonyd", "P", 1168518434, "tonyd", "P", 1168518508, "tonyd", "P", 1168525419, "tonyd", "P", 1168525757, "tonyd", "P", 1168525799, "tonyd", "P", 1168526046, "tonyd", "P", 1168526099, "tonyd", "P", 1168526346, "tonyd", "P", 1168526566, "tonyd", "P", 1168572050, "tonyd", "P", 1168572674, "tonyd", "P", 1168572914, "tonyd", "P", 1168573036, "tonyd", "P", 1168573132, "tonyd", "P", 1168573246, "tonyd", "P", 1168573734, "tonyd", "P", 1168653829, "tonyd", "P", 1168653911, "tonyd", "P", 1168654002, "tonyd", "P", 1168657276, "tonyd", "P", 1168657528, "tonyd", "P", 1168664023, "tonyd", "P", 1168664067, "tonyd", "P", 1168664101, "tonyd", "P", 1168664137, "tonyd", "P", 1168664211, "tonyd", "P", 1168664281, "tonyd", "P", 1168672120, "tonyd", "P", 1168672195, "tonyd", "P", 1168673244, "tonyd", "P", 1168673386, "tonyd", "P", 1168673626, "tonyd", "P", 1168673963, "tonyd", "P", 1168674023, "tonyd", "P", 1168674110, "tonyd", "P", 1168674258, "tonyd", "P", 1168674329, "tonyd", "P", 1168674430, "tonyd", "P", 1168674616, "tonyd", "P", 1168945787, "tonyd", "P", 1168948037, "tonyd", "P", 1168948338, "tonyd", "P", 1168948411, "tonyd", "P", 1168948864, "tonyd", "P", 1168949107, "tonyd", "P", 1168949189, "tonyd", "P", 1168951864, "tonyd", "P", 1168951896, "tonyd", "P", 1168951907, "tonyd", "P", 1168954905, "tonyd", "P", 1168954920, "tonyd", "P", 1168954962, "tonyd", "P", 1168955094, "tonyd", "P", 1168955105, "tonyd", "P", 1169117965, "tonyd", "P", 1169118181, "tonyd", "P", 1169118258, "tonyd", "P", 1169119019, "tonyd", "P", 1169119043, "tonyd", "P", 1169119709, "tonyd", "P", 1169119803, "tonyd", "P", 1169119827, "tonyd", "P", 1169120310, "tonyd", "P", 1169120318, "tonyd", "P", 1169120508, "tonyd", "P", 1169120526, "tonyd", "P", 1169121005, "tonyd", "P", 1169121040, "tonyd", "P", 1169121181, "tonyd", "P", 1169121297, "tonyd", "P", 1169121974, "tonyd", "P", 1169122030, "tonyd", "P", 1169122098, "tonyd", "P", 1169122152, "tonyd", "P", 1169122919, "tonyd", "P", 1169122971, "tonyd", "P", 1169123015, "tonyd", "P", 1169123075, "tonyd", "P", 1169123267, "tonyd", "P", 1169123388, "tonyd", "P", 1169124234, "tonyd", "P", 1169124486, "tonyd", "P", 1169125207, "tonyd", "P", 1169297010, "tonyd", "P", 1169297124, "tonyd", "P", 1169297200, "tonyd", "P", 1169297322, "tonyd", "P", 1169297332, "tonyd", "P", 1169297349, "tonyd", "P", 1169297791, "tonyd", "P", 1169297986, "tonyd", "P", 1169298018, "tonyd", "P", 1169298442, "tonyd", "P", 1169298482, "tonyd", "P", 1169298519, "tonyd", "P", 1169298580, "tonyd", "P", 1169298603, "tonyd", "P", 1169298640, "tonyd", "P", 1169298659, "tonyd", "P", 1169298682, "tonyd", "P", 1169298798, "tonyd", "P", 1169300184, "tonyd", "P", 1169300292, "tonyd", "P", 1169300380, "tonyd", "P", 1169300485, "tonyd", "P", 1169300547, "tonyd", "P", 1169349743, "tonyd", "P", 1169349801, "tonyd", "P", 1169350642, "tonyd", "P", 1169350710, "tonyd", "P", 1169350752, "tonyd", "P", 1169350823, "tonyd", "P", 1169350857, "tonyd", "P", 1169350908, "tonyd", "P", 1169350930, "tonyd", "P", 1169468524, "tonyd", "P", 1169702043, "tonyd", "P", 1169702250, "tonyd", "P", 1169904671, "tonyd", "P", 1170144634, "tonyd", "P", 1170154747, "tonyd", "P", 1170154815, "tonyd", "P", 1170154847, "tonyd", "P", 1176014885, "tonyd", "E", 1176663994, "tonyd", "P", 1176664020, "tonyd", "P", 1176664074, "tonyd", "P", 1176664217, "tonyd", "P", 1177473491, "tonyd", "P", 1177473714, "tonyd", "P", 1177473825, "tonyd", "P", 1177479385, "tonyd", "P", 1177479435, "tonyd", "P", 1177480089, "tonyd", "P", 1177480358, "tonyd", "P", 1177480427, "tonyd", "P", 1177480492, "tonyd", "P", 1177480513, "tonyd", "P", 1177480531, "tonyd", "P", 1177480564, "tonyd", "P", 1177480621, "tonyd", "P", 1177480636, "tonyd", "P", 1177480806, "tonyd", "P", 1177480814, "tonyd", "P", 1177481036, "tonyd", "P", 1177481459, "tonyd", "P", 1177481502, "tonyd", "P", 1177481664, "tonyd", "P", 1177481682, "tonyd", "P", 1177481873, "tonyd", "P", 1177481896, "tonyd", "P", 1177481919, "tonyd", "P", 1177481933, "tonyd", "P", 1177523184, "tonyd", "P", 1177525725, "tonyd", "P", 1177525743, "tonyd", "P", 1177525761, "tonyd", "P", 1177525801, "tonyd", "P", 1177526113, "tonyd", "P", 1177526170, "tonyd", "P", 1177526212, "tonyd", "P", 1177526493, "tonyd", "P", 1177526540, "tonyd", "P", 1177526605, "tonyd", "P", 1177526641, "tonyd", "P", 1177526649, "tonyd", "P", 1177527357, "tonyd", "P", 1177527773, "tonyd", "P", 1177527784, "tonyd", "P", 1177527832, "tonyd", "P", 1177528087, "tonyd", "P", 1177528138, "tonyd", "P", 1177528151, "tonyd", "P", 1177529673, "tonyd", "P", 1177529725, "tonyd", "P", 1177529751, "tonyd", "P", 1177529810, "tonyd", "P", 1177529816, "tonyd", "P", 1177529853, "tonyd", "P", 1177529924, "tonyd", "P", 1177530883, "tonyd", "P", 1177530932, "tonyd", "P", 1177531984, "tonyd", "P", 1177532016, "tonyd", "P", 1177532132, "tonyd", "P", 1177532150, "tonyd", "P", 1177532221, "tonyd", "P", 1178097901, "tonyd", "P", 1178097988, "tonyd", "P", 1178097997, "tonyd", "P", 1178098009, "tonyd", "P", 1178098020, "tonyd", "P", 1178098043, "tonyd", "P", 1178098182, "tonyd", "P", 1178098203, "tonyd", "P", 1178098233, "tonyd", "P", 1179360879, "necate", "P", 1179445435, "tonyd", "P", 1179445494, "tonyd", "P", 1179445526, "tonyd", "P", 1179445555, "tonyd", "P", 1179445609, "tonyd", "P", 1179515936, "tonyd", "P", 1182397823, "tonyd", "E", 1183900781, "tonyd", "E", 1184673397, "tonyd", "P", 1184673457, "tonyd", "P", 1184673488, "tonyd", "P", 1184673511, "tonyd", "P", 1184673529, "tonyd", "P", 1184673547, "tonyd", "P", 1184673590, "tonyd", "P", 1184673609, "tonyd", "P", 1184673667, "tonyd", "P", 1184673691, "tonyd", "P", 1184673792, "tonyd", "P", 1184673813, "tonyd", "P", 1184673856, "tonyd", "P", 1184673914, "tonyd", "P", 1184673986, "tonyd", "P", 1184674034, "tonyd", "P", 1185684628, "tonyd", "P", 1185710694, "tonyd", "P", 1185710826, "tonyd", "P", 1186391427, "tonyd", "E", 1187092142, "tonyd", "P", 1187436265, "tonyd", "P", 1187436298, "tonyd", "P", 1191185504, "missk", "X", 1191978465, "rastalabor", "X", 1192336662, "tonyd", "E", 1199433887, "tonyd", "E", 1200276318, "tonyd", "P", 1200276720, "tonyd", "P", 1200276868, "tonyd", "P", 1200277147, "tonyd", "P", 1200277197, "tonyd", "P", 1200277241, "tonyd", "P", 1201737844, "tonyd", "P", 1201737979, "tonyd", "P", 1201737990, "tonyd", "P", 1203045860, "tonyd", "P", 1203045895, "tonyd", "P", 1203045965, "tonyd", "P", 1203046004, "tonyd", "P", 1203046057, "tonyd", "P", 1203046121, "tonyd", "P", 1203046154, "tonyd", "P", 1203046179, "tonyd", "P", 1203046200, "tonyd", "P", 1203046273, "tonyd", "P", 1203046273, "tonyd", "P", 1203046349, "tonyd", "P", 1205803213, "tonyd", "P", 1205803478, "tonyd", "P", 1205803495, "tonyd", "P", 1205803580, "tonyd", "P", 1205803961, "tonyd", "P", 1205804554, "tonyd", "P", 1205804760, "tonyd", "P", 1205805153, "tonyd", "P", 1205805172, "tonyd", "P", 1205805192, "tonyd", "P", 1205805226, "tonyd", "P", 1205805389, "tonyd", "P", 1205805449, "tonyd", "P", 1205805480, "tonyd", "P", 1205805644, "tonyd", "P", 1205805762, "tonyd", "P", 1205805806, "tonyd", "P", 1205805863, "tonyd", "P", 1205805896, "tonyd", "P", 1205805915, "tonyd", "P", 1205806107, "tonyd", "P", 1205806123, "tonyd", "P", 1205806154, "tonyd", "P", 1205806183, "tonyd", "P", 1205806192, "tonyd", "P", 1205806237, "tonyd", "P", 1205806237, "tonyd", "P", 1205806446, "tonyd", "P", 1205806499, "tonyd", "P", 1205806545, "tonyd", "P", 1205806759, "tonyd", "P", 1205806816, "tonyd", "P", 1205806852, "tonyd", "P", 1205806914, "tonyd", "P", 1205807031, "tonyd", "P", 1205807072, "tonyd", "P", 1205807091, "tonyd", "P", 1205807103, "tonyd", "P", 1205807168, "tonyd", "P", 1205807265, "tonyd", "P", 1205807276, "tonyd", "P", 1205807305, "tonyd", "P", 1205807323, "tonyd", "P", 1205807518, "tonyd", "P", 1205807555, "tonyd", "P", 1205807597, "tonyd", "P", 1205807624, "tonyd", "P", 1205807668, "tonyd", "P", 1205807676, "tonyd", "P", 1205807729, "tonyd", "P", 1205807863, "tonyd", "P", 1205807881, "tonyd", "P", 1205807897, "tonyd", "P", 1205807990, "tonyd", "P", 1205808092, "tonyd", "P", 1205808107, "tonyd", "P", 1205808157, "tonyd", "P", 1205808279, "tonyd", "P", 1205808311, "tonyd", "P", 1205808487, "tonyd", "P", 1205808539, "tonyd", "P", 1205810425, "tonyd", "P", 1205810481, "tonyd", "P", 1205810524, "tonyd", "P", 1205810544, "tonyd", "P", 1205810579, "tonyd", "P", 1205811430, "tonyd", "P", 1205811529, "tonyd", "P", 1205811565, "tonyd", "P", 1205811592, "tonyd", "P", 1205811615, "tonyd", "P", 1205811624, "tonyd", "P", 1205811688, "tonyd", "P", 1205811697, "tonyd", "P", 1205811838, "tonyd", "P", 1205811880, "tonyd", "P", 1205811909, "tonyd", "P", 1205812761, "tonyd", "P", 1205812773, "tonyd", "P", 1205812794, "tonyd", "P", 1205812813, "tonyd", "P", 1205812813, "tonyd", "P", 1205813296, "tonyd", "P", 1205813402, "tonyd", "P", 1205813455, "tonyd", "P", 1205813600, "tonyd", "P", 1205813613, "tonyd", "P", 1205813678, "tonyd", "P", 1205813710, "tonyd", "P", 1205813766, "tonyd", "P", 1205813789, "tonyd", "P", 1205813810, "tonyd", "P", 1205813839, "tonyd", "P", 1205813889, "tonyd", "P", 1205813917, "tonyd", "P", 1205813951, "tonyd", "P", 1205814027, "tonyd", "P", 1205814036, "tonyd", "P", 1205814073, "tonyd", "P", 1205814169, "tonyd", "P", 1205814196, "tonyd", "P", 1205814395, "tonyd", "P", 1205814522, "tonyd", "P", 1205814567, "tonyd", "P", 1205814602, "tonyd", "P", 1205814640, "tonyd", "P", 1205814865, "tonyd", "P", 1205814988, "tonyd", "P", 1205815032, "tonyd", "P", 1205815046, "tonyd", "P", 1205815065, "tonyd", "P", 1205815095, "tonyd", "P", 1205815112, "tonyd", "P", 1205815123, "tonyd", "P", 1205815144, "tonyd", "P", 1205815156, "tonyd", "P", 1205815168, "tonyd", "P", 1205815181, "tonyd", "P", 1205815193, "tonyd", "P", 1205815228, "tonyd", "P", 1205815244, "tonyd", "P", 1205815260, "tonyd", "P", 1205815401, "tonyd", "P", 1205815428, "tonyd", "P", 1205815461, "tonyd", "P", 1205815529, "tonyd", "P", 1205815561, "tonyd", "P", 1205815578, "tonyd", "P", 1205815589, "tonyd", "P", 1205815602, "tonyd", "P", 1205815612, "tonyd", "P", 1205815623, "tonyd", "P", 1205815647, "tonyd", "P", 1205815752, "tonyd", "P", 1205815774, "tonyd", "P", 1205815784, "tonyd", "P", 1205815794, "tonyd", "P", 1205815805, "tonyd", "P", 1205815819, "tonyd", "P", 1205815832, "tonyd", "P", 1205815867, "tonyd", "P", 1205815908, "tonyd", "P", 1205815921, "tonyd", "P", 1205815933, "tonyd", "P", 1205816505, "tonyd", "P", 1205816539, "tonyd", "P", 1205816592, "tonyd", "P", 1205816637, "tonyd", "P", 1205816677, "tonyd", "P", 1205816713, "tonyd", "P", 1205816741, "tonyd", "P", 1206151441, "tonyd", "P", 1206151466, "tonyd", "P", 1206151499, "tonyd", "P", 1206151509, "tonyd", "P", 1206151515, "tonyd", "P", 1206151531, "tonyd", "P", 1206151643, "tonyd", "P", 1206151815, "tonyd", "P", 1206151862, "tonyd", "P", 1206154869, "tonyd", "P", 1206159232, "tonyd", "P", 1206159298, "tonyd", "P", 1206159339, "tonyd", "P", 1206159361, "tonyd", "P", 1206159667, "tonyd", "P", 1206159785, "tonyd", "P", 1206160740, "tonyd", "P", 1206160861, "tonyd", "P", 1206161109, "tonyd", "P", 1206161131, "tonyd", "P", 1206161141, "tonyd", "P", 1206161156, "tonyd", "P", 1206161602, "tonyd", "P", 1206162125, "tonyd", "P", 1206162144, "tonyd", "P", 1206162190, "tonyd", "P", 1206162418, "tonyd", "P", 1206670300, "tonyd", "P", 1206671175, "tonyd", "P", 1206671838, "tonyd", "P", 1206671884, "tonyd", "P", 1206672050, "tonyd", "P", 1206672221, "tonyd", "P", 1206672246, "tonyd", "P", 1206672283, "tonyd", "P", 1206672339, "tonyd", "P", 1206674074, "tonyd", "P", 1206674866, "tonyd", "P", 1206674944, "tonyd", "P", 1206674955, "tonyd", "P", 1206674977, "tonyd", "P", 1206675542, "tonyd", "P", 1206675577, "tonyd", "P", 1206675647, "tonyd", "P", 1206675675, "tonyd", "P", 1206675689, "tonyd", "P", 1206675708, "tonyd", "P", 1206675736, "tonyd", "P", 1206675910, "tonyd", "P", 1206675940, "tonyd", "P", 1206675952, "tonyd", "P", 1206675970, "tonyd", "P", 1206677274, "tonyd", "P", 1206677463, "tonyd", "P", 1206678624, "tonyd", "P", 1206678642, "tonyd", "P", 1206678977, "tonyd", "P", 1206679001, "tonyd", "P", 1206679017, "tonyd", "P", 1206679040, "tonyd", "P", 1206679065, "tonyd", "P", 1206679096, "tonyd", "P", 1206679115, "tonyd", "P", 1206679150, "tonyd", "P", 1206679174, "tonyd", "P", 1206679189, "tonyd", "P", 1206679198, "tonyd", "P", 1206679318, "tonyd", "P", 1206679340, "tonyd", "P", 1206679365, "tonyd", "P", 1206679403, "tonyd", "P", 1206679447, "tonyd", "P", 1206679603, "tonyd", "P", 1206679718, "tonyd", "P", 1206679738, "tonyd", "P", 1206680209, "tonyd", "P", 1206681097, "tonyd", "P", 1206681154, "tonyd", "P", 1206684510, "tonyd", "P", 1206685742, "tonyd", "P", 1206760185, "tonyd", "P", 1206760199, "tonyd", "P", 1206760415, "tonyd", "P", 1206864124, "tonyd", "P", 1206864314, "tonyd", "P", 1206864854, "tonyd", "P", 1206864873, "tonyd", "P", 1206864998, "tonyd", "P", 1206865051, "tonyd", "P", 1206865132, "tonyd", "P", 1206865296, "tonyd", "P", 1206865430, "tonyd", "P", 1206865488, "tonyd", "P", 1206865533, "tonyd", "P", 1206865556, "tonyd", "P", 1206865591, "tonyd", "P", 1206866029, "tonyd", "P", 1206866147, "tonyd", "P", 1206866267, "tonyd", "P", 1206866301, "tonyd", "P", 1206866343, "tonyd", "P", 1206866357, "tonyd", "P", 1206866559, "tonyd", "P", 1206866714, "tonyd", "P", 1206866775, "tonyd", "P", 1206866845, "tonyd", "P", 1206866896, "tonyd", "P", 1206867057, "tonyd", "P", 1206867317, "tonyd", "P", 1206867662, "tonyd", "P", 1206867683, "tonyd", "P", 1206867705, "tonyd", "P", 1206867740, "tonyd", "P", 1206867771, "tonyd", "P", 1206867825, "tonyd", "P", 1206868087, "tonyd", "P", 1206868197, "tonyd", "P", 1206868233, "tonyd", "P", 1206868319, "tonyd", "P", 1206868410, "tonyd", "P", 1206868589, "tonyd", "P", 1206868607, "tonyd", "P", 1206868992, "tonyd", "P", 1206869061, "tonyd", "P", 1206869263, "tonyd", "P", 1206869314, "tonyd", "P", 1206869920, "tonyd", "P", 1206870064, "tonyd", "P", 1206870240, "tonyd", "P", 1206870252, "tonyd", "P", 1206870401, "tonyd", "P", 1206870481, "tonyd", "P", 1206870502, "tonyd", "P", 1206870524, "tonyd", "P", 1206870696, "tonyd", "P", 1206870745, "tonyd", "P", 1206870787, "tonyd", "P", 1206870800, "tonyd", "P", 1206870829, "tonyd", "P", 1206870847, "tonyd", "P", 1206870987, "tonyd", "P", 1206870992, "tonyd", "P", 1206871020, "tonyd", "P", 1206871078, "tonyd", "P", 1206871305, "tonyd", "P", 1206871331, "tonyd", "P", 1206871365, "tonyd", "P", 1206871441, "tonyd", "P", 1206871486, "tonyd", "P", 1206871564, "tonyd", "P", 1211014629, "tonyd", "P", 1211014720, "tonyd", "P", 1211014761, "tonyd", "P", 1211014764, "tonyd", "P", 1211014806, "tonyd", "P", 1211014832, "tonyd", "P", 1211015181, "tonyd", "P", 1211015320, "tonyd", "P", 1211015326, "tonyd", "P", 1211015360, "tonyd", "P", 1211015419, "tonyd", "P", 1211015454, "tonyd", "P", 1211015513, "tonyd", "P", 1211015526, "tonyd", "P", 1211015593, "tonyd", "P", 1211015618, "tonyd", "P", 1211015691, "tonyd", "P", 1211015716, "tonyd", "P", 1211015745, "tonyd", "P", 1211015760, "tonyd", "P", 1211016038, "tonyd", "P", 1211016121, "tonyd", "P", 1211016152, "tonyd", "P", 1211016185, "tonyd", "P", 1211016218, "tonyd", "P", 1211016235, "tonyd", "P", 1211016389, "tonyd", "P", 1211016427, "tonyd", "P", 1211016443, "tonyd", "P", 1211016454, "tonyd", "P", 1211016563, "tonyd", "P", 1211016763, "tonyd", "P", 1211016774, "tonyd", "P", 1211016781, "tonyd", "P", 1211016787, "tonyd", "P", 1211016796, "tonyd", "P", 1211016802, "tonyd", "P", 1211016902, "tonyd", "P", 1211016909, "tonyd", "P", 1211016922, "tonyd", "P", 1211016937, "tonyd", "P", 1211016947, "tonyd", "P", 1211016966, "tonyd", "P", 1211017024, "tonyd", "P", 1211017047, "tonyd", "P", 1211017162, "tonyd", "P", 1211017223, "tonyd", "P", 1211017303, "tonyd", "P", 1211017376, "tonyd", "P", 1211017509, "tonyd", "P", 1211017627, "tonyd", "P", 1211017861, "tonyd", "P", 1211017958, "tonyd", "P", 1211018810, "tonyd", "P", 1211019378, "tonyd", "P", 1211019589, "tonyd", "P", 1211019609, "tonyd", "P", 1211019681, "tonyd", "P", 1211019698, "tonyd", "P", 1211019707, "tonyd", "P", 1211019716, "tonyd", "P", 1211019825, "tonyd", "P", 1211019875, "tonyd", "P", 1211019886, "tonyd", "P", 1211019982, "tonyd", "P", 1211020129, "tonyd", "P", 1211020136, "tonyd", "P", 1211020159, "tonyd", "P", 1211020198, "tonyd", "P", 1211020250, "tonyd", "P", 1211020264, "tonyd", "P", 1211020274, "tonyd", "P", 1211020296, "tonyd", "P", 1211020303, "tonyd", "P", 1211020333, "tonyd", "P", 1211020345, "tonyd", "P", 1211020367, "tonyd", "P", 1211020386, "tonyd", "P", 1211020395, "tonyd", "P", 1211020404, "tonyd", "P", 1211020446, "tonyd", "P", 1211020491, "tonyd", "P", 1211020558, "tonyd", "P", 1211020589, "tonyd", "P", 1211020615, "tonyd", "P", 1211020632, "tonyd", "P", 1211020860, "tonyd", "P", 1211020882, "tonyd", "P", 1211072152, "tonyd", "P", 1211072170, "tonyd", "P", 1211072186, "tonyd", "P", 1211072195, "tonyd", "P", 1211072232, "tonyd", "P", 1211072254, "tonyd", "P", 1211072259, "tonyd", "P", 1211072270, "tonyd", "P", 1211072451, "tonyd", "P", 1211072455, "tonyd", "P", 1211072476, "tonyd", "P", 1211072595, "tonyd", "P", 1211072605, "tonyd", "P", 1211072620, "tonyd", "P", 1211072817, "tonyd", "P", 1211072859, "tonyd", "P", 1211072889, "tonyd", "P", 1211072914, "tonyd", "P", 1211073051, "tonyd", "P", 1211073080, "tonyd", "P", 1211073188, "tonyd", "P", 1211073205, "tonyd", "P", 1211073284, "tonyd", "P", 1211073653, "tonyd", "P", 1211073656, "tonyd", "P", 1211073918, "tonyd", "P", 1211073952, "tonyd", "P", 1211074016, "tonyd", "P", 1211074241, "tonyd", "P", 1211074294, "tonyd", "P", 1211074341, "tonyd", "P", 1211074355, "tonyd", "P", 1211076994, "tonyd", "P", 1211077007, "tonyd", "P", 1211077055, "tonyd", "P", 1211077193, "tonyd", "P", 1211077291, "tonyd", "P", 1211077316, "tonyd", "P", 1211077334, "tonyd", "P", 1211083059, "tonyd", "P", 1211083087, "tonyd", "P", 1211083137, "tonyd", "P", 1211083197, "tonyd", "P", 1211083337, "tonyd", "P", 1211083352, "tonyd", "P", 1211083373, "tonyd", "P", 1211083468, "tonyd", "P", 1211083667, "tonyd", "P", 1211083683, "tonyd", "P", 1211083773, "tonyd", "P", 1211083778, "tonyd", "P", 1211083848, "tonyd", "P", 1211083925, "tonyd", "P", 1211083952, "tonyd", "P", 1211083985, "tonyd", "P", 1211084001, "tonyd", "P", 1211084201, "tonyd", "P", 1211084257, "tonyd", "P", 1211084309, "tonyd", "P", 1211084332, "tonyd", "P", 1211084528, "tonyd", "P", 1211084719, "tonyd", "P", 1211084747, "tonyd", "P", 1211084758, "tonyd", "P", 1211084831, "tonyd", "P", 1211084863, "tonyd", "P", 1211085031, "tonyd", "P", 1211085076, "tonyd", "P", 1211085093, "tonyd", "P", 1211085381, "tonyd", "P", 1211085541, "tonyd", "P", 1211085721, "tonyd", "P", 1211086368, "tonyd", "P", 1211086708, "tonyd", "P", 1211086724, "tonyd", "P", 1211087401, "tonyd", "P", 1211087415, "tonyd", "P", 1211087574, "tonyd", "P", 1211087594, "tonyd", "P", 1211087646, "tonyd", "P", 1211087789, "tonyd", "P", 1211087828, "tonyd", "P", 1211089901, "tonyd", "P", 1211089934, "tonyd", "P", 1211089948, "tonyd", "P", 1211090279, "tonyd", "P", 1211090309, "tonyd", "P", 1211090363, "tonyd", "P", 1211090391, "tonyd", "P", 1211090574, "tonyd", "P", 1211090584, "tonyd", "P", 1211090591, "tonyd", "P", 1211090609, "tonyd", "P", 1211090628, "tonyd", "P", 1211090648, "tonyd", "P", 1211090694, "tonyd", "P", 1211090890, "tonyd", "P", 1211090905, "tonyd", "P", 1211090912, "tonyd", "P", 1211091015, "tonyd", "P", 1211091129, "tonyd", "P", 1211091171, "tonyd", "P", 1211091236, "tonyd", "P", 1211091453, "tonyd", "P", 1211091472, "tonyd", "P", 1211092551, "tonyd", "P", 1211092613, "tonyd", "P", 1211092655, "tonyd", "P", 1211092681, "tonyd", "P", 1211092697, "tonyd", "P", 1211092846, "tonyd", "P", 1211097073, "tonyd", "P", 1211097091, "tonyd", "P", 1211097119, "tonyd", "P", 1211097288, "tonyd", "P", 1211097362, "tonyd", "P", 1211097374, "tonyd", "P", 1212127230, "tonyd", "P", 1212127350, "tonyd", "P", 1212128187, "tonyd", "P", 1212128273, "tonyd", "P", 1212128389, "tonyd", "P", 1212128480, "tonyd", "P", 1212128625, "tonyd", "P", 1212128756, "tonyd", "P", 1212128835, "tonyd", "P", 1212131796, "tonyd", "P", 1212131851, "tonyd", "P", 1212131904, "tonyd", "P", 1212131979, "tonyd", "P", 1212132005, "tonyd", "P", 1212132331, "tonyd", "P", 1212132398, "tonyd", "P", 1212134847, "tonyd", "P", 1212134941, "tonyd", "P", 1212134956, "tonyd", "P", 1212394024, "tonyd", "P", 1212394120, "tonyd", "P", 1212394164, "tonyd", "P", 1212394283, "tonyd", "P", 1212394332, "tonyd", "P", 1212397132, "tonyd", "P", 1212397165, "tonyd", "P", 1212397198, "tonyd", "P", 1212397272, "tonyd", "P", 1212809410, "tonyd", "P", 1212810045, "tonyd", "P", 1212810332, "tonyd", "P", 1212811450, "tonyd", "P", 1212811616, "tonyd", "P", 1212811640, "tonyd", "P", 1212811929, "tonyd", "P", 1212812649, "tonyd", "P", 1212812764, "tonyd", "P", 1212812785, "tonyd", "P", 1212812864, "tonyd", "P", 1212812998, "tonyd", "P", 1212813080, "tonyd", "P", 1212813150, "tonyd", "P", 1212813372, "tonyd", "P", 1212813577, "tonyd", "P", 1212813625, "tonyd", "P", 1212813718, "tonyd", "P", 1212813775, "tonyd", "P", 1212813788, "tonyd", "P", 1212813894, "tonyd", "P", 1212813944, "tonyd", "P", 1212813979, "tonyd", "P", 1212813997, "tonyd", "P", 1212814012, "tonyd", "P", 1212814048, "tonyd", "P", 1212814082, "tonyd", "P", 1212814115, "tonyd", "P", 1212814220, "tonyd", "P", 1212814322, "tonyd", "P", 1212814354, "tonyd", "P", 1212814437, "tonyd", "P", 1212814500, "tonyd", "P", 1212814854, "tonyd", "P", 1212814893, "tonyd", "P", 1212814925, "tonyd", "P", 1212819481, "tonyd", "P", 1212825351, "tonyd", "P", 1212825389, "tonyd", "P", 1212825399, "tonyd", "P", 1212825424, "tonyd", "P", 1212825482, "tonyd", "P", 1212825594, "tonyd", "P", 1212825675, "tonyd", "P", 1212825854, "tonyd", "P", 1212826136, "tonyd", "P", 1213089721, "tonyd", "P", 1213089723, "tonyd", "P", 1213090825, "tonyd", "P", 1213090854, "tonyd", "P", 1213090874, "tonyd", "P", 1213090889, "tonyd", "P", 1213489964, "tonyd", "P", 1213490402, "tonyd", "P", 1213490538, "tonyd", "P", 1213490577, "tonyd", "P", 1213490795, "tonyd", "P", 1213491023, "tonyd", "P", 1213491123, "tonyd", "P", 1213491148, "tonyd", "P", 1213491196, "tonyd", "P", 1213491245, "tonyd", "P", 1213491318, "tonyd", "P", 1213491337, "tonyd", "P", 1213491391, "tonyd", "P", 1213492004, "tonyd", "P", 1213493890, "tonyd", "P", 1213493907, "tonyd", "P", 1213493933, "tonyd", "P", 1213494240, "tonyd", "P", 1213494448, "tonyd", "P", 1213494469, "tonyd", "P", 1213494517, "tonyd", "P", 1213494561, "tonyd", "P", 1213494624, "tonyd", "P", 1213494680, "tonyd", "P", 1213494962, "tonyd", "P", 1213495013, "tonyd", "P", 1213495045, "tonyd", "P", 1213495142, "tonyd", "P", 1213495165, "tonyd", "P", 1213495203, "tonyd", "P", 1213495245, "tonyd", "P", 1213495266, "tonyd", "P", 1213495342, "tonyd", "P", 1213496172, "tonyd", "P", 1213496397, "tonyd", "P", 1213501296, "tonyd", "P", 1213501342, "tonyd", "P", 1213501493, "tonyd", "P", 1213501683, "tonyd", "P", 1213501782, "tonyd", "P", 1213502134, "tonyd", "P", 1213506594, "tonyd", "P", 1213506756, "tonyd", "P", 1213506793, "tonyd", "P", 1213513082, "tonyd", "P", 1213513476, "tonyd", "P", 1213581352, "tonyd", "P", 1213581389, "tonyd", "P", 1213581478, "tonyd", "P", 1213581527, "tonyd", "P", 1213581569, "tonyd", "P", 1213581641, "tonyd", "P", 1213581655, "tonyd", "P", 1213581672, "tonyd", "P", 1213581749, "tonyd", "P", 1213581764, "tonyd", "P", 1213582169, "tonyd", "P", 1213586059, "tonyd", "P", 1213586098, "tonyd", "P", 1214533709, "tonyd", "P", 1214533730, "tonyd", "P", 1214534575, "tonyd", "P", 1214534583, "tonyd", "P", 1214535249, "tonyd", "P", 1214535256, "tonyd", "P", 1214535353, "tonyd", "P", 1214535538, "tonyd", "P", 1214536176, "tonyd", "P", 1214536611, "tonyd", "P", 1214536757, "tonyd", "P", 1214536915, "tonyd", "P", 1214536973, "tonyd", "P", 1214537062, "tonyd", "P", 1214537173, "tonyd", "P", 1214537227, "tonyd", "P", 1214537260, "tonyd", "P", 1214538137, "tonyd", "P", 1214538154, "tonyd", "P", 1214538243, "tonyd", "P", 1214538681, "tonyd", "P", 1214539557, "tonyd", "P", 1214540752, "tonyd", "P", 1214540978, "tonyd", "P", 1214541004, "tonyd", "P", 1214541055, "tonyd", "P", 1214542698, "tonyd", "P", 1214542862, "tonyd", "P", 1214553635, "tonyd", "P", 1214554107, "tonyd", "P", 1214556911, "tonyd", "P", 1214556963, "tonyd", "P", 1214557048, "tonyd", "P", 1214626358, "tonyd", "P", 1214626452, "tonyd", "P", 1214626490, "tonyd", "P", 1214626528, "tonyd", "P", 1214626589, "tonyd", "P", 1214626722, "tonyd", "P", 1214626745, "tonyd", "P", 1214626817, "tonyd", "P", 1214626853, "tonyd", "P", 1214626916, "tonyd", "P", 1214627143, "tonyd", "P", 1214627208, "tonyd", "P", 1214627885, "tonyd", "P", 1214627906, "tonyd", "P", 1214627932, "tonyd", "P", 1214628209, "tonyd", "P", 1214628293, "tonyd", "P", 1214629362, "tonyd", "P", 1214629483, "tonyd", "P", 1214629935, "tonyd", "P", 1214630083, "tonyd", "P", 1215319709, "tonyd", "P", 1215320537, "tonyd", "P", 1215320574, "tonyd", "P", 1215320619, "tonyd", "P", 1215320629, "tonyd", "P", 1215320720, "tonyd", "P", 1215320737, "tonyd", "P", 1215320806, "tonyd", "P", 1215320868, "tonyd", "P", 1215320886, "tonyd", "P", 1215320933, "tonyd", "P", 1215320942, "tonyd", "P", 1215320955, "tonyd", "P", 1215321027, "tonyd", "P", 1215321122, "tonyd", "P", 1215321305, "tonyd", "P", 1215321366, "tonyd", "P", 1215321406, "tonyd", "P", 1215321479, "tonyd", "P", 1215321697, "tonyd", "P", 1215321748, "tonyd", "P", 1215321895, "tonyd", "P", 1215322851, "tonyd", "P", 1215322992, "tonyd", "P", 1215323017, "tonyd", "P", 1215323095, "tonyd", "P", 1215323181, "tonyd", "P", 1215323225, "tonyd", "P", 1215323247, "tonyd", "P", 1215323258, "tonyd", "P", 1215323613, "tonyd", "P", 1215323739, "tonyd", "P", 1215324036, "tonyd", "P", 1215324075, "tonyd", "P", 1215324212, "tonyd", "P", 1215324232, "tonyd", "P", 1215324308, "tonyd", "P", 1215324677, "tonyd", "P", 1215341363, "tonyd", "P", 1215341391, "tonyd", "P", 1215341464, "tonyd", "P", 1215341579, "tonyd", "P", 1215341764, "tonyd", "P", 1215342284, "tonyd", "P", 1215343074, "tonyd", "P", 1215343393, "tonyd", "P", 1215345637, "tonyd", "P", 1215345685, "tonyd", "P", 1215345975, "tonyd", "P", 1215346233, "tonyd", "P", 1215349309, "tonyd", "P", 1215349505, "tonyd", "P", 1215349767, "tonyd", "P", 1215351423, "tonyd", "P", 1215353214, "tonyd", "P", 1215353307, "tonyd", "P", 1215353340, "tonyd", "P", 1215353341, "tonyd", "P", 1215353626, "tonyd", "P", 1215353653, "tonyd", "P", 1215353678, "tonyd", "P", 1215353707, "tonyd", "P", 1215353927, "tonyd", "P", 1215355167, "tonyd", "P", 1215355188, "tonyd", "P", 1215415999, "tonyd", "P", 1215416043, "tonyd", "P", 1215416073, "tonyd", "P", 1215416096, "tonyd", "P", 1215416140, "tonyd", "P", 1215419848, "tonyd", "P", 1215419883, "tonyd", "P", 1215419956, "tonyd", "P", 1215420585, "tonyd", "P", 1215831111, "tonyd", "P", 1215831298, "tonyd", "P", 1215831339, "tonyd", "P", 1215831362, "tonyd", "P", 1215831595, "tonyd", "P", 1215831605, "tonyd", "P", 1215831681, "tonyd", "P", 1215831739, "tonyd", "P", 1215831764, "tonyd", "P", 1215832034, "tonyd", "P", 1216022202, "tonyd", "P", 1216022235, "tonyd", "P", 1216022251, "tonyd", "P", 1216022282, "tonyd", "P", 1216433841, "tonyd", "P", 1216434045, "tonyd", "P", 1216434141, "tonyd", "P", 1216434451, "tonyd", "P", 1216434503, "tonyd", "P", 1216434641, "tonyd", "P", 1216434832, "tonyd", "P", 1216434915, "tonyd", "P", 1216435170, "tonyd", "P", 1216435238, "tonyd", "P", 1216435389, "tonyd", "P", 1216435483, "tonyd", "P", 1216435509, "tonyd", "P", 1216436563, "tonyd", "P", 1216519802, "tonyd", "P", 1216519829, "tonyd", "P", 1216519871, "tonyd", "P", 1216519907, "tonyd", "P", 1216519924, "tonyd", "P", 1217767186, "tonyd", "P", 1217767321, "tonyd", "P", 1217767332, "tonyd", "P", 1217768502, "tonyd", "P", 1217768575, "tonyd", "P", 1217768678, "tonyd", "P", 1217768752, "tonyd", "P", 1217768849, "tonyd", "P", 1217768916, "tonyd", "P", 1217769125, "tonyd", "P", 1217769464, "tonyd", "P", 1217769753, "tonyd", "P", 1217769814, "tonyd", "P", 1217769834, "tonyd", "P", 1217769866, "tonyd", "P", 1217770165, "tonyd", "P", 1217807493, "tonyd", "P", 1217807617, "tonyd", "P", 1217807629, "tonyd", "P", 1217807691, "tonyd", "P", 1217808219, "tonyd", "P", 1217808240, "tonyd", "P", 1217823648, "tonyd", "P", 1217823674, "tonyd", "P", 1217823785, "tonyd", "P", 1217823822, "tonyd", "P", 1217824107, "tonyd", "P", 1217824156, "tonyd", "P", 1217824240, "tonyd", "P", 1217824262, "tonyd", "P", 1217824267, "tonyd", "P", 1217824274, "tonyd", "P", 1217824306, "tonyd", "P", 1217824313, "tonyd", "P", 1217824363, "tonyd", "P", 1217824402, "tonyd", "P", 1217824422, "tonyd", "P", 1217824438, "tonyd", "P", 1217824446, "tonyd", "P", 1217824477, "tonyd", "P", 1217824503, "tonyd", "P", 1217824512, "tonyd", "P", 1217824527, "tonyd", "P", 1217824542, "tonyd", "P", 1217824554, "tonyd", "P", 1217824566, "tonyd", "P", 1217824578, "tonyd", "P", 1217824750, "tonyd", "P", 1217824922, "tonyd", "P", 1217824948, "tonyd", "P", 1217825027, "tonyd", "P", 1217825097, "tonyd", "P", 1217825112, "tonyd", "P", 1217825303, "tonyd", "P", 1217825341, "tonyd", "P", 1217825367, "tonyd", "P", 1217825404, "tonyd", "P", 1217825466, "tonyd", "P", 1217825478, "tonyd", "P", 1217825517, "tonyd", "P", 1217825542, "tonyd", "P", 1217825679, "tonyd", "P", 1217826844, "tonyd", "P", 1217826890, "tonyd", "P", 1217826921, "tonyd", "P", 1217826935, "tonyd", "P", 1217829106, "tonyd", "P", 1217829154, "tonyd", "P", 1217829221, "tonyd", "P", 1217829263, "tonyd", "P", 1218160163, "tonyd", "P", 1218160219, "tonyd", "P", 1218160269, "tonyd", "P", 1218160306, "tonyd", "P", 1218163066, "tonyd", "P", 1218163100, "tonyd", "P", 1219988695, "tonyd", "P", 1219988760, "tonyd", "P", 1219989993, "tonyd", "P", 1219990068, "tonyd", "P", 1219990224, "tonyd", "P", 1219992673, "tonyd", "P", 1220065387, "tonyd", "P", 1220065536, "tonyd", "P", 1220073304, "tonyd", "P", 1220085964, "tonyd", "P", 1220086118, "tonyd", "P", 1220087026, "tonyd", "P", 1220087079, "tonyd", "P", 1220087367, "tonyd", "P", 1220087411, "tonyd", "P", 1220087526, "tonyd", "P", 1220087593, "tonyd", "P", 1220087673, "tonyd", "P", 1220087833, "tonyd", "P", 1220087856, "tonyd", "P", 1220087891, "tonyd", "P", 1225427070, "tonyd", "P", 1225427091, "tonyd", "P", 1225427134, "tonyd", "P", 1225427151, "tonyd", "P", 1225427171, "tonyd", "P", 1225427215, "tonyd", "P", 1225427228, "tonyd", "P", 1225427613, "tonyd", "P", 1225427618, "tonyd", "P", 1225427699, "tonyd", "P", 1225430427, "tonyd", "P", 1225430875, "tonyd", "P", 1225431946, "tonyd", "P", 1225432529, "tonyd", "P", 1225432584, "tonyd", "P", 1225432593, "tonyd", "P", 1225432608, "tonyd", "P", 1225432639, "tonyd", "P", 1225432722, "tonyd", "P", 1225432744, "tonyd", "P", 1225432779, "tonyd", "P", 1225432856, "tonyd", "P", 1225432994, "tonyd", "P", 1225433013, "tonyd", "P", 1225433135, "tonyd", "P", 1225433177, "tonyd", "P", 1225433264, "tonyd", "P", 1225433416, "tonyd", "P", 1225433553, "tonyd", "P", 1225433566, "tonyd", "P", 1225433632, "tonyd", "P", 1225433698, "tonyd", "P", 1225433822, "tonyd", "P", 1225433831, "tonyd", "P", 1225433874, "tonyd", "P", 1225433907, "tonyd", "P", 1225433934, "tonyd", "P", 1225434012, "tonyd", "P", 1225434073, "tonyd", "P", 1225434111, "tonyd", "P", 1225434173, "tonyd", "P", 1225434183, "tonyd", "P", 1225434208, "tonyd", "P", 1225434430, "tonyd", "P", 1225434455, "tonyd", "P", 1225434577, "tonyd", "P", 1225434607, "tonyd", "P", 1225434639, "tonyd", "P", 1225434725, "tonyd", "P", 1225434751, "tonyd", "P", 1225434771, "tonyd", "P", 1225434811, "tonyd", "P", 1225434855, "tonyd", "P", 1225434870, "tonyd", "P", 1225434951, "tonyd", "P", 1225434958, "tonyd", "P", 1225434990, "tonyd", "P", 1225435124, "tonyd", "P", 1225435140, "tonyd", "P", 1225435175, "tonyd", "P", 1225435220, "tonyd", "P", 1225435260, "tonyd", "P", 1225435293, "tonyd", "P", 1225435349, "tonyd", "P", 1225435387, "tonyd", "P", 1225623460, "tonyd", "P", 1225623659, "tonyd", "P", 1225623725, "tonyd", "P", 1225623775, "tonyd", "P", 1225623806, "tonyd", "P", 1225623829, "tonyd", "P", 1225623857, "tonyd", "P", 1225623870, "tonyd", "P", 1225623905, "tonyd", "P", 1225623950, "tonyd", "P", 1225623977, "tonyd", "P", 1225624007, "tonyd", "P", 1225624184, "tonyd", "P", 1225624229, "tonyd", "P", 1225624257, "tonyd", "P", 1225624449, "tonyd", "P", 1225624636, "tonyd", "P", 1225624707, "tonyd", "P", 1225624778, "tonyd", "P", 1225624792, "tonyd", "P", 1225624872, "tonyd", "P", 1225624986, "tonyd", "P", 1225625145, "tonyd", "P", 1225625230, "tonyd", "P", 1225625306, "tonyd", "P", 1225625339, "tonyd", "P", 1225625358, "tonyd", "P", 1225625376, "tonyd", "P", 1225625417, "tonyd", "P", 1225625446, "tonyd", "P", 1225625486, "tonyd", "P", 1225625606, "tonyd", "P", 1225625634, "tonyd", "P", 1225625657, "tonyd", "P", 1225625762, "tonyd", "P", 1225626054, "tonyd", "P", 1225627888, "tonyd", "P", 1225628132, "tonyd", "P", 1225628176, "tonyd", "P", 1225628213, "tonyd", "P", 1225628235, "tonyd", "P", 1225629133, "tonyd", "P", 1225629164, "tonyd", "P", 1225629187, "tonyd", "P", 1225629225, "tonyd", "P", 1225629253, "tonyd", "P", 1225630099, "tonyd", "P", 1225630155, "tonyd", "P", 1225630672, "tonyd", "P", 1225630704, "tonyd", "P", 1225631320, "tonyd", "P", 1225631377, "tonyd", "P", 1225631452, "tonyd", "P", 1225631475, "tonyd", "P", 1225631827, "tonyd", "P", 1225631837, "tonyd", "P", 1225632025, "tonyd", "P", 1225632444, "tonyd", "P", 1225632702, "tonyd", "P", 1225632800, "tonyd", "P", 1225632898, "tonyd", "P", 1225632997, "tonyd", "P", 1225633082, "tonyd", "P", 1225633681, "tonyd", "P", 1225633700, "tonyd", "P", 1225633714, "tonyd", "P", 1225633828, "tonyd", "P", 1225634011, "tonyd", "P", 1225634538, "tonyd", "P", 1225634626, "tonyd", "P", 1225634853, "tonyd", "P", 1225635135, "tonyd", "P", 1225635147, "tonyd", "P", 1225635242, "tonyd", "P", 1225635350, "tonyd", "P", 1225706580, "tonyd", "P", 1225706723, "tonyd", "P", 1225706762, "tonyd", "P", 1225707155, "tonyd", "P", 1225707764, "tonyd", "P", 1225708919, "tonyd", "P", 1225709041, "tonyd", "P", 1225709080, "tonyd", "P", 1225709120, "tonyd", "P", 1225709375, "tonyd", "P", 1225716068, "tonyd", "P", 1225716195, "tonyd", "P", 1225718312, "tonyd", "P", 1225718328, "tonyd", "P", 1225885341, "tonyd", "P", 1225886544, "tonyd", "P", 1225886551, "tonyd", "P", 1225886617, "tonyd", "P", 1225886944, "tonyd", "P", 1225886993, "tonyd", "P", 1225887026, "tonyd", "P", 1225887260, "tonyd", "P", 1226290780, "tonyd", "P", 1226290865, "tonyd", "P", 1226291170, "tonyd", "P", 1226291505, "tonyd", "P", 1226291701, "tonyd", "P", 1226291741, "tonyd", "P", 1226291793, "tonyd", "P", 1226292318, "tonyd", "P", 1226292633, "tonyd", "P", 1226292799, "tonyd", "P", 1226292829, "tonyd", "P", 1226292921, "tonyd", "P", 1226292991, "tonyd", "P", 1226293031, "tonyd", "P", 1226293078, "tonyd", "P", 1226732766, "tonyd", "P", 1226733102, "tonyd", "P", 1226733985, "tonyd", "P", 1226734048, "tonyd", "P", 1226734182, "tonyd", "P", 1226815193, "tonyd", "P", 1226815334, "tonyd", "P", 1226815388, "tonyd", "P", 1226815407, "tonyd", "P", 1226815666, "tonyd", "P", 1226815902, "tonyd", "P", 1226816136, "tonyd", "P", 1226816182, "tonyd", "P", 1226816198, "tonyd", "P", 1226816239, "tonyd", "P", 1226816265, "tonyd", "P", 1226816482, "tonyd", "P", 1226816502, "tonyd", "P", 1226816902, "tonyd", "P", 1226817320, "tonyd", "P", 1226817588, "tonyd", "P", 1226817625, "tonyd", "P", 1226817812, "tonyd", "P", 1226817886, "tonyd", "P", 1226817940, "tonyd", "P", 1226817977, "tonyd", "P", 1226826437, "tonyd", "P", 1226826477, "tonyd", "P", 1226826866, "tonyd", "P", 1226826974, "tonyd", "P", 1226827020, "tonyd", "P", 1226827037, "tonyd", "P", 1226827102, "tonyd", "P", 1226827149, "tonyd", "P", 1226827163, "tonyd", "P", 1226827192, "tonyd", "P", 1226827216, "tonyd", "P", 1226827364, "tonyd", "P", 1226827412, "tonyd", "P", 1226827475, "tonyd", "P", 1226827581, "tonyd", "P", 1226827730, "tonyd", "P", 1226833463, "tonyd", "P", 1226833474, "tonyd", "P", 1226833627, "tonyd", "P", 1226833783, "tonyd", "P", 1226833798, "tonyd", "P", 1226833854, "tonyd", "P", 1226833890, "tonyd", "P", 1226834766, "tonyd", "P", 1226836078, "tonyd", "P", 1226837041, "tonyd", "P", 1226837078, "tonyd", "P", 1226837121, "tonyd", "P", 1226837163, "tonyd", "P", 1226837208, "tonyd", "P", 1226837241, "tonyd", "P", 1226837248, "tonyd", "P", 1226837299, "tonyd", "P", 1226837843, "tonyd", "E", 1226838240, "tonyd", "P", 1226838251, "tonyd", "P", 1226838298, "tonyd", "P", 1226838518, "tonyd", "P", 1226838552, "tonyd", "P", 1226838591, "tonyd", "P", 1226838612, "tonyd", "P", 1226838641, "tonyd", "P", 1226838754, "tonyd", "P", 1226838827, "tonyd", "P", 1226838915, "tonyd", "P", 1226838969, "tonyd", "P", 1226838987, "tonyd", "P", 1226839196, "tonyd", "P", 1226839410, "tonyd", "P", 1226839430, "tonyd", "P", 1226839657, "tonyd", "P", 1226839666, "tonyd", "P", 1226839745, "tonyd", "P", 1226839827, "tonyd", "P", 1226839844, "tonyd", "P", 1226839929, "tonyd", "P", 1226839953, "tonyd", "P", 1226839988, "tonyd", "P", 1226840030, "tonyd", "P", 1226840055, "tonyd", "P", 1226840078, "tonyd", "P", 1226840168, "tonyd", "P", 1226841003, "tonyd", "P", 1226841049, "tonyd", "P", 1226841095, "tonyd", "P", 1226841172, "tonyd", "P", 1226841234, "tonyd", "P", 1226841261, "tonyd", "P", 1226923749, "tonyd", "P", 1226924140, "tonyd", "P", 1226924167, "tonyd", "P", 1226924217, "tonyd", "P", 1226924245, "tonyd", "P", 1226924257, "tonyd", "P", 1226924397, "tonyd", "P", 1227368506, "tonyd", "P", 1227368597, "tonyd", "P", 1227368808, "tonyd", "P", 1227368837, "tonyd", "P", 1227368920, "tonyd", "P", 1227368951, "tonyd", "P", 1227369643, "tonyd", "P", 1227371558, "tonyd", "P", 1228780382, "tonyd", "E", 1229158894, "tonyd", "P", 1229158907, "tonyd", "P", 1229159170, "tonyd", "P", 1229159252, "tonyd", "P", 1229159280, "tonyd", "P", 1229159569, "tonyd", "P", 1229160961, "tonyd", "P", 1229160975, "tonyd", "P", 1229161118, "tonyd", "P", 1229161334, "tonyd", "P", 1229161425, "tonyd", "E", 1229161451, "tonyd", "P", 1229161512, "tonyd", "E", 1229161543, "tonyd", "P", 1229161572, "tonyd", "P", 1229161690, "tonyd", "P", 1229161775, "tonyd", "P", 1229161816, "tonyd", "P", 1229162074, "tonyd", "P", 1229162126, "tonyd", "P", 1229162150, "tonyd", "P", 1229162175, "tonyd", "P", 1229162222, "tonyd", "P", 1229162228, "tonyd", "P", 1229162497, "tonyd", "P", 1229162529, "tonyd", "P", 1229162577, "tonyd", "P", 1229162593, "tonyd", "P", 1229162613, "tonyd", "P", 1229162642, "tonyd", "P", 1229162647, "tonyd", "P", 1229162669, "tonyd", "P", 1229162705, "tonyd", "P", 1229162839, "tonyd", "P", 1229163380, "tonyd", "P", 1229163703, "tonyd", "P", 1229163890, "tonyd", "P", 1229163928, "tonyd", "P", 1229163995, "tonyd", "P", 1229164198, "tonyd", "P", 1229164427, "tonyd", "P", 1229164438, "tonyd", "P", 1229164638, "tonyd", "P", 1229164659, "tonyd", "P", 1229164724, "tonyd", "P", 1229164800, "tonyd", "P", 1229164909, "tonyd", "P", 1229165142, "tonyd", "P", 1229167972, "tonyd", "P", 1229167994, "tonyd", "P", 1229168053, "tonyd", "P", 1229168894, "tonyd", "P", 1229168946, "tonyd", "P", 1229169017, "tonyd", "P", 1229169056, "tonyd", "P", 1229169095, "tonyd", "P", 1229169211, "tonyd", "P", 1229169568, "tonyd", "P", 1229169581, "tonyd", "P", 1229169843, "tonyd", "P", 1229169882, "tonyd", "P", 1229170672, "tonyd", "P", 1229170937, "tonyd", "P", 1229171163, "tonyd", "P", 1229171256, "tonyd", "P", 1229171514, "tonyd", "P", 1229171691, "tonyd", "P", 1229171889, "tonyd", "P", 1229171950, "tonyd", "P", 1229172008, "tonyd", "P", 1229174741, "tonyd", "P", 1229174856, "tonyd", "P", 1229175080, "tonyd", "P", 1229175235, "tonyd", "P", 1229175446, "tonyd", "P", 1229228499, "tonyd", "P", 1229228547, "tonyd", "P", 1229228586, "tonyd", "P", 1229228618, "tonyd", "P", 1229229285, "tonyd", "P", 1229230393, "tonyd", "P", 1229230438, "tonyd", "P", 1229230664, "tonyd", "P", 1229230705, "tonyd", "P", 1229230736, "tonyd", "P", 1229230872, "tonyd", "P", 1229230914, "tonyd", "P", 1229230925, "tonyd", "P", 1229230949, "tonyd", "P", 1229230978, "tonyd", "P", 1229231019, "tonyd", "P", 1229231177, "tonyd", "P", 1229231238, "tonyd", "P", 1229231431, "tonyd", "P", 1229247753, "tonyd", "P", 1229247841, "tonyd", "P", 1229248074, "tonyd", "P", 1229248523, "tonyd", "P", 1229248783, "tonyd", "P", 1229249069, "tonyd", "P", 1229249729, "tonyd", "P", 1229249752, "tonyd", "P", 1229249790, "tonyd", "P", 1229249829, "tonyd", "P", 1229250742, "tonyd", "P", 1229250787, "tonyd", "P", 1229405644, "tonyd", "P", 1229405702, "tonyd", "P", 1229405723, "tonyd", "P", 1229405932, "tonyd", "P", 1229406003, "tonyd", "P", 1229406104, "tonyd", "P", 1229406195, "tonyd", "P", 1229406263, "tonyd", "P", 1229406308, "tonyd", "P", 1229406491, "tonyd", "P", 1229406515, "tonyd", "P", 1229406536, "tonyd", "P", 1229406669, "tonyd", "P", 1229406707, "tonyd", "P", 1229407106, "tonyd", "P", 1229407237, "tonyd", "P", 1229407282, "tonyd", "P", 1229407305, "tonyd", "P", 1229407316, "tonyd", "P", 1229407331, "tonyd", "P", 1229407351, "tonyd", "P", 1229407486, "tonyd", "P", 1229407558, "tonyd", "P", 1229407597, "tonyd", "P", 1229407666, "tonyd", "P", 1229407829, "tonyd", "P", 1229407953, "tonyd", "P", 1229408017, "tonyd", "P", 1229411112, "tonyd", "P", 1229411222, "tonyd", "P", 1229411302, "tonyd", "P", 1229411663, "tonyd", "P", 1229411744, "tonyd", "P", 1229411761, "tonyd", "P", 1229412206, "tonyd", "P", 1229412274, "tonyd", "P", 1229412356, "tonyd", "P", 1229412416, "tonyd", "P", 1229412526, "tonyd", "P", 1229412549, "tonyd", "P", 1229412593, "tonyd", "P", 1229412914, "tonyd", "P", 1229412971, "tonyd", "P", 1229412991, "tonyd", "P", 1229413005, "tonyd", "P", 1229413133, "tonyd", "P", 1229413162, "tonyd", "P", 1229413254, "tonyd", "P", 1229413334, "tonyd", "P", 1229416846, "tonyd", "P", 1229819539, "tonyd", "P", 1229819607, "tonyd", "P", 1229819648, "tonyd", "P", 1229819724, "tonyd", "P", 1229819751, "tonyd", "P", 1229819782, "tonyd", "P", 1229819814, "tonyd", "P", 1229819866, "tonyd", "P", 1229819930, "tonyd", "P", 1229819957, "tonyd", "P", 1229819991, "tonyd", "P", 1229820032, "tonyd", "P", 1229820098, "tonyd", "P", 1229820124, "tonyd", "P", 1229820144, "tonyd", "P", 1229820160, "tonyd", "P", 1229820182, "tonyd", "P", 1229820207, "tonyd", "P", 1229820239, "tonyd", "P", 1229820285, "tonyd", "P", 1229820361, "tonyd", "P", 1229820540, "tonyd", "P", 1229820766, "tonyd", "P", 1229820817, "tonyd", "P", 1229820981, "tonyd", "P", 1229821132, "tonyd", "P", 1231422963, "missk", "X", 1232189860, "tonyd", "P", 1232189961, "tonyd", "P", 1232189983, "tonyd", "P", 1232190069, "tonyd", "P", 1232190193, "tonyd", "P", 1232190225, "tonyd", "P", 1232190282, "tonyd", "P", 1232190314, "tonyd", "P", 1232190499, "tonyd", "P", 1232190555, "tonyd", "P", 1232190600, "tonyd", "P", 1232190673, "tonyd", "P", 1232190715, "tonyd", "P", 1232190745, "tonyd", "P", 1232190792, "tonyd", "P", 1232190819, "tonyd", "P", 1232191181, "tonyd", "P", 1232191218, "tonyd", "P", 1232191261, "tonyd", "P", 1232191426, "tonyd", "P", 1232191464, "tonyd", "P", 1232191581, "tonyd", "P", 1232191630, "tonyd", "P", 1232191672, "tonyd", "P", 1232191705, "tonyd", "P", 1232191732, "tonyd", "P", 1232191803, "tonyd", "P", 1232191902, "tonyd", "P", 1232192063, "tonyd", "P", 1232192096, "tonyd", "P", 1232192215, "tonyd", "P", 1232192316, "tonyd", "P", 1232192391, "tonyd", "P", 1232192414, "tonyd", "P", 1232192457, "tonyd", "P", 1232192479, "tonyd", "P", 1232192503, "tonyd", "P", 1232192541, "tonyd", "P", 1232192581, "tonyd", "P", 1232192595, "tonyd", "P", 1232192619, "tonyd", "P", 1232192637, "tonyd", "P", 1232192677, "tonyd", "P", 1232192923, "tonyd", "P", 1232193105, "tonyd", "P", 1232193134, "tonyd", "P", 1232193158, "tonyd", "P", 1232193187, "tonyd", "P", 1232193298, "tonyd", "P", 1232193321, "tonyd", "P", 1232193696, "tonyd", "P", 1232193744, "tonyd", "P", 1232193781, "tonyd", "P", 1232194011, "tonyd", "P", 1232194487, "tonyd", "P", 1232194524, "tonyd", "P", 1232758828, "tonyd", "X", 1235272701, "tonyd", "P", 1235274269, "tonyd", "P", 1235274339, "tonyd", "P", 1235274480, "tonyd", "P", 1235274526, "tonyd", "P", 1235274721, "tonyd", "P", 1235274804, "tonyd", "P", 1235275347, "tonyd", "P", 1235275384, "tonyd", "P", 1235275455, "tonyd", "P", 1235275522, "tonyd", "P", 1235275611, "tonyd", "P", 1235280565, "tonyd", "P", 1235280801, "tonyd", "P", 1235280854, "tonyd", "P", 1235280947, "tonyd", "P", 1235281102, "tonyd", "P", 1235281146, "tonyd", "P", 1235281228, "tonyd", "P", 1235281361, "tonyd", "P", 1235281481, "tonyd", "P", 1235295297, "tonyd", "P", 1235295347, "tonyd", "P", 1235295375, "tonyd", "P", 1235295598, "tonyd", "P", 1235295673, "tonyd", "P", 1235295886, "tonyd", "P", 1235296180, "tonyd", "P", 1235296260, "tonyd", "P", 1237000657, "tonyd", "P", 1237000731, "tonyd", "P", 1237001007, "tonyd", "P", 1237001027, "tonyd", "P", 1237001045, "tonyd", "P", 1237001097, "tonyd", "P", 1237001301, "tonyd", "P", 1237002138, "tonyd", "P", 1237002208, "tonyd", "P", 1237003147, "tonyd", "P", 1237003288, "tonyd", "P", 1237003456, "tonyd", "P", 1237003481, "tonyd", "P", 1237003535, "tonyd", "P", 1237003567, "tonyd", "P", 1237003581, "tonyd", "P", 1237003604, "tonyd", "P", 1237003619, "tonyd", "P", 1237003640, "tonyd", "P", 1237003666, "tonyd", "P", 1237003759, "tonyd", "P", 1237003775, "tonyd", "P", 1237003796, "tonyd", "P", 1237005477, "tonyd", "P", 1237008102, "tonyd", "P", 1237008400, "tonyd", "P", 1237008414, "tonyd", "P", 1237008549, "tonyd", "P", 1237009551, "tonyd", "P", 1237009804, "tonyd", "P", 1237009951, "tonyd", "P", 1237009971, "tonyd", "P", 1237009998, "tonyd", "P", 1237010041, "tonyd", "P", 1237010190, "tonyd", "P", 1237010230, "tonyd", "P", 1237010280, "tonyd", "P", 1237010317, "tonyd", "P", 1237010387, "tonyd", "P", 1237010467, "tonyd", "P", 1237012668, "tonyd", "P", 1237012919, "tonyd", "P", 1237031874, "tonyd", "P", 1237031910, "tonyd", "P", 1237031980, "tonyd", "P", 1237032226, "tonyd", "P", 1237032259, "tonyd", "P", 1237032286, "tonyd", "P", 1237034862, "tonyd", "P", 1237034890, "tonyd", "P", 1237035051, "tonyd", "P", 1237035145, "tonyd", "P", 1237035194, "tonyd", "P", 1237035249, "tonyd", "P", 1237035290, "tonyd", "P", 1237035493, "tonyd", "P", 1237036139, "tonyd", "P", 1237036165, "tonyd", "P", 1240180676, "tonyd", "E", 1240869468, "jominey", "E", 1240869748, "jominey", "E", 1245930829, "tonyd", "P", 1245930937, "tonyd", "P", 1245930980, "tonyd", "P", 1245931016, "tonyd", "P", 1245931084, "tonyd", "P", 1245931119, "tonyd", "P", 1245931368, "tonyd", "P", 1245931417, "tonyd", "P", 1245931520, "tonyd", "P", 1245991250, "tonyd", "P", 1246099712, "tonyd", "P", 1246099905, "tonyd", "P", 1246099935, "tonyd", "P", 1246100022, "tonyd", "P", 1246100066, "tonyd", "P", 1246100127, "tonyd", "P", 1246100295, "tonyd", "P", 1246100413, "tonyd", "P", 1246100443, "tonyd", "P", 1246100516, "tonyd", "P", 1246100535, "tonyd", "P", 1246100565, "tonyd", "P", 1246100651, "tonyd", "P", 1246100747, "tonyd", "P", 1246100765, "tonyd", "P", 1246100927, "tonyd", "P", 1246102179, "tonyd", "P", 1246102190, "tonyd", "P", 1246102219, "tonyd", "P", 1246102285, "tonyd", "P", 1246102309, "tonyd", "P", 1246102323, "tonyd", "P", 1246102336, "tonyd", "P", 1246102356, "tonyd", "P", 1246102396, "tonyd", "P", 1246102409, "tonyd", "P", 1246102416, "tonyd", "P", 1246102508, "tonyd", "P", 1246102566, "tonyd", "P", 1246102590, "tonyd", "P", 1246102608, "tonyd", "P", 1246102713, "tonyd", "P", 1246102732, "tonyd", "P", 1246102766, "tonyd", "P", 1246102794, "tonyd", "P", 1246102848, "tonyd", "P", 1246102958, "tonyd", "P", 1246102986, "tonyd", "P", 1246103074, "tonyd", "P", 1246103140, "tonyd", "P", 1246103292, "tonyd", "P", 1246103318, "tonyd", "P", 1246103404, "tonyd", "P", 1246103431, "tonyd", "P", 1246103447, "tonyd", "P", 1246103765, "tonyd", "P", 1246253869, "tonyd", "P", 1246253976, "tonyd", "P", 1246254020, "tonyd", "P", 1246254477, "tonyd", "P", 1246254615, "tonyd", "P", 1246254793, "tonyd", "P", 1246254940, "tonyd", "P", 1246255093, "tonyd", "P", 1246255602, "tonyd", "P", 1246255649, "tonyd", "P", 1246256120, "tonyd", "P", 1246257341, "tonyd", "P", 1246257414, "tonyd", "P", 1246257535, "tonyd", "P", 1246257609, "tonyd", "P", 1246257656, "tonyd", "P", 1246257747, "tonyd", "P", 1246257873, "tonyd", "P", 1246257928, "tonyd", "P", 1246260283, "tonyd", "P", 1246265343, "tonyd", "P", 1246265404, "tonyd", "P", 1246265482, "tonyd", "P", 1246265524, "tonyd", "P", 1246265687, "tonyd", "P", 1246265750, "tonyd", "P", 1246266003, "tonyd", "P", 1246266226, "tonyd", "P", 1246266613, "tonyd", "P", 1246266675, "tonyd", "P", 1246266812, "tonyd", "P", 1246267287, "tonyd", "P", 1246268235, "tonyd", "P", 1246268460, "tonyd", "P", 1246268540, "tonyd", "P", 1246269689, "tonyd", "P", 1246269864, "tonyd", "P", 1246276766, "tonyd", "P", 1246765692, "tonyd", "P", 1246765879, "tonyd", "P", 1246765998, "tonyd", "P", 1246766101, "tonyd", "P", 1246766442, "tonyd", "P", 1246766494, "tonyd", "P", 1246766521, "tonyd", "P", 1246766729, "tonyd", "P", 1246766768, "tonyd", "P", 1246767220, "tonyd", "P", 1246768989, "tonyd", "P", 1246769209, "tonyd", "P", 1247034761, "tonyd", "P", 1247226777, "tonyd", "P", 1247226832, "tonyd", "P", 1247226929, "tonyd", "P", 1252452015, "tonyd", "P", 1252869664, "jominey", "E", 1257470806, "jominey", "E", 1261796567, "tonyd", "P", 1261796649, "tonyd", "P", 1261796689, "tonyd", "P", 1261796726, "tonyd", "P", 1261796780, "tonyd", "P", 1261797208, "tonyd", "P", 1261798119, "tonyd", "P", 1261800258, "tonyd", "P", 1261800366, "tonyd", "P", 1261800406, "tonyd", "P", 1261800433, "tonyd", "P", 1261800459, "tonyd", "P", 1261800556, "tonyd", "P", 1261800751, "tonyd", "P", 1261801449, "tonyd", "P", 1261801917, "tonyd", "P", 1261802081, "tonyd", "P", 1261802238, "tonyd", "P", 1261802437, "tonyd", "P", 1261802454, "tonyd", "P", 1261802526, "tonyd", "P", 1261802918, "tonyd", "P", 1261802971, "tonyd", "P", 1261805404, "tonyd", "P", 1261805423, "tonyd", "P", 1261805491, "tonyd", "P", 1261806017, "tonyd", "P", 1261806066, "tonyd", "P", 1261806263, "tonyd", "P", 1261807800, "tonyd", "P", 1261808033, "tonyd", "P", 1261878464, "tonyd", "P", 1261878692, "tonyd", "P", 1261878804, "tonyd", "P", 1261878875, "tonyd", "P", 1261878944, "tonyd", "P", 1261879042, "tonyd", "P", 1261879107, "tonyd", "P", 1261879129, "tonyd", "P", 1261879166, "tonyd", "P", 1261879230, "tonyd", "P", 1261879242, "tonyd", "P", 1261879254, "tonyd", "P", 1261879302, "tonyd", "P", 1261879504, "tonyd", "P", 1261879520, "tonyd", "P", 1261879543, "tonyd", "P", 1261879611, "tonyd", "P", 1261879676, "tonyd", "P", 1261879687, "tonyd", "P", 1261879712, "tonyd", "P", 1261879724, "tonyd", "P", 1261879849, "tonyd", "P", 1261880048, "tonyd", "P", 1261880092, "tonyd", "P", 1261880143, "tonyd", "P", 1261880177, "tonyd", "P", 1261880212, "tonyd", "P", 1261880438, "tonyd", "P", 1261880605, "tonyd", "P", 1261880764, "tonyd", "P", 1261881205, "tonyd", "P", 1261900405, "tonyd", "P", 1261900638, "tonyd", "P", 1261900816, "tonyd", "P", 1261900868, "tonyd", "P", 1261900889, "tonyd", "P", 1261901774, "tonyd", "P", 1261901794, "tonyd", "P", 1262330054, "tonyd", "E", 1270340536, "jominey", "E", 1270340797, "jominey", "E", 1271543963, "jominey", "E", 1271544001, "jominey", "E", 1271544163, "jominey", "E", 1271544199, "jominey", "E", 1271544523, "jominey", "E", 1271544574, "jominey", "E", 1271544630, "jominey", "E", 1271544730, "jominey", "E", 1271544886, "jominey", "E", 1271544903, "jominey", "E", 1271544945, "jominey", "E", 1271544969, "jominey", "E", 1271545032, "jominey", "E", 1271545137, "jominey", "E", 1271545165, "jominey", "E", 1271545346, "jominey", "E", 1271545520, "jominey", "E", 1271545560, "jominey", "E", 1271545654, "jominey", "E", 1271545817, "jominey", "E", 1271546697, "jominey", "E", 1283994375, "jominey", "E", 1283994463, "jominey", "E", 1283994534, "jominey", "E", 1283994628, "jominey", "E", 1283994694, "jominey", "E", 1283994730, "jominey", "E", 1284696738, "jominey", "E", 1287591894, "jominey", "E", 1294384570, "jominey", "E", 1325552065, "jominey", "E", 1326691315, "tonyd", "P", 1326691424, "tonyd", "P", 1326691867, "tonyd", "P", 1326692615, "tonyd", "P", 1326692646, "tonyd", "P", 1326692662, "tonyd", "P", 1326692694, "tonyd", "P", 1326692794, "tonyd", "P", 1326693067, "tonyd", "P", 1326693076, "tonyd", "P", 1326693230, "tonyd", "P", 1326693247, "tonyd", "P", 1326694207, "tonyd", "P", 1326694342, "tonyd", "P", 1326694360, "tonyd", "P", 1326694424, "tonyd", "P", 1326694543, "tonyd", "P", 1326694569, "tonyd", "P", 1326694617, "tonyd", "P", 1326694940, "tonyd", "P", 1326694964, "tonyd", "P", 1326695003, "tonyd", "P", 1326695030, "tonyd", "P", 1326695041, "tonyd", "P", 1326695086, "tonyd", "P", 1326695095, "tonyd", "P", 1326695115, "tonyd", "P", 1326695215, "tonyd", "P", 1326695260, "tonyd", "P", 1326695391, "tonyd", "P", 1326695434, "tonyd", "P", 1326695542, "tonyd", "P", 1326695628, "tonyd", "P", 1338601153, "tonyd", "P", 1338601320, "tonyd", "P", 1338601523, "tonyd", "P", 1339761599, "tonyd", "E", 1344230654, "jominey", "E", 1344231206, "jominey", "E", 1344232351, "jominey", "E", 1344232733, "jominey", "E", 1344232791, "jominey", "E", 1436319438, "rorschakovacs", "E", 1436319545, "rorschakovacs", "E", 1436321643, "rorschakovacs", "E", 1436321688, "rorschakovacs", "E", 1461914904, "tonyd", "P", 1520468542, "jominey", "E", 1520468789, "jominey", "E", 1520469306, "jominey", "E", 1521492751, "jominey", "E", 1524325604, "jominey", "E", 1571339710, "jominey", "R", 1571339830, "jominey", "R", 1574872483, "jominey", "E", 1582669092, "jominey", "E", 1582773798, "jominey", "E", 1593278342, "jominey", "E", 1593278376, "jominey", "E", 1719008348, "annemairi", "E", 1719098716, "annemairi", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

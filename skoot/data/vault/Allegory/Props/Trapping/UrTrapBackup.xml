@@ -1,0 +1,482 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCraftingContainer)"/>
+    <Base:Bulk immobile="false" mass="0.005" density="1.4"/>
+    <Base:Container flexible="true" transparent-container="true" public-container="true" tight="false" capacity="1" maxweight="1" verb2="hold" verb3="holds"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="true">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="trap"/>
+            <Base:SName sname="snare"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="traps"/>
+            <Base:PName pname="snares"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.trait:ruined) | tripped|} $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="examine">
+             <a_or_an>$(this.trait:brief)</a_or_an>. $(this.trait:examine) {? | $(this.trait:ruined) | It has been tripped.|}
+          </Base:Description>
+          <Base:Description type="look">
+             <a_or_an>$(this.trait:brief)</a_or_an>. $(this.trait:examine) {? | $(this.trait:ruined) | It has been tripped.|}
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:objecttype">
+         "trap"
+      </Core:Property>
+      <Core:Property property="export:trait:quality">
+         5
+      </Core:Property>
+      <Core:Property property="merry:lib:dismantle_trap">
+         X[M] int roll, quality;
+
+/* Roll appropriate skill to determine success */
+roll = random(10);
+
+quality = Int(\$this."trait:quality");
+
+if(roll \> 4) \{
+    EmitTo(\$actor, TAG("You attempt to dismantle the trap but only end up destroying it.", "social:first"));
+    EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " attempts to dismantle " + Describe(\$this) + " but only ends up destroying it.", "social:third"), \$actor);
+    \$this."trait:quality" = 0;
+\} else \{
+    EmitTo(\$actor, TAG("You carefully dismantle the trap.", "social:first"));
+    EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " carefully dismantles " + Describe(\$this) + ".", "social:third"), \$actor);
+
+    /* Trap decay */
+    quality = Int(\$this."trait:quality");
+    \$this."trait:quality" = quality - 1;
+
+    /* Put it in actor's inventory */
+    \$this."base:immobile" = FALSE;
+    \$this."base:environment" = \$actor;
+
+    /* Remove the integration */
+    \$id = \$this.id;
+    Set(\$this."base:environment", "auto-trait:integration:" + \$id, nil);
+    Set(\$this, "base:integration", nil);
+    Set(\$this, "base:integration:local", nil);
+    \$this.id = nil;
+
+    \$this."trap:location" = nil;
+    \$this."trap:trapper" = nil;
+    \$this."trap:spotters" = nil;
+\}
+
+Call(\$this, "stop_timer");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:do_nothing">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_trap">
+         X[M] int i, skill, roll;
+object env;
+object* inventory;
+
+env = NRefOb(\$where[0]);
+
+if(env != \$actor."base:environment") return TRUE;
+
+
+/* Make sure there isn't already a trap here */
+inventory = env."base:inventory";
+for(i = 0; i \< sizeof(inventory); i++) \{
+    if(Str(inventory[i]."trait:objecttype") == "trap") \{
+        EmitTo(\$actor, "There is already a trap here.");
+        return FALSE;
+    \}
+\}
+
+/* We can put the trap here. */
+/* Roll to determine build quality */
+/* Higher quality builds last longer and are more effective */
+skill = Int(\$actor."skill:hunting:trapping");
+
+roll = Int(random(skill)/4);
+
+\$trap."build:quality" = roll;
+\$trap."trap:trapper" = \$actor;
+
+/* If anyone witnesses the setup, mark them as spotters. */
+inventory = env."base:inventory";
+\$trap."trap:spotters" = (\{ \});
+for(i = 0; i \< sizeof(inventory); i++) \{
+    if(inventory[i]."udat:possessed") \{
+        \$trap."trap:spotters" \|= (\{ inventory[i] \});
+    \}
+\}
+
+Call(\$trap, "start_timer");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_timer">
+         X[M] \$this."timer:id" = In("stop", Int(\$this."build:quality")*60*4);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:stop_timer">
+         X[M] if(\$this."timer:id") \{
+    Stop(\$this."timer:id");
+    \$this."timer:id" = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:trappable">
+         X[M] string trap;
+int roll, difficulty;
+
+/* Possessed things cannot get trapped */
+if(\$what."udat:possessed") return FALSE;
+
+if(\$what."trait:trappable") \{
+    trap = \$this."trait:trap:type";
+    if(member(trap, \$what."trait:trappable")) \{
+        /* Roll to see if the animal gets caught */
+        difficulty = Int(\$what."trapper:difficulty");
+        roll = random(10);
+        if(roll \> 4 \&\& \$this."build:quality" \>= difficulty) \{
+            /* Trap it */
+            /* This script is unique to each trap type */
+            Call(\$this, "stop_timer");
+            ::capture();
+        \} else \{
+            /* Does not get trapped. Treat it like any other thing passing through the exit. */
+            return FALSE;
+        \}
+    \}
+
+    return TRUE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:place-what">
+         X[M] object env;
+
+env = NRefOb(\$where[0]);
+
+if(Int(\$this."trait:quality") \<= 0 \|\| env != \$actor."base:environment") return TRUE;
+
+/* Immobilize and integrate it */
+\$this."base:immobile" = TRUE;
+
+\$id = random(100000);
+Set(\$this."base:environment", "auto-trait:integration:" + \$id, \$this);
+Set(\$this, "base:integration", "auto-trait:integration:" + \$id);
+Set(\$this, "base:integration:local", "auto-trait:integration:" + \$id);
+Set(\$this, "id", \$id);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:place-what">
+         X[M] int i, skill, roll;
+object env;
+string location;
+object* inventory;
+
+env = NRefOb(\$where[0]);
+
+if(env != \$actor."base:environment") return TRUE;
+
+/* If it's ruined, we can't do anything with it */
+if(Int(\$this."trait:quality") \<= 0) return TRUE;
+
+/* Make sure we are holding it. */
+if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You must be holding " + Describe(\$this) + " in order to set it up.");
+    return FALSE;
+\}
+
+/* Make sure there isn't already a trap by targeted detail. */
+location = NRefDetail(\$where[0]);
+inventory = env."base:inventory";
+for(i = 0; i \< sizeof(inventory); i++) \{
+    if(Str(inventory[i]."trap:location") == location) \{
+        EmitTo(\$actor, "There is already a trap there.");
+        return FALSE;
+    \}
+\}
+
+/* We can put the trap here. */
+/* Roll to determine build quality */
+/* Higher quality builds last longer and are more effective */
+skill = Int(\$actor."skill:hunting:trapping");
+
+roll = Int(random(skill)/4);
+
+if(roll == 0) \{
+    EmitTo(\$actor, "You can't quite get the trap placed right and have to start over.");
+    return FALSE;
+\}
+
+\$this."build:quality" = roll;
+\$this."trap:location" = location;
+\$this."trap:trapper" = \$actor;
+
+/* If anyone witnesses the setup, mark them as spotters. */
+inventory = env."base:inventory";
+\$this."trap:spotters" = (\{ \});
+for(i = 0; i \< sizeof(inventory); i++) \{
+    if(inventory[i]."udat:possessed") \{
+        \$this."trap:spotters" \|= (\{ inventory[i] \});
+    \}
+\}
+
+Call(\$this, "start_timer");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:place-where">
+         X[M] EmitTo(\$actor, "You can't put anything in there.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:release-dob">
+         X[M] object prey;
+
+/* Is the trap holding something? */
+if(!sizeof(\$this."base:inventory")) \{
+    EmitTo(\$actor, "The trap is empty. There is nothing to release.");
+    return FALSE;
+\}
+
+/* Move the contents to our inventory */
+prey = \$this."base:inventory"[0];
+
+EmitTo(\$actor, TAG("You release " + Describe(prey) + " from the trap.", "social:first"));
+EmitIn(\$this."base:environment", TAG(Describe(\$actor) + " releases" + Describe(prey) + " from the trap.", "social:third"), \$actor);
+Act(prey, "teleport", \$dest: \$actor, \$silently: TRUE);
+
+\$this."trait:quality" = 0;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] if(Int(\$this."trait:quality") \<= 0) return TRUE;
+
+/* Is the trap holding something? */
+if(sizeof(\$this."base:inventory")) \{
+    EmitTo(\$actor, "There is something in it. You should release it first.");
+    return FALSE;
+\}
+
+/* If the trap is already set up, it will be dismantled and possibly destroyed in the process */
+if(\$this."trap:location") \{
+    interaction::question(\$question: "If you dismantle the trap, it may be destroyed. Are you sure you want to do it?", \$expires: 60, \$env: "FALSE", \$a: "Yes", \$a_ob: this, \$a_fun: "dismantle_trap", \$b: "No", \$b_ob: this, \$b_fun: "do_nothing", \$expire_ob: this, \$expire_fun: "do_nothing");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take-from">
+         X[M] EmitTo(\$actor, "You must RELEASE your prey from the trap.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:zthrow-where">
+         X[M] EmitTo(\$actor, "You can't put anything in there.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quality">
+         X[M] if(\$this."trait:quality" == 0) \{
+    \$this."trait:trash" = 1;
+    \$this."trait:ruined" = 1;
+    Set(\$this, "details:default:adjective:ruined", TRUE);
+
+    /* Immobilize */
+    \$this."base:immobile" = FALSE;
+
+    /* Remove the integration */
+    if(\$this.id) \{
+        \$id = \$this.id;
+        Set(\$this."base:environment", "auto-trait:integration:" + \$id, nil);
+        Set(\$this, "base:integration", nil);
+        Set(\$this, "base:integration:local", nil);
+        \$this.id = nil;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:stop">
+         X[M] EmitIn(\$this."base:environment", TAG(Describe(\$this) + " falls apart.", "social:third"));
+\$this."trait:quality" = 0;
+::stop_timer();
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness-post:enter-from">
+         X[M] string location;
+object trapper;
+mixed* spotters, followers;
+int observation, luck;
+
+if(NRefOb(\$dest) != \$this."base:environment") return TRUE;
+
+location = \$this."trap:location";
+
+/* If the trap is ruined, ignore anyone getting close. */
+if(Int(\$this."trait:quality") == 0) \{
+    return TRUE;
+\}
+
+/* If this trap has captured something, ignore anyone getting close. */
+if(sizeof(\$this."base:inventory")) \{
+    return TRUE;
+\}
+
+/* Someone is approaching the trap */
+if(NRefDetail(\$dest) == location) \{
+    /* First check if it's trappable */
+    if(::trappable(\$what: \$actor)) \{
+        return TRUE;
+    \}
+
+    /* Not a trappable thing. Does the trap get destroyed? */
+
+    /* If it's the trapper, we will assume they know where it is and won't destroy it. */
+    trapper = \$this."trap:trapper";
+    if(\$actor == trapper) return TRUE;
+
+    /* Also take followers into consideration. */
+    followers = map_indices(trapper.followers);
+    if(member(\$actor, followers)) return TRUE;
+
+    /* Check for spotters */ 
+    spotters = \$this."trap:spotters";
+    if(member(\$actor, spotters)) return TRUE;
+
+    /* Roll luck. */
+    luck = random(10);
+    if(luck \> 7) return TRUE;
+
+    /* Failed all checks. Step on trap and destroy it. */
+    EmitTo(\$actor, TAG("Your foot gets caught on something but you easily yank it free.", "social:first"));
+    EmitIn(\$this."base:environment", TAG(Describe(\$actor) + " seems to get " + Str(\$actor."base:possessive") + " foot caught on something but easily yanks it free.", "social:third"));
+    \$this."trait:quality" = 0;
+    Call(\$this, "stop_timer");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness-post:examine">
+         X[M] /* How well hidden is it? */
+\$build = \$this."build:quality";
+
+if(ironclaw::roll_dicepool(\$roller: \$actor, \$skills: (\{ "trait:intelligence", "trait:perception" \}), \$rolltype: "target", \$target: \$build) \> 0) \{
+    \$delay(1, FALSE, "602e");
+    EmitTo(\$actor, "You spot " + Describe(\$this) + " near " + Describe(NewNRef(\$this."base:environment", \$this."trap:location")) + ".");
+    if(!\$this."trap:spotters") \$this."trap:spotters" = (\{ \});
+    \$this."trap:spotters" += (\{ \$actor \});
+\}
+      </Core:Property>
+      <Core:Property property="merry:witness:approach">
+         X[M] string location;
+object trapper;
+mixed* spotters, followers;
+int observation, luck;
+
+location = \$this."trap:location";
+
+/* If the trap is ruined, ignore anyone getting close. */
+if(Int(\$this."trait:quality") == 0) \{
+    return TRUE;
+\}
+
+/* If this trap has captured something, ignore anyone getting close. */
+if(sizeof(\$this."base:inventory")) \{
+    return TRUE;
+\}
+
+/* Someone is approaching the trap */
+if(NRefDetail(\$target) == location) \{
+    /* First check if it's trappable */
+    if(::trappable(\$what: \$actor)) \{
+        return FALSE;
+    \}
+
+    /* Not a trappable thing. Does the trap get destroyed? */
+
+    /* If it's the trapper, we will assume they know where it is and won't destroy it. */
+    trapper = \$this."trap:trapper";
+    if(\$actor == trapper) return TRUE;
+
+    /* Also take followers into consideration. */
+    followers = map_indices(trapper.followers);
+    if(member(\$actor, followers)) return TRUE;
+
+    /* Check for spotters */ 
+    spotters = \$this."trap:spotters";
+    if(member(\$actor, spotters)) return TRUE;
+
+    /* Roll observation. */
+    observation = random(10);
+    if(observation \> 4) return TRUE;
+
+    /* Roll luck. */
+    luck = random(10);
+    if(luck \> 4) return TRUE;
+
+    /* Failed all checks. Step on trap and destroy it. */
+    EmitTo(\$actor, TAG("Your foot gets caught on something but you easily yank it free.", "social:first"));
+    EmitIn(\$this."base:environment", TAG(Describe(\$actor) + " seems to get " + Str(\$actor."base:possessive") + " foot caught on something but easily yanks it free.", "social:third"));
+    \$this."trait:quality" = 0;
+    Call(\$this, "stop_timer");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1587746281, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

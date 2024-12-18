@@ -1,0 +1,286 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCrafting)"/>
+    <Base:Bulk immobile="false" mass="0.2" density="0.02"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="bandage"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="bandages"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="loose"/>
+          <Base:Adjective adjective="plain"/>
+          <Base:Adjective adjective="unattached"/>
+          <Base:Adjective adjective="unused"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.used) | $(this.bandage:used) } {? equal | $(this.trait:color) | none || $(this.trait:color) } {? equal | $(this.trait:material) | none || $(this.trait:material) } bandage
+          </Base:Description>
+          <Base:Description type="examine">
+             A {? equal | $(this.trait:color) | none || $(this.trait:color) } {? equal | $(this.trait:material) | none || $(this.trait:material) } bandage, prepared ready for first aid. <sbr/> <quality-full/> <sbr/> [OOC: To use the bandage APPLY it to someone's injured body part]
+          </Base:Description>
+          <Base:Description type="look">
+             A {? equal | $(this.trait:color) | none || $(this.trait:color) } {? equal | $(this.trait:material) | none || $(this.trait:material) } bandage.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="scar"/>
+      <Base:Covered value="wound"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:log:creator">
+         "Azrael"
+      </Core:Property>
+      <Core:Property property="export:nip:item:cost">
+         100
+      </Core:Property>
+      <Core:Property property="export:trait:color">
+         "thin"
+      </Core:Property>
+      <Core:Property property="export:trait:material">
+         "linen"
+      </Core:Property>
+      <Core:Property property="merry:lib:unbandage">
+         X[M] /* set the body part to be unbandaged */
+object victim;
+string detail, *list;
+int i, j;
+
+/* sanity checking */
+if(!\$dob \|\| !sizeof(\$dob)) return TRUE;
+
+/* what are they unbandaging? */
+/* should we unbandage everything? */
+if(sizeof(\$dob) == 1 \&\& NRefDetail(\$dob[0]) == "default") \{
+  /* targetting the whole object. Check if they were bandaged */
+  victim = NRefOb(\$dob[0]);
+  \$tmp_map = map_indices(prefixed_map(Get(victim, "*"), "bandage:"));
+  list = (\{ \});
+  for(i=0;i\<sizeof(\$tmp_map);i++) \{
+    if(sscanf(\$tmp_map[i], "bandage:%s", \$tmp))
+      list \|= (\{ \$tmp \});
+  \}
+  if(sizeof(list)) \{
+    /* retarget \$dob to be the bandaged locations */
+    \$dob = (\{ \});
+    for(i=0;i\<sizeof(list);i++) \{
+      \$dob \|= (\{ NewNRef(victim, list[i]) \});
+    \}
+  \}
+\}
+
+/* loop through unbandaging each detail */
+for(i=0;i\<sizeof(\$dob);i++) \{
+  victim = NRefOb(\$dob[i]);
+  detail = NRefDetail(\$dob[i]);
+  /* check there is a bandage here */
+  \$bandage = Get(victim, "bandage:"+detail);
+
+  if(\$bandage) \{
+    /* remove the bandage */
+    Set(victim, "combat:injury:"+detail+":adjectives", nil);
+    /* EXTENSION - should be able to keep combat:injury:detail:adjectives after a bandage/unbandage */
+    for(j=0;j\<sizeof(Arr(\$bandage[0]));j++)
+     Set(victim, "details:"+detail+":adjective:"+Arr(\$bandage[0])[j], nil);
+    for(j=0;j\<sizeof(Arr(\$bandage[1]));j++)
+     Set(victim, "details:"+detail+":sname:"+Arr(\$bandage[1])[j], nil);
+    for(j=0;j\<sizeof(Arr(\$bandage[2]));j++)
+     Set(victim, "details:"+detail+":pname:"+Arr(\$bandage[2])[j], nil);
+
+    /* now set the injuries to not be bandaged anymore */
+    Set(victim, "bandage:"+detail, nil);
+    \$injury = Get(victim, "combat:injury:"+detail);
+    if(\$injury) \{
+     \$injury["bandaged"] = nil;
+     Set(victim, "combat:injury:"+detail, \$injury);
+    \}
+
+    /* and describe the injuries on this body part again */
+    /*Call(\$\{Ironclaw:Lib:Characters:Injuries\}, "describe-wound", \$detail: \$dob[i]);*/
+  \}
+\}
+
+return TRUE;
+
+EmitTo(\$actor, dump_value(\$dob));
+return TRUE;
+
+
+
+if(!\$injury) \$injury = ([ ]);
+\$injury["bandaged"] = (\{ i, \$this."trait:material", \$this."trait:color", "bandage" \});
+Set(NRefOb(\$iob[0]), "combat:injury:"+NRefDetail(\$iob[0]), \$injury);
+return TRUE;
+
+/* mark this detail as bandaged */
+/*Set(victim, "combat:injury:"+detail+":bandaged", i);
+Set(victim, "combat:injury:"+detail+":bandagename", Describe(\$this, nil, nil, STYLE_NONPOSS));
+Set(victim, "combat:injury:"+detail, "been bandaged with "+Describe(\$this, nil, nil, STYLE_NONPOSS));
+Set(victim, "combat:injury:"+detail+":adjectives", "bandaged");*/
+Set(victim, "details:"+detail+":adjective:bandaged", TRUE);
+Set(victim, "details:"+detail+":sname:bandage", TRUE);
+Set(victim, "details:"+detail+":pname:bandages", TRUE);
+
+Set(victim, "bandage:"+detail, (\{ "bandaged", "bandage", "bandages" \}) );
+
+
+
+
+/* loop through unbandaging each detail */
+for(i=0;i\<sizeof(\$dob);i++) \{
+  victim = NRefOb(\$dob[i]);
+  detail = NRefDetail(\$dob[i]);
+  /* check there is a bandage here */
+  if(typeof(Get(victim, "combat:injury:"+detail+":bandaged")) != T_NIL) \{
+    /* remove the bandage */
+    Set(victim, "combat:injury:"+detail+":bandaged", nil);
+    Set(victim, "combat:injury:"+detail+":bandagename", nil);
+    Set(victim, "details:"+detail+":adjective:grubby", nil);
+    Set(victim, "details:"+detail+":adjective:grubbily", nil);
+    Set(victim, "details:"+detail+":adjective:bandaged", nil);
+    Set(victim, "details:"+detail+":sname:bandage", nil);
+    Set(victim, "details:"+detail+":pname:bandages", nil);
+    /* now set the injuries to not be bandaged anymore */
+    if(victim."combat:injuries" \&\& victim."combat:injuries"[detail]) \{
+      for(j=0;j\<sizeof(victim."combat:injuries"[detail]);j++) \{
+        victim."combat:injuries"[detail][j]["bandaged"] = nil;
+      \}
+    \}
+    /* and describe the injuries on this body part again */
+    /*Call(\$\{Ironclaw:Lib:Characters:Injuries\}, "describe-wound", \$detail: \$dob[i]);*/
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:apply-dob">
+         X[M] /* set the body part to be bandaged */
+object victim;
+string detail;
+int i;
+
+/* sanity checking already done in the pre script */
+
+victim = NRefOb(\$iob[0]);
+detail = NRefDetail(\$iob[0]);
+
+/* what level of quality the bandaging? */
+i= ironclaw::roll(\$roller: \$actor, \$skills: (\{ "mental:first-aid" \}), \$bonus: "trait:mind");
+if(\$this."trait:quality" \&\& \$this."trait:quality" \< i) i = \$this."trait:quality";
+
+if(!\$injury) \$injury = ([ ]);
+\$injury["bandaged"] = (\{ i, \$this."trait:material", \$this."trait:color", "bandage" \});
+Set(NRefOb(\$iob[0]), "combat:injury:"+NRefDetail(\$iob[0]), \$injury);
+
+/* mark this detail as bandaged */
+/*Set(victim, "combat:injury:"+detail+":bandaged", i);
+Set(victim, "combat:injury:"+detail+":bandagename", Describe(\$this, nil, nil, STYLE_NONPOSS));
+Set(victim, "combat:injury:"+detail, "been bandaged with "+Describe(\$this, nil, nil, STYLE_NONPOSS));*/
+Set(victim, "combat:injury:"+detail+":adjectives", "bandaged");
+Set(victim, "details:"+detail+":adjective:bandaged", TRUE);
+Set(victim, "details:"+detail+":sname:bandage", TRUE);
+Set(victim, "details:"+detail+":pname:bandages", TRUE);
+
+Set(victim, "bandage:"+detail, (\{ "bandaged", "bandage", "bandages" \}) );
+
+
+
+/*Call(\$\{Ironclaw:Lib:Characters:Injuries\}, "describe-wound", \$detail: \$iob[0]);*/
+
+/* and the bandage is now on them. So slay it */
+Slay(\$this);
+
+if(victim.isbleeding) \{
+    if(FindMerry(victim, "lib", "bleed_stop" )) \{
+        Call(victim, "bleed_stop", \$actor: victim, \$bodypart: detail);
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:apply-dob">
+         X[M] /* check that they are applying the bandage to a valid target */
+
+if(\$this."base:environment" != \$actor) \{
+  EmitTo(\$actor, "You must be holding a bandage to apply it.");
+  return FALSE;
+\}
+
+/* check that they are applying it to only one thing */
+if(\$iob \&\& (sizeof(\$iob) == 1)) \{
+  /* check they are targetting a character */
+  if(!NRefOb(\$iob[0])."udat:possessed") \{
+    EmitTo(\$actor, "You can't apply a bandage to "+Describe(\$iob[0])+".");
+    return FALSE;
+  \}
+  /* check they aren't targetting the default detail */
+  if(NRefDetail(\$iob[0]) == "default") \{
+    EmitTo(\$actor, "What body part do you intend to apply the bandage to?");
+    return FALSE;
+  \}
+  /* check that they don't already have a bandage */
+  \$injury = Get(NRefOb(\$iob[0]), "combat:injury:"+NRefDetail(\$iob[0]));
+  if(\$injury \&\& \$injury["bandaged"]) \{
+    EmitTo(\$actor, Describe(\$iob[0], nil, \$actor)+" is already bandaged.");
+    return FALSE;
+  \}
+  return TRUE;
+\} else if(\$iob \&\& (sizeof(\$iob) \>= 1)) \{
+  EmitTo( \$actor, "You may only apply " +Describe(this, nil, \$actor)+" to one person at a time." );
+  return FALSE;
+\} else \{
+  EmitTo( \$actor, "What do you intend to apply " +Describe(this, nil, \$actor)+" to?" );
+  return FALSE;
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1568843644, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

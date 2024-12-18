@@ -1,0 +1,1238 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="log:creator">"Combat"</Core:Property>
+      <Core:Property property="merry:act-post:command%combat">
+         X[M] /* was the verb a combat action? */
+\$debug = nil;
+\$debug = \$actor;
+
+if(!\$actor.combat
+\|\| !\$actor.combat["combatants"]
+\|\| sizeof(\$actor.combat["combatants"]) \< 2) return TRUE;
+
+/* Can only do these if they have a free action */
+if(\$actor."combat:actions" \&\& \$actor."combat:actions" \>= 1) \{
+  switch(\$verb) \{
+  case "focus":
+    if(\$actor."combat:state:focused") \{
+      EmitTo(\$actor, "You are already focused.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    if(\$actor."combat:actions" \< 2) \{
+      EmitTo(\$actor, "You need two free actions to focus properly during combat.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    \$actor."combat:state:focused" = TRUE;
+    /* charge an extra action for focus */
+    \$actor."combat:actions"--;
+    combat::action_complete();
+    return TRUE;
+    break;
+  case "aim":
+    if(\$actor."combat:state:aiming") \{
+      EmitTo(\$actor, "You have already aimed.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    \$actor."combat:state:aiming" = TRUE;
+    combat::action_complete();
+    return TRUE;
+    break;
+  case "guard":
+    if(\$actor."combat:state:guarding") \{
+      EmitTo(\$actor, "You are already guarding.");
+      combat::list_actions(\$fighter: \$actor);
+      return TRUE;
+    \}
+    \$actor."combat:state:guarding" = TRUE;
+    combat::action_complete();
+    return TRUE;
+    break;
+  case "rally":
+    return TRUE;
+    if(!\$dob)\{
+      EmitTo(\$actor, "Who do you want to rally?");
+      return TRUE;
+    \}
+    if(sizeof(\$dob) != 1)\{
+      EmitTo(\$actor, "You can only rally one ally at a time.");
+      return TRUE;
+    \}
+    /* Make dice roll to see how effective the rallying was */
+
+    /* If the rallying was successful, remove the afraid state */
+    if(TRUE) \{
+      combat::set_state(\$char: NRefOb(\$dob[0]), \$state: "unafraid");
+    \}
+    combat::action_complete();
+    return TRUE;
+    break;
+  default:
+    return TRUE;
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:breakcombat">
+         X[M] /* attempting to break from combat */
+
+EmitTo(\$actor, "Attempting to break from combat");
+/* is anyone still targetting us? */
+if(!\$actor.combat \|\| !\$actor.combat["combatants"]) \{
+ EmitTo(\$actor, "You are not in combat.");
+ return FALSE;
+\}
+/* sanity check */
+\$actor.combat["combatants"] -= (\{ nil \});
+
+\$blockers = (\{\});
+for(\$i=0;\$i\<sizeof(\$actor.combat["combatants"]);\$i++) \{
+ if(\$actor.combat["combatants"][\$i].combat) \{
+  if(\$actor.combat["combatants"][\$i].combat["newtarget"] == \$actor \|\|
+  (!\$actor.combat["combatants"][\$i].combat["newtarget"] \&\& \$actor.combat["combatants"][\$i].combat["target"] == \$actor))
+   if(\$actor.combat["combatants"][\$i]."base:environment" == \$actor."base:environment") \{
+    \$blockers \|= (\{ \$actor.combat["combatants"][\$i] \});
+   \}
+ \}
+\}
+if(sizeof(\$blockers)) \{
+ \$message = "You cannot break from combat while ";
+ if(sizeof(\$blockers) \> 1) \{
+  \$message += Describe(\$blockers)+" are";
+ \} else \{
+  \$message += Describe(\$blockers)+" is";
+ \}
+ \$message += " fighting you.";
+ EmitTo(\$actor, \$message);
+ EmitTo(\$actor, "You have switched to breakcombat mode, and will break from combat if you successfully retreat from the fight, or if the opponents fighting you break from combat or change targets.");
+ for(\$i=0;\$i\<sizeof(\$blockers);\$i++) \{
+  EmitTo(\$blockers[\$i], Describe(\$actor)+" attempts to break from combat, but cannot while you are targeting "+\$actor."base:objective"+".");
+ \}
+ \$actor.combat["mode"] = "breakcombat";
+ \$actor.combat["target"] = nil;
+ \$actor.combat["newtarget"] = nil;
+
+ return FALSE;
+\}
+
+EmitTo(\$actor, TAG("You see an opportunity, and break from combat.", "IMP"));
+Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "remove_from_combat", \$fighter: \$actor);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:command%combat">
+         X[M] /* was the verb a combat action? */
+int i;
+\$debug = nil;
+
+if(!\$actor.combat
+\|\| !\$actor.combat["combatants"]
+\|\| sizeof(\$actor.combat["combatants"]) \< 2) return TRUE;
+
+\$debug = \$\{Chatters:AE:az:azrael\};
+/* Can only do these if they have a free action */
+if(\$actor."combat:actions" \&\& \$actor."combat:actions" \>= 1) \{
+  switch(\$verb) \{
+  case "attack":
+    if(!\$dob) return TRUE;
+    if(!\$using) return TRUE;
+    return combat::hit_attempt(\$fighter: \$actor, \$target: \$dob[0], \$weapon: \$using[0]);
+  case "punch":
+    if(!\$dob) return TRUE;
+    return combat::hit_attempt(\$fighter: \$actor, \$target: \$dob[0], \$weapon: \$\{Ironclaw:Lib:Combat:New:UrPunch\});
+  case "rally":
+    if(!\$dob) return TRUE;
+    return combat::action_rally(\$fighter: \$actor, \$target: \$dob);
+  \}
+\} else \{
+  /* Can't do these verbs without actions */
+  switch(\$verb) \{
+  case "rally":
+    if(!\$dob) return TRUE;
+    EmitTo(\$actor, "You cannot rally your allies at the moment. Wait until some actions have been assigned to you.");
+    return FALSE;
+  \}
+\}
+
+/* Certain actions should give an error message if done during combat */
+switch(\$verb) \{
+case "attack":
+  if(!\$dob) return TRUE;
+  if(!\$using) return TRUE;
+  EmitTo(\$actor, "You cannot attack at the moment. Wait until some actions have been assigned to you.");
+  return FALSE;
+case "punch":
+  if(!\$dob) return TRUE;
+  EmitTo(\$actor, "You cannot attack at the moment. Wait until some actions have been assigned to you.");
+  return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:fight">
+         X[M] /* start (or join) a fight using the combat system */
+if(!\$dob) \{
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+\}
+\$target = NRefOb(\$dob[0]);
+if(!\$target."combat:fightable") \{
+ EmitTo(\$actor, "You cannot fight "+Describe(\$target, nil, \$actor)+".");
+ return FALSE;
+\}
+
+if(\$actor == \$target) \{
+ EmitTo(\$actor, "You cannot fight yourself.");
+ return FALSE;
+\}
+
+if(\$actor."combat:state:dying" \|\| \$actor."combat:state:dead") \{
+ EmitTo(\$actor, "You are way, WAY too injured to continue fighting.");
+ return FALSE;
+\}
+
+if(!\$actor."base:environment"."area:dangerarea"
+\&\& (\$target."combat:state:dying" \|\| \$target."combat:state:dead")) \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+
+/* Sanity check */
+if(!\$actor."base:environment") return FALSE;
+
+/* If they are in a danger zone, then they don't get asked if they want to fight or not. They have no choice. */
+if(\$actor."base:environment"."area:dangerarea") \{
+ combat::start_fight_victimcheck();
+ return FALSE;
+\}
+
+/* if they're already fighting, don't ask about injuries */
+if(\$actor.combat \&\& \$actor.combat["combatants"] \&\& sizeof(\$actor.combat["combatants"]) \> 1) \{
+ combat::start_fight_victimcheck();
+ return FALSE;
+\}
+
+/* If they are an NPC, don't ask them any questions. */
+if(!\$actor."udat:object") \{
+ combat::start_fight_victimcheck();
+ return FALSE;
+\}
+
+/* If they have already used their gift that stops them dying, warn them that they might die */
+/* NOT WRITTEN YET */
+
+/* If they're already quite injured, let them know that they risk further injuries */
+if(\$actor."combat:state:injured") \{
+  /* warn that they're risking long term injuries and death */
+  interaction::question(\$actor: \$actor, \$question: "You are already quite injured. If you continue to fight, you risk suffering a long term injury, or possibly death. Are you sure you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$yes_fun: "start_fight_victimcheck", \$no: "", \$expire: "", \$par: ([ "target":\$target]));
+  return FALSE;
+\}
+
+combat::start_fight_victimcheck();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:act-pre:pass">
+         X[M] /* passing in combat */
+if(!\$actor \|\| !\$actor.combat) return TRUE;
+
+if(!\$actor."combat:actions" \|\| \$actor."combat:actions" \< 0) \{
+ EmitTo(\$actor, "No need to pass, you don't have any combat actions at the moment.");
+ return FALSE;
+\}
+
+EmitTo(\$actor, TAG("You pass, deciding not to use your remaining combat actions.", "imp"));
+
+\$actor.combat["id"] = nil;
+\$actor."combat:actions" = 0;
+
+combat::loop(\$scriptrunner: \$actor);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:action_complete">
+         X[M] /* The PC has completed a combat action */
+if(!\$actor."combat:actions") \$actor."combat:actions" = 0;
+
+/* remove one of their actions */
+\$actor."combat:actions"--;
+
+/* Either list remaining actions, or assign actions to someone else */
+::list_actions(\$fighter: \$actor);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:action_rally">
+         X[M] /* Attempt to rally an ally */
+
+/* Are they just asking if a rally action can be taken? */
+if(\$validcheck) \{
+  /* Cannot rally anyone if you are afraid, berserk, confused, enraged, terrified, or otherwise not in their right mindset */
+  if(\$fighter."combat:state:afraid") return FALSE;
+  if(\$fighter."combat:state:berserk") return FALSE;
+  if(\$fighter."combat:state:confused") return FALSE;
+  if(\$fighter."combat:state:enraged") return FALSE;
+  if(\$fighter."combat:state:terrified") return FALSE;
+  return TRUE;
+\}
+
+/* Can the fighter take a rally action? */
+/* Cannot rally anyone if you are afraid, berserk, confused, enraged, terrified, or otherwise not in their right mindset */
+if(\$fighter."combat:state:afraid") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are afraid.");
+  return FALSE;
+\} else if(\$fighter."combat:state:berserk") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are berserk.");
+  return FALSE;
+\} else if(\$fighter."combat:state:confused") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are confused.");
+  return FALSE;
+\} else if(\$fighter."combat:state:enraged") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are enraged.");
+  return FALSE;
+\} else if(\$fighter."combat:state:terrified") \{
+  EmitTo(\$fighter, "You cannot rally anyone else while you are terrified.");
+  return FALSE;
+\}
+
+
+if(!\$fighter."combat:actions" \|\| \$fighter."combat:actions" \< 1) \{
+  EmitTo(\$fighter, "You cannot rally your allies at the moment. Wait until some actions have been assigned to you.");
+  combat::action_complete();
+  return FALSE;
+\}
+
+if(!\$dob)\{
+  EmitTo(\$fighter, "Who do you want to rally?");
+  return FALSE;
+\}
+if(sizeof(\$dob) != 1)\{
+  EmitTo(\$fighter, "You can only rally one ally at a time.");
+  return FALSE;
+\}
+
+/* Make dice roll to see how effective the rallying was */
+
+/* If the rallying was successful, remove the afraid state */
+/* EXTENSION: When we add the will attribute, remove the trait:mind attribute! */
+if( ironclaw::roll_dicepool(\$roller: \$fighter, \$skills: (\{ "trait:mind", "trait:will", "leadership" \}), \$rolltype: "target", \$target: 3) \> 0) \{
+  combat::set_state(\$char: NRefOb(\$dob[0]), \$state: "unafraid");
+\} else \{
+  \$adverb = "unsuccessfully";
+\}
+
+combat::action_complete(\$actor: \$fighter);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:assign_actions">
+         X[M] /* Nobody has any combat actions. Assign some */
+object fighter, target;
+int i, sz, highest;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+if(!\$combatants) return nil;
+/* sanity check, remove nil combatants */
+\$combatants -= (\{ nil \});
+
+EmitTo(\$az, "Choosing combatant");
+
+/* choose a combatant to get actions */
+fighter = nil;
+/*EmitTo(\$actor, "combatants are "+dump_value(\$combatants));*/
+/* pick someone to give actions to */
+while(!fighter) \{
+ /* check we have enough fighters */
+ if(sizeof(\$combatants) \<= 1) \{
+  if(sizeof(\$combatants)) \{
+   if(\$combatants[0].combat["mode"] == "breakcombat") \{
+    EmitTo(\$combatants[0], "You see an opportunity and break from combat.");
+   \} else \{
+    EmitTo(\$combatants[0], "You are the last one standing in the fight.");
+   \}
+   ::remove_from_combat(\$fighter: \$combatants[0]);
+  \}
+  return nil;
+ \}
+
+ /* pick the next fighter */
+ if(\$scriptrunner) \{
+   EmitTo(\$az, "Choosing from "+dump_value(\$combatants));
+   for(i=0;i\<sizeof(\$combatants);i++) \{
+     if(\$combatants[i] == \$scriptrunner) \{
+       if(sizeof(\$combatants) \> i+1) \{
+         fighter = \$combatants[i+1];
+         continue;
+       \} else \{
+         fighter = \$combatants[0];
+       \}
+     \}
+   \}
+ \}
+
+ if(!fighter) \{
+   /* pick a fighter randomly */
+   EmitTo(\$az, "Choosing RANDOMLY from "+dump_value(\$combatants));
+   fighter = \$combatants[random(sizeof(\$combatants))];
+ \}
+
+ EmitTo(\$az, "Assigning actions to "+dump_value(fighter));
+
+ /* sanity check */
+ if(!fighter) break;
+ if(!fighter."base:environment") \{
+  /* check that they are still logged in */
+  EmitTo(\$az, "Not logged in. Removing from combat");
+  ::remove_from_combat(\$fighter: fighter);
+  \$combatants -= (\{ fighter \});
+  fighter = nil;
+  continue;
+ \}
+
+ /* is the fighter trying to break from combat? */
+ if(fighter \&\& fighter.combat["mode"] == "breakcombat") \{
+  /* have they started a new fight? */
+  if(fighter.combat["target"] \|\| fighter.combat["newtarget"]) \{
+   fighter.combat["mode"] = nil;
+  \} else \{
+   \$blockers = (\{\});
+   for(i=0;i\<sizeof(fighter.combat["combatants"]);i++) \{
+    if(fighter.combat["combatants"][i] \&\& fighter.combat["combatants"][i].combat) \{
+     if(fighter.combat["combatants"][i].combat["newtarget"] == fighter \|\|
+       (!fighter.combat["combatants"][i].combat["newtarget"] \&\& fighter.combat["combatants"][i].combat["target"] == fighter)) \{
+      if(fighter.combat["combatants"][i]."base:environment" == fighter."base:environment")
+       \$blockers \|= (\{ fighter.combat["combatants"][i] \});
+     \}
+    \}
+   \}
+   if(!sizeof(\$blockers)) \{
+    EmitTo(fighter, TAG("You see an opportunity to break from the fight.", "imp"));
+    ::remove_from_combat(\$fighter: fighter);
+    \$combatants -= (\{ fighter \});
+    fighter = nil;
+   \} else \{
+    \$message = "You cannot break from combat while ";
+    if(sizeof(\$blockers) \> 1) \{
+     \$message += Describe(\$blockers)+" are";
+    \} else \{
+     \$message += Describe(\$blockers)+" is";
+    \}
+    \$message += " fighting you.";
+    EmitTo(fighter, \$message);
+   \}
+  \}
+ \}
+
+\}
+
+if(!fighter) return nil;
+
+/* do we have a target? */
+if(fighter.combat["newtarget"]) \{
+ fighter.combat["target"] = fighter.combat["newtarget"];
+ fighter.combat["newtarget"] = nil;
+\}
+
+if(!fighter.combat["target"]) \{
+ target = nil;
+\} else \{
+ target = fighter.combat["target"];
+\}
+
+/* sanity check */
+if(target) \{
+ if(!target."base:environment") \{
+  ::remove_from_combat(\$fighter: target);
+  target = nil;
+ \} else if(target."base:environment" != fighter."base:environment") \{
+  target = nil;
+ \} else if(!target.combat \|\| !target.combat["combatants"]) \{
+  target = nil;
+ \}
+\}
+
+/* If they have a script to assign actions */
+if(FindMerry(fighter, "lib", "combat:assign_actions")) \{
+ if(!Call(fighter, "combat:assign_actions"))
+  \$combatants -= (\{ fighter \});
+ return ::assign_actions(\$combatants: \$combatants);
+\} else \{
+  /* no script. Assign actions normally */
+  if(Int(fighter."combat:actions") \>= 0) \{
+    fighter."combat:actions" = 2;
+  \} else \{
+    fighter."combat:actions" = Int(fighter."combat:actions")+2;
+  \}
+
+  /* Remove states that end at the end of their turn */
+  fighter."combat:state:guarding" = nil;
+
+  /* If they have a script to deal with the actions */
+  if(FindMerry(fighter, "lib", "combat:perform_actions")) \{
+   Call(fighter, "combat:perform_actions");
+  \} else \{
+   /* describe the actions */
+   ::list_actions(\$fighter: fighter, \$target: target);
+
+   /* And now tell all the other combatants to wait their turn */
+   for(i=0;i\<sizeof(\$combatants);i++) \{
+     \$char = \$combatants[i];
+     if(\$char \&\& \$char != fighter) \{
+       EmitTo(\$char, TAG("[OOC: "+Describe(fighter)+" has been assigned combat actions.]", "imp"));
+     \}
+   \}
+  \}
+\}
+return fighter;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight">
+         X[M] /* decide not to breakcombat, and continue the fight */
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+\$target."breakcombat:decision" = nil;
+
+EmitTo(\$target, "You steady yourself, and get ready to continue fighting.");
+EmitIn(\$target."base:environment", Describe(\$target)+" seems to gather "+\$target."base:possessive"+" wits, and appears ready for combat again.", \$target);
+
+Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight_expire">
+         X[M] /* decide not to breakcombat, and continue the fight */
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+
+EmitTo(\$target, "You have taken too long to answer the question. We're going to assume you want to break from the fight.");
+if(\$target."base:combat:weapon") \{
+ EmitTo(\$target, "You lower your weapon, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" lowers "+\$target."base:possessive"+" weapon, apparently beaten.", \$target);
+\} else \{
+ EmitTo(\$target, "You raise your hands to yield, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" raises "+\$target."base:possessive"+" hands to yield, apparently beaten.", \$target);
+\}
+
+\$target."breakcombat:decision" = nil;
+::remove_from_combat(\$fighter: \$target);
+
+Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:continue_fight_no">
+         X[M] /* decide not to breakcombat, and continue the fight */
+
+\$target = \$par["fighter"];
+\$actor = \$par["actor"];
+if(!\$target) return TRUE;
+if(!\$actor) return TRUE;
+
+if(!\$target."breakcombat:decision") return TRUE;
+
+if(\$target."base:combat:weapon") \{
+ EmitTo(\$target, "You lower your weapon, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" lowers "+\$target."base:possessive"+" weapon, apparently beaten.", \$target);
+\} else \{
+ EmitTo(\$target, "You raise your hands to yield, having been beaten.");
+ EmitIn(\$target."base:environment", Describe(\$target)+" raises "+\$target."base:possessive"+" hands to yield, apparently beaten.", \$target);
+\}
+
+\$target."breakcombat:decision" = nil;
+::remove_from_combat(\$fighter: \$target);
+
+Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_injury_level">
+         X[M] /* \$injurylevel = Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "get_injury_level", \$actor:\$actor); */
+
+/* return an injury level based on how much damage the PC has taken */
+
+if(!\$actor."combat:damage" \|\| Int(\$actor."combat:damage") \<= 0) \{
+ return 1;
+\} else if(\$actor."combat:damage" \< 12) \{
+ return 2;
+\} else if(\$actor."combat:damage" \< 24) \{
+ return 3;
+\} else if(\$actor."combat:damage" \< 36) \{
+ return 4;
+\} else \{
+ return 5;
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:get_weapon">
+         X[M] /* Return the appropriate weapon for this fighter */
+/*
+\$primaryweapon = combat::get_weapon(\$fighter:\$fighter, \$type:"primary");
+\$offweapon = combat::get_weapon(\$fighter:\$fighter, \$type:"off");
+*/
+
+if(\$type == "parry") \{
+  /* Cheat! Just return the primary weapon */
+  /* Extension: Should get both primary and secondary, and check which is better */
+  \$weapon = ::get_weapon(\$type: "primary");
+  if(!\$weapon \|\| \$weapon."combat:noparry")
+    \$weapon = ::get_weapon(\$type: "off");
+  if(!\$weapon \|\| \$weapon."combat:noparry")
+    return nil;
+  return \$weapon;
+\}
+
+if(\$type == "primary") \{
+  if(\$fighter."base:combat:weapon") return \$fighter."base:combat:weapon";
+  /* Didn't return anything? Then we return the natural weapon */
+  \$type = "natural";
+\}
+if(\$type == "off") \{
+  if(\$fighter."weapon:offhand") return \$fighter."weapon:offhand";
+  /* Didn't return anything? Then we return the natural weapon */
+  \$type = "natural";
+\}
+
+if(\$type == "natural") \{
+  if(\$fighter."combat:naturalweapon") return \$fighter."combat:naturalweapon";
+  return \$\{Ironclaw:Lib:Combat:New:UrPunch\};
+\}
+
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:hit_attempt">
+         X[M] /* do they hit with this attack? */
+
+EmitTo(\$\{Chatters:AE:az:azrael\}, "Hit attempt for "+dump_value(\$fighter));
+
+/* sanity checking */
+if(!\$fighter) return FALSE;
+EmitTo(\$\{Chatters:AE:az:azrael\}, "1");
+if(!\$target) return FALSE;
+EmitTo(\$\{Chatters:AE:az:azrael\}, dump_value(\$target));
+if(!\$weapon) \$weapon = \$\{Ironclaw:Lib:Combat:Weapons:Punch\};
+EmitTo(\$\{Chatters:AE:az:azrael\}, dump_value(\$weapon));
+if(!\$attackis) \$attackis = "primary";
+
+EmitTo(\$\{Chatters:AE:az:azrael\}, dump_value(\$fighter."combat:actions"));
+if(!\$fighter."combat:actions") return FALSE;
+
+if(FindMerry(\$weapon, "lib", "combat:attack")) \{
+  /* The weapon has an attack roll script */
+  Call(\$weapon, "combat:attack", \$fighter: \$fighter, \$weapon: \$weapon, \$target: \$target);
+\} else \{
+  /* No attack roll script */
+  Call(\$\{Allegory:Props:Weapons:URs:Updated:UrWeapon\}, "combat:attack", \$fighter: \$fighter, \$weapon: \$weapon, \$target: \$target);
+\}
+
+/*combat::action_complete(\$actor: \$fighter);*/
+return FALSE; /* Don't display the original emote, since this script will describe the attack */
+      </Core:Property>
+      <Core:Property property="merry:lib:list_actions">
+         X[M] /* list combat actions */
+string output;
+
+if(!\$fighter) return TRUE;
+if(!\$fighter.combat) return TRUE;
+if(!\$fighter."combat:actions") \{
+ /* No actions. So assign actions to someone else */
+ \$fighter.combat["id"] = nil;
+ ::loop(\$scriptrunner: \$fighter);
+ return TRUE;
+\}
+
+/* If they are focused, give an extra action */
+if(\$fighter."combat:state:focused" \&\& \$fighter."combat:actions" == 2) \{
+  \$fighter."combat:state:focused" = nil;
+  \$fighter."combat:actions"++;
+\}
+
+/* If they are reeling, it costs them an action */
+if(\$fighter."combat:state:reeling" \&\& \$fighter."combat:actions" \>= 1) \{
+  \$fighter."combat:state:reeling" = nil;
+  \$fighter."combat:actions"--;
+  \$delay(1, TRUE, "fac0");
+  EmitTo(\$fighter, "You recover your balance, and are no longer reeling.");
+  \$delay(3, TRUE, "7cbe");
+\}
+
+/* what weapon are they using? */
+\$primaryweapon = combat::get_weapon(\$fighter: \$fighter, \$type: "primary");
+\$offweapon = combat::get_weapon(\$fighter: \$fighter, \$type: "off");
+
+if(!\$fighter.combat) \$fighter.combat = ([ ]);
+
+/* If they have a script to deal with the actions */
+if(FindMerry(\$fighter, "lib", "combat:perform_actions")) \{
+  Call(\$fighter, "combat:perform_actions");
+  return TRUE;
+\}
+
+
+if(\$fighter.combat["target"] \&\& \$fighter.combat["target"]."base:environment" == \$actor."base:environment") \{
+  \$target = \$fighter.combat["target"];
+  EmitTo(\$fighter, "You are fighting "+TAG(Describe(\$target), "imp")+".");
+\} else \{
+  \$target = nil;
+  EmitTo(\$fighter, "You are not targeting anyone. To target an opponent, type: "+TAG("fight \<opponent\>fighting", "imp"));
+\}
+
+if(\$fighter."combat:actions" == 1)
+  EmitTo(\$fighter, "You have 1 action remaining.");
+else
+  EmitTo(\$fighter, "You have "+Str(\$fighter."combat:actions")+" actions remaining.");
+
+/* Focus */
+if(\$fighter."combat:actions" \>= 2 \&\& !\$fighter."combat:state:focused")
+  EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"focus\\"\>: Focus\</acmd\>"))+" (costs 2 actions)", "command"));
+/* Attack target */
+if(\$target) \{
+  if(\$primaryweapon) \{
+    /* If it's a brawling attack, show brawling options */
+    if(\$primaryweapon == \$\{Ironclaw:Lib:Combat:New:UrPunch\}) \{
+      EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"Punch "+Describe(\$target)+"\\"\>: Punch "+Describe(\$target)+"\</acmd\>")), "command"));
+    \} else \{
+      /* Otherwise, show options for this weapon */
+      EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"Attack "+Describe(\$target)+" with "+replace_strings(Describe(\$primaryweapon, nil, \$fighter), "your", "my")+"\\"\>: Attack "+Describe(\$target)+" with "+replace_strings(Describe(\$primaryweapon, nil, \$fighter), "your", "my")+"\</acmd\>")), "command"));
+    \}
+  \}
+  if(\$offweapon \&\& \$offweapon != \$primaryweapon) \{
+    /* If it's a brawling attack, show brawling options */
+    if(\$offweapon == \$\{Ironclaw:Lib:Combat:New:UrPunch\}) \{
+      EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"Punch "+Describe(\$target)+"\\"\>: Punch "+Describe(\$target)+"\</acmd\>")), "command"));
+    \} else \{
+      /* Otherwise, show options for this weapon */
+      EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"Attack "+Describe(\$target)+" with "+replace_strings(Describe(\$offweapon, nil, \$fighter), "your", "my")+"\\"\>: Attack "+Describe(\$target)+" with "+replace_strings(Describe(\$offweapon, nil, \$fighter), "your", "my")+"\</acmd\>")), "command"));
+    \}
+  \}
+\}
+/* Aim */
+if(!\$fighter."combat:state:aiming")
+  EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"aim\\"\>: Aim\</acmd\>")), "command"));
+/* Guard */
+if(!\$fighter."combat:state:guarding")
+  EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"guard\\"\>: Guard\</acmd\>")), "command"));
+/* Rally an ally */
+if(combat::action_rally(\$fighter: \$fighter, \$validcheck: TRUE))
+  EmitTo(\$fighter, ": Rally \<ally\>");
+
+
+if(FALSE) \{
+/* Stand up */
+EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"stand\\"\>: Stand\</acmd\>")), "command"));
+/* Refresh a combat gift */
+EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"refresh\\"\>: Refresh gift\</acmd\>")), "command"));
+/* Reload weapon */
+EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"reload\\"\>: Reload [weapon]\</acmd\>")), "command"));
+/* Social attacks */
+EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"Reason with "+Describe(\$target)+"\\"\>: Reason with "+Describe(\$target)+"\</acmd\>")), "command"));
+EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"Scare "+Describe(\$target)+"\\"\>: Scare "+Describe(\$target)+"\</acmd\>")), "command"));
+EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"Trick "+Describe(\$target)+"\\"\>: Trick "+Describe(\$target)+"\</acmd\>")), "command"));
+\}
+if(\$fighter."combat:actions" \< 2)
+  EmitTo(\$fighter, TAG(UnSAM(ParseXML("\<acmd tag=\\"command\\" cmd=\\"pass\\"\>: Pass\</acmd\>")), "command"));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:loop">
+         X[M] /* combat loop */
+if(!\$scriptrunner) return TRUE;
+
+/* assign actions to someone */
+/* first check that nobody already has actions */
+\$start = TRUE;
+if(sizeof(Arr(\$scriptrunner.combat["combatants"]))) \{
+ for(\$i=0;\$i\<sizeof(\$scriptrunner.combat["combatants"]);\$i++) \{
+  if(\$scriptrunner.combat["combatants"][\$i] \&\& ((\$scriptrunner.combat["combatants"][\$i]."combat:actions" \&\& Int(\$scriptrunner.combat["combatants"][\$i]."combat:actions") \> 0) \|\| \$scriptrunner.combat["combatants"][\$i]."breakcombat:decision"))
+   \$start = nil;
+ \}
+\}
+/* someone already has actions. Let them finish first. */
+if(!\$start)
+ return TRUE;
+
+\$fighter = ::assign_actions(\$combatants: \$scriptrunner.combat["combatants"]);
+if(!\$fighter \|\| !\$fighter.combat) return TRUE;
+
+\$id = random(10000);
+\$fighter.combat["id"] = \$id;
+
+\$delay(4*60, TRUE, "61f4");
+if(!\$fighter \|\| !\$fighter.combat \|\| \$fighter.combat["id"] != \$id) return TRUE;
+EmitTo(\$fighter, "You haven't used your combat actions. If you don't want to use them, just type: pass");
+
+\$delay(3*60, TRUE, "bbe5");
+if(!\$fighter \|\| !\$fighter.combat \|\| \$fighter.combat["id"] != \$id) return TRUE;
+EmitTo(\$fighter, "You've taken too long to use your combat actions. New actions are being assigned.");
+if(\$fighter."combat:actions" \>= 0)
+  \$fighter."combat:actions" = nil;
+\$fighter.combat["id"] = nil;
+
+::loop(\$scriptrunner: \$fighter);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:pass_action">
+         X[M] /* used by combat objects to pass the rest of their turn */
+if(!\$actor) return FALSE;
+
+/* clear remaining actions */
+if(\$actor."combat:actions" \> 0) \$actor."combat:actions" = nil;
+
+/* Now give someone else some actions */
+\$actor.combat["id"] = nil;
+::loop(\$scriptrunner: \$actor);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove_from_combat">
+         X[M] /* remove a fighter from combat */
+object fighter;
+
+if(!\$fighter) return TRUE;
+fighter = \$fighter;
+if(!fighter \|\| !fighter.combat) return TRUE;
+
+/* Don't give a message if \$description == FALSE */
+if(\$description \|\| typeof(\$description) != T_INT) \{
+  EmitTo(fighter, "You are no longer fighting.");
+  if(fighter."base:environment")
+    EmitIn(fighter."base:environment", Describe(fighter)+" is no longer fighting.", fighter);
+\}
+
+if(fighter.combat["combatants"]) \{
+ fighter.combat["combatants"] -= (\{ fighter, nil \});
+ for(\$i=0;\$i\<sizeof(fighter.combat["combatants"]);\$i++) \{
+  if(fighter.combat["combatants"][\$i].combat \&\&
+     fighter.combat["combatants"][\$i].combat["combatants"]) \{
+   fighter.combat["combatants"][\$i].combat["combatants"] -= (\{ fighter \});
+  \}
+ \}
+ if(sizeof(fighter.combat["combatants"])) \{
+  ::loop(\$scriptrunner: fighter.combat["combatants"][0]);
+ \}
+\}
+fighter.combat = ([ ]);
+fighter."combat:actions" = nil;
+fighter."combat:fighting" = nil; /* This is a property that NPCs use to see if they're in the middle of a fight */
+
+/* remove states that shouldn't last between combats */
+fighter."combat:state:focused" = nil;
+fighter."combat:state:aiming" = nil;
+fighter."combat:state:guarding" = nil;
+
+/* and to clear up old code... */
+fighter."combat:actions:current" = nil;
+fighter."combat:actions:queue" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_state">
+         X[M] /* Set a combat status in a PC */
+if(!\$state \|\| typeof(\$state) != T_STRING) error("Unknown state passed with character "+dump_value(\$char));
+if(!\$char \|\| typeof(\$char) != T_OBJECT) error("Unknown \$char passed for state "+Str(\$state));
+/* Also possibly expect \$description */
+
+if(lower_case(\$state) == "reeling") \{
+  if(!NRefOb(\$char)."combat:state:reeling") \{
+    NRefOb(\$char)."combat:state:reeling" = TRUE;
+    if(\$description)
+      Social(\$char, "reel");
+  \}
+\} else if(lower_case(\$state) == "dead") \{
+  if(FindMerry( NRefOb(\$target), "lib", "combat:dead"))
+    if(!Call(NRefOb(\$target), "combat:dead")) return TRUE;
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been killed.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" has been killed.", \$char);
+  \}
+
+  Act(NRefOb(\$target), "nip/die");
+  Call(\$\{Ironclaw:Lib:Characters:Death\}, "die", \$victim: NRefOb(\$target));
+
+  if(!NRefOb(\$char)."combat:state:dead")
+    NRefOb(\$char)."combat:state:dead" = TRUE;
+  combat::remove_from_combat(\$fighter: NRefOb(\$target), \$description: FALSE);
+\} else if(lower_case(\$state) == "dying") \{
+  if(FindMerry( NRefOb(\$target), "lib", "combat:dying"))
+    if(!Call(NRefOb(\$target), "combat:dying")) return TRUE;
+
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:dying", \$value: TRUE, \$timer: 60*60*4);
+  /* Dying also makes you injured and hurt */
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:injured", \$value: TRUE, \$timer: 60*60*24*3);
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You are dying! Seek medical assistance.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to be dying.", \$char);
+  \}
+  combat::remove_from_combat(\$fighter: NRefOb(\$target), \$description: FALSE);
+\} else if(lower_case(\$state) == "injured") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:injured", \$value: TRUE, \$timer: 60*60*24*3);
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24); /* Injuries also make you hurt */
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been seriously injured", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to have been seriously injured.", \$char);
+  \}
+\} else if(lower_case(\$state) == "hurt") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:hurt", \$value: TRUE, \$timer: 60*60*24);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have been significantly hurt.", "imp"));
+    if(\$char."base:environment")
+      EmitIn(\$char."base:environment", Describe(\$char)+" appears to have been significantly hurt.", \$char);
+  \}
+\} else if(lower_case(\$state) == "afraid") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:afraid", \$value: TRUE, \$timer: 60*60*4);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You have become afraid.", "imp"));
+    EmitTo(\$char, "[OOC: You now take a penalty on all attacks until the fight ends, or an ally rallies you.]");
+  \}
+\} else if(lower_case(\$state) == "unafraid") \{
+  ironclaw::set_prop(\$obj: NRefOb(\$char), \$prop: "combat:state:afraid", \$value: nil, \$timer: 60*60*4);
+
+  if(\$description) \{
+    EmitTo(\$char, TAG("You are no longer afraid.", "imp"));
+  \}
+\} else if(lower_case(\$state) == "overkilled") \{
+  /* NOT IMPLEMENTED YET */
+\} else \{
+  error("Unknown state "+Str(\$state)+" for "+dump_value(\$char)+".");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_error_noaction">
+         X[M] /* used by combat objects to display an error message saying they can't do an action */
+if(!\$actor) return FALSE;
+if(!\$victim) return FALSE;
+if(!\$action) return FALSE;
+
+if(!\$actor.combat \|\| (\$actor.combat["target"] != \$victim \&\& \$actor.combat["newtarget"] != \$victim) ) \{
+  EmitTo(\$actor, "You must fight "+Describe(\$victim)+" before you can "+Str(\$action)+" "+\$victim."base:objective"+".");
+\} else \{
+  EmitTo(\$actor, "You must wait for your turn before you can "+Str(\$action)+" "+Describe(\$victim)+".");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:simulate">
+         X[M] /* Simulate a fight */
+/* +to me ev Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "simulate", \$level:50) */
+object fighter, target;
+int i, sz, highest;
+
+\$actor = \$\{Chatters:AE:az:azrael\};
+\$az = \$\{Chatters:AE:az:azrael\};
+
+\$output_map = ([ ]);
+if(!\$level) \$level = 500;
+
+for(\$sim_counter=0;\$sim_counter \< \$level; \$sim_counter++) \{
+
+\$delay(0.0001, TRUE, "5c64");
+\$combatants = (\{ nil /* defunct */, nil /* defunct */ \});
+
+/* set attribute ratings */
+for(\$i=0;\$i\<sizeof(\$combatants);\$i++) \{
+ \$combatants[\$i]."trait:body" = 2;
+ \$combatants[\$i]."trait:agility" = 2;
+ \$combatants[\$i]."trait:speed" = 2;
+ \$combatants[\$i]."trait:mind" = 2;
+ for(\$j=0;\$j\<20;\$j++) \{
+  switch(random(4)) \{
+   case 3:
+    \$combatants[\$i]."trait:body"++;
+    break;
+   case 2:
+    \$combatants[\$i]."trait:agility"++;
+    break;
+   case 1:
+    \$combatants[\$i]."trait:speed"++;
+    break;
+   default:
+    \$combatants[\$i]."trait:mind"++;
+    break;
+  \}
+ \}
+\}
+
+/* choose a combatant to get actions */
+fighter = nil;
+/*EmitTo(\$az, "combatants are "+dump_value(\$combatants));*/
+
+/* pick someone to give actions to */
+while(!fighter) \{
+ /* pick a fighter randomly */
+ do \{
+  \$startover = nil;
+  highest = 0;
+  for(i=0;i\<sizeof(\$combatants);i++) \{
+   sz = ironclaw::roll(\$roller: \$combatants[i], \$skills: (\{"combat:dodge"\}), \$bonus: (\{ "trait:speed", 5 \}));
+   /*sz = random(1000)+1;*/
+   if(sz \> highest) \{
+    highest = sz;
+    fighter = \$combatants[i];
+   \} else if(sz == highest) \{
+    /* so we don't get any ties, just reroll */
+    \$startover = TRUE;
+    break;
+   \}
+  \}
+ \} while(\$startover);
+
+ /*EmitTo(\$az, "Chose "+dump_value(fighter));*/
+\}
+
+/* roll to see what actions we're giving */
+\$actions = (\{ \});
+
+/* do we have a target? */
+if(fighter.combat["newtarget"]) \{
+ fighter.combat["target"] = fighter.combat["newtarget"];
+ fighter.combat["newtarget"] = nil;
+\}
+
+if(!fighter.combat["target"]) \{
+ target = nil;
+\} else \{
+ target = fighter.combat["target"];
+\}
+
+if(target) \{
+ /* do they get any damage against their opponent? */
+
+ /* what weapon are they using? */
+ \$primaryweapon = nil;
+ \$offweapon = nil;
+ if(fighter."base:combat:weapon") \$primaryweapon = fighter."base:combat:weapon";
+ if(fighter."weapon:offhand") \$offweapon = fighter."weapon:offhand";
+ if(!\$primaryweapon) \$primaryweapon = fighter."combat:naturalweapon";
+ if(!\$offweapon) \$offweapon = fighter."combat:naturalweapon";
+/* EmitTo(\$actor, "Weapon is "+dump_value(\$primaryweapon));
+ EmitTo(\$actor, "Off weapon is "+dump_value(\$offweapon));*/
+ \$targetprimaryweapon = nil;
+ \$targetoffweapon = nil;
+ if(target."base:combat:weapon") \$targetprimaryweapon = target."base:combat:weapon";
+ if(target."weapon:offhand") \$targetoffweapon = target."weapon:offhand";
+ if(!\$targetprimaryweapon) \$targetprimaryweapon = target."combat:naturalweapon";
+ if(!\$targetoffweapon) \$targetoffweapon = target."combat:naturalweapon";
+/* EmitTo(\$actor, "Target's weapon is "+dump_value(\$targetprimaryweapon));
+ EmitTo(\$actor, "Target's off weapon is "+dump_value(\$targetoffweapon));*/
+
+ /* Roll to see if they hit with their primary and secondary weapon */
+ \$actions += ::hit_attempt(\$weapon: \$primaryweapon, \$fighter: fighter, \$target: target);
+ \$actions += ::hit_attempt(\$weapon: \$offweapon, \$fighter: fighter, \$target: target);
+
+\}
+/*EmitTo(\$actor, dump_value(\$actions));*/
+
+\$winner = fighter;
+if(fighter == nil /* defunct */) \{
+ \$loser = nil /* defunct */;
+\} else \{
+ \$loser = nil /* defunct */;
+\}
+
+/* count the damage */
+\$damage = 0;
+for(\$i=0;\$i\<sizeof(\$actions);\$i++) \{
+ if(\$actions[\$i][0] == "attack")
+  \$damage += \$actions[\$i][3];
+\}
+
+\$output_map["body"] = Int(\$output_map["body"])+Int(\$winner."trait:body")*\$damage;
+\$output_map["agility"] = Int(\$output_map["agility"])+Int(\$winner."trait:agility")*\$damage;
+\$output_map["speed"] = Int(\$output_map["speed"])+Int(\$winner."trait:speed")*\$damage;
+\$output_map["mind"] = Int(\$output_map["mind"])+Int(\$winner."trait:mind")*\$damage;
+
+\$output_map["body"] = Int(\$output_map["body"])-Int(\$loser."trait:body")*\$damage;
+\$output_map["agility"] = Int(\$output_map["agility"])-Int(\$loser."trait:agility")*\$damage;
+\$output_map["speed"] = Int(\$output_map["speed"])-Int(\$loser."trait:speed")*\$damage;
+\$output_map["mind"] = Int(\$output_map["mind"])-Int(\$loser."trait:mind")*\$damage;
+
+if(random(2)) \{
+ \$output_map["random"] = Int(\$output_map["random"])+\$damage;
+\} else \{
+ \$output_map["random"] = Int(\$output_map["random"])-\$damage;
+\}
+
+\}
+EmitTo(\$az, dump_value(\$output_map));
+return \$output_map;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight">
+         X[M] /* start (or join) a fight using the combat system */
+
+if(\$attacker) \$actor = \$attacker;
+if(\$par \&\& \$par["attacker"])
+ \$actor = \$par["attacker"];
+if(!\$target \&\& \$par) \$target = \$par["target"];
+if(!\$target) \{
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+\}
+
+EmitTo(\$actor, "You begin to fight "+Describe(\$target)+".");
+EmitTo(\$target, Describe(\$actor)+" begins to fight you.");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" begins to fight "+Describe(\$target)+".", \$actor, \$target);
+
+if(!\$actor.combat) \$actor.combat = ([ ]);
+if(!\$actor.combat["target"]) \{
+ \$actor.combat["target"] = \$target;
+ \$actor.combat["newtarget"] = nil;
+\} else \{
+ \$actor.combat["newtarget"] = \$target;
+\}
+
+if(!\$target.combat) \$target.combat = ([ ]);
+if(!\$target.combat["target"] \&\& !\$target.combat["newtarget"]) \{
+ \$target.combat["target"] = \$actor;
+ EmitTo(\$target, "You ready yourself to fight "+Describe(\$actor)+".");
+\}
+
+if(!\$actor.combat["combatants"] \|\| !sizeof(\$actor.combat["combatants"])) \$actor.combat["combatants"] = (\{ \$actor \});
+/* Does the target have a list of combatants? */
+if(!\$target.combat["combatants"] \|\| !sizeof(\$target.combat["combatants"])) \{
+  \$actor.combat["combatants"] \|= (\{ \$target \});
+\} else \{
+  \$actor.combat["combatants"] \|= \$target.combat["combatants"];
+\}
+\$actor.combat["combatants"] -= (\{ nil \});
+
+for(\$i=0;\$i\<sizeof(\$actor.combat["combatants"]);\$i++) \{
+ if(!\$actor.combat["combatants"][\$i].combat)
+  \$actor.combat["combatants"][\$i].combat = ([ ]);
+ \$actor.combat["combatants"][\$i].combat["combatants"] = \$actor.combat["combatants"];
+\}
+
+/* going to have a delay for the PC with remaining actions */
+Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "loop", \$scriptrunner: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck">
+         X[M] /* Got attacked. Do we get to choose whether to fight? */
+
+if(!\$target \&\& \$par) \$target = \$par["target"];
+if(!\$target) \{
+ EmitTo(\$actor, "Who do you want to fight?");
+ return FALSE;
+\}
+
+/* If they are dead, they can't fight */
+if(\$target."combat:state:dead") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* if they aren't possessed (i.e. an NPC) don't ask for consent */
+if(!\$target."udat:object") \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* are they able to fight? */
+
+/* If they are in a danger zone, then they don't get asked if they want to fight or not. They have no choice. */
+if(\$target."base:environment"."area:dangerarea") \{
+ combat::start_fight();
+ return FALSE;
+\}
+
+/* If they have already used their gift that stops them dying, warn them that they might die */
+/* NOT WRITTEN YET */
+
+/* Dying, and not in a danger zone */
+if(!\$target."base:environment"."area:dangerarea"
+\&\& \$target."combat:state:dying") \{
+ EmitTo(\$actor, Describe(\$target)+" is too injured to continue fighting.");
+ return FALSE;
+\}
+
+/* If they're already quite injured, let them know that they risk further injuries */
+if(\$actor."combat:state:injured") \{
+ /* warn that they're risking permanent injuries and death */
+ interaction::question(\$actor: \$target, \$question: Describe(\$actor)+" is attempting to attack you, however you are extremely tired. If you choose to fight you risk suffering a long term injury, or death. Do you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$no_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$expire_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$yes_fun: "start_fight", \$no_fun: "start_fight_victimcheck_no", \$expire_fun: "start_fight_victimcheck_expire", \$par: ([ "attacker":\$actor, "target":\$target]));
+  return FALSE;
+\}
+
+/* No other reasons to ask questions */
+combat::start_fight();
+
+return FALSE;
+
+/* are they able to fight? */
+\$injurylevel = combat::get_injury_level(\$actor: \$target);
+if(\$injurylevel \<= 2) \{
+ /* continue like normal. No significant injuries */
+ combat::start_fight();
+\} else if(\$injurylevel == 3) \{
+ /* warn that they're risking long term injuries and death */
+ interaction::question(\$actor: \$target, \$question: Describe(\$actor)+" is attempting to attack you, however you are very tired. If you choose to fight you risk suffering a long term injury, or possibly death. Do you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$no_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$expire_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$yes_fun: "start_fight", \$no_fun: "start_fight_victimcheck_no", \$expire_fun: "start_fight_victimcheck_expire", \$par: ([ "attacker":\$actor, "target":\$target]));
+\} else if(\$injurylevel == 4) \{
+ /* warn that they're risking permanent injuries and death */
+ interaction::question(\$actor: \$target, \$question: Describe(\$actor)+" is attempting to attack you, however you are extremely tired. If you choose to fight you risk suffering permanent injuries, or death. Do you want to fight?", \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$no_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$expire_ob: \$\{Ironclaw:Lib:Combat:New:Combat\}, \$yes_fun: "start_fight", \$no_fun: "start_fight_victimcheck_no", \$expire_fun: "start_fight_victimcheck_expire", \$par: ([ "attacker":\$actor, "target":\$target]));
+\} else \{
+ EmitTo(\$target, Describe(\$actor)+" is attempting to attack you, however you are far too injured to even consider fighting anyone.");
+ EmitTo(\$actor, Describe(\$target)+" is far too injured to even consider fighting anyone.");
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck_expire">
+         X[M] if(\$par \&\& \$par["target"])
+ \$target = \$par["target"];
+if(\$par \&\& \$par["attacker"])
+ \$attacker = \$par["attacker"];
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "start_fight");
+ return FALSE;
+\}
+
+EmitTo(\$par["attacker"], Describe(\$par["target"])+" has taken too long to respond to your attack, and as they are injured, we're assuming they are unwilling to keep fighting.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_fight_victimcheck_no">
+         X[M] if(\$par \&\& \$par["target"])
+ \$target = \$par["target"];
+if(\$par \&\& \$par["attacker"])
+ \$attacker = \$par["attacker"];
+
+/* if they're already fighting, don't ask about injuries */
+if(\$target.combat \&\& \$target.combat["combatants"] \&\& sizeof(\$target.combat["combatants"]) \> 1) \{
+ EmitTo(\$target, "As you are already in combat, unfortunately, anyone else can join in too.");
+ Call(\$\{Ironclaw:Lib:Combat:New:Combat\}, "start_fight");
+ return FALSE;
+\}
+
+EmitTo(\$attacker, Describe(\$target)+" is injured, and unwilling to keep fighting.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1242737572, "tonyd", "P", 1242738123, "tonyd", "P", 1242738247, "tonyd", "P", 1242738763, "tonyd", "P", 1242738916, "tonyd", "P", 1242739573, "tonyd", "P", 1242739885, "tonyd", "P", 1242740990, "tonyd", "P", 1242741045, "tonyd", "P", 1242742268, "tonyd", "P", 1242742463, "tonyd", "P", 1242742884, "tonyd", "P", 1242743078, "tonyd", "P", 1242743674, "tonyd", "P", 1242831179, "tonyd", "P", 1242831608, "tonyd", "P", 1242832026, "tonyd", "P", 1242832662, "tonyd", "P", 1242833228, "tonyd", "P", 1242833353, "tonyd", "P", 1242833487, "tonyd", "P", 1242833905, "tonyd", "P", 1242834416, "tonyd", "P", 1242834555, "tonyd", "P", 1242834708, "tonyd", "P", 1242834982, "tonyd", "P", 1242835522, "tonyd", "P", 1242835699, "tonyd", "P", 1242835885, "tonyd", "P", 1242836080, "tonyd", "P", 1242836181, "tonyd", "P", 1242840189, "tonyd", "P", 1242997795, "tonyd", "P", 1243000246, "tonyd", "P", 1243000613, "tonyd", "P", 1243000811, "tonyd", "P", 1243000984, "tonyd", "P", 1243001374, "tonyd", "P", 1243001523, "tonyd", "P", 1243001724, "tonyd", "P", 1243001763, "tonyd", "P", 1243001906, "tonyd", "P", 1243002068, "tonyd", "P", 1243002145, "tonyd", "P", 1243002205, "tonyd", "P", 1243002382, "tonyd", "P", 1243002712, "tonyd", "P", 1243003219, "tonyd", "P", 1243003448, "tonyd", "P", 1243003521, "tonyd", "P", 1243003725, "tonyd", "P", 1243003756, "tonyd", "P", 1243003926, "tonyd", "P", 1243004102, "tonyd", "P", 1243004387, "tonyd", "P", 1243004448, "tonyd", "P", 1243004516, "tonyd", "P", 1243004612, "tonyd", "P", 1243004692, "tonyd", "P", 1243004724, "tonyd", "P", 1243004821, "tonyd", "P", 1243004934, "tonyd", "P", 1243005024, "tonyd", "P", 1243005161, "tonyd", "P", 1243005345, "tonyd", "P", 1243005522, "tonyd", "P", 1243005668, "tonyd", "P", 1243005789, "tonyd", "P", 1243005821, "tonyd", "P", 1243005909, "tonyd", "P", 1243005957, "tonyd", "P", 1243006074, "tonyd", "P", 1243006207, "tonyd", "P", 1243006520, "tonyd", "P", 1243007927, "tonyd", "P", 1243008272, "tonyd", "P", 1243008529, "tonyd", "P", 1245060206, "tonyd", "P", 1245060258, "tonyd", "P", 1245060289, "tonyd", "P", 1245060506, "tonyd", "P", 1245060747, "tonyd", "P", 1245064307, "tonyd", "P", 1245065504, "tonyd", "P", 1245065893, "tonyd", "P", 1245066057, "tonyd", "P", 1245066147, "tonyd", "P", 1245066209, "tonyd", "P", 1245066501, "tonyd", "P", 1245066542, "tonyd", "E", 1245066862, "tonyd", "E", 1245067897, "tonyd", "P", 1245067995, "tonyd", "P", 1245068097, "tonyd", "P", 1245068587, "tonyd", "P", 1245068722, "tonyd", "P", 1245068779, "tonyd", "P", 1245068903, "tonyd", "P", 1245069171, "tonyd", "P", 1245069221, "tonyd", "P", 1245069238, "tonyd", "P", 1245069332, "tonyd", "P", 1245069531, "tonyd", "P", 1245069751, "tonyd", "P", 1245069821, "tonyd", "P", 1245069862, "tonyd", "P", 1245069908, "tonyd", "P", 1245069946, "tonyd", "P", 1245070733, "tonyd", "P", 1245070858, "tonyd", "P", 1245071560, "tonyd", "P", 1245071662, "tonyd", "P", 1245071761, "tonyd", "P", 1245071824, "tonyd", "P", 1245071850, "tonyd", "P", 1245071926, "tonyd", "E", 1245072809, "tonyd", "P", 1245073008, "tonyd", "P", 1245073408, "tonyd", "P", 1245073444, "tonyd", "P", 1245073602, "tonyd", "P", 1245073643, "tonyd", "P", 1245073724, "tonyd", "P", 1245073772, "tonyd", "P", 1245073815, "tonyd", "P", 1245074034, "tonyd", "E", 1245074275, "tonyd", "E", 1245142849, "tonyd", "P", 1245142893, "tonyd", "P", 1245143067, "tonyd", "P", 1245143302, "tonyd", "P", 1245143381, "tonyd", "P", 1245143441, "tonyd", "P", 1245144012, "tonyd", "P", 1245144834, "tonyd", "P", 1245145365, "tonyd", "P", 1245146281, "tonyd", "P", 1245146382, "tonyd", "P", 1245146521, "tonyd", "P", 1245146690, "tonyd", "P", 1245147027, "tonyd", "P", 1245147069, "tonyd", "P", 1245147126, "tonyd", "P", 1245147314, "tonyd", "P", 1245147379, "tonyd", "P", 1245147498, "tonyd", "P", 1245147567, "tonyd", "P", 1245147638, "tonyd", "P", 1245147795, "tonyd", "P", 1245147950, "tonyd", "P", 1245148074, "tonyd", "P", 1245148128, "tonyd", "P", 1245148161, "tonyd", "P", 1245148203, "tonyd", "P", 1245150556, "tonyd", "P", 1245150649, "tonyd", "P", 1245150701, "tonyd", "P", 1245150843, "tonyd", "P", 1245151094, "tonyd", "P", 1245151141, "tonyd", "P", 1245151220, "tonyd", "P", 1245151293, "tonyd", "P", 1245151380, "tonyd", "P", 1245151451, "tonyd", "P", 1245152633, "tonyd", "P", 1245152738, "tonyd", "P", 1245152888, "tonyd", "P", 1245152936, "tonyd", "P", 1245153039, "tonyd", "P", 1245153097, "tonyd", "P", 1245153238, "tonyd", "P", 1245153281, "tonyd", "P", 1245153307, "tonyd", "P", 1247815060, "tonyd", "R", 1248004850, "tonyd", "P", 1248004928, "tonyd", "P", 1248005114, "tonyd", "P", 1248005345, "tonyd", "P", 1248005369, "tonyd", "P", 1248005455, "tonyd", "P", 1248005483, "tonyd", "P", 1248005515, "tonyd", "P", 1248009161, "tonyd", "E", 1248009201, "tonyd", "E", 1248009219, "tonyd", "E", 1248009395, "tonyd", "P", 1248009435, "tonyd", "P", 1248009642, "tonyd", "P", 1248009680, "tonyd", "P", 1248009714, "tonyd", "P", 1248009737, "tonyd", "P", 1248009747, "tonyd", "P", 1248009753, "tonyd", "P", 1248009788, "tonyd", "P", 1248009858, "tonyd", "P", 1248010612, "tonyd", "P", 1248010800, "tonyd", "P", 1248010868, "tonyd", "P", 1248010968, "tonyd", "E", 1248011034, "tonyd", "P", 1248011227, "tonyd", "P", 1248011562, "tonyd", "P", 1248011630, "tonyd", "P", 1248011676, "tonyd", "P", 1248011696, "tonyd", "P", 1248011764, "tonyd", "P", 1248011800, "tonyd", "P", 1248011821, "tonyd", "P", 1248012036, "tonyd", "P", 1248012143, "tonyd", "P", 1248012199, "tonyd", "P", 1248012307, "tonyd", "P", 1248012355, "tonyd", "P", 1248012623, "tonyd", "P", 1248012807, "tonyd", "P", 1248012831, "tonyd", "P", 1248012855, "tonyd", "P", 1248012948, "tonyd", "P", 1248012969, "tonyd", "P", 1248013015, "tonyd", "P", 1248013332, "tonyd", "P", 1248013352, "tonyd", "P", 1248013370, "tonyd", "P", 1248013412, "tonyd", "P", 1248013460, "tonyd", "P", 1248013525, "tonyd", "P", 1248013564, "tonyd", "P", 1248013610, "tonyd", "P", 1248014321, "tonyd", "P", 1248015375, "tonyd", "P", 1248252942, "tonyd", "P", 1248253147, "tonyd", "P", 1248254313, "tonyd", "P", 1248254321, "tonyd", "P", 1248255611, "tonyd", "P", 1248256119, "tonyd", "P", 1248256193, "tonyd", "P", 1248256331, "tonyd", "P", 1248257567, "tonyd", "P", 1248257577, "tonyd", "P", 1248257827, "tonyd", "P", 1248257981, "tonyd", "P", 1248258166, "tonyd", "P", 1248258191, "tonyd", "P", 1248258405, "tonyd", "P", 1248258424, "tonyd", "P", 1248258727, "tonyd", "P", 1248258769, "tonyd", "P", 1248258947, "tonyd", "P", 1248259193, "tonyd", "P", 1248259499, "tonyd", "P", 1248260701, "tonyd", "P", 1248261131, "tonyd", "P", 1248261289, "tonyd", "P", 1248261473, "tonyd", "P", 1248263455, "tonyd", "P", 1248265383, "tonyd", "P", 1248265407, "tonyd", "P", 1248265497, "tonyd", "P", 1248265700, "tonyd", "P", 1248265768, "tonyd", "P", 1248265855, "tonyd", "P", 1248265895, "tonyd", "P", 1248265972, "tonyd", "P", 1248266072, "tonyd", "P", 1248266120, "tonyd", "P", 1248266189, "tonyd", "P", 1248266309, "tonyd", "P", 1248266356, "tonyd", "P", 1248266445, "tonyd", "P", 1248266810, "tonyd", "P", 1248268035, "tonyd", "P", 1248344401, "tonyd", "P", 1248344905, "tonyd", "P", 1248345783, "tonyd", "P", 1248346101, "tonyd", "P", 1248347444, "tonyd", "P", 1248348790, "tonyd", "P", 1248348824, "tonyd", "P", 1248349204, "tonyd", "P", 1248349285, "tonyd", "P", 1248349362, "tonyd", "P", 1248610337, "tonyd", "P", 1248610961, "tonyd", "P", 1249223775, "tonyd", "P", 1249224778, "tonyd", "P", 1249224889, "tonyd", "P", 1249224909, "tonyd", "P", 1249224948, "tonyd", "P", 1249224981, "tonyd", "P", 1249225024, "tonyd", "P", 1249225130, "tonyd", "P", 1249225181, "tonyd", "P", 1249225248, "tonyd", "P", 1249225281, "tonyd", "P", 1249225327, "tonyd", "P", 1249225504, "tonyd", "P", 1249225537, "tonyd", "P", 1249225575, "tonyd", "P", 1249225646, "tonyd", "P", 1249225753, "tonyd", "P", 1249226083, "tonyd", "P", 1249226315, "tonyd", "P", 1249226377, "tonyd", "P", 1249226717, "tonyd", "P", 1249227294, "tonyd", "P", 1249227382, "tonyd", "P", 1249228044, "tonyd", "P", 1249228117, "tonyd", "P", 1249228249, "tonyd", "P", 1249228589, "tonyd", "P", 1249228617, "tonyd", "P", 1249228810, "tonyd", "P", 1249228956, "tonyd", "P", 1249304821, "tonyd", "P", 1249304847, "tonyd", "P", 1249305316, "tonyd", "P", 1249305396, "tonyd", "P", 1249305432, "tonyd", "P", 1249305459, "tonyd", "P", 1249305480, "tonyd", "P", 1249305590, "tonyd", "P", 1249305893, "tonyd", "P", 1249306136, "tonyd", "P", 1249306296, "tonyd", "P", 1249306428, "tonyd", "P", 1249306580, "tonyd", "P", 1251190558, "tonyd", "P", 1251191043, "tonyd", "P", 1251191103, "tonyd", "P", 1251191145, "tonyd", "P", 1251191224, "tonyd", "P", 1251191335, "tonyd", "P", 1251191521, "tonyd", "P", 1251191553, "tonyd", "P", 1251191590, "tonyd", "P", 1251191700, "tonyd", "P", 1251192280, "tonyd", "P", 1251240787, "tonyd", "P", 1251240837, "tonyd", "P", 1251240931, "tonyd", "P", 1251240977, "tonyd", "P", 1251241113, "tonyd", "P", 1251241220, "tonyd", "P", 1251241265, "tonyd", "P", 1251241347, "tonyd", "P", 1251241388, "tonyd", "P", 1251241419, "tonyd", "P", 1251241521, "tonyd", "P", 1251241552, "tonyd", "P", 1251241596, "tonyd", "P", 1251241619, "tonyd", "P", 1251241660, "tonyd", "P", 1251241685, "tonyd", "P", 1251241895, "tonyd", "P", 1251241983, "tonyd", "P", 1251243460, "tonyd", "P", 1251243518, "tonyd", "P", 1251244745, "tonyd", "P", 1251245221, "tonyd", "P", 1251628806, "tonyd", "P", 1251628947, "tonyd", "P", 1251629027, "tonyd", "P", 1251630484, "tonyd", "P", 1251630642, "tonyd", "P", 1251630767, "tonyd", "P", 1251631749, "tonyd", "P", 1251631776, "tonyd", "P", 1251631872, "tonyd", "P", 1251631963, "tonyd", "P", 1251632064, "tonyd", "P", 1251632108, "tonyd", "P", 1251632483, "tonyd", "P", 1251632518, "tonyd", "P", 1251632545, "tonyd", "P", 1251632818, "tonyd", "P", 1251633430, "tonyd", "P", 1251633464, "tonyd", "P", 1251634216, "tonyd", "P", 1251634260, "tonyd", "P", 1251634307, "tonyd", "P", 1251634367, "tonyd", "P", 1251634378, "tonyd", "P", 1251634415, "tonyd", "P", 1251634523, "tonyd", "P", 1251634570, "tonyd", "P", 1251634599, "tonyd", "P", 1251634628, "tonyd", "P", 1251634645, "tonyd", "P", 1251634674, "tonyd", "P", 1251634719, "tonyd", "P", 1251635372, "tonyd", "P", 1251868042, "tonyd", "P", 1251868089, "tonyd", "P", 1251893326, "tonyd", "P", 1251893420, "tonyd", "P", 1251893515, "tonyd", "P", 1251893591, "tonyd", "P", 1251893792, "tonyd", "P", 1251893804, "tonyd", "P", 1251894513, "tonyd", "P", 1251937676, "tonyd", "P", 1251937688, "tonyd", "P", 1252121644, "tonyd", "P", 1252121708, "tonyd", "P", 1252121739, "tonyd", "P", 1252121759, "tonyd", "P", 1252121985, "tonyd", "P", 1256681513, "tonyd", "P", 1256681594, "tonyd", "P", 1256681678, "tonyd", "P", 1256681837, "tonyd", "P", 1256681879, "tonyd", "P", 1256681973, "tonyd", "P", 1256682007, "tonyd", "P", 1256687333, "tonyd", "P", 1256687476, "tonyd", "P", 1256687516, "tonyd", "P", 1256687556, "tonyd", "P", 1256687900, "tonyd", "P", 1256687955, "tonyd", "P", 1256687962, "tonyd", "P", 1256687984, "tonyd", "P", 1256688039, "tonyd", "P", 1256688067, "tonyd", "P", 1256689008, "tonyd", "P", 1256689046, "tonyd", "P", 1256689133, "tonyd", "P", 1256689190, "tonyd", "P", 1256689240, "tonyd", "P", 1256689249, "tonyd", "P", 1256689290, "tonyd", "P", 1256689315, "tonyd", "P", 1256689452, "tonyd", "P", 1256689521, "tonyd", "P", 1256690417, "tonyd", "P", 1256690605, "tonyd", "P", 1256690785, "tonyd", "P", 1256691715, "tonyd", "P", 1256691766, "tonyd", "P", 1262331911, "tonyd", "P", 1262332022, "tonyd", "P", 1262332069, "tonyd", "P", 1262332100, "tonyd", "P", 1262332378, "tonyd", "P", 1262332403, "tonyd", "P", 1262332425, "tonyd", "P", 1262332584, "tonyd", "P", 1262332608, "tonyd", "P", 1262332686, "tonyd", "P", 1262345017, "tonyd", "P", 1262345080, "tonyd", "P", 1262392179, "tonyd", "P", 1262392331, "tonyd", "P", 1262392394, "tonyd", "P", 1262392424, "tonyd", "P", 1262392499, "tonyd", "P", 1262392583, "tonyd", "P", 1262392651, "tonyd", "P", 1262415341, "tonyd", "P", 1262437620, "tonyd", "P", 1262437780, "tonyd", "P", 1262437786, "tonyd", "P", 1262441731, "tonyd", "P", 1262441742, "tonyd", "P", 1262498292, "tonyd", "P", 1262499935, "tonyd", "P", 1262500008, "tonyd", "P", 1262503306, "tonyd", "P", 1262504940, "tonyd", "P", 1262505000, "tonyd", "P", 1262505060, "tonyd", "P", 1262505192, "tonyd", "P", 1262505211, "tonyd", "P", 1262505320, "tonyd", "P", 1262505338, "tonyd", "P", 1262505407, "tonyd", "P", 1262505413, "tonyd", "P", 1262505427, "tonyd", "P", 1262505645, "tonyd", "P", 1262505708, "tonyd", "P", 1262505738, "tonyd", "P", 1262505813, "tonyd", "P", 1262505871, "tonyd", "P", 1262505888, "tonyd", "P", 1262505938, "tonyd", "P", 1262506154, "tonyd", "P", 1262506173, "tonyd", "P", 1262506187, "tonyd", "P", 1262506196, "tonyd", "P", 1262506251, "tonyd", "P", 1262506351, "tonyd", "P", 1262506374, "tonyd", "P", 1262506955, "tonyd", "P", 1262507079, "tonyd", "P", 1262514597, "tonyd", "P", 1262514983, "tonyd", "P", 1262515968, "tonyd", "P", 1262516169, "tonyd", "P", 1262516233, "tonyd", "P", 1262516465, "tonyd", "P", 1262516481, "tonyd", "P", 1262516494, "tonyd", "P", 1262516636, "tonyd", "P", 1262517365, "tonyd", "P", 1262518761, "tonyd", "P", 1262518833, "tonyd", "P", 1262519012, "tonyd", "P", 1262519379, "tonyd", "P", 1262519423, "tonyd", "P", 1262519542, "tonyd", "P", 1262519658, "tonyd", "P", 1262519800, "tonyd", "P", 1262519949, "tonyd", "P", 1262520033, "tonyd", "P", 1262520319, "tonyd", "P", 1262600508, "tonyd", "P", 1262600810, "tonyd", "P", 1263005098, "tonyd", "P", 1263005149, "tonyd", "P", 1263017975, "tonyd", "P", 1263018240, "tonyd", "P", 1263018266, "tonyd", "P", 1263019811, "tonyd", "P", 1263019847, "tonyd", "P", 1263019880, "tonyd", "P", 1263019891, "tonyd", "P", 1263020068, "tonyd", "P", 1263020096, "tonyd", "P", 1263020615, "tonyd", "P", 1263020640, "tonyd", "P", 1263020892, "tonyd", "P", 1263020997, "tonyd", "P", 1263021019, "tonyd", "P", 1263021037, "tonyd", "P", 1263021121, "tonyd", "P", 1263021435, "tonyd", "P", 1263021489, "tonyd", "P", 1263021530, "tonyd", "P", 1263021588, "tonyd", "P", 1263021694, "tonyd", "P", 1263021748, "tonyd", "P", 1263021842, "tonyd", "P", 1263021875, "tonyd", "P", 1263021961, "tonyd", "P", 1263022044, "tonyd", "P", 1263022122, "tonyd", "P", 1263022308, "tonyd", "P", 1263022399, "tonyd", "P", 1263022421, "tonyd", "P", 1263022448, "tonyd", "P", 1264417698, "tonyd", "P", 1264417738, "tonyd", "P", 1264417767, "tonyd", "P", 1264417820, "tonyd", "P", 1264417951, "tonyd", "P", 1264417993, "tonyd", "P", 1264419312, "tonyd", "P", 1264419555, "tonyd", "P", 1265856388, "tonyd", "P", 1265856600, "tonyd", "P", 1265857360, "tonyd", "S", 1265857715, "tonyd", "P", 1265858172, "tonyd", "P", 1265858291, "tonyd", "P", 1265858456, "tonyd", "P", 1265858485, "tonyd", "P", 1266651666, "tonyd", "P", 1266675115, "tonyd", "P", 1272131709, "jominey", "E", 1272166479, "tonyd", "P", 1272166626, "tonyd", "P", 1272169846, "tonyd", "P", 1278490418, "tonyd", "P", 1278995180, "tonyd", "P", 1278995191, "tonyd", "P", 1278996154, "tonyd", "P", 1278996248, "tonyd", "P", 1278996288, "tonyd", "P", 1278996389, "tonyd", "P", 1278996487, "tonyd", "P", 1278996487, "tonyd", "P", 1278996506, "tonyd", "P", 1278996516, "tonyd", "P", 1278996535, "tonyd", "P", 1278997538, "tonyd", "P", 1278997574, "tonyd", "P", 1278997592, "tonyd", "P", 1278998173, "tonyd", "P", 1278998265, "tonyd", "P", 1278998316, "tonyd", "P", 1278998331, "tonyd", "P", 1278998346, "tonyd", "P", 1279001177, "tonyd", "P", 1279001691, "tonyd", "P", 1279357950, "tonyd", "P", 1279358290, "tonyd", "P", 1279358304, "tonyd", "P", 1279358401, "tonyd", "P", 1279360307, "tonyd", "P", 1279364885, "tonyd", "P", 1279365001, "tonyd", "P", 1279365067, "tonyd", "P", 1279365642, "tonyd", "P", 1279365810, "tonyd", "P", 1279366185, "tonyd", "P", 1279366282, "tonyd", "P", 1279366396, "tonyd", "P", 1279366424, "tonyd", "P", 1279366455, "tonyd", "P", 1279366469, "tonyd", "P", 1279366481, "tonyd", "P", 1279366492, "tonyd", "P", 1279367202, "tonyd", "P", 1279367325, "tonyd", "P", 1279368465, "tonyd", "P", 1279370509, "tonyd", "P", 1304406631, "tonyd", "P", 1304407118, "tonyd", "P", 1304407175, "tonyd", "P", 1304407199, "tonyd", "P", 1304459965, "jominey", "E", 1304460057, "jominey", "E", 1304460188, "jominey", "E", 1304463373, "jominey", "E", 1304732509, "jominey", "E", 1304733967, "jominey", "E", 1304922027, "tonyd", "P", 1304922178, "tonyd", "P", 1304922270, "tonyd", "P", 1305000725, "tonyd", "P", 1305001271, "tonyd", "P", 1305012019, "tonyd", "P", 1305012206, "tonyd", "P", 1305240494, "jominey", "E", 1305240694, "jominey", "E", 1305240782, "jominey", "E", 1305240873, "jominey", "E", 1305241134, "jominey", "E", 1305241337, "jominey", "E", 1305241357, "jominey", "E", 1305241663, "jominey", "E", 1309076491, "tonyd", "P", 1309078553, "tonyd", "P", 1309082513, "tonyd", "P", 1309082574, "tonyd", "P", 1309082621, "tonyd", "P", 1309083026, "tonyd", "P", 1309083188, "tonyd", "P", 1309083206, "tonyd", "P", 1309083354, "tonyd", "P", 1309327586, "tonyd", "P", 1309327652, "tonyd", "P", 1309327692, "tonyd", "P", 1309329177, "tonyd", "P", 1309329186, "tonyd", "P", 1309329198, "tonyd", "P", 1309329282, "tonyd", "P", 1309329453, "tonyd", "P", 1309329852, "tonyd", "P", 1309329942, "tonyd", "P", 1309330069, "tonyd", "P", 1309330141, "tonyd", "P", 1309330178, "tonyd", "P", 1309330225, "tonyd", "P", 1309330229, "tonyd", "P", 1309330423, "tonyd", "P", 1309330729, "tonyd", "P", 1309331311, "tonyd", "P", 1309415263, "tonyd", "P", 1309415562, "tonyd", "P", 1309415695, "tonyd", "P", 1309415709, "tonyd", "P", 1309415788, "tonyd", "P", 1309415859, "tonyd", "P", 1309416314, "tonyd", "P", 1309417214, "tonyd", "P", 1309417417, "tonyd", "P", 1309417450, "tonyd", "P", 1309420205, "tonyd", "P", 1309420253, "tonyd", "P", 1309420404, "tonyd", "P", 1309494187, "tonyd", "P", 1309494226, "tonyd", "P", 1309496422, "tonyd", "P", 1309496644, "tonyd", "P", 1309496715, "tonyd", "P", 1309525012, "tonyd", "P", 1309525040, "tonyd", "P", 1309525073, "tonyd", "P", 1309525527, "tonyd", "P", 1309525644, "tonyd", "P", 1309525915, "tonyd", "P", 1309526066, "tonyd", "P", 1309526591, "tonyd", "P", 1309526696, "tonyd", "P", 1309526737, "tonyd", "P", 1309843717, "tonyd", "P", 1312269501, "tonyd", "P", 1312269860, "tonyd", "P", 1312270151, "tonyd", "P", 1312270616, "tonyd", "P", 1312270760, "tonyd", "P", 1312270774, "tonyd", "P", 1312270795, "tonyd", "P", 1312270887, "tonyd", "P", 1312270923, "tonyd", "P", 1312270951, "tonyd", "P", 1312270964, "tonyd", "P", 1317542049, "tonyd", "E", 1320556908, "tonyd", "P", 1320556932, "tonyd", "P", 1320556941, "tonyd", "P", 1320559547, "tonyd", "P", 1320559657, "tonyd", "P", 1320559855, "tonyd", "P", 1320560011, "tonyd", "P", 1320560171, "tonyd", "P", 1320560194, "tonyd", "P", 1320560949, "tonyd", "P", 1320561074, "tonyd", "P", 1320561131, "tonyd", "P", 1320561176, "tonyd", "P", 1320561780, "tonyd", "P", 1320562380, "tonyd", "P", 1320562450, "tonyd", "P", 1320562561, "tonyd", "P", 1320562682, "tonyd", "P", 1320562764, "tonyd", "P", 1320562801, "tonyd", "P", 1320564145, "tonyd", "P", 1320565739, "tonyd", "P", 1320565909, "tonyd", "P", 1320566174, "tonyd", "P", 1320566472, "tonyd", "P", 1320566502, "tonyd", "P", 1320567680, "tonyd", "P", 1320567701, "tonyd", "P", 1320567791, "tonyd", "P", 1320567884, "tonyd", "P", 1320567925, "tonyd", "P", 1320733409, "tonyd", "P", 1320733465, "tonyd", "P", 1320733544, "tonyd", "P", 1320733718, "tonyd", "P", 1320734206, "tonyd", "P", 1320734391, "tonyd", "P", 1328674170, "tonyd", "P", 1328674228, "tonyd", "P", 1329611592, "tonyd", "P", 1329611780, "tonyd", "P", 1329611845, "tonyd", "P", 1329611889, "tonyd", "P", 1329611913, "tonyd", "P", 1329611940, "tonyd", "P", 1329612026, "tonyd", "P", 1329612037, "tonyd", "P", 1329612090, "tonyd", "P", 1329612247, "tonyd", "P", 1329612259, "tonyd", "P", 1329612405, "tonyd", "P", 1329612929, "tonyd", "P", 1329613016, "tonyd", "P", 1329613047, "tonyd", "P", 1329613787, "tonyd", "P", 1329613827, "tonyd", "P", 1329613926, "tonyd", "P", 1329613954, "tonyd", "P", 1329614073, "tonyd", "P", 1329614096, "tonyd", "P", 1329615015, "tonyd", "P", 1329615314, "tonyd", "P", 1329616357, "tonyd", "P", 1329616566, "tonyd", "P", 1329616578, "tonyd", "P", 1329616625, "tonyd", "P", 1329616735, "tonyd", "P", 1329616867, "tonyd", "P", 1329616933, "tonyd", "P", 1329617040, "tonyd", "P", 1329617118, "tonyd", "P", 1329617279, "tonyd", "P", 1329617468, "tonyd", "P", 1329617682, "tonyd", "P", 1329617696, "tonyd", "P", 1329618176, "tonyd", "P", 1329618365, "tonyd", "P", 1329618591, "tonyd", "P", 1329619007, "tonyd", "P", 1329619127, "tonyd", "P", 1329619141, "tonyd", "P", 1329619192, "tonyd", "P", 1329619209, "tonyd", "P", 1329619270, "tonyd", "P", 1329619407, "tonyd", "P", 1329619538, "tonyd", "P", 1329619609, "tonyd", "P", 1329620004, "tonyd", "P", 1329620101, "tonyd", "P", 1329621940, "tonyd", "P", 1329621971, "tonyd", "P", 1329622007, "tonyd", "P", 1329622066, "tonyd", "P", 1329622130, "tonyd", "P", 1329622225, "tonyd", "P", 1329622263, "tonyd", "P", 1329622308, "tonyd", "P", 1329622574, "tonyd", "P", 1329622663, "tonyd", "P", 1329622691, "tonyd", "P", 1329622729, "tonyd", "P", 1329622772, "tonyd", "P", 1329622841, "tonyd", "P", 1329623292, "tonyd", "P", 1329623854, "tonyd", "P", 1329623996, "tonyd", "P", 1329624023, "tonyd", "P", 1329624039, "tonyd", "P", 1329632387, "tonyd", "P", 1329634062, "tonyd", "P", 1329634104, "tonyd", "P", 1329634333, "tonyd", "P", 1329634566, "tonyd", "P", 1329634685, "tonyd", "P", 1329634727, "tonyd", "P", 1329634841, "tonyd", "P", 1329634976, "tonyd", "P", 1329635016, "tonyd", "P", 1329640698, "tonyd", "P", 1329716171, "tonyd", "P", 1329959523, "tonyd", "P", 1329959635, "tonyd", "P", 1329959770, "tonyd", "P", 1330048448, "tonyd", "P", 1330048620, "tonyd", "P", 1330150118, "tonyd", "P", 1330150296, "tonyd", "P", 1330150332, "tonyd", "P", 1330150345, "tonyd", "P", 1330150389, "tonyd", "P", 1330150536, "tonyd", "P", 1330150600, "tonyd", "P", 1330150621, "tonyd", "P", 1330150777, "tonyd", "P", 1330150854, "tonyd", "P", 1330150959, "tonyd", "P", 1330151007, "tonyd", "P", 1330151062, "tonyd", "P", 1330151209, "tonyd", "P", 1330151236, "tonyd", "P", 1330151355, "tonyd", "P", 1330151411, "tonyd", "P", 1330151453, "tonyd", "P", 1330151662, "tonyd", "P", 1330152210, "tonyd", "P", 1330152565, "tonyd", "P", 1330152603, "tonyd", "P", 1330152661, "tonyd", "P", 1330152761, "tonyd", "P", 1330152825, "tonyd", "P", 1330152841, "tonyd", "P", 1330152915, "tonyd", "P", 1330166626, "tonyd", "P", 1330168160, "tonyd", "P", 1330168223, "tonyd", "P", 1330168349, "tonyd", "P", 1330168451, "tonyd", "P", 1330168504, "tonyd", "P", 1330168523, "tonyd", "P", 1330168596, "tonyd", "P", 1330168749, "tonyd", "P", 1330221639, "tonyd", "P", 1330221669, "tonyd", "P", 1330221682, "tonyd", "P", 1330221789, "tonyd", "P", 1330221917, "tonyd", "P", 1330221954, "tonyd", "P", 1330222009, "tonyd", "P", 1330222098, "tonyd", "P", 1330222128, "tonyd", "P", 1330222433, "tonyd", "P", 1330222593, "tonyd", "P", 1330222723, "tonyd", "P", 1330223000, "tonyd", "P", 1330223059, "tonyd", "P", 1330223098, "tonyd", "P", 1330223254, "tonyd", "P", 1330223262, "tonyd", "P", 1330223305, "tonyd", "P", 1330224303, "tonyd", "P", 1330224375, "tonyd", "P", 1330224454, "tonyd", "P", 1330224551, "tonyd", "P", 1330224597, "tonyd", "P", 1330224634, "tonyd", "P", 1330582049, "tonyd", "P", 1330663158, "tonyd", "P", 1330663433, "tonyd", "P", 1330664104, "tonyd", "P", 1330734854, "tonyd", "P", 1330734867, "tonyd", "P", 1330734883, "tonyd", "P", 1330734928, "tonyd", "P", 1330734939, "tonyd", "P", 1330735163, "tonyd", "P", 1330735291, "tonyd", "P", 1330735483, "tonyd", "P", 1330742433, "tonyd", "P", 1330742605, "tonyd", "P", 1330742672, "tonyd", "P", 1330742701, "tonyd", "P", 1330742868, "tonyd", "P", 1330747594, "tonyd", "P", 1330930332, "tonyd", "P", 1330930380, "tonyd", "P", 1330930498, "tonyd", "P", 1330930555, "tonyd", "P", 1331874939, "tonyd", "P", 1331875164, "tonyd", "P", 1331875234, "tonyd", "P", 1331875243, "tonyd", "P", 1331875255, "tonyd", "P", 1331875672, "tonyd", "P", 1331875810, "tonyd", "P", 1331875826, "tonyd", "P", 1331876118, "tonyd", "P", 1331876961, "tonyd", "P", 1331877098, "tonyd", "P", 1331877121, "tonyd", "P", 1331877395, "tonyd", "P", 1331877478, "tonyd", "P", 1331877770, "tonyd", "P", 1331878080, "tonyd", "P", 1331880681, "tonyd", "P", 1331880730, "tonyd", "P", 1332136415, "tonyd", "P", 1332137858, "tonyd", "P", 1332138344, "tonyd", "P", 1332138445, "tonyd", "P", 1332138511, "tonyd", "P", 1332138763, "tonyd", "P", 1332139420, "tonyd", "P", 1332139614, "tonyd", "P", 1332226156, "tonyd", "P", 1332226962, "tonyd", "P", 1332227309, "tonyd", "P", 1332227349, "tonyd", "P", 1332227357, "tonyd", "P", 1332227518, "tonyd", "P", 1332227590, "tonyd", "P", 1332227629, "tonyd", "P", 1332547883, "tonyd", "P", 1332547896, "tonyd", "P", 1332548004, "tonyd", "P", 1332548360, "tonyd", "P", 1332548453, "tonyd", "P", 1332548577, "tonyd", "P", 1332548674, "tonyd", "P", 1332548780, "tonyd", "P", 1332548885, "tonyd", "P", 1332548940, "tonyd", "P", 1332549034, "tonyd", "P", 1332549080, "tonyd", "P", 1332549541, "tonyd", "P", 1332549560, "tonyd", "P", 1332549672, "tonyd", "P", 1332549743, "tonyd", "P", 1332557417, "tonyd", "P", 1332557446, "tonyd", "P", 1332562744, "tonyd", "P", 1332562749, "tonyd", "P", 1332570779, "tonyd", "P", 1332571300, "tonyd", "P", 1332571322, "tonyd", "P", 1332571450, "tonyd", "P", 1332571616, "tonyd", "P", 1332571639, "tonyd", "P", 1332572148, "tonyd", "P", 1332572181, "tonyd", "P", 1332572394, "tonyd", "P", 1332572595, "tonyd", "P", 1332572635, "tonyd", "P", 1332572664, "tonyd", "P", 1332672030, "tonyd", "P", 1332672062, "tonyd", "P", 1332672236, "tonyd", "P", 1332672326, "tonyd", "P", 1332672432, "tonyd", "P", 1332672729, "tonyd", "P", 1332672766, "tonyd", "P", 1333167135, "tonyd", "P", 1333167184, "tonyd", "P", 1333167198, "tonyd", "P", 1333167233, "tonyd", "P", 1333167284, "tonyd", "P", 1333167313, "tonyd", "P", 1333167331, "tonyd", "P", 1333167358, "tonyd", "P", 1333167424, "tonyd", "P", 1333167467, "tonyd", "P", 1333167574, "tonyd", "P", 1333167842, "tonyd", "P", 1333167865, "tonyd", "P", 1333168003, "tonyd", "P", 1333168032, "tonyd", "P", 1333168108, "tonyd", "P", 1333168135, "tonyd", "P", 1335077209, "tonyd", "P", 1335077550, "tonyd", "P", 1335077622, "tonyd", "P", 1335093458, "tonyd", "P", 1336186744, "tonyd", "P", 1336186841, "tonyd", "P", 1336186922, "tonyd", "P", 1336186930, "tonyd", "P", 1336187038, "tonyd", "P", 1336187072, "tonyd", "P", 1336187139, "tonyd", "P", 1336187228, "tonyd", "P", 1336187297, "tonyd", "P", 1336187329, "tonyd", "P", 1336187367, "tonyd", "P", 1336187590, "tonyd", "P", 1336187771, "tonyd", "P", 1336187924, "tonyd", "P", 1336187974, "tonyd", "P", 1336188099, "tonyd", "P", 1336188154, "tonyd", "P", 1336188197, "tonyd", "P", 1336188255, "tonyd", "P", 1336188344, "tonyd", "P", 1336188380, "tonyd", "P", 1336188402, "tonyd", "P", 1336188428, "tonyd", "P", 1336201412, "tonyd", "P", 1336201540, "tonyd", "P", 1336201579, "tonyd", "P", 1337345682, "tonyd", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

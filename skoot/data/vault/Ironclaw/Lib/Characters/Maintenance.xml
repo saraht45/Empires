@@ -1,0 +1,147 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:delete_old_characters">
+         X[M] /* update the characters skills */
+\$az = \$\{Chatters:AE:az:azrael\};
+
+\$folder = "Chatters:IC";
+
+/* run script in each character */
+\$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+
+\$cont = TRUE;
+\$debug = nil;
+
+\$counted = 0;
+\$flagged = 0;
+
+for(\$z1=0;\$z1\<sizeof(\$folders)\&\&\$cont;\$z1++) \{
+  \$delay(0.01, TRUE, "be6b");
+  \$folder = "Chatters:IC:"+\$folders[\$z1];
+  \$characters = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+  for(\$z2=0;\$z2\<sizeof(\$characters)\&\&\$cont;\$z2++) \{
+    \$character = Obj("Chatters:IC:"+\$folders[\$z1]+":"+\$characters[\$z2]);
+
+    \$counted++;
+/*    EmitTo(\$az, dump_value(\$character));*/
+    if(!\$character."skotos:creator") \{
+     /* we don't know what account this character is for... hmm... */
+     EmitTo(\$az, "We don't have an account for "+dump_value(\$character)+"!");
+     continue;
+    \} else \{
+     \$dat = Udat::query_udat(\$name: \$character."skotos:creator");
+    \}
+    /* what sort of an account is it? */
+    if(\$dat."skotos:type" == "trial") \{
+/*     EmitTo(\$az, "Trial account for "+dump_value(\$character));*/
+     /* how long has this character been around for? */
+     \$time = 0;
+     if(\$character."cdat:lastlogin") \{
+      \$time = time() - \$character."cdat:lastlogin";
+     \} else if (\$character."skotos:creation_time") \{
+      \$time = time() - \$character."skotos:creation_time";     
+     \} else \{
+      EmitTo(\$az, "We don't know how old "+dump_value(\$character)+" is!");
+      continue;      
+     \}
+     /* if the character has been around for long enough (three months idle?) then we can delete it. Trial account, unlikely to be renewed */
+     if(\$time \> 60*60*24*31*3) \{
+/*      EmitTo(\$az, dump_value(\$character)+" is old, on a trial account, and is being deleted.");*/
+      Slay(\$character);
+      \$flagged++;
+     \}
+    \}
+  \}
+\}
+/*EmitTo(\$az, "Counted: "+dump_value(\$counted));
+EmitTo(\$az, "Flagged: "+dump_value(\$flagged));*/
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_rank_name">
+         X[M] return Call(\$\{Allegory:Lib:Characters:Promotion\}, "get_rank_name", \$char: \$char, \$rank: \$rank);
+      </Core:Property>
+      <Core:Property property="merry:lib:monthly_maintenance">
+         X[M] /* run the monthly maintenance tasks */
+/* wait a while, so this doesn't happen at midnight when the other laggy scripts might be running */
+\$delay(random(60*60*24), TRUE, "0438");
+::delete_old_characters();
+\$delay(random(60*60), TRUE, "dfd7");
+::process_promotions();
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:process_promotions">
+         X[M] /* update the characters skills */
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* Disabled until we make a decision about @events */
+return TRUE;
+
+/* run script in each character */
+\$folder = "Chatters:IC";
+\$folders = Call(\$\{/usr/System/sys/idd\}, "idd:get-folders");
+
+\$char_list = (\{ \});
+
+
+for(\$z1=0;\$z1\<sizeof(\$folders);\$z1++) \{
+  \$delay(0.01, TRUE, "be6b");
+  \$folder = "Chatters:IC:"+\$folders[\$z1];
+  \$characters = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects");
+  for(\$z2=0;\$z2\<sizeof(\$characters);\$z2++) \{
+    \$character = Obj("Chatters:IC:"+\$folders[\$z1]+":"+\$characters[\$z2]);
+
+    if(\$character."event:points") \{
+      \$tally = 0;
+      for(\$count=0;\$count\<sizeof(map_indices(\$character."event:points"));\$count++) \{
+        \$tally += Int( \$character."event:points"[map_indices(\$character."event:points")[\$count]][0] );
+      \}
+      if(!\$character."event:tally") \$character."event:tally" = 0;
+      \$character."event:tally" += \$tally;
+      \$character."event:points" = ([ ]);
+      \$char_list += (\{ \$character \});
+    \}
+  \}
+\}
+
+
+for(\$z1=0;\$z1\<sizeof(\$char_list);\$z1++) \{
+  if(\$char_list[\$z1]."trait:favor:promotion") \{
+
+    if(!\$char_list[\$z1]."trait:favor:lastpaged" \|\| \$char_list[\$z1]."trait:favor:lastpaged"+60*60*24*6 \> time()) \{
+      general::opage(\$to: \$char_list[\$z1], \$from: \$\{Chatters:IC:sa:sallumer\}, \$message: Str(\$char_list[\$z1]."skotos:playercapname")+" has friends in high places, that want to promote "+\$char_list[\$z1]."base:objective"+", however you need to find a sponsor first. Find someone ranked between "+::get_rank_name(\$rank: \$char_list[\$z1]."rank:rank"+1)[0]+" and "+::get_rank_name(\$rank: \$char_list[\$z1]."rank:rank"+3)[0]+" (inclusive) to sponsor you. To sponsor, they can type: @sponsor "+Str(\$char_list[\$z1]."skotos:playercapname"), \$timestamp: TRUE);
+      \$char_list[\$z1]."trait:favor:lastpaged" = time();
+    \}
+
+    continue;
+  \}
+
+  if(\$char_list[\$z1]."rank:rank")
+    \$rank = \$char_list[\$z1]."rank:rank";
+  else
+    \$rank = 3;
+
+
+  if( (\$rank \<= 3 \&\& \$char_list[\$z1]."event:tally" \>= 4 )
+  \|\|  ( \$char_list[\$z1]."event:tally" \> 3 \&\& \$char_list[\$z1]."event:tally" \>= (\$rank-2)*4 )  ) \{
+    \$char_list[\$z1]."trait:favor:promotion" = (\{ time(), \$char_list[\$z1]."event:tally" \});
+    \$char_list[\$z1]."event:tally" = 0;
+    \$output = TAG("PROMOTING "+dump_value(\$char_list[\$z1]), "imp");
+    general::opage(\$to: \$char_list[\$z1], \$from: \$\{Chatters:IC:sa:sallumer\}, \$message: Str(\$char_list[\$z1]."skotos:playercapname")+" has been drawing positive attention, and if "+\$char_list[\$z1]."base:pronoun"+" can find a sponsor, "+\$char_list[\$z1]."base:pronoun"+" can be granted lands. Find someone ranked between "+::get_rank_name(\$rank: \$char_list[\$z1]."rank:rank"+1)[0]+" and "+::get_rank_name(\$rank: \$char_list[\$z1]."rank:rank"+3)[0]+" (inclusive) to sponsor you. To sponsor, they can type: @sponsor "+Str(\$char_list[\$z1]."skotos:playercapname"), \$timestamp: TRUE);
+    \$char_list[\$z1]."trait:favor:lastpaged" = time();
+  \}
+\}
+
+EmitTo(\$az, "Finished script");
+/*EmitTo(\$az, dump_value(\$char_list));*/
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1227415553, "tonyd", "P", 1227415663, "tonyd", "P", 1227415707, "tonyd", "P", 1227415735, "tonyd", "P", 1227415900, "tonyd", "P", 1227416145, "tonyd", "P", 1227416227, "tonyd", "P", 1227416291, "tonyd", "P", 1227416321, "tonyd", "P", 1227416349, "tonyd", "P", 1227416518, "tonyd", "P", 1227416590, "tonyd", "P", 1227416634, "tonyd", "P", 1227416667, "tonyd", "P", 1227416682, "tonyd", "P", 1227416753, "tonyd", "P", 1227416874, "tonyd", "P", 1227416886, "tonyd", "P", 1227416924, "tonyd", "P", 1227417020, "tonyd", "P", 1227417139, "tonyd", "P", 1227417264, "tonyd", "P", 1227417348, "tonyd", "P", 1227417452, "tonyd", "P", 1227417490, "tonyd", "P", 1227417643, "tonyd", "P", 1227418711, "tonyd", "P", 1227419053, "tonyd", "P", 1227419082, "tonyd", "P", 1227419151, "tonyd", "P", 1227419164, "tonyd", "P", 1227419226, "tonyd", "P", 1227419343, "tonyd", "P", 1391323259, "tonyd", "P", 1391323445, "tonyd", "P", 1391323579, "tonyd", "P", 1391323603, "tonyd", "P", 1391323707, "tonyd", "P", 1391323776, "tonyd", "P", 1391323812, "tonyd", "P", 1391323829, "tonyd", "P", 1391324029, "tonyd", "P", 1391324056, "tonyd", "P", 1391324107, "tonyd", "P", 1391324121, "tonyd", "P", 1391331751, "tonyd", "P", 1391331916, "tonyd", "P", 1391332014, "tonyd", "P", 1391332063, "tonyd", "P", 1391332169, "tonyd", "P", 1391332191, "tonyd", "P", 1391332202, "tonyd", "P", 1391332211, "tonyd", "P", 1391332218, "tonyd", "P", 1391332225, "tonyd", "P", 1391332237, "tonyd", "P", 1391332255, "tonyd", "P", 1391332419, "tonyd", "P", 1391332498, "tonyd", "P", 1391332592, "tonyd", "P", 1391332605, "tonyd", "P", 1391332694, "tonyd", "P", 1391332715, "tonyd", "P", 1391332853, "tonyd", "P", 1393564976, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

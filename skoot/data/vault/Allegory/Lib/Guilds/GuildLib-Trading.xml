@@ -1,0 +1,1548 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Allegory:Lib:Guilds:GuildLib-DailyFunctions)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:add_import_auction">
+         X[M] int i;
+mixed* properties;
+mixed* token;
+string output;
+
+if(!\$guildleader \&\& !\$char."guild:trader") \{
+    return "You do not have the authority to request new imports.";
+\}
+
+\$historyNew = (\{ \});
+if(\$guild.auction_history) \{
+    \$history = \$guild.auction_history; /*
+
+    /* How many auctions have been requested in this last week? */
+    for(i = 0; i \< sizeof(\$history); i++) \{
+        if(Int(time() - \$history[i]) \< (60*60*24*7)) \{
+            \$historyNew += (\{ \$history[i] \});
+        \}
+    \}
+\}
+
+\$guild.auction_history = \$historyNew;
+
+/* if(sizeof(\$historyNew) \>= 4) \{
+    \$mostRecent = \$historyNew[3];
+    \$waiting = (60*60*24*7) - (time() - \$mostRecent);
+    return "Request denied. You have already requested 4 imports in the last week. You must wait " + Str(\$waiting/3600) + " hour(s)";
+\} */
+
+\$max = 7 - Int(\$guild.status);
+if(Int(\$max) == 0) \$max = 1;
+if(sizeof(\$historyNew) \>= \$max) \{  
+    \$sz = sizeof(\$historyNew);
+    \$mostRecent = \$historyNew[\$sz-1];
+    \$waiting = (60*60*24*7) - (time() - \$mostRecent);
+    output += "You have already requested your maximum of " + Str(\$max) + " imports in the last week. You must wait " + Str(\$waiting/3600) + " hour(s). \<br/\>\<br/\>";
+    return output;
+\}
+
+\$florinCost = 5000;
+
+\$temp = explode(\$vars[0], ",");
+\$item = Obj(\$temp[0]);
+
+properties = (\{ \});
+for(i = 1; i \< sizeof(\$temp); i+=2) \{
+    properties += (\{ \$temp[i], \$temp[i+1] \});
+\}
+
+token = \$temp[sizeof(\$temp)-2..];
+
+if(Int(Get(\$guild, "kitty")) \< \$florinCost) \{
+    return "Request denied. Your guild does not have enough money to complete this transaction.";
+\}
+
+Set(\$guild, "kitty", Int(Get(\$guild, "kitty"))-\$florinCost);
+
+for(i = 0; i \< sizeof(properties); i+=2) \{
+    Set(\$item, properties[i], properties[i+1]);
+\}
+
+/*\$desc = UnSAM(Get(Obj(\$item), "details:default:description:brief"));*/
+\$desc = Describe(Obj(\$item), nil, nil, STYLE_IGNORE_VISIBILITY);
+
+for(i = 0; i \< sizeof(properties); i+=2) \{
+    Set(\$item, properties[i], nil);
+\} 
+
+\$auction = (\{ 1, (\{ capitalize(\$desc), 1, \$item, nil, \$desc, nil \}), capitalize(\$desc), capitalize(\$desc) + " is brought into town by " + \$guild.fullname + ".", properties, (\{ "caravan", 1, 0 \}), nil, nil, nil, nil, \$guild \});
+
+/* record the transfer */
+if(!\$guild.transfers) \$guild.transfers = (\{ \});
+\$guild.transfers += (\{ (\{ \$actor, \$florinCost, \$\{Allegory:Guilds:merchantsguild\}, time(), "sending", "Import of " + Str(\$desc) + "." \}) \});
+
+\$assisttext = "AUTO IMPORT: " + proper(Str(\$actor."skotos:charname")) + " (" + \$guild.fullname + ") requested an import for " + Str(\$desc) + ".";
+assist::dofileassist(\$data: \$\{Data:DB:assist:AssistGeneralDB\}, \$char: Str(\$actor), \$queue: "trading", \$assisttext: \$assisttext, \$log: "[TAS]");
+
+if(!\$guild.auction_history) \$guild.auction_history = (\{ \});
+\$guild.auction_history += (\{ time() \});
+
+\$rand = (60*60*12) + random(60*60*12);  /* Random 12-24 hour delay */
+
+\$delay(\$rand, "Your request has been received. Please allow up to 48 hours for processing.", "f2bb");
+
+Set(\$\{Allegory:Guilds:Trading:bidding\}, "bidding:" + \$guildname + ":" + Str(time()), \$auction);
+
+
+return "Request approved!";
+      </Core:Property>
+      <Core:Property property="merry:lib:customize_import">
+         X[M] string output, vstr;
+int i, j, trading, trade;
+mixed db, *importList, *verified, *options, *values, *properties;
+mapping itemMap, optionsMap, tradingAll, tradeAll, tokens, propertiesMap;
+object item;
+
+output = "";
+
+db = \$\{Allegory:Data:AuctionHouse\};
+
+if(!\$vars \|\| \$vars[0] == "undefined") return "";
+
+itemMap = Get(db, \$vars[0]);
+item = itemMap["object"];
+
+vstr = "";
+
+if(itemMap["properties"]) \{
+    propertiesMap = itemMap["properties"];
+    properties = map_indices(propertiesMap);
+    for(i = 0; i \< sizeof(properties); i++) \{
+        vstr += "'" + properties[i] + "', '" + propertiesMap[properties[i]] + "', ";
+    \}
+\}
+
+if(itemMap["options"]) \{
+    optionsMap = itemMap["options"];
+    options = map_indices(optionsMap);
+    for(i = 0; i \< sizeof(options); i++) \{
+        output += "\<select id='" + options[i] + "'\>\\n";
+        vstr += "'" + options[i] + "', getElementById('" + options[i] + "').value" + ", ";
+
+        output += "\<option\>" + "---" + capitalize(Str(options[i])) + "---\</options\>";
+
+        values = optionsMap[options[i]];
+        for(j = 0; j \< sizeof(values); j++) \{
+            output += "\<option value='" + values[j] + "'\>" + capitalize(values[j]) + "\</option\>";
+        \}
+
+        output += "\</select\>\<i\>(optional)\</i\>\<br/\>";
+    \}
+\}
+
+output += "\</td\>\</tr\>\</table\>\<br/\>\<font color='red'\>\<b\>Your guild will be charged 50 florins.\</b\>\</font\>\<br/\>";
+
+if(Int(\$guild.kitty) \> 5000) \{
+    output += "\<br/\>\<input type='submit' value='Make Request' class='clickable' onclick=\\"run_script('add_import_auction', ['" + Str(item) + "', " + vstr + "]);\\"/\>";
+\} else \{
+    output += " You do not have enough guild money.";
+\}
+
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:display_trading_notices">
+         X[M] string content, *notices; 
+int i, sz; 
+ 
+/* don't display if in editmode */ 
+if(\$editmode) 
+  return "\&lt;GUILD TRADING NOTICES\&gt;"; 
+
+if(!\$guild.trades) return "";
+if(!\$guild.trades."trading:notes") return "";
+ 
+/* display the notices for this guild */ 
+if(!sizeof(\$guild.trades."trading:notes")) return ""; 
+ 
+ 
+content = "\<p\>"; 
+ 
+/* are we deleting a trading notice? */ 
+if(\$delete_trading_notice \&\& \$guild.trades."trading:notes" \&\& sizeof(\$guild.trades."trading:notes") == Int(\$trading_notice_size)) \{ 
+  if(\$char \&\& \$guild \&\& \$char.guild \&\& \$char.guild == \$guild \&\& (\$guildrank == 1 \|\| \$char."guild:trader"))\{ 
+    \$guild.trades."trading:notes"[Int(\$delete_trading_notice)] = nil; 
+    \$guild.trades."trading:notes" -= (\{ nil \}); 
+  \} 
+\} 
+ 
+notices = \$guild.trades."trading:notes"; 
+sz = sizeof(notices); 
+for(i=0;i\<sz;i++) \{ 
+  content += notices[i]; 
+  /* if they are a trader, allow them to delete this */ 
+  if(\$char \&\& \$guild \&\& \$char.guild \&\& \$char.guild == \$guild \&\& (\$guildrank == 1 \|\| \$char."guild:trader"))\{ 
+    content += UnSAM(ParseXML(" [\<ZLINK base=\\"/SAM/Prop/Allegory:Lib:Guilds:Guild/popup\\" char=\$(char) page=\$(page) delete_trading_notice="+Str(i)+" trading_notice_size="+Str(sizeof(notices))+"\>Delete\</ZLINK\>]")); 
+  \} 
+  content += "\<br/\>"; 
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:do_kitty_pc_transfer">
+         X[M] int i;
+/* Transfer money from one guild to the other */
+ if(!\$guildleader \&\& (!\$char."guild:inventory" \|\| \$char."guild:inventory" == "no access")) return nil;
+
+ /* sanity check that they requested the transfer properly */
+ if(!\$vars \|\| sizeof(\$vars) != 3) return nil;
+ if(!sscanf(\$vars[0], "%d", i))
+  return "Unknown amount of money to transfer.";
+ if(i\<=0)
+  return nil;
+ /* because a florin is "100" (for bits) multiply i by 100 before checking \& transferring */
+ i = i*100;
+ if(i\>Int(\$guild.kitty))
+  return "You don't have "+Str(i)+" florins in your guild kitty.";
+
+ \$pc = Obj(\$vars[1]);
+ if(!\$pc)
+  return "Sorry, we can't find who you're trying to transfer money to.";
+ if(!\$pc."trait:money") \$pc."trait:money" = 0;
+\$reason = \$vars[2];
+
+ /* all looks in order. Transfer the money */
+ \$guild.kitty -= i;
+ \$pc."trait:money" += i;
+
+ /* record the transfer */
+ if(!\$guild.transfers) \$guild.transfers = (\{ \});
+ \$guild.transfers += (\{ (\{ \$actor, i, \$pc, time(), "sending", \$reason \}) \});
+
+ /* ::check_alt_abuse(); */
+
+ return Str(Int(i/100))+" florins successfully transferred to the "+Str(\$pc."skotos:charname")+".";
+      </Core:Property>
+      <Core:Property property="merry:lib:do_kitty_transfer">
+         X[M] int i;
+/* Transfer money from one guild to the other */
+ if(!\$guildleader \&\& (!\$char."guild:inventory" \|\| \$char."guild:inventory" == "no access")) return nil;
+
+ /* sanity check that they requested the transfer properly */
+ if(!\$vars \|\| sizeof(\$vars) != 3) return nil;
+ if(!sscanf(\$vars[0], "%d", i))
+  return "Unknown amount of money to transfer.";
+ if(i\<=0)
+  return nil;
+ /* because a florin is "100" (for bits) multiply i by 100 before checking \& transferring */
+ i = i*100;
+ if(i\>Int(\$guild.kitty))
+  return "You don't have "+Str(i)+" flroins in your guild kitty.";
+ \$otherguild = Obj("Allegory:Guilds:"+\$vars[1]);
+ if(!\$otherguild)
+  return "Sorry, we can't find the guild you're trying to transfer money to.";
+ if(!\$otherguild.kitty) \$otherguild.kitty = 0;
+\$reason = \$vars[2];
+
+ /* all looks in order. Transfer the money */
+ \$guild.kitty -= i;
+ \$otherguild.kitty += i;
+
+ /* record the transfer */
+ if(!\$guild.transfers) \$guild.transfers = (\{ \});
+ \$guild.transfers += (\{ (\{ \$actor, i, \$otherguild, time(), "sending", \$reason \}) \});
+
+ /* record it in the other guild too */
+ if(!\$otherguild.transfers) \$otherguild.transfers = (\{ \});
+ \$otherguild.transfers += (\{ (\{ \$actor, i, \$guild, time(), "receiving", \$reason \}) \});
+
+ ::check_alt_abuse();
+
+ return Str(Int(i/100))+" florins successfully transferred to the "+Str(\$otherguild.fullname)+".";
+      </Core:Property>
+      <Core:Property property="merry:lib:end_bid">
+         X[M] /* finalize the bidding */ 
+ 
+\$az = \$\{Chatters:AE:az:azrael\}; 
+EmitTo(\$az, "Bidding over"); 
+EmitTo(\$az, "Item is: "+dump_value(\$item)); 
+ 
+/* get details for this bidding */ 
+\$details = Get(\$\{Allegory:Guilds:Trading:bidding\}, \$item); 
+/* if this item doesn't exist, exit */ 
+if(!\$details) 
+  return FALSE; 
+ 
+/* check that the winning guild exists, and has the money */ 
+if(!\$details[7]) \{ 
+  /* guild doesn't exist */ 
+  Call(\$this, "end_bid_reset", \$item: \$item); 
+  return TRUE; 
+\} 
+ 
+/* add the item to the guild trading deals */ 
+/* check if the guild has a trading deals container set */ 
+if(!\$details[7].trades)\{ 
+  /* nope. So create one */ 
+  /* pick a name */ 
+  \$tmp = "Allegory:Guilds:Trades:"+name(\$details[7])[16..strlen(name(\$details[7]))-1]; 
+  \$trades = Duplicate(\$\{Allegory:Guilds:Trades:default_trades\}); 
+  /* this line doesn't seem to work - it sets it as a property instead of changing the name */ 
+  \$trades."core:objectname" = \$tmp; 
+  \$details[7].trades = \$trades; 
+\} else \{ 
+  \$trades = \$details[7].trades; 
+\} 
+ 
+/* place the item into the guild trading */ 
+Set(\$trades, \$item, copy(\$details)); 
+ 
+/* remove the item from guild bidding */ 
+Set(\$\{Allegory:Guilds:Trading:bidding\}, \$item, nil); 
+ 
+/* send a note to the winning guild */ 
+if(!\$trades."trading:notes") \{ 
+  \$trades."trading:notes" = (\{ \}); 
+\} 
+\$trades."trading:notes" += (\{ (\{ "Your guild has successfully won a trade deal for " + Str(\$details[0]) + " " + \$details[2] + " for " + Str(Int(\$details[6])) + " florins.", time() \}) \}); 
+
+/* Add 80% of profit to the importing guild. */
+/* Unless the winning guild is the importing guild */
+if(\$details[10]) \{
+    \$importingGuild = \$details[10];
+  
+    /* Make sure it's an object */
+    if(typeof(\$importingGuild) != 4) \{
+        if(Obj(\$importingGuild)) \{
+            \$importingGuild = Obj(\$importingGuild);
+        \}
+    \}
+
+    if(typeof(\$importingGuild) == 4 \&\& \$importingGuild != \$details[7]) \{
+        \$profit = Int(Flt(\$details[6]*100) * 0.8);
+        \$kitty = Int(\$importingGuild.kitty);
+
+        /* Probably not needed but want to make sure profit is \>= 0 */
+        if(Int(\$profit) \< 0) \$profit = 0;
+
+        \$kitty = Int(\$kitty) + Int(\$profit);
+        \$importingGuild.kitty = \$kitty;
+
+        if(\$importingGuild.trades) \$importingGuildTrades = \$importingGuild.trades;
+
+        if(\$importingGuildTrades) \{
+            if(!\$importingGuildTrades."trading:notes") \{
+                \$importingGuildTrades."trading:notes" = (\{ \});
+            \}
+
+            \$importingGuildTrades."trading:notes" += (\{ (\{ "Your guild has earned " + Str(Int(\$profit)/100) + " florins from an auction for " + Str(\$details[0]) + " " + \$details[2] + ".", time() \}) \});
+        \}
+    \}
+\}
+ 
+/* and for debug purposes, make changes and set the item back again */ 
+/* remove bidding information */ 
+/* 
+\$details[6] = nil; 
+\$details[7] = nil; 
+\$details[8] = nil; 
+*/ 
+/* set item back again */ 
+/*Set(\$\{Allegory:Guilds:Trading:bidding\}, \$item, \$details);*/ 
+
+/*    \$data = explode(ctime(time()), " ");
+    \$month = \$data[1];
+    \$year = \$data[4];
+
+    if(\$month == "Jan") \$month = "01";
+    if(\$month == "Feb") \$month = "02";
+    if(\$month == "Mar") \$month = "03";
+    if(\$month == "Apr") \$month = "04";
+    if(\$month == "May") \$month = "05";
+    if(\$month == "Jun") \$month = "06";
+    if(\$month == "Jul") \$month = "07";
+    if(\$month == "Aug") \$month = "08";
+    if(\$month == "Sep") \$month = "09";
+    if(\$month == "Oct") \$month = "10";
+    if(\$month == "Nov") \$month = "11";
+    if(\$month == "Dec") \$month = "12";
+
+    \$property = "transactions:deposit:imports:" + Str(\$year) + ":" + Str(\$month);
+    if(Get(\$council, \$property)) \{
+        Set(\$council, \$property, Int(Get(\$council, \$property)) + 2000);
+    \} else \{
+        Set(\$council, \$property, 2000);
+    \} */
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:end_bid_countdown">
+         X[M] /* delay while time remains in the bidding */ 
+ 
+/* how long should we wait? */ 
+\$time = \$time-time(); 
+if(\$time\>0) 
+  \$delay(\$time, TRUE, "0281"); 
+ 
+return Call(\$this, "end_bid", \$item: \$item);
+      </Core:Property>
+      <Core:Property property="merry:lib:end_bid_reset">
+         X[M] int shipment_remaining; 
+/* reset the bidding */ 
+ 
+/* get details for this bidding */ 
+if(typeof(\$item) == T_ARRAY) \{ 
+  \$details = \$item; 
+  /* set the new name for \$item */ 
+  if(\$name) \{ 
+    \$item = \$name; 
+  \} else \{ 
+    \$item = "bidding:"+Str(random(100))+":"+Str(time()); 
+  \} 
+\} else \{ 
+  \$details = Get(\$\{Allegory:Guilds:Trading:bidding\}, \$item); 
+  /* remove the item from bidding */ 
+  Set(\$\{Allegory:Guilds:Trading:bidding\}, \$item, nil); 
+  /* if this item doesn't exist, exit */ 
+  if(!\$details) 
+    return FALSE; 
+\} 
+ 
+/* make changes and set the item back again */ 
+\$details[6] = nil; 
+\$details[7] = nil; 
+\$details[8] = nil; 
+/* reduce the shipments remaining, if applicable */ 
+shipment_remaining = FALSE; 
+if(\$details[5] \&\& \$details[5][1] != "-1") \{ 
+  if(\$details[5][1] \> 0) \{ 
+    \$details[5][1]--; 
+    shipment_remaining = TRUE; 
+  \} 
+\} else if(\$details[5] \&\& \$details[5][1] == "-1") \{ 
+  shipment_remaining = TRUE; 
+\} 
+ 
+/* set item back again */ 
+/* only if there are more shipments remaining */ 
+if(\$details[5] \&\& \$details[5][1] != "-1" \&\& \$details[5][1] \<= 0) \{ 
+  Set(\$\{Allegory:Guilds:Trading:bidding\}, "nostock:"+\$item, \$details); 
+\} else \{ 
+  Set(\$\{Allegory:Guilds:Trading:bidding\}, \$item, \$details); 
+\} 
+ 
+/* if this is something that can be sold off the docks, give one shipment to the docks */ 
+if(shipment_remaining \&\& typeof(\$details[1]) == T_ARRAY) \{ 
+  \$dock_inv = \$\{Allegory:Guilds:Inventories:dock_overflow_inventory\}; 
+  /* what is the name of this item? */ 
+  \$itemname = \$item[7..strlen(\$item)-1]; 
+  \$itemname = "tradingitem"+\$itemname; 
+  /* does this item already exist? */ 
+  if(Get(\$dock_inv, \$itemname)) \{ 
+    /* item already exists. Increase quantity. */ 
+    \$tmp = Get(\$dock_inv, \$itemname); 
+    \$tmp[1] += \$details[0]; 
+    Set(\$dock_inv, \$itemname, \$tmp); 
+  \} else \{ 
+    /* item doesn't exist, so add it */ 
+    \$tmp = \$details[1]; 
+    \$tmp[1] = \$details[0]; 
+    Set(\$dock_inv, \$itemname, \$tmp); 
+    Set(\$dock_inv, "settings:"+\$itemname+":properties", \$details[4]); 
+  \} 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:list_inventory">
+         X[M] string *items, *imports;
+object inventory;
+string output;
+int i, sz;
+
+output = "";
+
+  /* only let them see the inventory list if they are in the guild */
+  if(!\$guildrank) return "You are not authorized to view this inventory.";
+  /* only let them take items or dump stock if they have access */
+  if(\$actor."guild:inventory" == "access" \|\| \$guildleader) \{
+    \$inv_editor = TRUE;
+  \} else \{
+    \$inv_editor = nil;
+  \}
+
+  if(!\$guild.inventory)\{
+    catch(Call(\$\{Lib:objects\}, "create_of_type", \$name: "Allegory:Guilds:Inventories:"+name(\$guild)[16..strlen(name(\$guild))-1], \$type: "propcontainer"));
+    \$guild.inventory = Obj("Allegory:Guilds:Inventories:"+name(\$guild)[16..strlen(name(\$guild))-1]);
+  \}
+  inventory = \$guild.inventory;
+
+  /* display the inventory for this guild */
+  items = map_indices(prefixed_map(inventory."*", "tradingitem:"));
+  imports = map_indices(prefixed_map(inventory."*", "guildimport:"));
+
+  output = "\<table border=\\"0\\"\>\\n";
+  output += "\<tr\>\<td colspan=";
+  if(\$inv_editor) \{
+    output += "5";
+  \} else \{
+    output += "3";
+  \}
+  output += "\>Guild kitty: \<strong\>"+Str(Int(\$guild.kitty)/100)+" florins\</strong\>\</td\>\</tr\>\\n";
+  output += "\<tr\>\<td\>\<strong\>Quantity\</strong\>\</td\>\<td\>\<strong\>Item\</strong\>\</td\>\<td\>\<strong\>Notes\</strong\>\</td\>";
+  if(\$inv_editor)
+    output += "\<td\>\<strong\>Take Item\</strong\>\</td\>";
+  output += "\<td\>\<strong\>Florin Cost\</strong\>\</td\>";
+  output += "\<td\>\<strong\>\</strong\>\</td\>";
+  output += "\</tr\>\\n";
+
+  /* silver rings */
+  if(\$guildleader) \{
+    output += "\<tr\>\<td\>unlimited\</td\>\<td\>silver ring\</td\>\<td\>Used for administering the guild\</td\>";
+    if(\$inv_editor)
+      output += "\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', 'silverring');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\</td\>\<td\>\</td\>";
+    output += "\</tr\>";
+  \}
+
+  /* bronze rings */
+  output += "\<tr\>\<td\>unlimited\</td\>\<td\>bronze ring\</td\>\<td\>Used for administering the guild\</td\>";
+  if(\$inv_editor)
+    output += "\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', 'bronzering');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\</td\>\<td\>\</td\>";
+  output += "\</tr\>";
+
+  /* guild cloaks */
+  if(\$guild.cloak) \{
+    output += "\<tr\>\<td\>unlimited\</td\>\<td\>guild crest\</td\>\<td\>Wear your crest proudly!\</td\>";
+    if(\$inv_editor)
+      output += "\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', 'guildcloak');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\</td\>\<td\>\</td\>";
+    output += "\</tr\>";
+  \}
+
+  if(!sizeof(items) \&\& !sizeof(imports)) return output;
+
+/* "The warehouses are currently empty."; */
+
+  /* for each item in the inventory... */
+  if(sizeof(items)) \{
+      sz = sizeof(items);
+      for(i=0;i\<sz;i++) \{
+        if(!Get(inventory, items[i])[1]) \{
+          /* None of this item left in the inventory. Clear it */
+          Set(inventory, items[i], nil);
+          Set(inventory, "settings:"+items[i]+":properties", nil);
+        \} else \{
+          output += "\<tr\>\<td\>";
+          if(Get(inventory, items[i])[1] == -1) \{
+            output += "unlimited";
+          \} else \{
+            output += Str(Get(inventory, items[i])[1]);
+          \}
+          output += "\</td\>\<td\>"+Get(inventory, items[i])[0]+"\</td\>\<td\>";
+          output += "\&nbsp;";
+          /* Allow them to take items if they have access */
+          if(\$inv_editor) \{
+            output += "\</td\>\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', '"+items[i]+"'); display_block('inventorylist', 'list_inventory');\\"\\\>take item\</u\>\</strong\>]";
+          \}
+          output += "\</td\>\<td\>\</td\>\<td\>\</td\>\</tr\>";
+        \}
+      \}
+  \}
+
+  if(sizeof(imports)) \{
+    sz = sizeof(imports);
+    for(i = 0; i \< sz; i++) \{
+        output += "\<br\>\<td\>";
+        output += "unlimited";
+        output += "\</td\>\<td\>" + Get(inventory, imports[i])[0]+"\</td\>\<td\>";
+        output += "\&nbsp;";
+        if(\$inv_editor) \{
+          output += "\</td\>\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_import_item', '"+imports[i]+"'); display_block('inventorylist', 'list_inventory');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\<center\>" + Str(Get(inventory, imports[i])[3]) + "\</center\>\</td\>\<td\>\<center\>" + Str(Get(inventory, imports[i])[2]) + "\</center\>";
+        \}
+        output += "\</td\>\</tr\>";
+    \}
+  \}
+
+  output += "\</table\>\\n";
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_auction">
+         X[M] string *guilds, *tokens;
+string output;
+int i, sz;
+
+output = "";
+
+/* \$debugger = \$\{Chatters:IC:ro:roo\}; */
+\$debugger = nil;
+
+/* only let them see the deals if they are in the guild */
+if(!\$guildrank) return FALSE;
+
+/* Are they allowed to make trades? */
+/* EXTENSION - make this based on their guild position */
+\$trader = nil;
+if(\$guildleader \|\| \$char."guild:trader") \{
+    \$trader = TRUE;
+\}
+
+/* Display the items currently up for auction */
+\$bidding_object = \$\{Allegory:Guilds:Trading:bidding\};
+\$inventory_list = prefixed_map(\$bidding_object."*", "bidding:");
+\$inventory_list = map_indices(\$inventory_list);
+
+EmitTo(\$debugger, dump_value("Ready..."));
+
+if(!sizeof(\$inventory_list)) \{
+    output += "\<p\>There is nothing to bid on right now.\</p\>\\n";
+\} else \{
+    /* Show how much money they have available in the guild kitty */
+    if(\$trader) \{
+        output += "\<p\>Guild kitty: ";
+        i = Int(Flt(\$guild.kitty)/100.0);
+
+        if(i==1) \{
+            output += "1 florin.";
+        \} else \{
+            output += Str(i)+" florins.";
+        \}
+        output += "\</p\>";
+    \}
+
+    /* Show the table of items up for auction */
+    output += "\<table border=1 cellspacing=0 cellpadding=10\>\<tr\>\<td\>Item\&nbsp;\&nbsp;\</td\>\<td\>Quantity\&nbsp;\&nbsp;\</td\>\<td\>Notes\&nbsp;\&nbsp;\</td\>\<td\>Recurring\</td\>\<td\>Transport\&nbsp;\&nbsp;\</td\>\<td\>Highest Bid\&nbsp;\&nbsp;\</td\>\<td\>Remaining time\</td\>\</tr\>";
+
+    /* for each item in the inventory... */
+    sz = sizeof(\$inventory_list);
+
+    EmitTo(\$debugger, dump_value("Set..."));
+
+    for(i=0;i\<sz;i++) \{
+
+        \$item = Get(\$bidding_object, \$inventory_list[i]);
+
+        EmitTo(\$debugger, dump_value(i + " -- " + \$item[2]));
+
+        /* item */
+        output += "\<tr\>\<td\>"+replace_strings(\$item[2], "An a", "A", "An an", "An")+"\</td\>\<td\>";
+
+        /* quantity */
+        output += \$item[0]+"\</td\>\<td\>";
+
+        /* notes */
+        output += replace_strings(\$item[3], "An a", "A", "An an", "An")+"\</td\>\<td\>";
+
+        /* how often does this item recur? */
+        if(\$item[5]) \{
+            if(\$item[5][1] == -1) \{
+                output += "a new shipment";
+            \} else if(\$item[5][1] == 1) \{
+                output += "1 shipment";
+            \} else \{
+                output += Str(\$item[5][1])+" shipments, one sent";
+            \}
+
+            if(\$item[5][2] == 1) \{
+                output += " every day.";
+            \} else if(\$item[5][2] != 0) \{
+                output += " every "+Str(\$item[5][2])+" days";
+            \}
+        \} else if (\$item[1].stocktype) \{
+            /* NOT USED YET! */
+            switch(\$item[1].stocktype) \{
+                case "property":
+                    output += "rent due once a week";
+                    break;
+                default:
+                    output += "Unknown stock type";
+                    break;
+            \}
+        \} else \{
+            output += "-";
+        \}
+
+        output += "\</td\>\<td\>";
+
+        /* what is the mode of transport? */
+        if(\$item[5] \&\& \$item[5][0]) \{
+            output += \$item[5][0]+"\</td\>\<td\>";
+        \} else \{
+            output += "-\</td\>\<td\>";
+        \}
+
+        /* give bid price, and allow the chance to bid */
+        if(\$item[6]) \{
+            \$tmp = Str(\$item[6]);
+        \} else \{
+            \$tmp = "no bid";
+        \}
+
+        if(\$item[7] == \$guild) \{
+            \$tmp = "\<font color=\\"red\\"\>"+\$tmp+"\</font\>";
+        \} else \{
+            \$tmp = "\<font color=\\"blue\\"\>"+\$tmp+"\</font\>";
+        \}
+
+        if(\$guild == \$char.guild \&\& (\$guildrank == 1 \|\| \$char."guild:trader")) \{
+            \$biditem = \$inventory_list[i];
+            \$tmp = "\<ZLINK base=\\"/SAM/Prop/Allegory:Lib:Guilds:GuildPage/index\\" char=\$(char) item=\$(biditem) guild=\$(guildname) page=\\"bid\\"\>"+\$tmp+"\</ZLINK\>";
+        \}
+
+        output += UnSAM(ParseXML(\$tmp))+"\</td\>\<td\>";
+
+        /* display how much time is left to bid on this */
+        if(\$item[8]) \{
+            \$output = \$item[8] - time();
+
+            if(\$output \>= 0) \{
+                /* now work it out in seconds, hours, and days */
+
+                \$days = (\$output/(60*60*24));
+                if(\$days == 0) \{
+                    \$days = nil;
+                \} else if(\$days == 1) \{
+                    \$days = "1 day";
+                \} else \{
+                    \$days = Str(\$days)+" days";
+                \}
+
+                \$hours = (\$output/(60*60))%24;
+                if(\$hours == 0) \{
+                    \$hours = nil;
+                \} else if(\$hours == 1) \{
+                    \$hours = "1 hour";
+                \} else \{
+                    \$hours = Str(\$hours)+" hours";
+                \}
+
+                \$minutes = (\$output/60)%60;
+                if(\$minutes == 0) \{
+                    \$minutes = nil;
+                \} else if(\$minutes == 1) \{
+                    \$minutes = "1 minute";
+                \} else \{
+                    \$minutes = Str(\$minutes)+" minutes";
+                \}
+
+                \$seconds = \$output%60;
+                if(\$seconds == 1) \{
+                    \$seconds = "1 second";
+                \} else \{
+                    \$seconds = Str(\$seconds)+" seconds";
+                \}
+
+                if(\$days \&\& \$hours) \{
+                    \$output = \$days+", "+\$hours;
+                \} else if(\$days) \{
+                    \$output = \$days;
+                \} else if (\$hours) \{
+                    \$output = \$hours+", "+\$minutes;
+                \} else if (\$minutes) \{
+                    \$output = \$minutes+", "+\$seconds;
+                \} else \{
+                    \$output = \$seconds;
+                \}
+
+                /*content += \$output+" (estimate)\</td\>\</tr\>";*/
+
+                \$output = \$item[8] - time();
+
+                if((\$output/(60*60*24)) \>= 3) \{
+                    \$output = Str(\$days)+" remaining.";
+                \} else if(((\$output+60*60*3)/(60*60*24)) \>= 1) \{
+                    \$output = "less than three days remaining.";
+                \} else \{
+                    \$output = "less than a day remaining.";
+                \}
+
+                output += \$output+"\</td\>\</tr\>";
+
+            \} else \{
+                output += "UNKNOWN\</td\>\</tr\>";
+            \}
+        \} else \{
+            output += "-\</td\>\</tr\>";
+        \}
+    \}
+
+    if(i\<sz-1) output += "\<br/\>";
+    output += "\</table\>";
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_import">
+         X[M] mixed db;
+string *importList, *importSubList;
+mapping importMap, importSubMap;
+string output;
+int i, j;
+
+output = "";
+output += "\<br/\>";
+
+/* \$debugger = \$\{Chatters:IC:ro:roo\}; */
+\$debugger = nil;
+
+/* only let them see the deals if they are in the guild */
+if(!\$guildrank) return FALSE;
+
+/* Are they allowed to make trades? */
+/* EXTENSION - make this based on their guild position */
+\$trader = nil;
+if(\$guildleader \|\| \$char."guild:trader") \{
+    \$trader = TRUE;
+\} else \{
+    output += "You do not have the authority to request trade imports.";
+    return output;
+\}
+
+\$historyNew = (\{ \});
+if(\$guild.auction_history) \{
+    \$history = \$guild.auction_history;
+
+    /* How many auctions have been requested in this last week? */
+    for(i = 0; i \< sizeof(\$history); i++) \{
+        if(Int(time() - \$history[i]) \< (60*60*24*7)) \{
+            \$historyNew += (\{ \$history[i] \});
+        \}
+    \}
+\}
+
+\$guild.auction_history = \$historyNew;
+ 
+\$max = 7 - Int(\$guild.status);
+if(Int(\$max) == 0) \$max = 1;
+if(sizeof(\$historyNew) \>= \$max) \{  
+    \$sz = sizeof(\$historyNew);
+    \$mostRecent = \$historyNew[\$sz-1];
+    \$waiting = (60*60*24*7) - (time() - \$mostRecent);
+    output += "You have already requested your maximum of " + Str(\$max) + " imports in the last week. You must wait " + Str(\$waiting/3600) + " hour(s). \<br/\>\<br/\>";
+    return output;
+\}
+
+db = \$\{Allegory:Data:AuctionHouse\};
+
+\$temp = copy(db."*");
+
+if(!structure_propmap(\$temp)[\$guildname]) \{ 
+    return "Your guild does not have any available imports.";
+\}
+
+importMap = structure_propmap(\$temp)[\$guildname];
+importList = map_indices(importMap);
+
+\$tier = 7 - \$guild.status;
+if(!\$tier) \$tier = 1;
+
+output += "\<table\>\<tr\>\<td valign='top'\>Available imports:\</td\>\<td valign='top'\>";
+output += "\<select onchange=\\"switch_list(value, ['" + implode(importList, "', '") + "']);\\"\>";
+output += "\<option/\>";
+for(i = 0; i \< sizeof(importList); i++) \{
+    importSubMap = importMap[importList[i]];
+    importSubList = map_indices(importSubMap);
+
+    \$counter = 0;
+    for(j = 0; j \< sizeof(importSubList); j++) \{
+        if(importMap[importList[i]][importSubList[j]]["tier"] \<= \$tier) \$counter++;
+    \}
+
+    if(\$counter \> 0) output += "\<option value=\\"" + importList[i] + "\\"\>" + proper(replace_strings(importList[i], "-", " ")) + "\</option\>";
+\}
+
+output += "\</select\>\</td\>\<td\>";
+
+for(i = 0; i \< sizeof(importList); i++) \{
+    importSubMap = importMap[importList[i]];
+    importSubList = map_indices(importSubMap);
+
+    output += "\<span id='" + importList[i] + "' style='display:none;'\>";
+output += "\<select onchange=\\"display_block('showimportcustomization', 'customize_import', value);\\"\>";
+    output += "\<option id=''/\>";
+    for(j = 0; j \< sizeof(importSubList); j++) \{
+        if(importMap[importList[i]][importSubList[j]]["tier"] \<= \$tier) \{
+            output += "\<option value=\\"" + \$guildname + ":" + importList[i] + ":" + importSubList[j] + "\\"\>" + proper(replace_strings(importSubList[j], "-", " ")) + "\</option\>";
+        \}
+    \}
+    output += "\</select\>";
+    output += "\</span\>";
+\}
+
+output += "\<span id=\\"showimportcustomization\\"\>";
+output += Call(this, "general_script", \$script: "customize_import");
+output += "\</span\>\</td\>\</tr\>\</table\>\<br/\>";
+
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_tradehistory">
+         X[M] string output, table, tablebody, tablebody2;
+
+\$currentTime = ctime(time());
+sscanf(\$currentTime, "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+\$allMonths = (\{ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" \});
+
+\$db = ([ ]);
+for(\$i = 2019; \$i \<= \$year; \$i++) \{
+    \$db[\$i] = ([ ]);
+
+    for(\$j = 0; \$j \< sizeof(\$allMonths); \$j++) \{
+        \$db[\$i] += ([ \$allMonths[\$j]:([  "auctionpurchases":(\{ 0, (\{ \}) \}), "guildoutgoing":(\{ 0, (\{ \}) \}), "personoutgoing":(\{ 0, (\{ \}) \}), "donationincoming":(\{ 0, (\{ \}) \}), "guildincoming":(\{ 0, (\{ \}) \}), "auctionincoming":(\{ 0, (\{ \}) \}), "auctionoutgoing":(\{ 0, (\{ \}) \}), "lessons":(\{ 0, (\{ \}) \})]) ]);
+    \}
+\}
+
+output = "";
+
+\$lessons = (\{ \});
+if(Get(\$guild, "lessons")) \{
+    \$lessons = Get(\$guild, "lessons");
+\}
+
+\$sz = sizeof(\$lessons);
+for(\$i = (\$sz-1); \$i \>= 0; \$i--) \{
+    \$temp = \$lessons[\$i];
+
+    if(\$temp[0]) \{
+        \$who = capitalize(\$temp[0]."skotos:charname");	/* Who initiated the transaction */
+    \} else \{
+        \$who = "Unknown";
+    \}
+
+    \$howmuch = Int(\$temp[2])/100;
+    \$topic = \$temp[1];
+
+    \$when = ctime(\$temp[3])[4..10] + ctime(\$temp[3])[20..23];    /* When did this transaction take place */
+
+    \$transactionTime = ctime(\$temp[3]);
+    sscanf(\$transactionTime, "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+
+    \$str = "\<tr style='display:none; background: white' class='" + Str(\$year) + "-" + Str(\$month) + "-" + "lessons'\>\<td\>[" + Str(\$when) + "]\<i\>" + Str(\$who) + " studied " + Str(\$topic) + "\</i\>\</td\>\<td width='50px' style='color: red'\>\<i\>-" + Str(\$howmuch) + "f\</i\>\</td\>\</tr\>";
+
+    \$db[\$year][\$month]["lessons"][0] += \$howmuch;
+
+    \$db[\$year][\$month]["lessons"][1] += (\{ \$str \});
+\}
+
+\$transfers = (\{ \});
+if(Get(\$guild, "transfers")) \{
+    \$transfers = Get(\$guild, "transfers");
+\}
+
+\$sz = sizeof(\$transfers);
+for(\$i = (\$sz-1); \$i \>= 0; \$i--) \{
+    \$temp = \$transfers[\$i];
+
+    if(\$temp[0]) \{
+        \$who = capitalize(\$temp[0]."skotos:charname");	/* Who initiated the transaction */
+    \} else \{
+        \$who = "Unknown";
+    \}
+
+    \$howmuch = Int(\$temp[1])/100;    /* How much is being sent/received */
+    if(\$howmuch \> 1) \$type = "florins"; else \$type = "florin";
+
+    if(\$temp[2]) \{
+        if(\$temp[2].fullname) \{
+            \$otherguild = \$temp[2].fullname;    /* Guild we are trading with */
+
+            if(\$temp[2] == \$\{Allegory:Guilds:merchantsguild\}) \{
+                \$var = "auction";
+            \} else \{
+                \$var = "guild";
+            \}
+        \}
+        if(\$temp[2]."skotos:charname") \{
+            \$otherguild = capitalize(\$temp[2]."skotos:charname");
+            \$var = "person";
+        \}
+    \} else \{
+        \$otherguild = "Unknown";
+        \$var = "guild";
+    \}
+
+    \$when = ctime(\$temp[3])[4..10] + ctime(\$temp[3])[20..23];    /* When did this transaction take place */
+
+    \$transactionTime = ctime(\$temp[3]);
+    sscanf(\$transactionTime, "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+
+    if(sizeof(\$temp) \< 5) \{
+        \$str = "\<tr style='display:none; background: white' class='" + Str(\$year) + "-" + Str(\$month) + "-" + Str(\$var) + "outgoing'\>\<td\>[" + Str(\$when) + "]\<i\>Transferred to " + proper(\$otherguild) + " (authorized by " + Str(\$who) + ")\</i\>\</td\>\<td width='50px' style='color: red'\>\<i\>-" + Str(\$howmuch) + "f\</i\>\</td\>\</tr\>";
+
+        \$db[\$year][\$month][\$var + "outgoing"][0] += \$howmuch;
+        \$db[\$year][\$month][\$var + "outgoing"][1] += (\{ \$str \});
+    \} else if(sizeof(\$temp) \> 4 \&\& \$temp[4] == "receiving") \{
+        \$str = "\<tr style='display:none; background: white' class='" + Str(\$year) + "-" + Str(\$month) + "-" + Str(\$var) + "incoming'\>\<td\>[" + Str(\$when) + "]\<i\>Received from " + proper(\$otherguild) + " (authorized by " + Str(\$who) + ")\</i\>\</td\>\<td width='50px' style='color: green'\>\<i\>+" + Str(\$howmuch) + "f\</i\>\</td\>\</tr\>";
+
+        \$db[\$year][\$month][\$var + "incoming"][0] += \$howmuch;
+        \$db[\$year][\$month][\$var + "incoming"][1] += (\{ \$str \});
+    \} else if(sizeof(\$temp) \> 4 \&\& sizeof(\$temp) != 6) \{
+        \$str = "\<tr style='display:none; background: white' class='" + Str(\$year) + "-" + Str(\$month) + "-" + Str(\$var) + "outgoing'\>\<td\>[" + Str(\$when) + "]\<i\>Transferred to " + proper(\$otherguild) + " (authorized by " + Str(\$who) + ")\</i\>\</td\>\<td width='50px' style='color: red'\>\<i\>-" + Str(\$howmuch) + "f\</i\>\</td\>\</tr\>";
+
+        \$db[\$year][\$month][\$var + "outgoing"][0] += \$howmuch;
+        \$db[\$year][\$month][\$var + "outgoing"][1] += (\{ \$str \});
+    \} else \{
+        \$str = "\<tr style='display:none; background: white' class='" + Str(\$year) + "-" + Str(\$month) + "-" + Str(\$var) + "outgoing'\>\<td\>[" + Str(\$when) + "]\<i\>Transferred to " + proper(\$otherguild) + ". Reason: " + Str(\$temp[5]) + " (authorized by " + Str(\$who) + ")\</i\>\</td\>\<td width='50px' style='color: red'\>\<i\>-" + Str(\$howmuch) + "f\</i\>\</td\>\</tr\>";
+
+        \$db[\$year][\$month][\$var + "outgoing"][0] += \$howmuch;
+        \$db[\$year][\$month][\$var + "outgoing"][1] += (\{ \$str \});
+    \}
+\}
+
+\$transfers = (\{ \});
+if(Get(\$guild, "donations")) \{
+    \$transfers = Get(\$guild, "donations");
+\}
+
+\$sz = sizeof(\$transfers);
+for(\$i = (\$sz-1); \$i \>= 0; \$i--) \{
+    \$temp = \$transfers[\$i];
+
+    if(\$temp[0]) \{
+        \$who = capitalize(\$temp[0]."skotos:charname");	/* Who initiated the transaction */
+    \} else \{
+        \$who = "Unknown";
+    \}
+
+    \$howmuch = Int(\$temp[1])/100;    /* How much is being sent/received */
+    \$when = ctime(\$temp[2])[4..10] + ctime(\$temp[2])[20..23];    /* When did this transaction take place */
+
+    \$transactionTime = ctime(\$temp[2]);
+    sscanf(\$transactionTime, "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+
+
+    if(\$howmuch \> 1) \$type = "florins"; else \$type = "florin";
+    \$str = "\<tr style='display:none; background: white' class='" + Str(\$year) + "-" + Str(\$month) + "-" + "donationincoming'\>\<td\>[" + Str(\$when) + "]\<i\>Donation by " + Str(\$who) + "\</i\>\</td\>\<td width='50px' style='color: green'\>\<i\>+" + Str(\$howmuch) + "\</i\>\</td\>\</tr\>";
+
+    \$db[\$year][\$month]["donationincoming"][0] += \$howmuch;
+    \$db[\$year][\$month]["donationincoming"][1] += (\{ \$str \});
+\}
+
+\$trading_object = \$guild.trades;
+
+if(!\$trading_object \|\| !\$trading_object."trading:notes") \{
+
+\} else \{
+  \$trades = \$trading_object."trading:notes";
+
+  for(\$i = 0; \$i \< sizeof(\$trades); \$i++) \{
+    \$currentTime = ctime(\$trades[\$i][1]);
+    sscanf(\$currentTime, "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+    \$when = ctime(\$trades[\$i][1])[4..10] + ctime(\$trades[\$i][1])[20..23];
+
+    if(typeof(\$trades[\$i]) == 5) \{
+        if(contains(\$trades[\$i][0], "Your guild has successfully won a trade deal for")) \{
+            \$temp = replace_strings(\$trades[\$i][0], "Your guild has successfully won a trade deal for", "");
+            sscanf(\$temp, "%d%s%d%s", \$t1, \$t2, \$t3, \$t4);
+
+            \$str = "\<tr style='display:none; background: white' class='" + Str(\$year) + "-" + Str(\$month) + "-" + "auctionpurchases'\>\<td\>[" + Str(\$when) + "]\<i\>Purchase of " + Str(\$t1) + " " + \$t2 + "\</i\>\</td\>\<td width='50px'\>\<font color='red'\>\<i\>-" + Str(\$t3) + "f\</i\>\</font\>\</td\>\</tr\>";
+            \$db[\$year][\$month]["auctionpurchases"][0] += \$t3; 
+            \$db[\$year][\$month]["auctionpurchases"][1] += (\{ \$str \});
+        \}
+
+        if(contains(\$trades[\$i][0], "Your guild has earned")) \{
+            \$temp = replace_strings(\$trades[\$i][0], "Your guild has earned", "");
+            sscanf(\$temp, "%d%s%d%s", \$t1, \$t2, \$t3, \$t4);
+
+            \$str = "\<tr style='display:none; background: white' class='" + Str(\$year) + "-" + Str(\$month) + "-" + "auctionincoming'\>\<td\>[" + Str(\$when) + "]\<i\>Sale of " + Str(\$t3) + " " + replace_strings(\$t4, "An a ", "", "An an ", "", "An ", "", "A ", "") + "\</i\>\</td\>\<td width='50px'\>\<font color='green'\>\<i\>+" + Str(\$t1) + "\</i\>\</font\>\</td\>\</tr\>";
+            \$db[\$year][\$month]["auctionincoming"][0] += \$t1; 
+            \$db[\$year][\$month]["auctionincoming"][1] += (\{ \$str \});
+        \}
+    \}
+  \}
+\}
+
+\$currentTime = ctime(time());
+sscanf(\$currentTime, "%s %s %d %s %d", \$weekday, \$month, \$day, \$time, \$year);
+\$allMonths = (\{ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" \});
+
+for(\$i = 0; \$i \< sizeof(\$allMonths); \$i++) \{
+    if(\$allMonths[\$i] == \$month) \$currMonth = Int(\$i);
+\}
+
+\$alltime = 0;
+table = "\<style\>.note \\\{ display: none; \\\}\</style\>";
+for(\$i = \$year; \$i \>= 2019; \$i--) \{
+    tablebody = "\<table style='color:black' width='100%'\>";
+
+    \$j = 11;
+    \$stop = 0;
+
+    if(\$i == 2019) \{
+        \$j = 11;
+        \$stop = 10;
+    \}
+
+    if(\$i == \$year) \{
+        \$j = \$currMonth;
+        \$stop = 0;
+    \}
+
+    \$yearnet = 0;
+    for(\$j = \$j; \$j \>= \$stop; \$j--) \{
+
+        if(\$db[\$i][\$allMonths[\$j]]) \{
+            \$net = 0;
+
+            tablebody += "\<tr\>\<td width='100px' valign='top'\>\<table width='100%'\>\<tr\>\<td\>\<b\>" + Str(\$allMonths[\$j]) + "\</b\>\</td\>\</tr\>\</table\>\</td\>\<td\>";
+
+            if(\$bgcolor == "#D3D3D3") \$bgcolor = "#fafafa"; else \$bgcolor = "#D3D3D3";
+
+            tablebody += "\<table border='1' width='100%'\>";
+            if(\$db[\$i][\$allMonths[\$j]]["guildoutgoing"][0] \> 0) \{
+                tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+                tablebody += "\<td\>\<div style='cursor: pointer;' onclick='toggleNote(\\"" + Str(\$i) + "-" + Str(\$allMonths[\$j]) + "-guildoutgoing\\");'\>\<b\>\<u\>Transfer to Guilds\</u\>\</b\>\</div\>\</td\>"
+                          + "\<td width='50px'\>\<font color='red'\>\<b\>-" + \$db[\$i][\$allMonths[\$j]]["guildoutgoing"][0] + "f\</b\>\</font\>\</td\>\</tr\>";
+
+                \$net -= \$db[\$i][\$allMonths[\$j]]["guildoutgoing"][0];
+
+                \$notes = \$db[\$i][\$allMonths[\$j]]["guildoutgoing"][1];
+                if(sizeof(\$notes)) \{
+                    for(\$k = 0; \$k \< sizeof(\$notes); \$k++) \{
+                        tablebody += \$notes[\$k];
+                    \}
+                \}
+            \}
+
+            if(\$db[\$i][\$allMonths[\$j]]["personoutgoing"][0] \> 0) \{
+                tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+                tablebody += "\<td\>\<div style='cursor: pointer;' onclick='toggleNote(\\"" + Str(\$i) + "-" + Str(\$allMonths[\$j]) + "-personoutgoing\\");'\>\<b\>\<u\>Transfer to Members\</u\>\</b\>\</div\>\</td\>"
+                       + "\<td width='30px'\>\<font color='red'\>\<b\>-" + \$db[\$i][\$allMonths[\$j]]["personoutgoing"][0] + "f\</b\>\</font\>\</td\>\</tr\>";
+
+                \$net -= \$db[\$i][\$allMonths[\$j]]["personoutgoing"][0];
+
+                \$notes = \$db[\$i][\$allMonths[\$j]]["personoutgoing"][1];
+                if(sizeof(\$notes)) \{
+                    for(\$k = 0; \$k \< sizeof(\$notes); \$k++) \{
+                        tablebody += \$notes[\$k];
+                    \}
+                \}
+            \}
+
+            if(\$db[\$i][\$allMonths[\$j]]["auctionoutgoing"][0] \> 0) \{
+                tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+                tablebody += "\<td\>\<div style='cursor: pointer;' onclick='toggleNote(\\"" + Str(\$i) + "-" + Str(\$allMonths[\$j]) + "-auctionoutgoing\\");'\>\<b\>\<u\>Auction Imports\</u\>\</b\>\</div\>\</td\>"
+                           + "\<td width='30px'\>\<font color='red'\>\<b\>-" + \$db[\$i][\$allMonths[\$j]]["auctionoutgoing"][0] + "f\</b\>\</font\>\</td\>\</tr\>";
+
+                \$net -= \$db[\$i][\$allMonths[\$j]]["auctionoutgoing"][0];
+
+                \$notes = \$db[\$i][\$allMonths[\$j]]["auctionoutgoing"][1];
+                if(sizeof(\$notes)) \{
+                    for(\$k = 0; \$k \< sizeof(\$notes); \$k++) \{
+                        tablebody += \$notes[\$k];
+                    \}
+                \}
+            \}
+
+            if(\$db[\$i][\$allMonths[\$j]]["auctionincoming"][0] \> 0) \{
+                tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+                tablebody += "\<td\>\<div style='cursor: pointer;' onclick='toggleNote(\\"" + Str(\$i) + "-" + Str(\$allMonths[\$j]) + "-auctionincoming\\");'\>\<b\>\<u\>Profit from Auction\</u\>\</b\>\</div\>\</td\>"
+                           + "\<td width='30px'\>\<font color='green'\>\<b\>+" + \$db[\$i][\$allMonths[\$j]]["auctionincoming"][0] + "f\</b\>\</font\>\</td\>";
+
+                \$net += \$db[\$i][\$allMonths[\$j]]["auctionincoming"][0];
+
+                \$notes = \$db[\$i][\$allMonths[\$j]]["auctionincoming"][1];
+                if(sizeof(\$notes)) \{
+                    for(\$k = 0; \$k \< sizeof(\$notes); \$k++) \{
+                        tablebody += \$notes[\$k];
+                    \}
+                \}
+            \}
+
+            if(\$db[\$i][\$allMonths[\$j]]["guildincoming"][0] \> 0) \{
+                tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+                tablebody += "\<td\>\<div style='cursor: pointer;' onclick='toggleNote(\\"" + Str(\$i) + "-" + Str(\$allMonths[\$j]) + "-guildincoming\\");'\>\<b\>\<u\>Transfer from Guild\</u\>\</b\>\</div\>\</td\>"
+                           + "\<td width='30px'\>\<font color='green'\>\<b\>+" + \$db[\$i][\$allMonths[\$j]]["guildincoming"][0] + "f\</b\>\</font\>\</td\>";
+
+                \$net += \$db[\$i][\$allMonths[\$j]]["guildincoming"][0];
+
+                \$notes = \$db[\$i][\$allMonths[\$j]]["guildincoming"][1];
+                if(sizeof(\$notes)) \{
+                    for(\$k = 0; \$k \< sizeof(\$notes); \$k++) \{
+                        tablebody += \$notes[\$k];
+                    \}
+                \}
+            \}
+
+            if(\$db[\$i][\$allMonths[\$j]]["donationincoming"][0] \> 0) \{
+                tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+                tablebody += "\<td\>\<div style='cursor: pointer;' onclick='toggleNote(\\"" + Str(\$i) + "-" + Str(\$allMonths[\$j]) + "-donationincoming\\");'\>\<b\>\<u\>Donations\</u\>\</b\>\</div\>\</td\>"
+                           + "\<td width='30px'\>\<font color='green'\>\<b\>+" + \$db[\$i][\$allMonths[\$j]]["donationincoming"][0] + "f\</b\>\</font\>\</td\>";
+
+                \$net += \$db[\$i][\$allMonths[\$j]]["donationincoming"][0];
+
+                \$notes = \$db[\$i][\$allMonths[\$j]]["donationincoming"][1];
+                if(sizeof(\$notes)) \{
+                    for(\$k = 0; \$k \< sizeof(\$notes); \$k++) \{
+                        tablebody += \$notes[\$k];
+                    \}
+                \}
+            \}
+
+            if(\$db[\$i][\$allMonths[\$j]]["auctionpurchases"][0] \> 0) \{
+                tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+                tablebody += "\<td\>\<div style='cursor: pointer;' onclick='toggleNote(\\"" + Str(\$i) + "-" + Str(\$allMonths[\$j]) + "-auctionpurchases\\");'\>\<b\>\<u\>Auction Purchases\</u\>\</b\>\</div\>\</td\>"
+                           + "\<td width='30px'\>\<font color='red'\>\<b\>-" + \$db[\$i][\$allMonths[\$j]]["auctionpurchases"][0] + "f\</b\>\</font\>\</td\>";
+
+                \$net -= \$db[\$i][\$allMonths[\$j]]["auctionpurchases"][0];
+
+                \$notes = \$db[\$i][\$allMonths[\$j]]["auctionpurchases"][1];
+                if(sizeof(\$notes)) \{
+                    for(\$k = 0; \$k \< sizeof(\$notes); \$k++) \{
+                        tablebody += \$notes[\$k];
+                    \}
+                \}
+            \}
+
+            if(\$db[\$i][\$allMonths[\$j]]["lessons"][0] \> 0) \{
+                tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+                tablebody += "\<td\>\<div style='cursor: pointer;' onclick='toggleNote(\\"" + Str(\$i) + "-" + Str(\$allMonths[\$j]) + "-lessons\\");'\>\<b\>\<u\>Lessons\</u\>\</b\>\</div\>\</td\>"
+                           + "\<td width='30px'\>\<font color='red'\>\<b\>-" + \$db[\$i][\$allMonths[\$j]]["lessons"][0] + "f\</b\>\</font\>\</td\>";
+
+                \$net -= \$db[\$i][\$allMonths[\$j]]["lessons"][0];
+
+                \$notes = \$db[\$i][\$allMonths[\$j]]["lessons"][1];
+                if(sizeof(\$notes)) \{
+                    for(\$k = 0; \$k \< sizeof(\$notes); \$k++) \{
+                        tablebody += \$notes[\$k];
+                    \}
+                \}
+            \}
+
+            tablebody += "\<tr style='background: " + \$bgcolor + "'\>";
+
+            if(\$net \<= 0) \{
+                \$netstr = "\<font color='red'\>" + Str(\$net) + "f\</font\>"; 
+            \} else \{
+                \$netstr = "\<font color='green'\>+" + Str(\$net) + "f\</font\>";
+            \}
+
+            tablebody += "\<td align='right' \>\<b\>\<i\>Net Gain\</i\>\</b\>\</td\>\<td width='100px'\>\<b\>" + Str(\$netstr) + "\</b\>\</td\>\</tr\>";
+            tablebody += "\</table\>";
+
+            tablebody += "\</td\>\</tr\>";
+
+            \$yearnet += \$net;
+
+            \$alltime += \$net;
+        \}
+    \}
+
+    if(\$yearnet \<= 0) \{
+        \$yearnet = "\<font color='red'\>" + Str(\$yearnet) + "f\</font\>";
+    \} else \{
+        \$yearnet = "\<font color='green'\>+" + Str(\$yearnet) + "f\</font\>";
+    \}
+
+    tablebody += "\</table\>";
+
+    table += "\<center\>\<b\>Fiscal Year " + Str(\$i-420) + " (" + \$yearnet + " YTD)\</b\>";
+    table += tablebody;
+    table += "\</center\>\<br/\>";
+\}
+
+if(\$alltime \<= 0) \{
+    \$alltimestr = "\<font color = 'red'\>" + Str(\$alltime) + "f\</font\>";
+\} else \{
+    \$alltimestr = "\<font color = 'green'\>+" + Str(\$alltime) + "f\</font\>";
+\}
+
+table = "\<br/\>\<h3\>Current Guild Kitty: \<font color='green'\>" + Str(Int(\$guild.kitty)/100) + "f\</font\>\</h3\>"
+      + "\<h3\>All-time Net Gain: " + Str(\$alltimestr) + "\</h3\>\<br/\>"
+      + table;
+
+return table;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_trading_deals">
+         X[M] string *guilds, *tokens;
+ int i, sz, t, day;
+string output, content, tmp_str;
+object guild;
+
+output = "";
+
+ /* only let them see the deals if they are in the guild */
+ if(!\$guildrank) return FALSE;
+ if(\$guildleader \|\| Str(\$char."guild:inventory") == "access") \{
+  output += "\<p\>\<b\>Transfer guild kitty to another guild\</b\> (kitty is currently at "+Str(Int(\$guild.kitty)/100)+" florins)\<br/\>\\n";
+  output += "Transfer ";
+  output += "\<input NAME=\\"transfer_kitty_amount\\" id=\\"transfer_kitty_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  output += " florins to ";
+
+  /* get a list of all guilds */
+  output += "\<select NAME=\\"transfer_kitty_guildlist\\" id=\\"transfer_kitty_guildlist\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Allegory:Guilds");
+
+  for(i=0;i\<sizeof(guilds);i++) \{
+     guild = Obj("Allegory:Guilds:" + guilds[i]);
+     if(!guild.mothballed) \{
+         /* output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(guilds[i])+"\</option\>\\n"; */
+         output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(guild.shortname)+"\</option\>\\n";
+     \}
+  \}
+     output += "\</select\>\\n";
+     output += "\</p\>\<p\>Reason \<input NAME=\\"transfer_kitty_reason\\" id=\\"transfer_kitty_reason\\" size=\\"50\\" value=\\"\\"/\>";
+     output += " \<input type=\\"submit\\" value=\\"Send\\" class=\\"clickable\\" onclick=\\"run_script('do_kitty_transfer', getElementById('transfer_kitty_amount').value +'\|'+ getElementById('transfer_kitty_guildlist').value + '\|' + getElementById('transfer_kitty_reason').value); getElementById('transfer_kitty_amount').value = '0';\\"/\>\</p\>";
+
+ \}
+
+ if(\$guildleader \|\| Str(\$char."guild:inventory") == "access") \{
+  output += "\<p\>\<b\>Transfer guild kitty to a guild member\</b\> (kitty is currently at "+Str(Int(\$guild.kitty)/100)+" florins)\<br/\>\\n";
+  output += "Transfer ";
+  output += "\<input NAME=\\"transfer_kitty_pc_amount\\" id=\\"transfer_kitty_pc_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  output += " florins to ";
+
+  /* get a list of all members */
+  output += "\<select NAME=\\"transfer_kitty_pc_memberlist\\" id=\\"transfer_kitty_pc_memberlist\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  \$members = \$guild.members;
+  for(i=0;i\<sizeof(\$members);i++)
+   output += "\<option value=\\""+name(\$members[i])+"\\"\>"+capitalize(\$members[i]."skotos:charname")+"\</option\>\\n";
+  output += "\</select\>\\n";
+  output += "\</p\>\<p\>Reason \<input NAME=\\"transfer_kitty_pc_reason\\" id=\\"transfer_kitty_pc_reason\\" size=\\"50\\" value=\\"\\"/\>";
+  output += " \<input type=\\"submit\\" value=\\"Send\\" class=\\"clickable\\" onclick=\\"run_script('do_kitty_pc_transfer', getElementById('transfer_kitty_pc_amount').value +'\|'+ getElementById('transfer_kitty_pc_memberlist').value + '\|' + getElementById('transfer_kitty_pc_reason').value); getElementById('transfer_kitty_pc_amount').value = '0';\\"/\>\</p\>";
+ \}
+
+ /* show any active trading deals */
+
+/* display the current trading deals */
+if(\$guild.trades) \{
+    \$trading_object = \$guild.trades;
+\} else \{
+    \$temp12 = explode(name(\$guild), ":");
+    if(Obj("Allegory:Guilds:Trades:" + \$temp12[2])) \{
+        \$trading_object =  Obj("Allegory:Guilds:Trades:" + \$temp12[2]);
+    \}
+\}
+
+if(!\$trading_object) \{
+    content = "\<p\>There are no active trading deals\</p\>\\n";
+\} else \{
+    content = "\<table border=1 cellspacing=0 cellpadding=10\>\<tr\>\<td\>Guild\&nbsp;\&nbsp;\</td\>\<td\>Giving\&nbsp;\&nbsp;\</td\>\<td\>Receiving\&nbsp;\&nbsp;\</td\>\<td\>Notes\&nbsp;\&nbsp;\</td\>\<td\>Recurring\&nbsp;\&nbsp;\</td\>\<td\>When\&nbsp;\&nbsp;\</td\>\</tr\>";
+
+/* display the deals from guild bidding */
+\$trading_list = map_indices(prefixed_map(\$trading_object."*", "bidding:"));
+
+sz = sizeof(\$trading_list);
+if(!sz) \{
+  content = "\<p\>No trading deals.\</p\>";
+\} else \{
+
+for(i=0;i\<sz;i++) \{
+  \$item = Get(\$trading_object, \$trading_list[i]);
+  content += "\<tr\>\<td\>Auction\</td\>\<td\>";
+  if(\$item[6] == 1) \{
+    content += Str(\$item[6])+" florin\</td\>\<td\>";
+  \} else \{
+    content += Str(\$item[6])+" florins\</td\>\<td\>";
+  \}
+  content += Str(\$item[0])+" "+Str(\$item[2])+"\</td\>\<td\>";
+  content += Str(\$item[3])+"\</td\>\<td\>";
+
+  /* how many/often do the shipments arrive? */
+  if(\$item[5]) \{
+    if(\$item[5][1] == -1) \{
+      content += "a new shipment";
+    \} else if(\$item[5][1] == 1) \{
+      content += "1 shipment";
+    \} else \{
+      content += Str(\$item[5][1])+" shipments, one sent";
+    \}
+    if(\$item[5][2] == 1) \{
+      content += " every day.";
+    \} else if(\$item[5][2] != 0) \{
+      content += " every "+Str(\$item[5][2])+" days";
+    \}
+  \} else if (\$item[1].stocktype) \{
+    switch(\$item[1].stocktype) \{
+      case "property":
+        content += "rent due once a week";
+        break;
+      default:
+        content += "Unknown stock type";
+        break;
+    \}
+  \} else \{
+    content += "-";
+  \}
+  content += "\</td\>\<td\>";
+
+
+  /* calculate when the deal will next happen */
+
+  /* FOR DEBUGGING - IF THERE IS NO TIME SET */
+  if(!\$item[8]) \$item[8] = time();
+
+  t = \$item[8]-time();
+  day = (24*60*60);
+  if(t \< day) \{
+    /* less than a day */
+    content += "Today";
+  \} else if(t \< day*2) \{
+    /* one day to go */
+    content += "1 day";
+  \} else \{
+    /* list the days */
+    content += Str(Int(t/day))+" days";
+  \}
+  content += "\</td\>\</tr\>";
+\}
+
+content += "\</table\>";
+ \}
+\}
+
+output += content;
+
+
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_import_item">
+         X[M] string *items;
+  object inventory;
+string output;
+int i, sz;
+object item;
+
+output = "";
+
+    /* only let them take items if they are in the guild and have access */
+    if(!\$guildrank \|\| (\$actor."guild:inventory" != "access" \&\& !\$guildleader))
+      return "You do not have access to remove items from the guild inventory.";
+
+    if(!\$vars \|\| !sizeof(\$vars)) return "Unknown item.";
+
+    \$inventory = \$guild.inventory;
+    \$info = Get(\$inventory, \$vars[0]);
+
+    /* Do they have enough tokens to spawn this item? */
+    \$amount = Int(\$info[3]);
+    \$token = Str(\$info[2]);
+
+    if(Call(\$this, "general_script", \$script: "charge_tokens", \$token: \$token, \$amount: \$amount)) \{
+      item = Spawn(\$info[1]);
+      item."base:environment" = \$actor;
+
+      if(FindMerry(item, "lib", "setquality")) \{
+          Call(item, "setquality", \$actor: \$actor);
+      \}
+      
+      if(item."trait:quality" \< 4) \{
+          item."trait:quality" = 4;
+      \}
+
+      /* set properties */
+      if(sizeof(\$info) \> 4) \{
+        for(i = 4; i \< sizeof(\$info); i++) \{
+            \$temp = \$info[i];
+            if(sizeof(\$temp) \&\& sizeof(\$temp) == 2) \{
+                Set(item, Str(\$temp[0]), Str(\$temp[1]));
+            \}
+        \}
+      \}
+
+      return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+    \} else \{
+      return "Your guild does not have enough " + \$token + " tokens.";
+    \}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_inv_item">
+         X[M] string *items;
+  object inventory;
+string output;
+int i, sz;
+
+output = "";
+
+ /* only let them take items if they are in the guild and have access */
+  if(!\$guildrank \|\| (\$actor."guild:inventory" != "access" \&\& !\$guildleader))
+    return "You do not have access to remove items from the guild inventory.";
+  if(!\$vars \|\| !sizeof(\$vars)) return "Unknown item.";
+
+  /* are they removing the guild cloak? */
+  /* AT SOME POINT WE PROBABLY WANT TO INCORPORATE GUILD CLOAKS AS NORMAL INV ITEMS */
+  if(\$vars[0] == "guildcloak" \&\& \$guild.cloak) \{
+    object item;
+    item = Spawn(\$guild.cloak);
+    item."base:environment" = \$actor;
+    item.guild = \$guild;
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \} else if(\$vars[0] == "silverring") \{
+    object item;
+    item = Spawn(\$\{IronClaw:Props:Guilds:GuildRing\});
+    item."base:environment" = \$actor;
+    /* set properties */
+    if(!\$guild.ringlist) \$guild.ringlist = (\{ \});
+    \$guild.ringlist += (\{ item \});
+    item.guild = \$guild;
+    item."guild:officer" = TRUE;
+    item."guild:rank" = 2;
+    item."trait:material" = "silver";
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \} else if(\$vars[0] == "bronzering") \{
+    object item;
+    item = Spawn(\$\{IronClaw:Props:Guilds:GuildRing\});
+    item."base:environment" = \$actor;
+    /* set properties */
+    if(!\$guild.ringlist) \$guild.ringlist = (\{ \});
+    \$guild.ringlist += (\{ item \});
+    item.guild = \$guild;
+    item."guild:officer" = TRUE;
+    item."guild:rank" = 3;
+    item."trait:material" = "bronze";
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \} else \{
+    /* if it's some other item */
+    object item;
+    int i, sz;
+    \$inventory = \$guild.inventory;
+    \$info = Get(\$inventory, \$vars[0]);
+    /* check there is stock */
+    if(\$info[1] == -1) \{
+      /* unlimited stock. Do nothing */
+    \} else if (!\$info[1]) \{
+      /* no stock */
+      return "There is no stock left in the guild inventory.";
+    \} else \{
+      /* reduce the stock */
+      \$info[1]--;
+    \}
+    item = Spawn(\$info[2]);
+    item."base:environment" = \$actor;
+    /* set quality */
+    /*
+    i=random(4)+random(4)+random(4)+random(4);
+    if(i\>8) i=random(4)+random(4)+random(4)+random(4);
+    if(i\<1) i=1;
+    item."trait:quality" = i;
+    */
+
+      \$result = allegory::roll(\$roller: \$actor, \$skills: (\{"skill:social:appraise"\}), \$bonus: (\{ "trait:intelligence" \}));
+
+      if(\$result \< 5) \$result = 5;
+
+      item."trait:quality" = \$result;
+
+    /* set properties */
+    item.guild = \$guild;
+    if(\$props = Get(\$inventory, "settings:"+\$vars[0]+":properties")) \{
+      sz = sizeof(\$props);
+      for(i=0;i\<sz-1;i=i+2) \{
+        if(\$props[i] == "trait:quality" \|\| \$props[i] == "trait:quantity") \{
+            Set(item, \$props[i], Int(\$props[i+1]));
+        \} else \{
+            Set(item, \$props[i], \$props[i+1]);
+        \}
+      \}
+    \}
+
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \}
+  output = Describe(\$actor)+" could not find this item in the inventory."+dump_value(\$vars);
+
+return output;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1571350784, "jominey", "E", 1571351099, "jominey", "E", 1571351166, "jominey", "E", 1571351248, "jominey", "E", 1571351510, "jominey", "E", 1571351549, "jominey", "E", 1571351556, "jominey", "E", 1571351570, "jominey", "E", 1571351575, "jominey", "E", 1571351953, "jominey", "E", 1571352218, "jominey", "E", 1571352865, "jominey", "E", 1571353029, "jominey", "E", 1571353412, "jominey", "E", 1571353435, "jominey", "E", 1571353439, "jominey", "E", 1571353463, "jominey", "E", 1571353636, "jominey", "E", 1571353754, "jominey", "E", 1571353816, "jominey", "E", 1571353928, "jominey", "E", 1571353965, "jominey", "E", 1571354017, "jominey", "E", 1571354156, "jominey", "E", 1571354259, "jominey", "E", 1571958121, "jominey", "E", 1572399670, "jominey", "E", 1572399872, "jominey", "E", 1574872782, "jominey", "E", 1574872831, "jominey", "E", 1574872950, "jominey", "E", 1579120460, "jominey", "E", 1579121046, "jominey", "E", 1579121275, "jominey", "P", 1579121390, "jominey", "E", 1579121626, "jominey", "E", 1579122152, "jominey", "E", 1579122343, "jominey", "E", 1579122640, "jominey", "E", 1579123792, "jominey", "E", 1579124139, "jominey", "P", 1579124757, "jominey", "E", 1579124775, "jominey", "E", 1579124790, "jominey", "E", 1579124808, "jominey", "E", 1579124977, "jominey", "E", 1580175723, "jominey", "E", 1580175905, "jominey", "E", 1580176013, "jominey", "E", 1580176057, "jominey", "E", 1580176228, "jominey", "E", 1580176353, "jominey", "E", 1580176389, "jominey", "E", 1580176767, "jominey", "E", 1580177117, "jominey", "E", 1580177146, "jominey", "E", 1580177232, "jominey", "E", 1580177986, "jominey", "E", 1580178115, "jominey", "E", 1580178226, "jominey", "E", 1580178432, "jominey", "E", 1580178691, "jominey", "E", 1580181083, "jominey", "E", 1583110785, "jominey", "E", 1583155848, "jominey", "E", 1583254197, "jominey", "E", 1583367446, "jominey", "E", 1584979420, "jominey", "E", 1584980257, "jominey", "E", 1584981450, "jominey", "E", 1584981514, "jominey", "E", 1584981572, "jominey", "E", 1584981622, "jominey", "E", 1584981703, "jominey", "E", 1584981758, "jominey", "E", 1584981825, "jominey", "E", 1584981985, "jominey", "E", 1584982055, "jominey", "E", 1584982408, "jominey", "E", 1584982454, "jominey", "E", 1584982552, "jominey", "E", 1584982582, "jominey", "E", 1584982750, "jominey", "E", 1584983144, "jominey", "E", 1584983442, "jominey", "E", 1584983664, "jominey", "E", 1584984180, "jominey", "E", 1584984220, "jominey", "E", 1584984329, "jominey", "E", 1584984559, "jominey", "E", 1584985767, "jominey", "E", 1584985847, "jominey", "E", 1584985912, "jominey", "E", 1584985964, "jominey", "E", 1584986058, "jominey", "E", 1584986091, "jominey", "E", 1584986377, "jominey", "E", 1584986475, "jominey", "E", 1584986929, "jominey", "E", 1584987585, "jominey", "E", 1584988871, "jominey", "E", 1584988907, "jominey", "E", 1584988929, "jominey", "E", 1584989039, "jominey", "E", 1584989097, "jominey", "E", 1584989828, "jominey", "E", 1584989881, "jominey", "E", 1584990014, "jominey", "E", 1584990036, "jominey", "E", 1584990036, "jominey", "E", 1584990147, "jominey", "E", 1584990199, "jominey", "E", 1584990277, "jominey", "E", 1584990505, "jominey", "E", 1584990647, "jominey", "E", 1584990731, "jominey", "E", 1584990797, "jominey", "E", 1584990836, "jominey", "E", 1584990876, "jominey", "E", 1584990944, "jominey", "E", 1584991006, "jominey", "E", 1584991068, "jominey", "E", 1584991424, "jominey", "E", 1584991580, "jominey", "E", 1584991616, "jominey", "E", 1584991723, "jominey", "E", 1584992030, "jominey", "E", 1584992127, "jominey", "E", 1584992177, "jominey", "E", 1584992233, "jominey", "E", 1584992330, "jominey", "E", 1584992364, "jominey", "E", 1584992698, "jominey", "E", 1584992850, "jominey", "E", 1584993025, "jominey", "E", 1584993068, "jominey", "E", 1584993098, "jominey", "E", 1584993112, "jominey", "E", 1584993167, "jominey", "E", 1584993243, "jominey", "E", 1584993287, "jominey", "E", 1584994738, "jominey", "E", 1584995195, "jominey", "E", 1584995345, "jominey", "E", 1584995420, "jominey", "E", 1584995567, "jominey", "E", 1584995568, "jominey", "E", 1584995602, "jominey", "E", 1584995639, "jominey", "E", 1584995728, "jominey", "E", 1584995774, "jominey", "E", 1584995945, "jominey", "E", 1584995946, "jominey", "E", 1584996113, "jominey", "E", 1584996298, "jominey", "E", 1584996384, "jominey", "E", 1584996457, "jominey", "E", 1584996540, "jominey", "E", 1584996571, "jominey", "E", 1584997336, "jominey", "E", 1584997752, "jominey", "E", 1584997835, "jominey", "E", 1584997878, "jominey", "E", 1584997914, "jominey", "E", 1584997927, "jominey", "E", 1584997984, "jominey", "E", 1584998128, "jominey", "E", 1585007516, "jominey", "E", 1585007600, "jominey", "E", 1585007770, "jominey", "E", 1585007830, "jominey", "E", 1585007869, "jominey", "E", 1585007943, "jominey", "E", 1585008014, "jominey", "E", 1585008163, "jominey", "E", 1585008246, "jominey", "E", 1585008292, "jominey", "E", 1585008355, "jominey", "E", 1585008400, "jominey", "E", 1585008427, "jominey", "E", 1585008490, "jominey", "E", 1585008540, "jominey", "E", 1585008564, "jominey", "E", 1585008673, "jominey", "E", 1585008959, "jominey", "E", 1585009007, "jominey", "E", 1585009064, "jominey", "E", 1585009494, "jominey", "E", 1585009666, "jominey", "E", 1585009776, "jominey", "E", 1585009875, "jominey", "E", 1585010014, "jominey", "E", 1585010076, "jominey", "E", 1585010148, "jominey", "E", 1585010260, "jominey", "E", 1585010370, "jominey", "E", 1585010463, "jominey", "E", 1585010615, "jominey", "E", 1585010742, "jominey", "E", 1585010958, "jominey", "E", 1585011145, "jominey", "E", 1585011214, "jominey", "E", 1585011279, "jominey", "E", 1585011398, "jominey", "E", 1585011661, "jominey", "E", 1585011719, "jominey", "E", 1585011837, "jominey", "E", 1585011979, "jominey", "E", 1585012100, "jominey", "E", 1585012150, "jominey", "E", 1585012262, "jominey", "E", 1585012263, "jominey", "E", 1585012390, "jominey", "E", 1585012430, "jominey", "E", 1585012593, "jominey", "E", 1585012647, "jominey", "E", 1585012677, "jominey", "E", 1585012712, "jominey", "E", 1585012940, "jominey", "E", 1585012989, "jominey", "E", 1585013045, "jominey", "E", 1585013084, "jominey", "E", 1585013143, "jominey", "E", 1585013187, "jominey", "E", 1585013211, "jominey", "E", 1585013309, "jominey", "E", 1585013587, "jominey", "E", 1585013669, "jominey", "E", 1585013950, "jominey", "E", 1585014374, "jominey", "E", 1585014411, "jominey", "E", 1585014898, "jominey", "E", 1585015023, "jominey", "E", 1585015081, "jominey", "E", 1585015355, "jominey", "E", 1585015383, "jominey", "E", 1585015459, "jominey", "E", 1585016758, "jominey", "E", 1585016837, "jominey", "E", 1585016882, "jominey", "E", 1585016910, "jominey", "E", 1585016929, "jominey", "E", 1585016992, "jominey", "E", 1585017147, "jominey", "E", 1585017335, "jominey", "E", 1585017434, "jominey", "E", 1585246021, "jominey", "E", 1585246225, "jominey", "E", 1585246379, "jominey", "E", 1585246410, "jominey", "E", 1585246490, "jominey", "E", 1585246557, "jominey", "E", 1585246622, "jominey", "E", 1585246671, "jominey", "E", 1585246814, "jominey", "E", 1585246915, "jominey", "E", 1585246996, "jominey", "E", 1585247071, "jominey", "E", 1585247107, "jominey", "E", 1585247171, "jominey", "E", 1585247229, "jominey", "E", 1585248086, "jominey", "E", 1585248121, "jominey", "E", 1585248450, "jominey", "E", 1585248533, "jominey", "E", 1585248649, "jominey", "E", 1585248678, "jominey", "E", 1585248711, "jominey", "E", 1585249007, "jominey", "E", 1585249237, "jominey", "E", 1585249317, "jominey", "E", 1585249482, "jominey", "E", 1585249565, "jominey", "E", 1585249617, "jominey", "E", 1585249694, "jominey", "E", 1585249704, "jominey", "E", 1585249740, "jominey", "E", 1585249760, "jominey", "E", 1585249802, "jominey", "E", 1585249919, "jominey", "E", 1585250057, "jominey", "E", 1585250457, "jominey", "E", 1585251869, "jominey", "E", 1585269450, "jominey", "E", 1585280631, "jominey", "E", 1585280709, "jominey", "E", 1585280746, "jominey", "E", 1585280777, "jominey", "E", 1585280816, "jominey", "E", 1585280856, "jominey", "E", 1585280905, "jominey", "E", 1585280930, "jominey", "E", 1585281389, "jominey", "E", 1585582968, "jominey", "E", 1585583247, "jominey", "E", 1585583300, "jominey", "E", 1585584778, "jominey", "E", 1585584816, "jominey", "E", 1585585072, "jominey", "E", 1589765451, "jominey", "E", 1593288434, "jominey", "E", 1593288674, "jominey", "E", 1593288801, "jominey", "E", 1593289090, "jominey", "E", 1596915918, "jominey", "E", 1596915980, "jominey", "E", 1596915996, "jominey", "E", 1598548016, "jominey", "E", 1598548055, "jominey", "E", 1598548280, "jominey", "E", 1598548434, "jominey", "E", 1598548548, "jominey", "E", 1598548637, "jominey", "E", 1611107923, "ezralee", "E", 1619816560, "sendnoodlez", "E", 1619816764, "sendnoodlez", "E", 1619816894, "sendnoodlez", "E", 1619816937, "sendnoodlez", "E", 1625671500, "sendnoodlez", "E", 1625671578, "sendnoodlez", "E", 1625671590, "sendnoodlez", "E", 1643775643, "ezralee", "E", 1643775724, "ezralee", "E", 1643775827, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

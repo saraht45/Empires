@@ -1,0 +1,78 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:land_question">
+         X[M] /* ask a question about their land */
+string output, question_name;
+mapping question;
+int i, sz;
+output = "";
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+if(!\$actor."rank:rank" \|\| \$actor."rank:rank" \<= 3)
+  return "You do not own any significant amounts of land.";
+
+/* do we have a question to ask? */
+if(!\$actor."land:current_question") \{
+  /* we don't have a question */
+  output += "No question!\<br/\>";
+  /* should we ask one? */
+  if(!\$actor."land:last_answered" \|\| \$actor."land:last_answered"+60*60*16 \> time()) \{
+    output += "Going to ask a new question\<br/\>";
+    \$list = map_indices(prefixed_map(this."*", "question:"));
+    while(sizeof(\$list) \&\& !\$actor."land:current_question") \{
+      /* pick a question */
+      question_name = \$list[random(sizeof(\$list))];
+      \$list -= (\{ question_name \});
+      question = Get(this, question_name);
+
+      /* check if there are requirements for this question */
+      if(question["requirements"])
+        if(UnSAM(ParseXML("\$["+Str(question["requirements"])+"]")) == "")
+          continue;
+
+      /* check if there are coded requirements for this question */
+      if(FindMerry(this, "lib", question_name+":requirements"))
+        if(!Call(this, question_name+":requirements")) continue;
+    \}
+    /* we found a question that's valid for this actor */
+    \$actor."land:current_question" = question_name;
+  \}
+\}
+
+/* do we have a question to ask? */
+if(\$actor."land:current_question") \{
+  output += "We have a question to ask.";
+  question_name = \$actor."land:current_question";
+  if(!(question = Get(this, question_name))) \{
+    return "The current issues you had with your land seem to have gone away. A moment of peace and quiet!";
+  \}
+  output += dump_value(question)+"\<br/\>\\n";
+  output += UnSAM(ParseXML(Str(question["question"])))+"\<br/\>\\n";
+\} else \{
+  /* if we have no question, describe the lands */
+  output += "All is going well, on your lands.";
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:question:beggar:requirements">
+         X[M] /* check if they can ask this question */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="question:beggar">
+         ([ "question":"Some \{refugees, displaced due to a nearby war,\|beggars\|out of work peasants\} arrive on your land looking for donations.", "requirements":"return TRUE;" ])
+      </Core:Property>
+      <Core:Property property="requirements:question:beggar">
+         X[M] /* check if they can ask this question */
+return nil;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1213586051, "tonyd", "P", 1213589192, "tonyd", "P", 1213589366, "tonyd", "P", 1213589584, "tonyd", "P", 1213589603, "tonyd", "P", 1213589680, "tonyd", "P", 1213589694, "tonyd", "P", 1213590012, "tonyd", "P", 1213590118, "tonyd", "P", 1213590165, "tonyd", "P", 1213590188, "tonyd", "P", 1213590200, "tonyd", "P", 1213590216, "tonyd", "P", 1213590231, "tonyd", "P", 1213590315, "tonyd", "P", 1213590362, "tonyd", "P", 1213590433, "tonyd", "P", 1213590507, "tonyd", "P", 1213590525, "tonyd", "P", 1213590540, "tonyd", "P", 1213590564, "tonyd", "P", 1213590573, "tonyd", "P", 1213590599, "tonyd", "P", 1213590630, "tonyd", "P", 1213590639, "tonyd", "P", 1213590648, "tonyd", "P", 1213590661, "tonyd", "P", 1213590694, "tonyd", "P", 1213590717, "tonyd", "P", 1213590743, "tonyd", "P", 1213590817, "tonyd", "P", 1213590880, "tonyd", "P", 1213591004, "tonyd", "P", 1213591035, "tonyd", "P", 1213591091, "tonyd", "P", 1213591142, "tonyd", "P", 1213591172, "tonyd", "P", 1213591201, "tonyd", "P", 1213591215, "tonyd", "P", 1213591255, "tonyd", "P", 1213591280, "tonyd", "P", 1213591307, "tonyd", "P", 1213591327, "tonyd", "P", 1213591337, "tonyd", "P", 1213591378, "tonyd", "P", 1213591397, "tonyd", "P", 1213591427, "tonyd", "P", 1213591450, "tonyd", "P", 1213591464, "tonyd", "P", 1213591598, "tonyd", "P", 1213591623, "tonyd", "P", 1213591670, "tonyd", "P", 1213591684, "tonyd", "P", 1213591861, "tonyd", "P", 1213591879, "tonyd", "P", 1213591909, "tonyd", "P", 1213591958, "tonyd", "P", 1213591983, "tonyd", "P", 1213591994, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

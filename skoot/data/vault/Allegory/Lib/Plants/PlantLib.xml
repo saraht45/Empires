@@ -1,0 +1,908 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:check_growth">
+         X[M] int stage; 
+object planter, env; 
+ 
+if(!\$debug) \$debug = \$\{Chatters:AE:ro:roo\} /* defunct */; 
+ 
+if(\$debug."plant:dbg") EmitTo(\$debug, "(check_growth) CAN THE PLANT ACTUALLY GROW HERE?"); 
+ 
+stage = Int(\$plant."trait:stage"); 
+planter = \$plant."base:environment"; 
+ 
+if(\$plant."trait:quality" \<= 0) \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, "(check_growth) QUALITY IS 0. NO GROW."); 
+    return FALSE; 
+\} 
+ 
+/* Plants growing in greenhouses do not have to pass an environment/season check. */ 
+/* For pots and planters, check their environment to see if they are located in a greenhouse. */ 
+if(planter."trait:planter:type" == "greenhouse" \|\| (planter."base:environment" \&\& planter."base:environment"."trait:planter:type" == "greenhouse")) \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, "(check_growth) ENVIRONMENT IS A GREENHOUSE. LET'S GROW."); 
+    return TRUE; 
+\} 
+ 
+/* Check that the plant can grow in this environment. */ 
+if(planter."base:environment") \{ 
+    env = planter."base:environment"; 
+\} else \{ 
+    env = planter; 
+\} 
+ 
+if(\$plant."trait:plant:environment" \&\& !member(env, \$plant."trait:plant:environment")) \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, "(check_growth)" + Str(env) + " IS NOT A VALID ENVIRONMENT. VALID ENVIRONMENTS ARE " + Str(\$plant."trait:plant:environment")); 
+    return FALSE; 
+\} 
+ 
+/* Stop growth if the plant can no longer fit in the pot/garden */ 
+if((Int(\$plant."plants:plant:size") + (Int(\$plant."plants:plant:maxsize")/4)) \> Int(planter."plants:planter:capacity")) \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, "(check_growth) NEXT LEVEL OF GROWTH EXCEEDS PLANTER CAPACITY."); 
+    return FALSE; 
+\} 
+ 
+if(\$debug."plant:dbg") EmitTo(\$debug, "(check_growth) ALL CHECKS HAVE PASSED. LET'S GROW."); 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:death:timer">
+         X[M] int deathDelay; 
+ 
+if(!\$this."handles:death:timer") \{ 
+    deathDelay = Int(\$this."trait:quality") * 3600;    /* 1 hour of survival per quality level */ 
+    \$this."plants:plant:deathstamp" = time() + (deathDelay * 3600); 
+    /* \$this."handles:death:timer" = In("death:timer", deathDelay); */ 
+    \$this."handles:death:timer" = In("death:timer", 60); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_growth">
+         X[M] object env, loc; 
+mixed soil, emit; 
+ 
+env = \$plant."base:environment"; 
+soil = NewNRef(env, "soil"); 
+ 
+/* What are we emitting */ 
+switch(\$plant."trait:stage") \{ 
+ 
+    case 1: 
+        emit = TAG(capitalize(Describe(\$plant)) + " emerges from " + Describe(soil) + ".", "social:third"); 
+ 
+        /* Who are we emitting to */ 
+        if(env."plants:planter:type" == "planter") \{ 
+            loc = env."base:environment"; 
+ 
+            /* Is the planter being held by someone? */ 
+            if(loc."udat:possessed") \{ 
+                loc = loc."base:environment"; 
+                EmitTo(loc, emit); 
+            \} 
+ 
+            EmitIn(loc, emit); 
+        \} else \{ 
+            loc = env; 
+            EmitIn(loc, emit); 
+        \} 
+ 
+        break; 
+ 
+    case 2: 
+        break; 
+ 
+    case 3: 
+        break; 
+ 
+    default: 
+        break; 
+\} 
+ 
+if(\$plant."trait:stage" \> 0 \&\& (\$plant."trait:plant:planter" \|\| (!\$plant."trait:plant:planter" \&\& \$plant."base:immobile" \&\& !\$plant."guild:fixedby")) \&\& !\$nogrow) \{ 
+    if(!\$this."handles:growth:timer") \{ 
+        Call(\$plant, "grow", \$plant: \$plant, \$stage: \$plant."trait:stage"); 
+    \} 
+\} 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_level">
+         X[M] return 1;
+      </Core:Property>
+      <Core:Property property="merry:lib:grow">
+         X[M] int toNextStage; 
+ 
+/* Get the amount of time the plant will stay in this stage */ 
+if(\$plant."trait:plant:stages" \&\& \$plant."trait:plant:stages"[\$stage]) \{ 
+    toNextStage = Int(\$plant."trait:plant:stages"[\$stage]) * 3600; 
+\} else \{ 
+    toNextStage = 30; 
+\} 
+ 
+/* Now call the timer. */ 
+if(!\$plant."handles:growth:timer") \{ 
+    \$plant."handles:growth:timer" = In("grow", toNextStage); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:harvest">
+         X[M] if(!\$dob \&\& !sizeof(\$dob)) \{ 
+    EmitTo(\$actor, "What did you want to harvest from the plant?"); 
+    return FALSE; 
+\} 
+ 
+\$detail = NRefDetail(\$dob[0]); 
+ 
+if(\$detail == "default") \{ 
+    EmitTo(\$actor, "What did you want to harvest from the plant?"); 
+    return FALSE; 
+\} 
+ 
+if(\$this."trait:stage" != 3) \{ 
+    EmitTo(\$actor, Describe(\$this) + " has not fully developed yet."); 
+    return FALSE; 
+\} 
+ 
+\$produce = replace_strings(\$detail, "harvest-", ""); 
+ 
+if(!Get(\$this, "plant:part:" + \$produce)) \{ 
+    EmitTo(\$actor, Describe(\$target) + " is not something you can harvest."); 
+    return FALSE; 
+\} 
+ 
+\$quantity = Int(Get(\$this, "trait:" + \$produce + ":quantity")); 
+ 
+if(\$quantity \<= 0) \{ 
+    EmitTo(\$actor, "There are no " + \$produce + "s to harvest."); 
+    return FALSE; 
+\} 
+ 
+\$part = Get(\$this, "plant:part:" + \$produce); 
+ 
+/* reduce the number of produce on the plant */ 
+\$quantity--; 
+if(\$quantity \< 0) \$quantity = 0; 
+Set(\$this, "trait:" + \$produce + ":quantity", \$quantity); 
+ 
+if(\$quantity == 0) \{ 
+    \$produce_ob = Get(\$this, "plant:part:" + \$produce); 
+    \$snames = \$produce_ob."details:default:snames" \| \$produce_ob."details:default:snames:local"; 
+    for(\$x = 0; \$x \< sizeof(\$snames); \$x++) \{ 
+        Set(\$this, "details:harvest-" + \$produce + ":sname:" + \$snames[\$x], FALSE); 
+    \} 
+ 
+    \$pnames = \$produce_ob."details:default:pnames" \| \$produce_ob."details:default:pnames:local"; 
+    for(\$x = 0; \$x \< sizeof(\$pnames); \$x++) \{ 
+        Set(\$this, "details:harvest-" + \$produce + ":pname:" + \$pnames[\$x], FALSE); 
+    \} 
+ 
+    \$adjectives = \$produce_ob."details:default:adjectives" \| \$produce_ob."details:default:adjectives:local"; 
+    for(\$x = 0; \$x \< sizeof(\$adjectives); \$x++) \{ 
+        Set(\$this, "details:harvest-" + \$produce + ":adjective:" + \$adjectives[\$x], FALSE); 
+    \} 
+\} 
+ 
+\$object = Spawn(\$part); 
+ 
+/* set the traits in the flower */ 
+\$object."trait:quality" = \$this."trait:quality"; 
+\$object."trait:color" = \$this."trait:color"; 
+\$object."trait:state" = \$this."trait:state"; 
+\$object."trait:smell" = \$this."trait:smell"; 
+\$object."trait:taste" = \$this."trait:taste"; 
+ 
+/* give the flower to the player */ 
+\$object."base:environment" = \$actor; 
+ 
+/* emit message to player and room */ 
+EmitTo(\$actor, "You pick "+Describe(\$object, nil, nil, STYLE_NONPOSS)+" from "+Describe(\$this, nil, nil, STYLE_NONPOSS)+"."); 
+EmitIn(\$actor."base:environment", Describe(\$actor) + " picks " + Describe(\$object, nil, nil, STYLE_NONPOSS) + " from "+Describe(\$this, nil, nil, STYLE_NONPOSS) + ".", \$actor); 
+ 
+/* Has the timer been started on this plant yet? */ 
+/* 
+if(plants::check_growth(\$plant: \$this)) \{ 
+    if(!\$this."handles:growth:timer") \{ 
+        Call(\$this, "grow", \$plant: \$this, \$stage: \$this."trait:stage"); 
+    \} 
+\} 
+*/ 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:plant">
+         X[M] /* 
+** Plant a seed/plant in soil.  
+*/ 
+ 
+int skill, level, planted, capacity; 
+mixed soil, garden, env; 
+ 
+\$debug = \$actor; 
+ 
+if(\$debug."plant:dbg") EmitTo(\$debug, TAG("LET'S PLANT SOMETHING.", "imp")); 
+ 
+if(\$plant."trait:plant:dead") \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, TAG("trait:plant:dead is set to 1 in plant", "imp")); 
+    EmitTo(\$actor, "There is really no point in that seeing as the plant is dead."); 
+    return FALSE; 
+\} 
+ 
+if(\$plant."trait:plant:planter" \|\| \$plant."base:immobile") \{ 
+    EmitTo(\$actor, Describe(\$plant) + " is fixed in place."); 
+    return FALSE; 
+\} 
+ 
+/* Only allow plants to be planted in gardens/pots */ 
+if(!NRefOb(\$iob[0])."trait:planter:type") \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, TAG("trait:planter:type in planter is not set", "imp")); 
+    EmitTo(\$actor, "You cannot plant " + Describe(\$plant, nil, \$actor) + " in " + Describe(NRefOb(\$iob[0]), nil, \$actor) + "."); 
+    return FALSE; 
+\} 
+ 
+/* Can only plant in correct planter detail */ 
+\$planterAllowed = \$plant."trait:planter:allowed"[0]; 
+if(!Get(NRefOb(\$iob[0]), "details:" + \$planterAllowed + ":sname:" + \$planterAllowed)) \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, TAG("we have to target " + Str(\$planterAllowed) + " detail", "imp")); 
+    EmitTo(\$actor, "You can only plant " + Describe(\$plant, nil, \$actor) + " in " + Str(\$planterAllowed) + "."); 
+    return FALSE; 
+\} 
+ 
+garden = NRefOb(\$iob[0]); 
+ 
+/* Make sure the garden/pot has the capacity to hold the plant */ 
+ 
+planted = 0; 
+if(garden."trait:planter:inventory" \&\& sizeof(garden."trait:planter:inventory")) \{ 
+    planted = sizeof(garden."trait:planter:inventory"); 
+\} 
+ 
+capacity = Int(garden."trait:planter:capacity"); 
+ 
+if(garden."trait:planter:type" == "garden") capacity = 1000; 
+ 
+if(\$debug."plant:dbg") EmitTo(\$debug, TAG(Describe(garden) + " CAPACITY(" + Str(Int(planted)) + "/" + Str(Int(capacity)) + ")", "imp")); 
+ 
+if((Int(\$plant."trait:plant:size") + planted) \> capacity) \{ 
+    if(\$debug."plant:dbg") EmitTo(\$actor, TAG(Describe(\$plant) + " SIZE IS " + Str(Int(\$plant."trait:plant:size")) + " VS " + Describe(garden) +" CAPACITY OF " + Str(Int(capacity-planted)) + ".", "imp")); 
+    EmitTo(\$actor, "There is no room in " + Describe(garden, nil, \$actor) + " for " + Describe(\$plant, nil, \$actor) + " to grow."); 
+    return FALSE; 
+\} 
+ 
+skill = Int(\$actor."skill:general:gardening");        /* Get the skill of the gardener */ 
+level = Int(plants::get_level(\$plant: \$plant));     /* Get the level of the plant */ 
+soil = NewNRef(\$location, "soil"); 
+ 
+if(\$debug."plant:dbg") EmitTo(\$debug, TAG("GARDENER SKILL: " + Str(skill), "imp")); 
+if(\$debug."plant:dbg") EmitTo(\$debug, TAG("PLANT LEVEL: " + Str(level), "imp")); 
+ 
+/* Check the level of the gardener against the level of the plant */ 
+/* But only if it's a fully grown plant */ 
+if(skill \< level \&\& \$plant."trait:stage" != 3) \{ 
+    EmitTo(\$actor, "You do not have the knowledge to do that."); 
+    return FALSE; 
+\} 
+ 
+/* We're skilled enough. Now plant it. */ 
+EmitTo(\$actor, TAG("You plant " + Describe(\$plant, nil, \$actor) + " in " + Describe(soil) + ".", "social:first")); 
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " plants " + Describe(\$plant, \$actor) + " in " + Describe(soil) + ".", "social:third"), \$actor); 
+ 
+\$plant."base:environment" = \$location;                        /* Put the plant in the location/container it is being buried */ 
+\$plant."base:integration" = "plants";                         /* Integrate it so it is not visible in the look */ 
+if(garden."trait:planter:type" != "garden") garden.plants = \$plant; 
+\$plant."base:immobile" = 1;                                   /* Immobilize it */ 
+\$plant."trait:plant:planter" = \$location."trait:planter:type";    /* Make note of where it is being planted */     
+ 
+if(garden."trait:planter:inventory" \&\& sizeof(garden."trait:planter:inventory")) \{  
+    garden."trait:planter:inventory" += (\{ \$plant \}); 
+\} else \{ 
+    garden."trait:planter:inventory" = (\{ \$plant \}); 
+\} 
+ 
+if(\$debug."plant:dbg") EmitTo(\$debug, TAG("PUTTING PLANT IN GARDEN/PLANTER. SHOULD BE IMMOBILIZED.", "imp")); 
+ 
+/* If it's a seed, hide it until it starts to grow */ 
+if(\$plant."trait:stage" == 0) \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, TAG("IT'S A SEED SO LET'S HIDE IT FOR THE DURATION OF THE SEED STAGE. GROWTH TIMER WILL HANDLE THIS.", "imp")); 
+    \$plant."details:default:hidden" = TRUE; 
+\} 
+ 
+/* If we are planting in a garden, hide the soil detail */ 
+/* If we are planting in a planter, add sname/pname/adjectives of the plant */ 
+if(garden."trait:planter:type" == "garden") \{ 
+    Set(garden, "details:soil:sname:soil", FALSE); 
+    Set(garden, "details:soil:sname:hole", FALSE); 
+    Set(garden, "details:soil:pname:soils", FALSE); 
+    Set(garden, "details:soil:pname:holes", FALSE); 
+\} else \{ 
+    /* \$snames = Get(\$plant, "details:default:snames"); 
+    for(\$i = 0; \$i \< sizeof(\$snames); \$i++) \{ 
+        Set(garden, "details:default:sname:" + \$snames[\$i], TRUE); 
+    \} */ 
+ 
+    /* \$pnames = Get(\$plant, "details:default:pnames"); 
+    for(\$i = 0; \$i \< sizeof(\$pnames); \$i++) \{ 
+        Set(garden, "details:default:pname:" + \$pnames[\$i], TRUE); 
+    \} */ 
+ 
+    \$adjectives = Get(\$plant, "details:default:adjectives"); 
+    for(\$i = 0; \$i \< sizeof(\$adjectives); \$i++) \{ 
+        Set(garden, "details:default:adjective:" + \$adjectives[\$i], TRUE); 
+    \} 
+\} 
+ 
+if(\$debug."plant:dbg") EmitTo(\$debug, "IS THE PLANT DYING?"); 
+/* If the plant is dying, see if we can stop the death timer */ 
+if(\$plant."handles:death:timer") \{ 
+    if(\$debug."plant:dbg") EmitTo(\$debug, "YES. LET'S TRY TO STOP THE DEATH TIMER."); 
+    /* Check that the plant can grow in this environment. */ 
+    if(plants::check_growth(\$plant: \$plant)) \{ 
+        Call(\$plant, "stop_death", \$plant: \$plant); 
+    \} else \{ 
+        if(\$debug."plant:dbg") EmitTo(\$debug, TAG("UNABLE TO STOP DEATH TIMER. LOCATION IS NOT SUITABLE FOR GROWTH.", "imp")); 
+    \} 
+\} 
+ 
+if(\$debug."plant:dbg") EmitTo(\$debug, "CAN THE PLANT ACTUALLY GROW HERE?"); 
+/* Before starting the growth timer, make sure it can actually grow here */ 
+if(plants::check_growth(\$plant: \$plant)) \{ 
+    if(!\$this."handles:growth:timer") \{ 
+        Call(\$plant, "grow", \$plant: \$plant, \$stage: \$plant."trait:stage"); 
+    \} 
+\} 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:regenerate_produce">
+         X[M] \$temp = copy(\$plant."base:urparent"."*"); 
+\$temp2 = structure_propmap(\$temp); 
+if(!\$newquality) \$newquality = 0; 
+if(\$newquality == 0 \&\& \$plant."trait:quality" \> 4) \$newquality = \$plant."trait:quality"; 
+ 
+if(\$temp2["export"] \&\& \$temp2["export"]["plant"] \&\& \$temp2["export"]["plant"]["part"]) \{ 
+    \$produceMap = structure_propmap(\$temp)["export"]["plant"]["part"]; 
+    \$produceAll = map_indices(\$produceMap); 
+ 
+    if(\$plant."trait:stage" == 3) \{ 
+      for(\$i = 0; \$i \< sizeof(\$produceAll); \$i++) \{ 
+        \$produce = \$produceAll[\$i]; 
+        \$quantity = Int(Get(\$plant, "trait:" + \$produce + ":quantity")); 
+        \$quantityMax = Int(Get(\$plant, "trait:" + \$produce + ":quantity:max")); 
+ 
+        if(\$quantity \< \$quantityMax \&\& \$newquality \>= 0) \{ 
+            \$quantity = \$quantity + random(2) + 1; 
+            Set(\$plant, "trait:" + \$produce + ":quantity", \$quantity); 
+        \} else if(\$quantity \> 0 \&\& \$newquality \< 0) \{ 
+            \$quantity--; 
+            Set(\$plant, "trait:" + \$produce + ":quantity", \$quantity); 
+        \} 
+ 
+        if(\$quantity \> 0) \{ 
+            \$snames = \$produceMap[\$produce]."details:default:snames" \| \$produceMap[\$produce]."details:default:snames:local"; 
+            for(\$x = 0; \$x \< sizeof(\$snames); \$x++) \{ 
+                Set(\$plant, "details:harvest-" + \$produce + ":sname:" + \$snames[\$x], TRUE); 
+            \} 
+ 
+            \$pnames = \$produceMap[\$produce]."details:default:pnames" \| \$produceMap[\$produce]."details:default:pnames:local"; 
+            for(\$x = 0; \$x \< sizeof(\$pnames); \$x++) \{ 
+                Set(\$plant, "details:harvest-" + \$produce + ":pname:" + \$pnames[\$x], TRUE); 
+            \} 
+ 
+            \$adjectives = \$produceMap[\$produce]."details:default:adjectives" \| \$produceMap[\$produce]."details:default:adjectives:local"; 
+            for(\$x = 0; \$x \< sizeof(\$adjectives); \$x++) \{ 
+                Set(\$plant, "details:harvest-" + \$produce + ":adjective:" + \$adjectives[\$x], TRUE); 
+            \} 
+ 
+            if(\$plant."trait:color") \{ 
+                \$temp = explode(\$plant."trait:color", " "); 
+                for(\$z = 0; \$z \< sizeof(\$temp); \$z++) \{ 
+                    Set(\$plant, "details:harvest-" + \$produce + ":adjective:" + \$temp[\$z], TRUE); 
+                \} 
+            \} 
+        \} else \{ 
+            \$snames = \$produceMap[\$produce]."details:default:snames" \| \$produceMap[\$produce]."details:default:snames:local"; 
+            for(\$x = 0; \$x \< sizeof(\$snames); \$x++) \{ 
+                Set(\$plant, "details:harvest-" + \$produce + ":sname:" + \$snames[\$x], FALSE); 
+            \} 
+ 
+            \$pnames = \$produceMap[\$produce]."details:default:pnames" \| \$produceMap[\$produce]."details:default:pnames:local"; 
+            for(\$x = 0; \$x \< sizeof(\$pnames); \$x++) \{ 
+                Set(\$plant, "details:harvest-" + \$produce + ":pname:" + \$pnames[\$x], FALSE); 
+            \} 
+ 
+            \$adjectives = \$produceMap[\$produce]."details:default:adjectives" \| \$produceMap[\$produce]."details:default:adjectives:local"; 
+            for(\$x = 0; \$x \< sizeof(\$adjectives); \$x++) \{ 
+                Set(\$plant, "details:harvest-" + \$produce + ":adjective:" + \$adjectives[\$x], FALSE); 
+            \} 
+ 
+            if(\$plant."trait:color") \{ 
+                \$temp = explode(\$plant."trait:color", " "); 
+                for(\$z = 0; \$z \< sizeof(\$temp); \$z++) \{ 
+                    Set(\$plant, "details:harvest-" + \$produce + ":adjective:" + \$temp[\$z], TRUE); 
+                \} 
+            \} 
+          \} 
+        \} 
+    \} 
+\} else \{ 
+    /* Mature plant with no produce. */ 
+    return TRUE; 
+\} 
+ 
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:resolve_desc">
+         X[M] string age, produce, detail;  
+object produce_ob; 
+ 
+ 
+detail = NRefDetail(\$target); 
+ 
+if(detail == "default") \{ 
+ 
+    /* Get the age of the plant */  
+    age = ::getAge(\$stage: Int(\$this."trait:stage"));  
+ 
+    if(\$this."trait:plant:noupkeeprequired" \&\& \$this."trait:stage" \>= 3) \$this."trait:quality" = 8; 
+ 
+    /* If it's a seed, just return the simple seed description. */  
+    if(\$this."trait:stage" \< 3) return UnSAM(Get(\$this, "details:" + age + ":description:" + \$desc));  
+ 
+    /* Is the plant dead? */  
+    if(\$this."plants:plant:isdead") return UnSAM(Get(\$this, "details:" + age + ":description:" + \$desc + "-dead"));  
+ 
+    /* It's a healthy, growing plant so return the description. */  
+    if(\$desc == "brief" \|\| \$desc == "look") \{ 
+        return UnSAM(Get(\$this, "details:" + age + ":description:" + \$desc)); 
+    \} else \{ 
+        if(\$this."trait:stage" != 3) \{ 
+            return UnSAM(Get(\$this, "details:" + age + ":description:" + \$desc)); 
+        \} 
+        \$temp = copy(\$this."base:urparent"."*"); 
+        \$temp2 = structure_propmap(\$temp); 
+ 
+        if(\$temp2["export"]["plant"] \&\& \$temp2["export"]["plant"]["part"]) \{ 
+            \$produceAll = \$temp2["export"]["plant"]["part"]; 
+            \$produceNames = map_indices(\$produceAll); 
+            \$total = 0; 
+            \$qList = (\{ \}); 
+ 
+            for(\$i = 0; \$i \< sizeof(\$produceNames); \$i++) \{ 
+                \$produceName = \$produceNames[\$i]; 
+                \$produceOb = \$produceAll[\$produceName]; 
+                \$quantity = Int(Get(\$this, "trait:" + \$produceName + ":quantity")); 
+                \$total += \$quantity; 
+                if(\$quantity == 1) \{ 
+                    \$qList += (\{ desc_cardinal(\$quantity) + " " + replace_strings("::" + Describe(\$produceOb), "::a ", "", "::an ", "") \}); 
+                \} else if(\$quantity \> 1) \{ 
+                    \$qList += (\{ desc_cardinal(\$quantity) + " " + replace_strings("::" + Describe(\$produceOb), "::a ", "", "::an ", "") + "s" \}); 
+                \} 
+            \} 
+ 
+            if(!sizeof(\$qList)) \{ 
+                \$qstr = "There is nothing left to harvest."; 
+            \} else if(sizeof(\$qList) == 1) \{ 
+                if(\$total == 1) \{ 
+                   \$qstr = capitalize(\$qList[0] + " is ready to be harvested.");  
+                \} else \{ 
+                   \$qstr = capitalize(\$qList[0] + " are ready to be harvested."); 
+                \} 
+            \} else \{ 
+                \$qstr = capitalize(implode(\$qList, ", ") + " are ready to be harvested."); 
+            \} 
+            return UnSAM(Get(\$this, "details:" + age + ":description:" + \$desc)) + " " + \$qstr; 
+        \} else \{ 
+            return UnSAM(Get(\$this, "details:" + age + ":description:" + \$desc)); 
+        \} 
+    \} 
+ 
+\} else \{ 
+    produce = replace_strings(detail, "harvest-", ""); 
+ 
+    if(Get(\$this, "plant:part:" + produce)) \{ 
+        produce_ob = Get(\$this, "plant:part:" + produce); 
+        \$produceName = Describe((\{ produce_ob, produce_ob \}), nil, nil, STYLE_NONPOSS); 
+        \$produceName = explode(\$produceName, " "); 
+        \$produceName[0] = nil; 
+        \$produceName -= (\{ nil \}); 
+        \$produceName = implode(\$produceName, " "); 
+ 
+        if(\$desc == "brief") \{ 
+            return "the " + \$produceName + " of " + Describe(\$this, nil, nil, STYLE_NONPOSS); 
+        \} else if(\$desc == "look") \{ 
+            return UnSAM(Get(produce_ob, "details:default:description:look")); 
+        \} else if(\$desc == "examine") \{ 
+            \$total = Get(\$this, "trait:" + produce + ":quantity"); 
+ 
+            if(\$total == 0) \{ 
+                \$qstr = "There is nothing left to harvest."; 
+            \} else if(\$total == 1) \{ 
+                \$qstr = desc_cardinal(\$total) + " " + replace_strings("::" + Describe(produce_ob), "::a ", "", "::an ", "") + " is ready to be harvested."; 
+            \} else \{ 
+                \$qstr = desc_cardinal(\$total) + " " + replace_strings("::" + Describe(produce_ob), "::a ", "", "::an ", "") + "s are ready to be harvested."; 
+            \} 
+ 
+            return UnSAM(Get(produce_ob, "details:default:description:examine")) + " " + capitalize(\$qstr); 
+        \} 
+    \} else \{ 
+        return "[OOC: Error resolving description. Contact staff. (\{ " + Str(\$this) + " : " + Str(\$detail) + " \})]"; 
+    \} 
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:stop_death">
+         X[M] if(\$plant."handles:death:timer") \{ 
+    Stop(\$plant."handles:death:timer"); 
+    \$plant."handles:death:timer" = nil; 
+    \$plant."plants:plant:deathstamp" = nil; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:stop_growth">
+         X[M] if(\$plant."handles:growth:timer") \{ 
+    Stop(\$plant."handles:growth:timer"); 
+    \$plant."handles:growth:timer" = nil; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:uproot">
+         X[M] /* 
+** Uproot a plant. 
+*/ 
+ 
+int skill, level, planted, capacity; 
+mixed soil, garden, env; 
+ 
+skill = Int(\$actor."skill:general:gardening");        /* Get the skill of the gardener */ 
+level = Int(plants::get_level(\$plant: \$plant));     /* Get the level of the plant */ 
+ 
+/* Only dig up planted plants (anything with a trait:plant:planter property set) */ 
+/* Plants that can be retrieved from the wild will have this set. Existing plants that are secured IG will not. */ 
+if(!\$plant."trait:plant:planter") \{ 
+    EmitTo(\$actor, Describe(\$plant) + " is not something you can dig up."); 
+    return FALSE; 
+\} 
+ 
+/* Check the level of the gardener against the level of the plant */ 
+/* Unless it's a fully grown plant that has been planted in a planter. */ 
+if(skill \< level \&\& \$plant."trait:stage" != 3 \&\& \$plant."trait:plant:planter" != "planter") \{ 
+    EmitTo(\$actor, "You do not have the knowledge to do that."); 
+    return FALSE; 
+\} 
+ 
+garden = \$plant."base:environment"; 
+ 
+EmitTo(\$actor, TAG("You dig up " + Describe(\$plant, nil, \$actor) + " from " + Describe(garden, nil, \$actor) + ".", "social:first")); 
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " digs up " + Describe(\$plant, \$actor) + " from " + Describe(garden, \$actor) + ".", "social:third"), \$actor);
+
+/* Adding the line below because seeds get hidden and it's apparently possible to dig them up, leaving you stranded with an untargetable seed. - Hilarion */
+\$plant."details:default:hidden" = FALSE;  
+ 
+garden."trait:planter:inventory" -= (\{ \$plant \}); 
+ 
+if(garden."trait:planter:type" != "garden") \{ 
+    \$snames = Get(\$plant, "details:default:snames"); 
+    for(\$i = 0; \$i \< sizeof(\$snames); \$i++) \{ 
+        Set(garden, "details:default:sname:" + \$snames[\$i], FALSE); 
+    \} 
+ 
+    \$pnames = Get(\$plant, "details:default:pnames"); 
+    for(\$i = 0; \$i \< sizeof(\$pnames); \$i++) \{ 
+        Set(garden, "details:default:pname:" + \$pnames[\$i], FALSE); 
+    \} 
+ 
+    \$adjectives = Get(\$plant, "details:default:adjectives"); 
+    for(\$i = 0; \$i \< sizeof(\$adjectives); \$i++) \{ 
+        Set(garden, "details:default:adjective:" + \$adjectives[\$i], FALSE); 
+    \} 
+\} 
+ 
+\$plant."base:immobile" = FALSE;                               /* Immobilize it */ 
+\$plant."base:integration" = nil;                              /* Integrate it so it is not visible in the look */ 
+garden.plants = nil; 
+\$plant."base:environment" = \$actor;                           /* Put the plant in the location/container it is being buried */ 
+\$plant."plants:isplanted" = nil;                              /* Make note of where it is being planted */ 
+\$plant."trait:plant:planter" = nil; 
+ 
+ 
+ 
+if(\$plant."handles:growth:timer") \{ 
+    Call(\$plant, "stop_growth", \$plant: \$plant); 
+\} 
+ 
+/* 
+Call(\$plant, "death:timer", \$plant: \$plant); 
+*/ 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:prune-dob">
+         X[M] \$pruned = time(); 
+\$prunedby = \$actor; 
+\$career = Int(\$actor."skill:general:gardening"); 
+ 
+if(\$career \< plants::get_level(\$plant: \$this) \&\& \$this."trait:stage" != 3) \{ 
+    EmitTo(\$actor, "Upkeep for " + Describe(\$this) + " will require the hands of a more skilled gardener. At least until it's fully grown."); 
+    return FALSE; 
+\} 
+ 
+\$this."trait:plant:pruned" = (\{ \$pruned, \$prunedby \}); 
+ 
+if(\$this."trait:quality" == 0) \$this."trait:quality" = 1; 
+ 
+/* Has the timer been started on this plant yet? */ 
+if(plants::check_growth(\$plant: \$this) \&\& \$this."trait:plant:planter") \{ 
+    if(!\$this."handles:growth:timer") \{ 
+        Call(\$this, "grow", \$plant: \$this, \$stage: \$this."trait:stage"); 
+    \} 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:water-dob">
+         X[M] \$watered = time(); 
+\$wateredby = \$actor; 
+\$career = Int(\$actor."skill:general:gardening"); 
+ 
+if(\$career \< plants::get_level(\$plant: \$this) \&\& \$this."trait:stage" != 3) \{ 
+    EmitTo(\$actor, "Upkeep for " + Describe(\$this) + " will require the hands of a more skilled gardener. At least until it's fully grown."); 
+    return FALSE; 
+\} 
+ 
+\$this."trait:plant:watered" = (\{ \$watered, \$wateredby \}); 
+ 
+if(\$this."trait:quality" == 0) \$this."trait:quality" = 1; 
+ 
+/* Has the timer been started on this plant yet? */ 
+if(plants::check_growth(\$plant: \$this) \&\& \$this."trait:plant:planter") \{ 
+    if(!\$this."handles:growth:timer") \{ 
+        Call(\$this, "grow", \$plant: \$this, \$stage: \$this."trait:stage"); 
+    \} 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:quality">
+         X[M] /* drop the quality of the plant over time */  
+/* set the description for the flower, based on quality */  
+  
+switch(Int(this."trait:quality"/2)) \{  
+  case 12:  
+    this."trait:state" = "perfect";  
+    break;  
+  case 11:  
+    this."trait:state" = "perfect";  
+    break;  
+  case 10:  
+    this."trait:state" = "immaculate";  
+    break;  
+  case 9:  
+    this."trait:state" = "amazing";  
+    break;  
+  case 8:  
+    this."trait:state" = "pristine";  
+    break;  
+  case 7:  
+    this."trait:state" = "crisp";  
+    break;  
+  case 6:  
+    this."trait:state" = "fresh";  
+    break;  
+  case 5:  
+    this."trait:state" = "bright";  
+    break;  
+  case 2:  
+    this."trait:state" = (\{ "dull", "drooping", "faded" \})[random(2)];  
+    break;  
+  case 1:  
+    this."trait:state" = (\{ "limp", "listless" \})[random(2)];  
+    break;  
+  case 0:  
+    this."trait:state" = "wilted";  
+    break;  
+  default:  
+    this."trait:state" = nil;  
+    break;  
+\}  
+ 
+/*  
+if(Int(\$this."trait:quality") \> 1 \&\& Int(\$this."trait:stage" \< 3) \&\& !\$this."handles:growth:timer") \{ 
+    ::grow(\$plant: \$this, \$stage: Int(\$this."trait:stage")); 
+\} 
+ 
+if(this."plant:decaying" \|\| Int(\$this."trait:quality" \<= 1)) \{ 
+    return TRUE;  
+\} 
+  
+this."plant:decaying" = 1;  
+\$delay(Int(this."plant:decaydelay"), FALSE, "be98"); 
+this."plant:decaying" = nil; 
+ 
+\$this."trait:quality"--; 
+ 
+if(Int(\$this."trait:quality" \< 1)) \$this."trait:quality" = 1; 
+ 
+if(Int(\$this."trait:quality") \<= 1 \&\& \$this."handles:growth:timer") \{ 
+    Call(\$this, "stop_growth", \$plant: \$this); 
+\} 
+*/ 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:stage">
+         X[M] int oldStage, newStage, i;
+string oldAge, newAge, season;
+mixed* oldSNames, oldPNames, oldAdjectives;
+mixed* newSNames, newPNames, newAdjectives;
+
+oldStage = \$(hook-oldvalue);
+oldAge = ::getAge(\$stage: oldStage);
+
+oldSNames = (\{ \});
+oldSNames = Get(\$this, "plants:" + oldAge + ":snames");
+for(i = 0; sizeof(oldSNames) \&\& i \< sizeof(oldSNames); i++) \{
+    Set(\$this, "details:default:sname:" + Str(oldSNames[i]), FALSE);
+\}
+
+oldPNames = (\{ \});
+oldPNames = Get(\$this, "plants:" + oldAge + ":pnames");
+for(i = 0; sizeof(oldPNames) \&\& i \< sizeof(oldPNames); i++) \{ 
+    Set(\$this, "details:default:pname:" + Str(oldPNames[i]), FALSE);
+\}
+
+oldAdjectives = (\{ \});
+oldAdjectives = Get(\$this, "plants:" + oldAge + ":adjectives"); 
+
+for(i = 0; sizeof(oldAdjectives) \&\& i \< sizeof(oldAdjectives); i++) \{
+    Set(\$this, "details:default:adjective:" + Str(oldAdjectives[i]), FALSE);
+\}
+
+newStage = \$(hook-value);
+newAge = ::getAge(\$stage: newStage);
+
+newSNames = Get(\$this, "plants:" + newAge + ":snames");
+if(newSNames \&\& sizeof(newSNames)) \{
+  for(i = 0; sizeof(newSNames) \&\& i \< sizeof(newSNames); i++) \{
+    Set(\$this, "details:default:sname:" + Str(newSNames[i]), TRUE);
+  \}
+\}
+
+newPNames = Get(\$this, "plants:" + newAge + ":pnames");
+if(newPNames \&\& sizeof(newPNames)) \{
+  for(i = 0; sizeof(newPNames) \&\& i \< sizeof(newPNames); i++) \{
+    Set(\$this, "details:default:pname:" + Str(newPNames[i]), TRUE);
+  \}
+\}
+
+newAdjectives = Get(\$this, "plants:" + newAge + ":adjectives");
+if(newAdjectives \&\& sizeof(newAdjectives)) \{
+  for(i = 0; sizeof(newAdjectives) \&\& i \< sizeof(newAdjectives); i++) \{
+    Set(\$this, "details:default:adjective:" + Str(newAdjectives[i]), TRUE);
+  \}
+\}
+
+if(\$this."trait:color" \&\& \$this."trait:stage" == 3) Set(\$this, "details:default:adjective:" + \$this."trait:color", TRUE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:death:timer">
+         X[M] if(\$this."handles:death:timer") \{ 
+    Stop(\$this."handles:death:timer"); 
+    \$this."handles:death:timer" = nil; 
+\} 
+ 
+\$this."plants:plant:isdead" = 1; 
+\$this."trait:quality" = 1; 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:grow">
+         X[M] /* EmitTo(\$\{Chatters:IC:ro:roo\}, "[" + ctime(time()) + "]Growth timer on: " + dump_value(\$this) + ":" + dump_value(\$this."base:environment") + "(timer_id:" + dump_value(\$this."handles:growth:timer") + ")"); */ 
+ 
+/* Stop and clear the timer */ 
+if(\$this."handles:growth:timer") \{ 
+    Stop(\$this."handles:growth:timer"); 
+    \$this."handles:growth:timer" = nil; 
+\} 
+ 
+\$plant = \$this; 
+ 
+/* Check quality of the plant */ 
+/* If watered and pruned recently, roll for quality increase */ 
+/* If not watered or pruned recently, decrease quality */ 
+/* Some plants do not require upkeep (trait:plant:noupkeeprequired == TRUE) */ 
+\$quality = Int(\$plant."trait:quality"); 
+\$decayed = 0; 
+\$newquality = 0; 
+if(\$plant."trait:stage" == 3 \&\& \$plant."trait:plant:noupkeeprequired") \{ 
+    /* Do nothing */ 
+\} else \{ 
+    if(\$plant."trait:plant:watered" \&\& sizeof(\$plant."trait:plant:watered")) \{ 
+        \$watered = \$plant."trait:plant:watered"[0]; 
+        \$wateredby = \$plant."trait:plant:watered"[1]; 
+ 
+        /* Has it been watered within the last two days? */ 
+        if((time() - \$watered) \< 60*60*24*2) \{ 
+            /* Yes, roll for quality increase */ 
+            \$result = ironclaw::roll(\$roller: \$wateredby, \$skills: (\{ "general:gardening" \}), \$bonus: (\{ "trait:mind" \})); 
+            if(\$result \> Int(this."trait:quality")) \{ 
+                \$newquality+=2; 
+            \} else \{ 
+                \$newquality++; 
+            \} 
+        \} else \{ 
+            \$decayed = 1; 
+            \$newquality--; 
+        \} 
+    \} else \{ 
+        \$decayed = 1; 
+        \$newquality--; 
+    \} 
+ 
+    if(\$plant."trait:plant:pruned" \&\& sizeof(\$plant."trait:plant:pruned")) \{ 
+        \$pruned = \$plant."trait:plant:pruned"[0]; 
+        \$prunedby = \$plant."trait:plant:pruned"[1]; 
+ 
+        /* Has it been pruned within the last two days? */ 
+        if((time() - \$pruned) \< 60*60*24*2) \{ 
+            /* Yes, roll for quality increase */ 
+            \$skill = Get(\$prunedby, "skill:general:gardening"); 
+            \$result = ironclaw::roll(\$roller: \$prunedby, \$skills: (\{ "general:gardening" \}), \$bonus: (\{ "trait:mind" \})); 
+            if(\$result \> Int(this."trait:quality")) \{ 
+                \$newquality+=2; 
+            \} else \{ 
+                \$newquality++; 
+            \} 
+        \} else \{ 
+            if(!\$decay) \{ 
+                \$newquality--; 
+            \} 
+        \} 
+    \} else \{ 
+        if(!\$decay) \{ 
+            \$newquality--; 
+        \} 
+    \} 
+ 
+    /* Has it been fertilized? */ 
+    if(\$plant."trait:plant:fertilized") \{ 
+        if(Int(\$plant."trait:plant:fertilized") \>= \$quality) \{ 
+            \$newquality++; 
+        \} 
+        \$plant."trait:plant:fertilized" = nil; 
+    \} 
+\} 
+ 
+\$quality += \$newquality; 
+if(\$quality \< 0) \$quality = 0; 
+if(\$quality \> 24) \$quality = 24; 
+ 
+\$plant."trait:quality" = Int(\$quality); 
+ 
+/* Will return TRUE if there is no produce to grow */ 
+\$nogrow = plants::regenerate_produce(\$plant: \$plant, \$newquality: \$newquality); 
+ 
+/* Is the plant in a suitable state to grow? */ 
+/* Allow it to at least sprout. */ 
+if(\$this."trait:stage" == 0 \|\| plants::check_growth(\$plant: \$this)) \{ 
+    \$this."details:default:hidden" = FALSE; 
+    if(\$this."trait:stage" \< 3) \{ 
+        \$this."trait:stage" = Int(\$this."trait:stage") + 1; 
+    \} else \{ 
+        \$this."trait:stage" = 3; 
+    \} 
+    plants::describe_growth(\$plant: \$this, \$nogrow: \$nogrow); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1418673818, "jominey", "E", 1418673905, "jominey", "E", 1418673936, "jominey", "E", 1418674130, "jominey", "E", 1418674156, "jominey", "E", 1418674326, "jominey", "E", 1418674343, "jominey", "E", 1418674444, "jominey", "E", 1418674746, "jominey", "E", 1418674827, "jominey", "E", 1418674895, "jominey", "E", 1418675175, "jominey", "E", 1418675429, "jominey", "E", 1418675752, "jominey", "E", 1418677394, "jominey", "E", 1418677713, "jominey", "E", 1418677735, "jominey", "E", 1418687357, "jominey", "E", 1418688674, "jominey", "E", 1418691105, "jominey", "E", 1418691453, "jominey", "E", 1418716160, "jominey", "E", 1418716277, "jominey", "E", 1418716320, "jominey", "E", 1418716356, "jominey", "E", 1418716479, "jominey", "E", 1418716709, "jominey", "E", 1418716946, "jominey", "E", 1418717173, "jominey", "E", 1418717214, "jominey", "E", 1418717265, "jominey", "E", 1418717379, "jominey", "E", 1418717502, "jominey", "E", 1418720066, "jominey", "E", 1418720131, "jominey", "E", 1418721186, "jominey", "E", 1418721374, "jominey", "E", 1418721426, "jominey", "E", 1418721631, "jominey", "E", 1418721662, "jominey", "E", 1418753078, "jominey", "E", 1418753155, "jominey", "E", 1418753402, "jominey", "E", 1418762988, "jominey", "E", 1418763092, "jominey", "E", 1418764471, "jominey", "E", 1418764500, "jominey", "E", 1418764514, "jominey", "E", 1418765011, "jominey", "E", 1418765511, "jominey", "E", 1418765538, "jominey", "E", 1418765612, "jominey", "E", 1418765634, "jominey", "E", 1418765841, "jominey", "E", 1418765915, "jominey", "E", 1418766077, "jominey", "E", 1418774197, "jominey", "E", 1418776641, "jominey", "E", 1418778368, "jominey", "E", 1418779611, "jominey", "E", 1418779767, "jominey", "E", 1418842784, "jominey", "E", 1418842984, "jominey", "E", 1418875602, "jominey", "E", 1418875712, "jominey", "E", 1418875807, "jominey", "E", 1418876244, "jominey", "E", 1418929201, "jominey", "E", 1418931032, "jominey", "E", 1419049706, "jominey", "E", 1419049943, "jominey", "E", 1419049979, "jominey", "E", 1419212129, "jominey", "E", 1419212167, "jominey", "E", 1419212195, "jominey", "E", 1420339941, "rorschakovacs", "E", 1420339973, "rorschakovacs", "E", 1420340034, "rorschakovacs", "E", 1420340068, "rorschakovacs", "E", 1420340075, "rorschakovacs", "E", 1422929758, "jominey", "E", 1422929827, "jominey", "E", 1422929849, "jominey", "E", 1422929865, "jominey", "E", 1439855610, "jominey", "E", 1439855755, "jominey", "E", 1510761706, "jominey", "E", 1510761848, "jominey", "E", 1510762540, "jominey", "P", 1517350106, "jominey", "E", 1517350394, "jominey", "E", 1520012229, "jominey", "E", 1520014060, "jominey", "E", 1520014084, "jominey", "E", 1521763762, "jominey", "E", 1521763824, "jominey", "E", 1521763856, "jominey", "E", 1521763912, "jominey", "E", 1521763947, "jominey", "E", 1521763994, "jominey", "E", 1521764026, "jominey", "E", 1521764048, "jominey", "E", 1521764069, "jominey", "E", 1521764103, "jominey", "E", 1523406988, "jominey", "E", 1528312175, "jominey", "E", 1528312266, "jominey", "E", 1528313720, "jominey", "E", 1563740448, "jominey", "P", 1572190269, "sendnoodlez", "X", 1572305310, "jominey", "P", 1572305324, "jominey", "R", 1572756519, "jominey", "P", 1575492620, "jominey", "E", 1596589288, "jominey", "E", 1596589325, "jominey", "E", 1596589353, "jominey", "E", 1596589395, "jominey", "E", 1596589572, "jominey", "E", 1647717784, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

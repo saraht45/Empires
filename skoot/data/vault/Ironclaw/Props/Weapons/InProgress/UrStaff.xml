@@ -1,0 +1,220 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCrafting)"/>
+    <Base:Bulk immobile="false" mass="1" density="0.8"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="true" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="staff"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="staves"/>
+            <Base:PName pname="staffs"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="wooden"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? equal | $(this.trait:color) | none || $(this.trait:color) }
+{? equal | $(this.trait:material) | none || $(this.trait:material) }
+staff
+          </Base:Description>
+          <Base:Description type="look">
+             A {? equal | $(this.trait:color) | none || $(this.trait:color) }
+{? equal | $(this.trait:material) | none || $(this.trait:material) }
+staff{? | $(this.trait:carving:pattern) | carved with $(this.trait:carving:pattern)}.
+          </Base:Description>
+          <Base:Description type="pbrief">
+             {? equal | $(this.trait:color) | none || $(this.trait:color) }
+{? equal | $(this.trait:material) | none || $(this.trait:material) }
+staves
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="10"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="hand-right"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties>
+      <Base:InitialProperty property="details:default:adjective:wooden">
+         "1"
+      </Base:InitialProperty>
+      <Base:InitialProperty property="trait:material">
+         "wooden"
+      </Base:InitialProperty>
+    </Base:InitialProperties>
+    <Core:Properties>
+      <Core:Property property="backup:merry:react:change-dob">
+         X[M] /*Check if we have a target to alter the object to*/ 
+EmitTo(\$actor, "checking for raw input"); 
+ 
+if(!\$(into:words)) \{ 
+  EmitTo(\$actor, "No input"); 
+  return TRUE; 
+\} 
+ 
+/* We have a target to alter the object to */ 
+EmitTo(\$actor, "We have raw input of size " + sizeof(\$(into:words))); 
+\$targetwords = implode(\$(into:words), " "); 
+EmitTo(\$actor, "target is " + \$targetwords); 
+ 
+/* check we were only given one direct object */ 
+/* Needs to be a more robust check */ 
+if(sizeof(\$dob) \> 1) \{ 
+  EmitTo(\$actor, "You can only alter one object at a time"); 
+  return FALSE; 
+\} 
+ 
+/* Check what modification is being made */ 
+/* E.g. A symbol being sewn onto a shirt, or iron being forged into something new */ 
+/* Put something temporary here until this code is made more generic */ 
+\$modification = "carve"; 
+ 
+EmitTo(\$actor, "Modification is " + \$modification); 
+EmitTo(\$actor, "Detail is " + NRefDetail(\$dob[0])); 
+/* verify this is a valid target */ 
+ 
+if(!(\$changelist = Get(NRefOb(\$dob[0]), "alteration:create:" + NRefDetail(\$dob[0]) + ":" + \$modification))) 
+\{ 
+  EmitTo(\$actor, "You can't " + \$modification + " " + Describe(\$dob[0], nil, \$actor)); 
+  return FALSE; 
+\} 
+ 
+/* Check if the actor is using any necessary tools */ 
+  /* if not, check if the actor has the tools in their posession */ 
+ 
+/* Check if we were passed the input, and if so, if it's valid */ 
+/* Get details for the modification */ 
+if(!(\$changelist = \$changelist[\$targetwords])) 
+\{ 
+  /* if property set, check in the actor for valid input */ 
+  /* not written yet */ 
+  EmitTo(\$actor, "That is not valid input to " + \$modification + " " + Describe(\$dob[0], nil, \$actor)); 
+  return FALSE; 
+\} 
+ 
+/* Check that this modification hasn't already been made */ 
+if(\$changelist["stopvalue"]) 
+\{ 
+  EmitTo(\$actor, "We have a stopvalue. Checking if it's valid"); 
+  /* We have a stopvalue. Check if we are allowed to continue */ 
+  /* If this property exists in the object, then we need to stop, unless it matches the value */ 
+  if(\$stopvalue = Get(NRefOb(\$dob[0]), \$changelist["stopvalue"][0])) 
+  \{ 
+    EmitTo(\$actor, "Retrieved stopvalue"); 
+    EmitTo(\$actor, "Stopvalue is " + \$stopvalue); 
+    /* if stopvalue doesn't match the property, then exit with message*/ 
+    if((sizeof(\$changelist["stopvalue"]) \> 1) \&\& (\$stopvalue != Get(NRefOb(\$dob[0]), \$changelist["stopvalue"][1]))) 
+    \{ 
+      EmitTo(\$actor, "Stopvalue doesn't match"); 
+      if(sizeof(\$changelist["stopvalue"]) \> 2) 
+      \{ 
+        EmitTo(\$actor, \$changelist["stopvalue"][2]); 
+      \} else \{ 
+        EmitTo(\$actor, Describe(\$dob[0], nil, \$actor) + " already has a modification of that type."); 
+      \} 
+      EmitTo(\$actor, "Output given"); 
+      return FALSE; 
+    \} else \{ 
+      EmitTo(\$actor, "Stopvalue matches"); 
+    \} 
+  \} else \{ 
+    EmitTo(\$actor, "Couldn't retrieve stopvalue. Continuing"); 
+  \} 
+\} else \{ 
+  EmitTo(\$actor, "No stopvalue. Continuing"); 
+\} 
+ 
+/* Check if this turns the object into a new object */ 
+  /* if so, check which objects need to be copied across */ 
+\$object = NRefOb(\$dob[0]); 
+ 
+/* Check if we need to copy new properties to the object */ 
+if(\$changelist["properties"]) 
+\{ 
+  /* loop through the properties, adding each one */ 
+  EmitTo(\$actor, "We have properties to add"); 
+  for(\$i = 0; \$i \< sizeof(\$changelist["properties"]); \$i++) 
+  \{ 
+    Set(\$object, \$changelist["properties"][\$i][0], \$changelist["properties"][\$i][1]); 
+  \} 
+\} else \{ 
+  EmitTo(\$actor, "no properties to add"); 
+\} 
+ 
+/* Output an appropriate description of the action */ 
+if(\$changelist["description"] \&\& (sizeof(\$changelist["description"]) \> 1)) 
+\{ 
+  /* Should add an evoke, if any, to the end of the description */ 
+  EmitTo(\$actor, \$changelist["description"][0] + " " + Describe(\$object, nil, \$actor)); 
+  EmitIn(\$actor."base:environment", Describe(\$actor) + " " + \$changelist["description"][1] + " " + Describe(\$object, \$actor)); 
+  return FALSE; 
+\} else \{ 
+  return TRUE; 
+\}
+      </Core:Property>
+      <Core:Property property="export:alteration:create:default:carve">
+         ([ "description":(\{ "You carve MODIFICATION into ORIGINAL_OBJECT", "carves MODIFICATION into ORIGINAL_OBJECT" \}), "input-list":(\{ (\{ \<Ironclaw:Lib:Crafting:Old:CraftingDB\>, "alteration:knowledge:pattern" \}), (\{ \<Ironclaw:Lib:Crafting:Old:CraftingDB\>, "alteration:knowledge:patterns" \}) \}), "input-list-actor":(\{ "alteration:knowledge:pattern", "alteration:knowledge:patterns" \}), "properties":(\{ (\{ "trait:carving:pattern" \}) \}), "requiredtools":(\{ (\{ "knife", "blade" \}), (\{ "chisel" \}) \}), "stopvalue":(\{ "trait:carving:pattern", "none", "Your staff already has a carving." \}), "wave pattern":(\{ "a wave pattern" \}) ])
+      </Core:Property>
+      <Core:Property property="export:alteration:create:default:forge">
+         ([ "default":([ "description":(\{ "You forge", "into", "forges", "into" \}), "newobject":\<Allegory:Props:Weapons:Crafting:Blades:UrSwordBlade\> ]) ])
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "staff"
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "staff"
+      </Core:Property>
+      <Core:Property property="merry:react:change-dob">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "create", \$target: \$dob, \$modification: "carve", \$words: \$(into:words));
+      </Core:Property>
+      <Core:Property property="merry:react:forge-dob">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "create", \$target: \$dob, \$modification: "forge");
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1105677563, "tonyd", "E", 1105677616, "tonyd", "E", 1105677767, "tonyd", "P", 1105677861, "tonyd", "E", 1105677881, "tonyd", "P", 1105678158, "tonyd", "E", 1105678197, "tonyd", "E", 1105678242, "tonyd", "P", 1105678465, "tonyd", "P", 1105678500, "tonyd", "P", 1105678551, "tonyd", "P", 1105678613, "tonyd", "P", 1105679544, "tonyd", "P", 1105777611, "tonyd", "P", 1105777819, "tonyd", "P", 1105777842, "tonyd", "P", 1105777966, "tonyd", "P", 1105777996, "tonyd", "P", 1105778133, "tonyd", "P", 1105778197, "tonyd", "P", 1105778267, "tonyd", "P", 1105778294, "tonyd", "P", 1105778808, "tonyd", "P", 1105778862, "tonyd", "P", 1105778894, "tonyd", "P", 1105778955, "tonyd", "P", 1105779400, "tonyd", "P", 1105779464, "tonyd", "P", 1105779550, "tonyd", "P", 1105779592, "tonyd", "P", 1105838486, "tonyd", "E", 1105840950, "tonyd", "E", 1105841033, "tonyd", "E", 1105841158, "tonyd", "E", 1105841658, "tonyd", "P", 1105841755, "tonyd", "E", 1105852629, "tonyd", "P", 1106281190, "tonyd", "P", 1106281206, "tonyd", "P", 1106281256, "tonyd", "P", 1106458285, "tonyd", "E", 1106458525, "tonyd", "E", 1106459017, "tonyd", "E", 1106459155, "tonyd", "E", 1106465372, "tonyd", "E", 1106465449, "tonyd", "E", 1106465487, "tonyd", "E", 1106527726, "tonyd", "E", 1106527756, "tonyd", "E", 1106530340, "tonyd", "E", 1106534958, "tonyd", "E", 1106535472, "tonyd", "E", 1106535826, "tonyd", "E", 1106536966, "tonyd", "E", 1106537152, "tonyd", "E", 1136576637, "tunk_bodin", "X", 1145815960, "tunk_bodin", "X", 1167554367, "tonyd", "R", 1172078562, "tunk_bodin", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:material">
+         "wooden"
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

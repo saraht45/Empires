@@ -1,0 +1,72 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /*
+
+  D=Make a CYOA choice.
+
+*/
+
+string key;
+mapping cyoa;
+
+key = this."sys:cyoa:key";
+
+if (!key) \{
+  error("No 'sys:cyoa:key' property found in " + dump_value(this));
+\}
+
+/* is there an interaction:question waiting? */
+if(Get(\$actor, "question:"+key)) \{
+ /* Yes. Use interaction:question code instead of CYOA code */
+
+ if( \$actor."question:environment" \&\& \$actor."base:environment" != \$actor."question:environment" )
+  ::question_clear();
+
+ if( sizeof(Arr(Get(\$actor, "question:"+key))) \> 1 ) \{
+  EmitTo( \$actor, Get(\$actor, "question:"+key)[1] );
+  ::question_clear();
+  return FALSE;
+ \}
+
+ if( Get(\$actor, "question:"+key+"_act") ) \{ 
+  Act( \$actor, Get(\$actor, "question:"+key+"_act"), \$par: \$par ); 
+  ::question_clear(); 
+  return FALSE; 
+ \} 
+ 
+ Call( Get(\$actor, "question:"+key+"_ob"), Get(\$actor, "question:"+key+"_fun"), \$key: key, \$par: \$actor."question:par" );
+ ::question_clear();
+
+ return FALSE;
+\}
+
+/* it wasn't an interaction:question. Use CYOA code */
+cyoa = \$actor."sys:cyoa:choices";
+
+if (!cyoa) \{
+  EmitTo(\$actor, "That is not available right now.");
+  return FALSE;
+\}
+
+if (!cyoa[key]) \{
+  EmitTo(\$actor, "That choice is unavailable.");
+  return FALSE;
+\}
+
+cyoa::exec_cyoa(\$cyoa: \$actor."sys:cyoa:reference", \$part: cyoa[key]);
+      </Core:Property>
+      <Core:Property property="merry:inherit:lib:question_clear">
+         \<Lib:interaction\>
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1108094153, "zwoc", "P", 1108223010, "zwoc", "E", 1127233712, "zwoc", "X", 1289021123, "tonyd", "P", 1289021274, "tonyd", "P", 1289021322, "tonyd", "P", 1289021348, "tonyd", "P", 1289021364, "tonyd", "P", 1289021384, "tonyd", "P", 1289021422, "tonyd", "P", 1289021541, "tonyd", "P", 1289021579, "tonyd", "P", 1289021628, "tonyd", "P", 1289021646, "tonyd", "P", 1289021860, "tonyd", "P", 1289021871, "tonyd", "P", 1289021882, "tonyd", "P" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

@@ -1,0 +1,345 @@
+<object clone="/obj/properties" owner="tunk_bodin">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="debug:count">8</Core:Property>
+      <Core:Property property="debug:counter">4</Core:Property>
+      <Core:Property property="goto_vote:timer">
+         1287864921
+      </Core:Property>
+      <Core:Property property="merry:lib:float_on_water">
+         X[M] /* POSSIBLY depreciated script */   
+if(\$this."debug:count" \>= 10) \{   
+EmitTo(nil /* defunct */, "POSSIBLY depreciated script called - \\"float_on_water\\" from \<IronClaw:Lib:Common\>");   
+\$this."debug:count" = 1;   
+\} else \{   
+\$this."debug:count" = \$this."debug:count" + 1;   
+\}   
+return TRUE;   
+   
+/* delay so prox can be set */   
+\$delay(0.1, TRUE, "c912");   
+/*EmitTo(\$actor, dump_value(args));*/   
+   
+/* if we're NOT standing on something solid */   
+if(\$actor."base:environment"."swimming:waterdetails") \{   
+  \$array = \$actor."base:environment"."swimming:waterdetails";   
+  for(\$i=0;\$i\<sizeof(\$array);\$i++) \{   
+    if(NRefDetail(\$actor."base:proximity") == \$array[\$i]) \{   
+      if(\$actor."base:stance" != 7)   
+        \$actor."base:stance" = 7;   
+      return TRUE;   
+    \}   
+  \}   
+\}   
+   
+return TRUE;   
+   
+if(\$actor."base:proximity" \&\& \$actor."base:preposition" != PREP_NEAR \&\& \$actor."base:preposition" != PREP_UNDER) \{   
+  if(\$actor."base:environment"."swimming:solidobjects") \{   
+    \$array = \$actor."base:environment"."swimming:solidobjects";   
+    for(\$i=0;\$i\<sizeof(\$array);\$i++) \{   
+      if(NRefDetail(\$actor."base:proximity") == \$array[\$i]) \{   
+        return TRUE;   
+      \}   
+    \}   
+  \}   
+ \}   
+   
+if(\$actor."base:stance" != 7) \{   
+\$actor."base:stance" = 7;   
+\}   
+   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:goto_vote">
+         X[M] string msg;             
+int i, sz_i, min, hour;             
+object *bodylist, body;     
+     
+/* check if the script is already running */     
+if(\$this."goto_vote:timer") \{     
+  EmitTo(\$actor, "The @vote script is already running.");     
+  return TRUE;     
+\}               
+             
+/* Set timing to broadcast reminder to @vote */        
+  min = 60;       
+  hour = min * 60;       
+  \$gap = hour * 6;                      
+         
+/* start the script */     
+EmitTo(\$actor, "@vote script started.");    
+/* set timer */     
+\$this."goto_vote:timer" = time();         
+            
+while(\$this."goto_vote:timer") \{     
+/* delay for each loop */     
+/* set numeric in \$gap for number of hours between reminders */      
+\$delay(\$gap, TRUE, "ae9c");     
+  bodylist   = common::wholist();           
+  sz_i       = sizeof(bodylist);         
+  msg = "[@vote] Please remember to @vote. This is possible every 12 hours. We greatly appreciate your support.";        
+        
+  for (i = 0; i \< sz_i; i++) \{             
+     body = bodylist[i];             
+     if(!body."udat:possessed") \{             
+          continue;             
+     \} else \{              
+          EmitTo(body, msg);              
+     \}             
+  \}             
+\}     
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:goto_vote_runner">
+         X[M] /* send @vote reminders in a predetermined intervals */ 
+ 
+if(\$line \&\& \$line == "start") \{ 
+  Call(\$this, "goto_vote"); 
+\} else if( \$line \&\& \$line == "stop") \{ 
+  EmitTo(\$actor, "@vote script stopped."); 
+  \$this."goto_vote:timer" = nil; 
+\} else \{ 
+  EmitTo(\$actor, "You either entered an unknown command or failed to enter a command. The current available commands are +vote start and +vote stop."); 
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:hotspots">
+         X[M] string mode, result, idlecheck, staffcheck, bodyname, location;                                     
+object *wholist, body, env, *rooms;                                     
+int i, sz, total, j, sz_k, *sums, host;                                     
+mapping body_map, map, env_map, totals, *room_maps;                                     
+                                     
+\{                                     
+                                     
+  wholist  = common::wholist();                                     
+  sz       = sizeof(wholist);                                          
+  env_map  = ([ ]);                                     
+  body_map = ([ ]);                                     
+  totals   = ([ ]);                                     
+                                     
+  for (i = 0; i \< sz; i++) \{                                     
+    body = wholist[i];                                     
+    if (!body) \{                                     
+      continue;                                     
+    \}                                      
+                         
+    /* adding code here to hide staff locales */ 
+ 
+    bodyname = (\$actor."udat:host" == 1 ? (body.disguised == 1 ? Describe(body) + " (" + body."skotos:playercapname" + ")" : Describe(body)) : Describe(body)); 
+    if (sizeof(explode(bodyname, " ")) \>= 2 \&\& contains(bodyname, "Story")) \{ 
+        continue; 
+    \} 
+    /* staff locale addiotn ends here */ 
+
+    /* Do not include player rooms */
+    if(body."base:environment".homeowner) continue;
+
+    if(body."base:environment".hidden) continue;
+             
+    body_map[body] = TRUE;                                     
+    env = body."base:environment";                                    
+    map = env_map[env];                               
+                                     
+    if (map) \{                                     
+      total = map_sizeof(map);                                     
+      totals[total][env] = nil;                                     
+      if (!map_sizeof(totals[total])) \{                                     
+        totals[total] = nil;                                     
+      \}                                     
+    \} else \{                                     
+      map = env_map[env] = ([ ]);                                     
+      total = 0;                                     
+    \}                                   
+                                     
+    /* map[Describe(body, nil, \$actor)] = TRUE; */                                     
+    idlecheck = (body."udat:idle" \>= 3600 ?                                     
+                                           Describe(body, nil, \$actor, STYLE_IGNORE_VISIBILITY) + "*"                                     
+                                         :                                     
+                                           Describe(body, nil, \$actor, STYLE_IGNORE_VISIBILITY));                                     
+    map[idlecheck] = TRUE;                                          
+    /* map[Describe(body, nil, \$actor, STYLE_IGNORE_VISIBILITY)] = TRUE; */                                     
+    total = map_sizeof(map);                                     
+    if (totals[total]) \{                                     
+      totals[total][env] = TRUE;                                     
+    \} else \{                                     
+      totals[total] = ([ env:TRUE ]);                                     
+    \}                                     
+  \}                                     
+                                     
+  \$body_map = body_map;                                     
+  \$env_map  = env_map;                                     
+  \$totals   = totals;                                     
+  result    = ("\\nCurrent hotspots with three or more unidle characters:\\n\\n");                                     
+  sz        = map_sizeof(totals);                                     
+  sums      = map_indices(totals);                                     
+  room_maps = map_values(totals);                                     
+  host      = \$actor."udat:host";                                     
+                                     
+  for (i = sz - 1; i \>= 0; i--) \{                                     
+                                     
+    rooms = map_indices(room_maps[i]);                                     
+    for (j = 0, sz_k = sizeof(rooms); j \< sz_k; j++) \{                                     
+      string *names, str;                                     
+                                     
+      names = map_indices(env_map[rooms[j]]);                                     
+      if (sums[i] \> 2) \{                                     
+        str = implode(names[..sums[i] - 2], ", ") +                                     
+          " and " + names[sums[i] - 1];                                     
+      \} else \{                                     
+        str = names[0];                                     
+      \}                                     
+                                      
+        if (sums[i] \< 3) \{                                     
+          continue;                                     
+        \}           
+
+        if(sums[i] \> 1) \{
+            location = Str(sums[i]) + " characters ";
+        \} else \{
+            location += "1 character ";
+        \}       
+
+        if(rooms[j]) \{
+            location += "in ";
+
+            if(rooms[j]."trait:area" \&\& Describe(rooms[j]) != rooms[j]."trait:area") \{
+                location += Describe(rooms[j]) + " inside of " + Str(rooms[j]."trait:area");
+            \} else \{
+                location += Describe(rooms[j]);
+            \}
+
+            if(rooms[j].homeowner \&\& typeof(rooms[j].homeowner) == T_OBJECT) \{
+                location += "(" + common::get_name(\$src: rooms[j].homeowner) + ")";
+            \}
+        \} else \{
+            location += "without environment";
+        \}
+
+        result += TAG(location, "who") + "\\n";
+
+       /* result += TAG(                                     
+                      ( sums[i] \> 1 ?                                     
+                        sums[i] + " characters " :                                     
+                        "1 character " ) +                                     
+                      ( rooms[j] ? "in " + Describe(rooms[j]) + (rooms[j].homeowner \&\& typeof(rooms[j].homeowner) == T_OBJECT ? "(" + common::get_name(\$src: rooms[j].homeowner) + ")" : "") :                                     
+                        "without environment" ) +                                     
+                      ".", "who") + "\\n";      
+       */                               
+    \}                                     
+  \}                                     
+EmitTo(\$actor, TAG(result, "who"));                                     
+  return FALSE;                                     
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:place_in_water">
+         X[M] return TRUE;
+
+ /* POSSIBLY depreciated script */  
+if(\$this."debug:counter" \>= 10) \{  
+EmitTo(nil /* defunct */, "POSSIBLY depreciated script called - \\"place_in_water\\" from \<IronClaw:Lib:Common\>");  
+\$this."debug:counter" = 1;  
+\} else \{  
+\$this."debug:counter" = \$this."debug:count" + 1;  
+\}  
+return TRUE;  
+  
+if(\$what) \{  
+  if(\$where \&\& \$actor."base:environment" == NRefOb(\$where[0])) \{  
+    /* we dropped an item somewhere */  
+    /* check that the item wasn't dropped on the land */  
+    if(\$actor."base:environment"."swimming:waterdetails") \{  
+      \$locationdetail = NRefDetail(\$where[0]);  
+      \$array = \$actor."base:environment"."swimming:waterdetails";  
+      \$dropinwater = nil;  
+      for(\$i=0;\$array \&\& \$i\<sizeof(\$array);\$i++) \{  
+        if(\$locationdetail == \$array[\$i]) \$dropinwater = 1;  
+      \}  
+      if(\$dropinwater) \{  
+        /* slay (move) the objects */  
+        if(sizeof(\$what)\>1) \{  
+          EmitIn(\$actor."base:environment", Describe(\$what, nil, nil, STYLE_NONPOSS)+ " falls into the water and slip from view to be lost forever.");  
+        \} else \{  
+          EmitIn(\$actor."base:environment", Describe(\$what, nil, nil, STYLE_NONPOSS)+ " falls into the water and slips from view to be lost forever.");  
+        \}  
+  
+        for(\$i=0;\$i\<sizeof(\$what);\$i++) \{  
+          NRefOb(\$what[\$i])."base:environment" = \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\};  
+        \}  
+        return FALSE;  
+      \}  
+    \}  
+  \}  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:religion">
+         X[M] string msg, none, lut, sal, err;             
+int i, sz_i;             
+object *bodylist, body;
+
+  bodylist   = common::wholist();           
+  sz_i       = sizeof(bodylist);         
+  msg = " characters online are: ";
+  sal = "S'Allumer";
+  lut = "Lutara";
+  none = "No religion";
+  err = "ERROR";
+    \$salum = (\{ \});
+    \$lutar = (\{ \});
+    \$isnone = (\{ \});
+    \$allerr = (\{ \});
+
+  for (i = 0; i \< sz_i; i++) \{             
+     body = bodylist[i];             
+     if(!body."udat:possessed") \{             
+          continue;             
+     \} else \{  
+	if(!body."trait:religion") \{
+                \$soul = Str(body."skotos:charname");
+                \$soul = capitalize(\$soul);
+                \$isnone += (\{ \$soul \});
+	\} else if(body."trait:religion" == "sallumer") \{
+                \$soul = Str(body."skotos:charname");
+                \$soul = capitalize(\$soul);
+                \$salum += (\{ \$soul \});
+	\} else if(body."trait:religion" == "lutara") \{
+                \$soul = Str(body."skotos:charname");
+                \$soul = capitalize(\$soul);
+                \$lutar += (\{ \$soul \});
+	\} else \{
+                \$soul = Str(body."skotos:charname");
+                \$soul = capitalize(\$soul);
+                \$allerr += (\{ \$soul \});
+	\}
+     \}             
+  \}
+    \$tmp = sizeof(\$salum);
+    if(\$tmp \< 1 ) \{ \$salum += (\{ "None" \}); \}
+    
+    \$tmp = sizeof(\$lutar);
+    if(\$tmp \< 1 ) \{ \$lutar += (\{ "None" \}); \}
+    
+    \$tmp = sizeof(\$isnone);
+    if(\$tmp \< 1 ) \{ \$isnone += (\{ "None" \}); \}
+    
+    \$tmp = sizeof(\$allerr);
+    if(\$tmp \> 0 ) \{ 
+      EmitTo(\$actor, err + msg + implode(\$allerr, ", "));
+     \}
+  
+  EmitTo(\$actor, sal + msg + implode(\$salum, ", "));
+  EmitTo(\$actor, lut + msg + implode(\$lutar, ", "));
+  EmitTo(\$actor, none + msg + implode(\$isnone, ", "));
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1287801046, "tunk_bodin", "E", 1288126666, "tunk_bodin", "X", 1520780960, "jominey", "E", 1545273070, "jominey", "E", 1583180603, "jominey", "E", 1583180640, "jominey", "E", 1583180739, "jominey", "E", 1583180837, "jominey", "E", 1583180969, "jominey", "E", 1589593167, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

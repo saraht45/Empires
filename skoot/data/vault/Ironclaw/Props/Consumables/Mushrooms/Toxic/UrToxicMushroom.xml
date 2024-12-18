@@ -1,0 +1,137 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Food:Cooking:Mushrooms:UrMushroom)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="1"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="NEW"/>
+          <Base:Adjective adjective="odd"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="NEW">empty</Base:Description>
+          <Base:Description type="brief">
+             odd mushroom
+          </Base:Description>
+          <Base:Description type="examine">
+             A regular mushroom with a $(this.trait:stemcolor) stem, $(this.trait:gillscolor) gills and a $(this.trait:color) cap.
+$[Call($this,"examine");return nil;]
+          </Base:Description>
+          <Base:Description type="look">
+             A regular mushroom.
+          </Base:Description>
+          <Base:Description type="pbrief">
+             odd mushrooms
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:taste">
+         "sour"
+      </Core:Property>
+      <Core:Property property="merry:lib:describe_poison">
+         X[M] /* \$actor got poisoned */
+/*Body based effect upon tasting the mushroom*/
+\$health = ironclaw::roll(\$roller: \$actor, \$bonus: "trait:body");
+
+if(\$health  \< 3) \{
+  EmitTo(\$actor, "As the sour taste of " +Describe(\$this, nil, \$actor)+" dissolves on your tongue your senses dull and your eyesight gets blurry.");
+\} else if(\$health \< 5) \{
+  EmitTo(\$actor, "As the sour taste of " +Describe(\$this, nil, \$actor)+" dissolves on your tongue your senses start to dull and you do not see the world as clearly as before.");
+\} else if(\$health \< 7) \{
+  EmitTo(\$actor, "As the sour taste of " +Describe(\$this, nil, \$actor)+" dissolves on your tongue you have a fleeting sensation of dizziness.");
+\} else if(\$health \>= 7) \{
+  EmitTo(\$actor, "As the sour taste of " +Describe(\$this, nil, \$actor)+" dissolves on your tongue you have a fleeting sensation you shouldn't have tasted it at all.");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:examine">
+         X[M] /*How difficult is to identify mushroom as poisonous?*/
+if(!\$this."poison:identify") \$this."poison:identify" = random(12)+1;
+
+/*How well does actor determine the poison level?*/
+\$healer = Int(\$actor."skill:career:healer") + Int(\$actor."career:alteration:herbalism") + Int(\$actor."skill:alteration:herbalism");
+\$assassin = Int(\$actor."skill:career:assassin") + Int(\$actor."career:alteration:herbalism") + Int(\$actor."skill:alteration:herbalism");
+
+/*introducing success variable: - no success, 0 equal, + success*/
+\$success = \$healer - \$this."poison:identify";
+\$success = \$assassin - \$this."poison:identify";
+
+/*Emitting according to success of identifying mushroom as poisonous*/
+if (\$success \< 0) \{
+   EmitTo(\$actor, "The mushroom appears to be edible.");
+\} else if (\$success == 0) \{
+   EmitTo(\$actor, "You have your doubts about the mushroom, this might be edible or not.");
+\} else if (\$success \> 0) \{
+   EmitTo(\$actor, "This mushroom is clearly poisonous.");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:eat-what">
+         X[M] /* they got poisoned */
+::describe_poison();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:sense/taste-dob">
+         X[M] /* they got poisoned */
+\$delay(1, TRUE, "66bf");
+::describe_poison();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:eat">
+         X[M] /* this script needs to be here to block the normal eat verb */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1205538697, "balkaar", "R", 1205539147, "balkaar", "E", 1205539800, "balkaar", "E", 1205539888, "balkaar", "E", 1205539992, "balkaar", "E", 1205540295, "balkaar", "E", 1205540389, "balkaar", "E", 1205540445, "balkaar", "E", 1205540474, "balkaar", "E", 1205540484, "balkaar", "E", 1205540549, "balkaar", "E", 1205540559, "balkaar", "E", 1205540813, "balkaar", "E", 1205540863, "balkaar", "E", 1205540888, "balkaar", "E", 1205542231, "balkaar", "E", 1205547199, "tonyd", "P", 1205547239, "tonyd", "P", 1205547280, "tonyd", "P", 1205547365, "tonyd", "P", 1205547394, "tonyd", "P", 1205547419, "tonyd", "P", 1205547590, "tonyd", "P", 1205547613, "tonyd", "P", 1205547630, "tonyd", "P", 1205547960, "tonyd", "P", 1205549021, "balkaar", "E", 1205549468, "balkaar", "E", 1205549782, "balkaar", "E", 1205549828, "balkaar", "E", 1205549853, "balkaar", "E", 1205565400, "tonyd", "P", 1205565430, "tonyd", "P", 1205565450, "tonyd", "P", 1205565471, "tonyd", "P", 1205565528, "tonyd", "P", 1205565548, "tonyd", "P", 1205565565, "tonyd", "P", 1205565584, "tonyd", "P", 1205565606, "tonyd", "P", 1205565640, "tonyd", "P", 1205565659, "tonyd", "P", 1205565683, "tonyd", "P", 1205565699, "tonyd", "P", 1205565712, "tonyd", "P", 1205565747, "tonyd", "P", 1205565811, "tonyd", "P", 1205565845, "tonyd", "P", 1205565870, "tonyd", "P", 1205565898, "tonyd", "P", 1205565921, "tonyd", "P", 1205566121, "tonyd", "P", 1205566162, "tonyd", "P", 1205566187, "tonyd", "P", 1205566219, "tonyd", "P", 1205566242, "tonyd", "P", 1205566385, "tonyd", "P", 1205566425, "tonyd", "P", 1205566487, "tonyd", "P", 1205566510, "tonyd", "P", 1205566518, "tonyd", "P", 1205566557, "tonyd", "P", 1205566582, "tonyd", "P", 1205566595, "tonyd", "P", 1205566635, "tonyd", "P", 1205566757, "tonyd", "P", 1205566886, "tonyd", "P", 1205566911, "tonyd", "P", 1205566934, "tonyd", "P", 1205567019, "tonyd", "P", 1205567049, "tonyd", "P", 1205567143, "tonyd", "E", 1205567219, "tonyd", "P", 1205567246, "tonyd", "P", 1205567277, "tonyd", "P", 1207172837, "balkaar", "E", 1207172877, "balkaar", "E", 1207172887, "balkaar", "E", 1207173738, "balkaar", "E", 1207173773, "balkaar", "E", 1207174967, "balkaar", "E", 1207174976, "balkaar", "E", 1207175026, "balkaar", "E", 1207175046, "balkaar", "E", 1207175569, "balkaar", "E", 1207175779, "balkaar", "E", 1207175789, "balkaar", "E", 1207175802, "balkaar", "E", 1207175815, "balkaar", "E", 1207197435, "balkaar", "E", 1207253437, "balkaar", "E", 1207413428, "balkaar", "E", 1207414377, "balkaar", "E", 1207414441, "balkaar", "E", 1207414633, "balkaar", "E", 1207414975, "balkaar", "E", 1207415421, "balkaar", "E", 1207415474, "balkaar", "E", 1207415523, "balkaar", "E", 1207415829, "balkaar", "E", 1207417232, "balkaar", "E", 1207417284, "balkaar", "E", 1207417294, "balkaar", "E", 1207417344, "balkaar", "E", 1207439081, "balkaar", "E", 1207439218, "balkaar", "E", 1207439413, "balkaar", "E", 1207439656, "balkaar", "E", 1207440073, "balkaar", "E", 1207440201, "balkaar", "E", 1207440373, "balkaar", "E", 1207440769, "balkaar", "E", 1207444670, "balkaar", "E", 1208258533, "balkaar", "E", 1309664590, "morwenlorelie", "E", 1729614150, "annemairi", "E", 1729614580, "annemairi", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="spawn:creator">
+         (\{ "balkaar", 1205523514 \})
+      </Core:Property>
+      <Core:Property property="trait:smells:lastchecked">
+         1205529659
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

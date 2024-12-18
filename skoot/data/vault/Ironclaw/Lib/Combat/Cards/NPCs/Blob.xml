@@ -1,0 +1,101 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Combat:Cards:NPCs:UrFightingPerson)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="false" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.death:dead) |the corpse of } {? equal | $(this.trait:hiding) | 1 | {? equal | $(this.trait:title) | none ||$(this.trait:title) } $(this.appearance:color) $(this.trait:animal) | }
+          </Base:Description>
+          <Base:Description type="examine">
+             {? | $(this.trait:override:look) | $(this.trait:override:look) | <describe what="$(this)" cap="1"/> $(this.trait:lastname) is <a_or_an>$(this.appearance:size) $(this.appearance:color) $(this.trait:animal)</a_or_an>, with $(this.appearance:furlength) $(this.appearance:furtexture) $(this.appearance:furcolor) $(this.appearance:furtype){? equal | $(this.appearance:hashair) | yes |, and $(this.appearance:hairlength) $(this.appearance:hairtype) $(this.appearance:haircolor) hair$(this.appearance:hairstyle_string).|.} $[Call(${Ironclaw:Lib:Characters:Descriptions}, "describe_features")] } $[if(Call(${Ironclaw:Lib:Combat:Cards:Injuries}, "show_all_injuries", $character: $this, $no_uninjured_msg: TRUE)) return Describe($this)+" appears to be injured.";] $(this.trait:comment)
+          </Base:Description>
+          <Base:Description type="look">
+             {? | $(this.trait:override:look) | $(this.trait:override:look) | <describe what="$(this)" cap="1"/> $(this.trait:lastname) is <a_or_an>$(this.appearance:size) $(this.appearance:color) $(this.trait:animal)</a_or_an>, with $(this.appearance:furlength) $(this.appearance:furtexture) $(this.appearance:furcolor) $(this.appearance:furtype){? equal | $(this.appearance:hashair) | yes |, and $(this.appearance:hairlength) $(this.appearance:hairtype) $(this.appearance:haircolor) hair$(this.appearance:hairstyle_string).|.} $[Call(${Ironclaw:Lib:Characters:Descriptions}, "describe_features")] } $[if(Call(${Ironclaw:Lib:Combat:Cards:Injuries}, "show_all_injuries", $character: $this, $no_uninjured_msg: TRUE)) return Describe($this)+" appears to be injured.";] $(this.trait:comment)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:setup:blobchoices">
+         (\{ "blob", "ooze", "slime", "goo" \})
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] /* Set up the NPC as a "blob" */
+Call(this, "set_as_blob");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set_as_blob">
+         X[M] /* Sets the NPC as a blob, i.e. gives them a race, description, possibly career and starting items */
+
+\$blobs = (\{ "blob", "ooze", "slime", "goo" \});
+\$sizes = (\{ "little", "big" \});
+\$colors = (\{ "red", "green", "blue" \});
+
+\$this."trait:animal" = \$blobs[random(sizeof(\$blobs))];
+\$this."trait:animaltype" = \$this."trait:animal";
+
+\$this."appearance:size" = \$sizes[random(sizeof(\$sizes))];
+\$this."appearance:color" = \$colors[random(sizeof(\$colors))];
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-desc:examine">
+         X[M] /* This react prevents the blob from getting the "It is nude." within the examine. */
+
+EmitIn(\$actor."base:environment", \$actor."trait:title" + " " + \$actor."trait:superbrief" + " examines a " + \$this."trait:animal" + ".", \$actor);
+EmitTo(\$actor, "You examine a " + \$this."trait:animal" + ".");
+
+EmitTo(\$actor, UnSAM(\$this."details:default:descriptions:examine"));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-desc:look">
+         X[M] EmitTo(\$actor, UnSAM(\$this."details:default:descriptions:look"));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1497396607, "zemkairk", "E", 1497396629, "zemkairk", "E", 1497396989, "zemkairk", "E", 1497397079, "zemkairk", "E", 1497397086, "zemkairk", "E", 1497397160, "zemkairk", "E", 1497397310, "zemkairk", "E", 1497397442, "zemkairk", "K", 1497397549, "zemkairk", "K", 1497397826, "zemkairk", "E", 1497397951, "zemkairk", "E", 1497398102, "zemkairk", "E", 1497398120, "zemkairk", "E", 1497398421, "zemkairk", "E", 1497398784, "zemkairk", "E", 1497398799, "zemkairk", "E", 1497398816, "zemkairk", "E", 1497398848, "zemkairk", "E", 1497398930, "zemkairk", "E", 1497398950, "zemkairk", "E", 1497399084, "zemkairk", "K", 1497399403, "zemkairk", "K", 1497399720, "zemkairk", "E", 1497399783, "zemkairk", "E", 1497399902, "zemkairk", "E", 1497399974, "zemkairk", "E", 1497400033, "zemkairk", "E", 1497400147, "zemkairk", "E", 1497400177, "zemkairk", "E", 1497400285, "zemkairk", "E", 1497400327, "zemkairk", "E", 1497400411, "zemkairk", "E", 1497401391, "zemkairk", "E", 1497401463, "zemkairk", "K", 1497401501, "zemkairk", "K", 1497401562, "zemkairk", "E", 1497401612, "zemkairk", "K", 1497401822, "zemkairk", "K", 1497401924, "zemkairk", "E", 1497401977, "zemkairk", "E", 1497402069, "zemkairk", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

@@ -1,0 +1,344 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Animals:UrAnimalBrain)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="true" transparent-container="false" public-container="false" tight="false" capacity="10" maxweight="10" verb2="are carrying in your mouth" verb3="is carrying in its mouth"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="animal"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="animals"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.combat:dead) | the corpse of } <a_or_an>$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>
+          </Base:Description>
+          <Base:Description type="examine">
+             {? | $(this.combat:dead) | The corpse of <a_or_an>$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>. | <a_or_an capitalize="1">$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>. } $(this.trait:examine)
+          </Base:Description>
+          <Base:Description type="look">
+             {? | $(this.combat:dead) | The corpse of <a_or_an>$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>. | <a_or_an capitalize="1">$(this.trait:appearance:build) $(this.trait:appearance:color) $(this.trait:animaltype)</a_or_an>. } $(this.trait:look)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties>
+      <Base:InitialProperty property="petbody">
+         1
+      </Base:InitialProperty>
+    </Base:InitialProperties>
+    <Core:Properties>
+      <Core:Property property="merry:lib:configure">
+         X[M] mapping traitsMap, partsMap;
+string * traits;
+string * parts;
+string trait, part;
+object partsOb;
+int i;
+
+/* Set snames/pnames of body parts this pet will use */
+if(\$this."trait:spawnedparts") \{
+    /* Spawn body parts */
+    partsOb = Spawn(\$\{Allegory:Props:Animals:UrAnimalParts\});
+
+    partsOb."base:environment" = \$this;
+    partsOb."base:immobile" = 1;
+
+    partsMap = \$this."trait:spawnedparts";
+    parts = map_indices(partsMap);
+
+    for(i = 0; i \< sizeof(parts); i++) \{
+        if(parts[i] == "leg-back") \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + "leg", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "back", TRUE);
+        \} else if(parts[i] == "leg-front") \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + "leg", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "front", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "fore", TRUE);
+        \} else if(parts[i] == "legs-back") \{
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + "legs", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "back", TRUE);
+        \} else if(parts[i] == "legs-front") \{
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + "legs", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "front", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "fore", TRUE);
+        \} else if(parts[i] == "claw" \|\| parts[i] == "eye" \|\| parts[i] == "shoulder" \|\| parts[i] == "side") \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + parts[i], TRUE);
+        \} else if(parts[i] == "claws" \|\| parts[i] == "eyes" \|\| parts[i] == "shoulders" \|\| parts[i] == "sides") \{
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + parts[i], TRUE);
+        \} else \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + parts[i], TRUE);
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + partsMap[parts[i]], TRUE);
+        \}
+    \}
+\}
+
+/* Set spawned traits */
+if(\$this."trait:spawnedtraits") \{
+    traitsMap = \$this."trait:spawnedtraits";
+    traits = map_indices(traitsMap);
+
+    for(i = 0; i \< sizeof(traits); i++) \{
+        trait = traitsMap[traits[i]][random(sizeof(traitsMap[traits[i]]))];
+        Set(\$this, "trait:" + traits[i], trait);
+    \}
+\}
+
+/* Set gender */
+if(\$this."base:urparent" != \$\{Allegory:Props:Animals:Livestock:Chicken\}) \$this."base:gender" = random(2);
+
+\$delay(1, TRUE, "9283");
+if(\$this.livestock) \{
+    \$this."trait:ownerone" = \$this."base:environment";
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:update">
+         X[M] mapping traitsMap, partsMap;
+string * traits;
+string * parts;
+string trait, part;
+object partsOb;
+int i;
+
+EmitTo(\$\{Chatters:AE:ro:roo\}, "Updating " + Str(\$this));
+
+if(!sizeof(\$this."base:inventory")) \{
+    EmitTo(\$\{Chatters:AE:ro:roo\}, "NO BODY PARTS FOUND!");
+    return FALSE;
+\}
+
+\$inventory = \$this."base:inventory";
+for(\$i = 0; \$i \< sizeof(\$inventory); \$i++) \{
+    if(\$inventory[\$i]."base:urparent" == \$\{Allegory:Props:Animals:UrAnimalParts\}) \{
+        partsOb = \$inventory[\$i];
+    \}
+\}
+
+if(partsOb == nil) \{
+    EmitTo(\$\{Chatters:AE:ro:roo\}, "NO BODY PARTS FOUND!");
+    return FALSE;
+\}
+
+/* Set snames/pnames of body parts this pet will use */
+if(\$this."trait:spawnedparts") \{
+
+EmitTo(\$\{Chatters:AE:ro:roo\}, "Spawned parts " + Str(partsOb));
+
+    partsMap = \$this."trait:spawnedparts";
+    parts = map_indices(partsMap);
+
+    for(i = 0; i \< sizeof(parts); i++) \{
+        if(parts[i] == "hooves") \{
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + "hooves", TRUE);
+        \} else if(parts[i] == "hoof") \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + "hoof", TRUE);
+        \} if(parts[i] == "leg-back") \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + "leg", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "back", TRUE);
+        \} else if(parts[i] == "leg-front") \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + "leg", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "front", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "fore", TRUE);
+        \} else if(parts[i] == "legs-back") \{
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + "legs", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "back", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "hind", TRUE);
+        \} else if(parts[i] == "legs-front") \{
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + "legs", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "front", TRUE);
+            Set(partsOb, "details:" + parts[i] + ":adjectives:" + "fore", TRUE);
+        \} else if(parts[i] == "claw" \|\| parts[i] == "eye" \|\| parts[i] == "shoulder" \|\| parts[i] == "side") \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + parts[i], TRUE);
+        \} else if(parts[i] == "claws" \|\| parts[i] == "eyes" \|\| parts[i] == "shoulders" \|\| parts[i] == "sides") \{
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + parts[i], TRUE);
+        \} else \{
+            Set(partsOb, "details:" + parts[i] + ":snames:" + parts[i], TRUE);
+            Set(partsOb, "details:" + parts[i] + ":pnames:" + partsMap[parts[i]], TRUE);
+        \}
+    \}
+\}
+
+Set(partsOb, "details:legs:snames:leg", FALSE);
+Set(partsOb, "details:legs:snames:legs", FALSE);
+Set(partsOb, "details:legs:pnames:legs", FALSE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:skin-dob">
+         X[M] int skill, i, j;
+mapping lootTableMap;
+mixed* lootTable;
+mixed* loot;
+
+if(!\$this."combat:dead") return TRUE;
+
+if(\$this.skinning) return FALSE;
+
+skill = Int(\$actor."skill:hunting:skinning");
+
+if(skill) \{
+    \$this.skinning = 1;
+    lootTableMap = \$this."skinning:loot";
+    lootTable = map_indices(lootTableMap);
+    loot = (\{ \});
+    
+    if(skill \< Int(\$this."trapper:difficulty")) \{
+       \$chance = 1;
+    \}
+
+    for(i = 0; sizeof(lootTable) \&\& i \< sizeof(lootTable); i++) \{
+      if(!\$chance \|\| (\$chance \&\& random(100) \> 50)) \{
+        \$tempOb = Spawn(lootTable[i]);
+        \$quality = allegory::roll(\$roller: \$actor, \$skills: (\{ "skill:hunting:skinning" \}), \$bonus: (\{ "trait:intelligence" \}));
+        \$tempOb."trait:quality" = \$quality;
+        \$tempOb."trait:size" = \$this."trait:size";
+        \$tempProperties = lootTableMap[lootTable[i]];
+
+        for(j = 0; sizeof(\$tempProperties) \&\& j \< sizeof(\$tempProperties); j+=2) \{
+            Set(\$tempOb, \$tempProperties[j+1], Get(\$this, \$tempProperties[j]));
+        \}
+
+        if(\$tempOb."base:urparent" == \$\{Allegory:Props:Animals:AnimalParts:UrPelt\}) \{
+            \$quantity = allegory::roll(\$roller: \$actor, \$skills: (\{ "skill:hunting:skinning" \}), \$bonus: (\{ "trait:intelligence" \}));
+
+            if(\$this."trait:size" == "extra-large") \{
+                \$quantity = \$quantity/2;
+                if(\$quantity \> 10) \$quantity = 10;
+            \} else if(\$this."trait:size" == "large") \{
+                \$quantity = \$quantity/3;
+                if(\$quantity \> 8) \$quantity = 8;
+            \} else if(\$this."trait:size" == "medium") \{
+                \$quantity = \$quantity/6;
+                if(\$quantity \> 4) \$quantity = 4;
+            \} else \{
+                \$quantity = 1;
+            \}
+
+            \$tempOb."trait:quantity" = Int(\$quantity)*10;
+        \}
+
+        if(\$tempOb."base:urparent" == \$\{Allegory:Props:Crafting:Parts:Feather\}) \{
+            \$quantity = allegory::roll(\$roller: \$actor, \$skills: (\{ "skill:hunting:skinning" \}), \$bonus: (\{ "trait:intelligence" \}));
+
+            if(\$this."trait:size" == "extra-large") \{
+                \$quantity = \$quantity/2;
+                if(\$quantity \> 10) \$quantity = 10;
+            \} else if(\$this."trait:size" == "large") \{
+                \$quantity = \$quantity/3;
+                if(\$quantity \> 8) \$quantity = 8;
+            \} else if(\$this."trait:size" == "medium") \{
+                \$quantity = \$quantity/6;
+                if(\$quantity \> 4) \$quantity = 4;
+            \} else \{
+                \$quantity = 1;
+            \}
+
+            \$tempOb."trait:type" = \$this."trait:feathertype";
+
+            for(j = 0; j \< Int(\$quantity-1); j++) \{
+                \$tempOb2 = Duplicate(\$tempOb);
+                loot += (\{ \$tempOb2 \});
+            \}
+        \}
+
+        loot += (\{ \$tempOb \});
+    \}
+  \}
+
+    if(sizeof(loot)) \{
+        EmitTo(\$actor, "You skin " + Describe(\$this) + " producing " + Describe(loot) + ".");
+        EmitIn(\$actor."base:environment", Describe(\$actor) + " skins " + Describe(\$this) + " producing " + Describe (loot) + ".", \$actor);
+
+        for(i = 0; i \< sizeof(loot); i++) \{
+            loot[i]."base:environment" = \$actor;
+
+            if(loot[i]."base:environment" != \$actor) \{
+                loot[i]."base:environment" = \$actor."base:environment";
+            \}
+        \}
+    \} else \{
+        EmitTo(\$actor, "You attempt to skin " + Describe(\$this) + " but end up ruining every usable part.");
+        EmitIn(\$actor."base:environment", Describe(\$actor) + " attempts to skin " + Describe(\$this) + " but ends up ruining every usable part.", \$actor);
+
+    \}
+
+    \$delay(0.1, FALSE, "e131");
+
+    Slay(\$this);
+    return FALSE;
+\}
+
+EmitTo(\$actor, "You do not know how to properly skin " + Describe(\$this) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait">
+         X[M] int i;
+object * inventory;
+string detail;
+
+if(\$(hook-property) == "trait:ownerone") return FALSE;
+if(\$(hook-property) == "trait:ownertwo") return FALSE;
+if(\$(hook-property) == "trait:friends") return FALSE;
+if(\$(hook-property) == "trait:quality") return FALSE;
+if(\$(hook-property) == "trait:smells:lastchecked") return FALSE;
+
+\$(hook-value) = replace_strings(\$(hook-value), ", ", " ");
+
+if(contains(\$(hook-property), "trait:appearance:")) \{
+    Call(\$\{Allegory:Lib:Crafting:Lib\}, "replaceadj", \$object: \$this);
+    detail = replace_strings(\$(hook-property), "trait:appearance:", "");
+    inventory = this."base:inventory";
+    for(i = 0; i \< sizeof(inventory); i++) \{
+        if(inventory[i]."base:immobile") \{
+            Set(inventory[i], \$(hook-property), \$(hook-value));
+            return Call(\$\{Allegory:Lib:Crafting:Lib\}, "replaceadj", \$object: inventory[i], \$detail: detail);
+        \}
+    \}
+\} else \{
+    return Call(\$\{Allegory:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+\}
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1588283202, "jominey", "E", 1588293119, "jominey", "E", 1588293218, "jominey", "E", 1588985306, "jominey", "E", 1588985740, "jominey", "E", 1588985860, "jominey", "E", 1589042058, "jominey", "K", 1589042081, "jominey", "K", 1589042107, "jominey", "K", 1589042160, "jominey", "K", 1589147710, "jominey", "E", 1589902405, "jominey", "E", 1590251311, "jominey", "P", 1591150604, "jominey", "E", 1591151175, "jominey", "E", 1591206338, "jominey", "E", 1591369300, "jominey", "E", 1591369343, "jominey", "E", 1591369469, "jominey", "E", 1591370511, "jominey", "E", 1591370551, "jominey", "E", 1591449877, "jominey", "E", 1591449973, "jominey", "E", 1593789245, "jominey", "K", 1593789466, "jominey", "K", 1593789494, "jominey", "K", 1595295438, "jominey", "E", 1604155826, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

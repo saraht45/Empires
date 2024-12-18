@@ -1,0 +1,139 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="@speak" second="@speak" third="@speaks" evoke="forbidden" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions>
+      <Socials:VerbAction action="change_language"/>
+    </Socials:VerbActions>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] string *langs, lang, dialect;
+int skill, i;
+mapping map;
+/*mixed lid;*/
+
+if (!\$(DOB:Words)) \{
+  /* If we are speaking our native language */
+  if(!\$actor."SkotOS:CurrentLang" \|\| (\$actor."SkotOS:CurrentLang" == "0"))
+  \{
+    EmitTo(\$actor, "You are currently speaking in " +
+         capitalize(Call(\$\{Allegory:Lib:Languages:Lib:garble\},
+                         "lid-to-lang", \$lid: "0")) +
+         ".");
+  \} else \{
+    EmitTo(\$actor, "You are currently speaking in " +
+         capitalize(\$actor.dialect) +
+         ".");
+  \}
+
+  /* Get a list of languages the character knows */
+    /* Get a mapping of all the actors skills */
+  map = Get(\$actor, "*");
+  map = prefixed_map(map, "skill:lang:", TRUE);
+  langs = map_indices(map);
+
+  EmitTo(\$actor, "You are fluent in " + capitalize(Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "lid-to-lang", \$lid: "0")) + ".");
+  for (i = 0; i \< sizeof(langs); i ++) \{
+    skill = Call(\$\{Allegory:Lib:Languages:Lib:garble\},
+                  "get-skill", \$lid: langs[i], \$body: \$actor);
+    if (skill) \{
+      EmitTo(\$actor, "You speak " + capitalize(Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "lid-to-lang", \$lid: langs[i])) + " " +
+                     Call(\$\{Allegory:Lib:Languages:Lib:Languages\}, "skill-scale", \$skill: skill) +
+                     ", with a rating of "+skill+".");
+    \}
+  \}
+  return FALSE;
+\}
+
+if(\$actor."skotos:langlocked") \{
+  EmitTo(\$actor, "You cannot change your language at this time.");
+  return FALSE;
+\}
+
+if (sizeof(\$(DOB:Words)) \> 1) \{
+  EmitTo(\$actor, "Please restrain yourself to single-word languages.");
+  return FALSE;
+\}
+lang = lower_case(\$(DOB:Words)[0]);
+if (lang == "feedback") \{
+  if (\$actor."speech:feedback") \{
+    \$actor."speech:feedback" = nil;
+    EmitTo(\$actor, "Speak feedback disabled!");
+    return FALSE;
+  \}
+  \$actor."speech:feedback" = TRUE;
+  EmitTo(\$actor, "Speak feedback enabled!");
+  return FALSE;
+\}
+
+/* If the user has requested to switch languages */
+
+dialect = lang;
+/* check if the language name maps to a different language */
+if(\$\{Allegory:Lib:Languages:Lib:Languages\}."language:names"[lang]) lang = \$\{Allegory:Lib:Languages:Lib:Languages\}."language:names"[lang];
+
+/* If they are speaking common, set that */
+if(lang == "english")\{
+  EmitTo(\$actor, "You are now speaking in " + capitalize(Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "lid-to-lang", \$lid: lang)) + ".");
+  \$actor."SkotOS:CurrentLang" = nil;
+  \$actor."lang:nomutter" = nil;
+  return FALSE;
+\}
+
+/* If it is a language the character knows */
+
+/*
+if(Get(\$\{IronClaw:Systems:Languages:Languages\}, "language:settings:"+lang)) \{
+*/
+  /* And the character knows it */
+    skill = Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "get-skill", \$lid: lang, \$body: \$actor);
+    if(skill \&\& (skill \> 0)) \{
+      /* Check if any conditions are associated with this language */
+      if(Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "conditions:"+lang))\{
+        \$array = Arr(Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "conditions:"+lang));
+        for(\$i=0;\$i\<sizeof(\$array);\$i++) \{
+          \$element = Arr(\$array[\$i]);
+          /* check the property from \$element to see if the player matches */
+          \$valid = nil;
+          for(\$j=1;\$j\<sizeof(\$element);\$j++) \{
+            if(Get(\$actor, \$element[0]) == \$element[\$j])
+              \$valid = TRUE;
+          \}
+          if(!\$valid) \{
+            EmitTo(\$actor, "Although you know it, you cannot speak " + dialect + " as a normal language.");
+            return FALSE;
+          \}
+        \}
+      \}
+      /* Check there isn't a problem finding this language */
+      if(Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "lang-to-lid", \$lang: lang)) \{
+        /* start using this language */
+        EmitTo(\$actor, "You are now speaking in " + capitalize(dialect) + ".");
+        \$actor."SkotOS:CurrentLang" = capitalize(Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "lang-to-lid", \$lang: lang));
+        \$actor.dialect = dialect;
+        \$actor."lang:nomutter" = nil;
+      \} else \{
+        EmitTo(\$actor, "Although you know it, you cannot speak " + dialect + " as a normal language.");
+      \}
+      return FALSE;
+    \}
+/*\}*/
+
+/* The character doesn't know the language, or it's an invalid language */
+EmitTo(\$actor, "You don't know how to speak "+ capitalize(Call(\$\{Allegory:Lib:Languages:Lib:garble\}, "lid-to-lang", \$lid: lang)) +".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1565653819, "jominey", "E", 1565653823, "jominey", "E", 1565653876, "jominey", "E", 1572058884, "jominey", "E", 1574178773, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

@@ -1,0 +1,124 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+trap" evoke="optional" audible="false" private="true" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] string error, type, current, name;
+mixed* input, names, obs, types;
+mapping dbs, data;
+int difficulty, disarmed;
+object env;
+
+\$lib = \$\{Ironclaw:Staff:Roo:Traps:TrapLib\};
+env = \$actor."base:environment";
+
+/* Mapping of all trap databases ([ "db name":\<Woenameofdb\> ]) */
+dbs = Get(\$lib, "trap:dbs");
+
+/* List of db names */
+names = map_indices(dbs);
+
+/* List of db objects */
+obs = map_values(dbs);
+
+\$error1 = "Command usage:\\n" +
+          pad_right("+trap", 30) + "Show help\\n" +
+          pad_right("+trap \\"add\\"", 30) + "Show available trap dbs\\n" +
+          pad_right("+trap \\"add \<db\>\\"", 30) + "Show available traps in specified db.\\n" +
+          pad_right("+trap \\"add \<db\> \<name\>\\"", 30) + "Add trap to current room.\\n" +
+          pad_right("+trap \\"remove\\"", 30) + "Remove trap from current room.\\n";
+
+/* No evoke. Show help. */
+if(!\$evoke) \{
+    EmitTo(\$actor, PRE(\$error1));
+    return FALSE;
+\}
+
+input = explode(replace_strings(\$evoke, "\\"", ""), " ");
+
+/* Invalid input. */
+if(!sizeof(input)) \{
+    EmitTo(\$actor, PRE("Invalid input.\\n\\n"+\$error1));
+    return FALSE;
+\}
+
+/* Key word "add" */
+if(input[0] == "add") \{
+    if(sizeof(input) == 1) \{
+	/* +trap "add" \<-- show all trap dbs and available traps */
+        /* +trap "add \<db\> \<name\>" */
+        EmitTo(\$actor, PRE("Available dbs are:" + implode(names, ", ") + "\\nSyntax: +trap \\"add \<db\> \<name\>\\""));
+        return FALSE;
+    \}
+
+    /* What db name was input? */
+    name = lower_case(input[1]);
+
+    /* Is it valid? */
+    if(!member(name, names)) \{
+        /* Nope */
+        EmitTo(\$actor, PRE("That db does not exist. Available dbs are: " + implode(names, ", ") + "\\nSyntax: +trap \\"add \<db\> \<name\>\\""));
+        return FALSE;
+    \}
+
+    types = Get(dbs[name], "trap:types");
+
+    if(sizeof(input) == 2) \{
+        EmitTo(\$actor, PRE("What type of trap did you want to add from this db? Options are: " + implode(types, ", ") + "\\nSyntax: +trap \\"add \<db\> \<name\>\\""));
+        return FALSE;
+    \}
+
+    type = lower_case(input[2]);
+
+    /* Make sure it is valid */
+    if(!member(type, types)) \{
+        EmitTo(\$actor, PRE("That trap does not exist in that db. Options are: " + implode(types, ", ") + "\\nSyntax: +trap \\"add \<db\> \<name\>\\""));
+        return FALSE;
+    \}
+
+    if(Get(env, "trap")) \{
+        EmitTo(\$actor, PRE("There is already a trap in this room. Please remove it first.\\nSyntax: +trap \\"remove\\""));
+        return FALSE;
+    \}
+
+    data = Get(dbs[name], "trap:" + type);
+
+    if(sizeof(data["RoomsUsed"])) \{
+        if(sizeof(data["RoomsUsed"]) \>= Int(data["MaxActive"])) \{
+            EmitTo(\$actor, PRE("You cannot setup any more traps of that type."));
+            return FALSE;
+        \}
+    \}
+
+    if(!member(env, data["RoomsAvailable"])) \{
+        EmitTo(\$actor, PRE("You cannot add a trap to this room."));
+        return FALSE;
+    \}
+
+    Call(\$lib, "set", \$room: env, \$trapDB: dbs[name], \$trapType: type);
+
+    return FALSE;
+\} else if(input[0] == "remove") \{
+    if(!env.trap) \{
+        EmitTo(\$actor, PRE("There is no trap here to remove."));
+        return FALSE;
+    \}
+    Call(\$lib, "remove", \$room: env);
+
+    return FALSE;
+\} else \{
+    EmitTo(\$actor, PRE("Invalid evoke"));
+    return FALSE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1238968956, "jominey", "R", 1238968992, "jominey", "E", 1238969292, "jominey", "E", 1238969329, "jominey", "E", 1238969352, "jominey", "E", 1238969538, "jominey", "E", 1238969559, "jominey", "E", 1238970305, "jominey", "E", 1238970554, "jominey", "E", 1238970588, "jominey", "E", 1238970600, "jominey", "E", 1238970616, "jominey", "E", 1238970770, "jominey", "E", 1238971219, "jominey", "E", 1238971279, "jominey", "E", 1238971379, "jominey", "E", 1238971436, "jominey", "E", 1238971453, "jominey", "E", 1238971471, "jominey", "E", 1238972201, "jominey", "E", 1238972961, "jominey", "E", 1238973364, "jominey", "E", 1238974608, "jominey", "E", 1238974665, "jominey", "E", 1238975559, "jominey", "E", 1238975890, "jominey", "E", 1240687899, "jominey", "E", 1240689848, "jominey", "E", 1240690456, "jominey", "E", 1240690572, "jominey", "E", 1240690628, "jominey", "E", 1240690643, "jominey", "E", 1240696269, "jominey", "E", 1240793077, "jominey", "E", 1240793105, "jominey", "E", 1240793132, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

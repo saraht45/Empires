@@ -1,0 +1,223 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Props:Plot:NobleHunt:Dec2014:UrFightable)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="pupkin"/>
+            <Base:SName sname="beast"/>
+            <Base:SName sname="creature"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="pupkin"/>
+            <Base:PName pname="beasts"/>
+            <Base:PName pname="creatures"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             aureate-tinged silver pupkin {? | $(this.trait:dead) | corpse | }
+          </Base:Description>
+          <Base:Description type="examine">
+             A lizard-like creature with five lanky legs and aureate-tinged silver skin. It bears silvery-green eyes and a tongue that peeks out on occasion in search of insects. It can be skinned for material by a professional.
+          </Base:Description>
+          <Base:Description type="look">
+             A lizard-like creature with five lanky legs and aureate-tinged silver skin. It bears silvery-green eyes and a tongue that peeks out on occasion in search of insects.
+          </Base:Description>
+          <Base:Description type="pnmae">marquest</Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:take_combat_actions">
+         X[M] /* When the NPC is given a turn in combat, this is the script where they decide what to do */  
+int i;  
+  
+/* \$az = \$\{Chatters:IC:az:azrael\};  
+EmitTo(\$az, "Taking an action"); */  
+ 
+/* Is the enemy being offered a bribe? If so, take it. */ 
+if(\$char.combat \&\& \$char.combat["target"]) \{ 
+  \$target = \$char.combat["target"]; 
+  if(\$target.combat["status"]["bribing"]) \{ 
+    return Call(\$char, "fight_outcome_accept_bribe"); 
+  \} 
+\} 
+  
+switch(random(2)) \{  
+  case 0:  
+    Social(this, oneof("hiss", "jeer", "heckle"), oneof("gutturally", "threateningly", "lowly")); break;  
+  case 1:  
+    Social(this, oneof("skitter", "scurry", "dart", "slither"), oneof("frenetically", "to-and-fro", "back-and-forth")); break;  
+  default:  
+    Social(this, oneof("stalk", "creep", "hiss", "skitter"), oneof("sinuously", "unsurely", "alertly")); break;  
+\}  
+\$delay(2, TRUE, "52ac");  
+  
+\$actions = copy(this.combat["options"]);  
+\$actions -= (\{ nil \});  
+  
+/* Do we need a new target? */  
+if(!this.combat["target"])  
+  this.combat["target"] = ::find_target();  
+  
+if(!this.combat["target"]) \{  
+  /* We couldn't find a target. Remove ourselves from the fight. */  
+  ccombat::remove_from_combat(\$fighter: this);  
+  ccombat::end_turn(\$char: this);  
+  return TRUE;  
+\}  
+  
+if(!this.combat["target"].combat) \{  
+  ccombat::start_fight(\$attacker: this, \$target: this.combat["target"]);  
+  \$delay(0.1, TRUE, "64a5");  
+\}  
+  
+\$turn_id = random(1000000000);  
+\$params = ([ "char":this, "taking_action":TRUE, "turn_id":\$turn_id ]);  
+  
+  
+/* Can we attack? */ 
+/* 
+for(i=0;i\<sizeof(\$actions);i++) \{  
+  if(\$actions[i][0] == "attack") \{  
+    if( Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE) ) \{  
+      return Call(\$actions[i][1], \$actions[i][0], \$par: \$params);  
+    \}  
+  \}  
+\}  
+*/
+
+EmitIn(\$this."base:environment", Describe(\$this) + " bares its teeth threateningly.");
+
+/* Couldn't attack. Can we do another action? */  
+for(i=0;i\<sizeof(\$actions);i++) \{  
+  if(\$actions[i][0] == "aim" \|\| \$actions[i][0] == "guard") \{  
+    if( Call(\$actions[i][1], \$actions[i][0], \$char: \$char, \$par: nil, \$check_valid: TRUE) ) \{  
+  
+      if(\$actions[i][0] == "aim") \{  
+        EmitIn(this."base:environment", Describe(this)+" shifts side to side, attempting to read the attack.");   
+      \} else if(\$actions[i][0] == "guard") \{  
+        EmitIn(this."base:environment", Describe(this)+" shifts side to side, attempting to read the attack.");  
+      \}  
+  
+      return Call(\$actions[i][1], \$actions[i][0], \$par: \$params);  
+    \}  
+  \}  
+\}  
+  
+/* Couldn't do anything. End the turn */  
+ccombat::end_turn(\$char: this); /* Because we return TRUE above during the delay, the script won't pass for us. So we need to tell it to pass */  
+return FALSE; /* This means we didn't complete our action, so the script will need to pass for us */
+      </Core:Property>
+      <Core:Property property="merry:react-pre:skin-dob">
+         X[M] /* make definitions */  
+   \$precision = Int(\$actor."skill:combat:precision");  
+   \$tailoring = Int(\$actor."skill:alteration:tailoring");  
+   \$tool= nil;  
+
+if(\$tailoring \> \$precision) \$precision = \$tailoring;  
+
+/* check if there is any hide left to take*/  
+if(\$this."trait:skinned") \{  
+  EmitTo(\$actor, "There is no usable hide left on this beast.");  
+  return FALSE;  
+  \}  
+ 
+/* check if they have tools */  
+if(sizeof(Match(\$actor, "dagger")) \|\| sizeof(Match(\$actor, "knife")))  
+  \$tool= TRUE;  
+  if(!\$tool) \{  
+     EmitTo(\$actor, "You need a suitable tool for this task, such as a knife or a dagger.");  
+     return FALSE;  
+     \}  
+  
+/* check if they have skills*/  
+if(!\$precision) \{  
+   EmitTo(\$actor, "Despite your best efforts, skinning a lizard isn't easy. You don't manage to do much, apart from shredding the skin. It never hurts to entrust those with better control over their hands or knowledge in hide handling with the task.");  
+   EmitIn(\$actor."base:environment", Describe(\$actor)+" leans over the pupkin's corpse and carefully attempts to peel back the skin. Despite the best efforts of "+\$actor."trait:nominative"+" , skinning a lizard isn't easy. The only accomplishment is the skin being shredded, but there are still places that can be salvaged. It never hurts to entrust those with better control over their hands or knowledge in hide handling with the task.", \$actor);  
+   \$this."trait:skinned" = TRUE;  
+   return FALSE;\}  
+  
+/* set success rates */  
+if(\$precision \< 4) \{  
+   \$this."trait:amount" = 1;  
+   \$this."trait:style" = "awkwardly";  
+   \$this."trait:description" = "digs into the lizard, managing to peel off a patch of the skin while butchering the rest. Only a single yard is whole enough to be prepared later by fabric workers for garments.";  
+\} else if(\$precision \< 7) \{  
+   \$this."trait:amount" = 2;  
+   \$this."trait:style" = "unprofessionally";  
+   \$this."trait:description" = "slowly slices into the lizard. The blade seems to unintentionally skip on the skin a few times, ruining the outcome considerably. Still, two yards of rust-colored skin is saved, which can be further prepared by people skilled in cloth work to produce garments.";  
+\} else if(\$precision \< 10) \{  
+   \$this."trait:amount" = 3;  
+   \$this."trait:style" = "slowly";  
+   \$this."trait:description" = "gradually slips the blade under the lizard's skin. Due to unfamiliarity with the lizard's body, the dagger skips a few times, making it difficult to produce an undamaged patch of skin for a cloth worker. The skinner ends up having 3 yards of rust-colored skin at the end of the process which can be turned over to cloth workers for further preparation and garment making.";  
+\} else if(\$precision \< 12) \{  
+   \$this."trait:amount" = 5;  
+   \$this."trait:style" = "familiarly";  
+   \$this."trait:description" = "with slow, methodic movements opens the lizard to part the skin from the carcass. Small chunks of flesh still cling to the fabric and some areas are quite hard to clean. The dedicated and skilled work of the skinner rewards them with five yards of rust-colored skin. A skilled clothier can easily process it to make it usable for clothing.";  
+\} else if(\$precision \< 17) \{  
+   \$this."trait:amount" = 6;  
+   \$this."trait:style" = "with agile moves";  
+   \$this."trait:description" = "professionally parts the skin of the lizard from the flesh. Occasionally, the blade skips on the bloody skin, ruining patches of the hide. The hard work is rewarded by 6 yards of rust-colored skin ready for the needleworkers to prepare into usable fabric for clothing.";  
+\} else if(\$precision \< 21) \{  
+   \$this."trait:amount" = 8;  
+   \$this."trait:style" = "professionally";  
+   \$this."trait:description" = "knowledgeably guides the blade through the lizard, separating skin from the underlying flesh. Only a few, slight corrections will be needed to hide the damage, and the skinner has managed to secure some 8 yards of the rust-colored skin for preparation by clothiers.";  
+\} else \{  
+   \$this."trait:amount" = 10;  
+   \$this."trait:style" = "masterfully";  
+   \$this."trait:description" = "slips the dagger under the lizard's skin with delicate ease. The rust-colored skin is flawlessly removed with no flesh attached to it. A full amount of hide is saved this way and can be given to clothiers to prepare for garment making.";  
+\}   
+  
+/* spawn cloth */  
+\$this."trait:skinned" = TRUE;  
+EmitTo(\$actor, "You "+\$this."trait:style"+" skin the lizard, securing " +\$this."trait:amount"+ " yard(s) of rust-colored skin in the process. A person skilled in cloth work is needed to prepare the raw material into clothing.");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " "+\$this."trait:style"+" starts to skin the pupkin: " +\$actor."trait:nominative"+" "+\$this."trait:description", \$actor);  
+\$cloth = Spawn(\$\{Ironclaw:Props:Plot:NobleHunt:May2015:UnpreparedPupkinSkin\});  
+\$cloth."trait:amount" = \$this."trait:amount";  
+\$cloth."base:environment" = \$actor;  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1263776745, "slurpeeslurp", "K", 1263776757, "slurpeeslurp", "E", 1263776803, "slurpeeslurp", "E", 1352053795, "slurpeeslurp", "K", 1352054384, "slurpeeslurp", "K", 1352055027, "slurpeeslurp", "E", 1352055201, "slurpeeslurp", "E", 1352055215, "slurpeeslurp", "E", 1352055413, "slurpeeslurp", "E", 1352055479, "slurpeeslurp", "E", 1352057403, "slurpeeslurp", "K", 1352059946, "slurpeeslurp", "K", 1352062591, "slurpeeslurp", "K", 1431716505, "slurpeeslurp", "K", 1431716620, "slurpeeslurp", "E", 1431716730, "slurpeeslurp", "E", 1431716840, "slurpeeslurp", "E", 1431804044, "slurpeeslurp", "E", 1431804397, "slurpeeslurp", "E", 1439441925, "slurpeeslurp", "K", 1446346331, "rorschakovacs", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

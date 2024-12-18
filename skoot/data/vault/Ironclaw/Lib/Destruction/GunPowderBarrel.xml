@@ -1,0 +1,112 @@
+<object clone="/obj/properties" owner="pp74">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:destruction">
+         X[M] \$delay(2, TRUE, "793e");
+
+/* Checking if anything is near the barrel */
+\$nearby = \$barrel."base:proximity";
+/* Finds out what detail the barrel is standing next to. */
+if(\$nearby)
+  \$building = NRefDetail(\$nearby);
+
+/* Let the fuse run down */
+EmitTo(\$actor, "You light the " + Describe(\$barrel) + " and smoke begins to trail upward. You better get away quickly to be safe!");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " touches a flame to " + Describe(\$barrel) + " and a line of thick black smoke begins to creep toward the ceiling.", \$actor);
+\$delay(5, TRUE, "a381");
+EmitIn(\$actor."base:environment", "The smoke grows heavier, filling the air around " + Describe(\$barrel) + " and billowing outward in thick clouds.");
+\$delay(5, TRUE, "1252");
+EmitIn(\$actor."base:environment", "The smoke becomes even thicker before suddenly, " + Describe(\$barrel) + " explodes with a cacophonous boom that momentarily deafens you and sends you falling to the ground.");
+/* Slay(\$this); Will slay the barrel. */
+\$delay(3, TRUE, "b00b");
+
+
+if (\$nearby == nil) \{
+  /* Nothing nearby */
+  EmitIn(\$actor."base:environment", "The barrel explodes without causing any damage!");
+\} else if (NRefOb(\$nearby) == \$actor."base:environment"
+\&\& Get(\$actor."base:environment", "details:" + \$building + "_destroyed:hidden") == TRUE) \{
+  /* There is a detail which has the same id+_destroyed as what the barrel is next to. */
+
+  /* hides the detail the  barrel is next to, and shows the detail_destroyed instead */
+  EmitIn(\$actor."base:environment", Describe(\$nearby)+" crumbles into a heap of smoking rubble and flames.");
+/*      Call(this, "pcs_near_building", \$building: \$nearby); */
+  Set(\$actor."base:environment", "details:" + \$building + "_destroyed:hidden", FALSE);
+  Set(\$actor."base:environment", "details:" + \$building + ":hidden", TRUE);
+\} else \{
+  /* If there's no _destroyed detail in the room, the barrel just blows up without causing harm to "+Describe(\$nearby) */
+  EmitIn(\$actor."base:environment", "The barrel blows up without causing any harm to "+Describe(\$nearby)+". It can't be destroyed.");
+\}
+
+/* Calls the script to check if any PCs are nearby so we can wound them from the explosion. */
+Call(this, "pcs_nearby");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:pcs_nearby">
+         X[M] /* Were any PCs caught in the blast? */
+
+\$bodyparts = (\{"gut", "body", "body", "body", "head", "ankles", "arms", "back", "chest", "face", "forearms", "gut", "hands", "legs", "lower-back", "stomach", "thighs", "torso", "waist", "wrists", "right-ankle", "right-arm", "right-cheek", "right-forearm", "right-hand", "right-knee", "right-leg", "right-shoulder", "right-side", "right-thigh", "right-wrist", "left-ankle", "left-arm", "left-cheek", "left-forearm", "left-hand", "left-leg", "left-shin", "left-shoulder", "left-side", "left-thigh", "left-wrist"\});
+
+/* Get a list of all PCs in the room */
+\$pcs = Match(\$barrel."base:environment", "pc");
+for(\$i=0;\$i\<sizeof(\$pcs);\$i++) \{
+  \$pc = NRefOb(\$pcs[\$i]);
+
+  /* Here are the ways to check if someone is near the barrel */
+  /*
+  if(\$pc."base:proximity" \&\& NRefOb(\$pc."base:proximity") == \$barrel)
+    EmitIn(\$actor."base:environment", "Too close to \$barrel! Boom!");
+  else if(\$pc."base:proximity" \&\& NRefsEqual(\$pc."base:proximity", \$nearby))
+    EmitIn(\$actor."base:environment", "Too close to \$nearby! Boom!");
+  else if(member(\$barrel, \$pc."base:proximates"))
+    EmitIn(\$actor."base:environment", "Barrel is too close to PC! Boom!");
+  */
+
+  if((\$pc."base:proximity" \&\& NRefOb(\$pc."base:proximity") == \$barrel)
+  \|\| (\$pc."base:proximity" \&\& NRefsEqual(\$pc."base:proximity", \$nearby))
+  \|\| member(\$barrel, \$pc."base:proximates")) \{
+    /* \$pc was too close to the explosion */
+    \$dodge = ironclaw::roll(\$roller: \$pc, \$skills: (\{"dodge_explosion"\}), \$bonus: 0);
+    if(\$dodge \> random(24)+1) \{
+      /* They dodged it! */
+      EmitTo(\$pc, "You throw yourself out of the way of the explosion.");
+      EmitIn(\$pc."base:environment", Describe(\$pc)+" tries to throw "+\$pc."base:objective"+"self out of the way of the explosion, but gets caught in the blast anyway.", \$pc);
+    \} else \{
+      EmitTo(\$pc, "You get caught in the explosion.");
+      EmitIn(\$pc."base:environment", Describe(\$pc)+" was caught in the explosion.", \$pc);
+      /* Give them a wound */
+      \$target = NewNRef(\$pc, \$bodyparts[random(sizeof(\$bodyparts))]);
+      \$wound = injuries::add_wound(\$wound: "burn", \$target: \$target, \$weapon: \$barrel, \$damage: 6);
+      EmitTo(\$pc, "You feel the pain of "+\$wound+" across "+Describe(\$target, nil, \$actor)+".");
+
+      /* Were they stupid enough to be holding an explosive barrel? */
+      /* Let's look through their inventory */
+      for(\$j=0; \$j\<sizeof(\$pc."base:deep-inventory"); \$j++) \{
+        if(\$pc."base:deep-inventory"[\$j].explosive) \{
+          \$oops_object = \$pc."base:deep-inventory"[\$j];
+          EmitTo(\$pc, Describe(\$oops_object, nil, \$actor)+" catches on fire from the explosion, and also explodes. Since you were holding it, you explode too. How very unfortunate for you!");
+          EmitIn(\$pc."base:environment", Describe(\$oops_object)+", which "+Describe(\$pc)+" was carrying, catches on fire and explodes, leaving "+\$pc."base:objective"+" dead amid the burning wreckage.", \$pc);
+          Call(\$\{Ironclaw:Lib:Characters:Death\}, "die", \$victim: \$pc);
+          Slay(\$oops_object); /* Slay the object that exploded */
+          break;
+        \}
+      \}
+    \}
+
+  \}
+
+\}
+
+/* And finally, slay the barrel */
+Slay(\$barrel);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1367157126, "pp74", "X", 1367157656, "pp74", "X", 1367157774, "pp74", "X", 1367157810, "pp74", "P", 1367157954, "pp74", "X", 1367158228, "pp74", "P", 1367158739, "pp74", "P", 1367159962, "pp74", "P", 1367160160, "pp74", "X", 1367160229, "pp74", "X", 1367160325, "pp74", "X", 1367160488, "pp74", "X", 1367160605, "pp74", "X", 1367160718, "pp74", "X", 1367160816, "pp74", "X", 1367160908, "pp74", "X", 1367161446, "pp74", "X", 1367161651, "pp74", "X", 1367161713, "pp74", "X", 1367162041, "pp74", "X", 1367169204, "pp74", "X", 1367169710, "pp74", "X", 1367170691, "pp74", "X", 1367170968, "pp74", "X", 1367171080, "pp74", "X", 1367171151, "pp74", "X", 1367171300, "pp74", "X", 1367171399, "pp74", "X", 1367171531, "pp74", "X", 1367173602, "pp74", "X", 1367173971, "pp74", "X", 1367174053, "pp74", "X", 1367174081, "pp74", "X", 1367174317, "pp74", "X", 1367174464, "pp74", "X", 1367174524, "pp74", "X", 1367174981, "pp74", "X", 1367219894, "pp74", "R", 1367220035, "pp74", "P", 1367220245, "pp74", "P", 1367220271, "pp74", "P", 1367220326, "pp74", "P", 1367220348, "pp74", "P", 1367220363, "pp74", "P", 1367220379, "pp74", "P", 1367221501, "pp74", "P", 1367221646, "pp74", "P", 1367221687, "pp74", "P", 1367221753, "pp74", "P", 1367221756, "pp74", "P", 1367221812, "pp74", "P", 1367221835, "pp74", "P", 1367221859, "pp74", "P", 1367223252, "pp74", "R", 1367223281, "pp74", "R", 1367223725, "pp74", "P", 1367229669, "pp74", "P", 1367229698, "pp74", "P", 1367229765, "pp74", "P", 1367229879, "pp74", "P", 1367230092, "pp74", "P", 1367230263, "pp74", "P", 1367305738, "pp74", "P", 1367306018, "pp74", "P", 1367306050, "pp74", "P", 1367306072, "pp74", "P", 1367306199, "pp74", "P", 1367306649, "pp74", "P", 1367306754, "pp74", "P", 1367306828, "pp74", "P", 1367306832, "pp74", "P", 1367306928, "pp74", "P", 1367306946, "pp74", "P", 1367306974, "pp74", "P", 1367306990, "pp74", "P", 1367307014, "pp74", "P", 1367307643, "pp74", "P", 1367307702, "pp74", "P", 1367307736, "pp74", "P", 1367308970, "pp74", "P", 1367313086, "pp74", "P", 1367313152, "pp74", "X", 1367347717, "pp74", "P", 1367347821, "pp74", "P", 1367347952, "pp74", "P", 1367348505, "pp74", "P", 1367348609, "pp74", "P", 1367348688, "pp74", "P", 1367348706, "pp74", "P", 1367348737, "pp74", "P", 1367348790, "pp74", "P", 1367348902, "pp74", "P", 1367348935, "pp74", "P", 1367349001, "pp74", "P", 1367354462, "pp74", "P", 1367355004, "pp74", "P", 1367355031, "pp74", "P", 1367355040, "pp74", "P", 1367355121, "pp74", "P", 1367355245, "pp74", "P", 1367356257, "pp74", "P", 1367408110, "tonyd", "P", 1367408413, "tonyd", "P", 1367408524, "tonyd", "P", 1367408578, "tonyd", "P", 1367408895, "pp74", "P", 1367408943, "tonyd", "P", 1367409365, "tonyd", "P", 1367409388, "tonyd", "P", 1367409397, "tonyd", "P", 1367409447, "tonyd", "P", 1367409478, "tonyd", "P", 1367409531, "tonyd", "P", 1367409786, "tonyd", "P", 1367409922, "tonyd", "P", 1367409932, "tonyd", "P", 1367409968, "tonyd", "P", 1367410163, "tonyd", "P", 1367410322, "tonyd", "P", 1367410370, "tonyd", "P", 1367410482, "tonyd", "P", 1367410543, "tonyd", "P", 1367410550, "tonyd", "P", 1367410591, "tonyd", "P", 1367410728, "tonyd", "P", 1367410901, "tonyd", "P", 1367411099, "tonyd", "P", 1367411148, "tonyd", "P", 1367411275, "tonyd", "P", 1367411470, "tonyd", "P", 1367411730, "tonyd", "P", 1367411985, "tonyd", "P", 1367411996, "tonyd", "P", 1367412003, "tonyd", "P", 1367412020, "tonyd", "P", 1367412198, "tonyd", "P", 1367412261, "tonyd", "P", 1367412340, "tonyd", "P", 1367412385, "tonyd", "P", 1367412482, "tonyd", "P", 1367412562, "tonyd", "P", 1367412636, "tonyd", "P", 1367412698, "tonyd", "P", 1367413153, "tonyd", "P", 1367413193, "tonyd", "P", 1367413209, "tonyd", "P", 1367413224, "tonyd", "P", 1367413244, "tonyd", "P", 1367413283, "tonyd", "P", 1367413371, "tonyd", "P", 1367413378, "tonyd", "P", 1367413402, "tonyd", "P", 1367413521, "tonyd", "P", 1367413601, "tonyd", "P", 1367413619, "tonyd", "P", 1367413670, "tonyd", "P", 1367413691, "tonyd", "P", 1367414069, "tonyd", "P", 1367414073, "tonyd", "P", 1367414143, "tonyd", "P", 1367414175, "tonyd", "P", 1367414187, "tonyd", "P", 1367414224, "tonyd", "P", 1367414229, "tonyd", "P", 1367414258, "tonyd", "P", 1367414358, "tonyd", "P", 1367414513, "tonyd", "P", 1367414520, "tonyd", "P", 1367414542, "tonyd", "P", 1367414562, "tonyd", "P", 1367414603, "tonyd", "P", 1702700488, "ezralee", "E", 1702701290, "ezralee", "E", 1702701610, "ezralee", "E", 1702701727, "ezralee", "E", 1702704649, "ezralee", "E", 1702704875, "ezralee", "E", 1702705240, "ezralee", "E", 1702705421, "ezralee", "E", 1702798320, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

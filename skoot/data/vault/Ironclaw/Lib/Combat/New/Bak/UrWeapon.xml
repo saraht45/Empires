@@ -1,0 +1,494 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="true" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="weapon"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="weapons"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="unsheathed"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) {? | $(this.trait:engraving) | {? | $(this.trait:engraving:pattern) | $(this.trait:engraving:pattern)} engraved } {? | $(this.trait:material) | $(this.trait:material)| metal} {? | $(this.trait:type) | $(this.trait:type) | $(this.trait:brief)}
+          </Base:Description>
+          <Base:Description type="examine">
+             <describe what="$(this)" cap="1" nonposs="1"/>. $[ParseXML($this."trait:examine")] {? | $(this.trait:engraving) | $(this.trait:engraving).} <makers-mark/> <sbr/><quality-full/>
+          </Base:Description>
+          <Base:Description type="look">
+             <describe what="$(this)" cap="1" nonposs="1"/>. $[ParseXML(Str($this."trait:look"))] {? | $(this.trait:engraving) | $(this.trait:engraving).}
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="right-hand"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:basematerial">
+         "metal"
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "weapon"
+      </Core:Property>
+      <Core:Property property="export:weapon:bonus:attack">
+         0
+      </Core:Property>
+      <Core:Property property="export:weapon:bonus:damage">
+         1
+      </Core:Property>
+      <Core:Property property="export:weapon:parry">
+         1
+      </Core:Property>
+      <Core:Property property="export:weapon:skill">
+         "unarmed"
+      </Core:Property>
+      <Core:Property property="export:weapon:targets">
+         (\{ "chest", "torso", "right-cheek", "left-cheek", "right-shoulder", "left-shoulder", "right-shoulder", "left-shoulder", "right-forearm", "left-forearm", "left-forearm", "right-hand", "left-hand", "left-hand" \})
+      </Core:Property>
+      <Core:Property property="export:weapon:woundtype">
+         (\{ "cut", "cuts", "cut" \})
+      </Core:Property>
+      <Core:Property property="log:creator">"Combat"</Core:Property>
+      <Core:Property property="merry:lib:combat:attack">
+         X[M] /* Making an attack with this weapon */
+if(\$fighter) \$actor = \$fighter; /* Make sure we've set \$actor, in case it was an NPC, or set with a script */
+EmitTo(\$actor, "You prepare to attack with "+Describe(\$weapon, nil, \$actor)+".");
+
+/* What are the defensive options? */
+\$defence_options = (\{ \});
+/* Can they counterattack? */
+/* Not coded yet. Reasons why they can counter: */
+/* If they are using a melee weapon, and their opponent is not at range */
+/* If they have a ranged weapon ready to use */
+/* \$defence_options += (\{ "counterattack" \});*/
+
+/* Can they parry? */
+/* Can only parry if they have a parrying weapon, and opponent is attacking with a brawling or melee attack */
+\$defence_options += (\{ "parry" \});
+
+/* Can they dodge? */
+\$defence_options += (\{ "dodge" \});
+
+/* Is there a script for how the defender will respond? */
+if(FindMerry(NRefOb(\$target), "lib", "combat:choose_defence")) \{
+  \$defence = Call(NRefOb(\$target), "combat:choose_defence", \$options: \$defence_options, \$attacker: \$actor, \$weapon: \$weapon);
+\} else \{
+  \$defence = nil;
+\}
+if(\$defence) \{
+  Call(this, "combat:attack-roll", \$fighter: \$actor, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence);
+  return FALSE;
+\}
+
+/* ask the target how they want to defend */
+for(\$i=0;\$i\<sizeof(\$defence_options);\$i++) \{
+  if(\$defence_options[\$i] == "counterattack") \{
+    \$defence_options[\$i] = (\{ "counterattack", "Counterattack "+Describe(\$actor), "combat:defence_counterattack" \});
+  \} else if(\$defence_options[\$i] == "parry") \{
+    \$defence_options[\$i] = (\{ "parry", "Parry "+Describe(\$actor), "combat:defence_parry" \});
+  \} else if(\$defence_options[\$i] == "dodge") \{
+    \$defence_options[\$i] = (\{ "dodge", "Dodge "+Describe(\$actor), "combat:defence_dodge" \});
+  \}
+\}
+if(sizeof(\$defence_options) == 3) \{
+  interaction::question(\$actor: NRefOb(\$target), \$question: Describe(\$actor)+" is attempting to attack you with "+Describe(\$weapon, \$actor)+". How do you wish to respond?", \$expires: 40, \$env: "TRUE", \$a: \$defence_options[0][1], \$b: \$defence_options[1][1], \$c: \$defence_options[2][1], \$a_ob: \$\{Ironclaw:Lib:Combat:New:Bak:UrWeapon\}, \$b_ob: \$\{Ironclaw:Lib:Combat:New:Bak:UrWeapon\}, \$c_ob: \$\{Ironclaw:Lib:Combat:New:Bak:UrWeapon\}, \$expire_ob: \$\{Ironclaw:Lib:Combat:New:Bak:UrWeapon\}, \$a_fun: \$defence_options[0][2], \$b_fun: \$defence_options[1][2], \$c_fun: \$defence_options[2][2], \$expire_fun: \$defence_options[2][2], \$par: ([ "fighter":\$fighter, "target":\$target, "weapon":\$weapon]));
+\} else if(sizeof(\$defence_options) == 2) \{
+  interaction::question(\$actor: NRefOb(\$target), \$question: Describe(\$actor)+" is attempting to attack you with "+Describe(\$weapon, \$actor)+". How do you wish to respond?", \$expires: 40, \$env: "TRUE", \$a: \$defence_options[0][1], \$b: \$defence_options[1][1], \$a_ob: \$\{Ironclaw:Lib:Combat:New:Bak:UrWeapon\}, \$b_ob: \$\{Ironclaw:Lib:Combat:New:Bak:UrWeapon\}, \$expire_ob: \$\{Ironclaw:Lib:Combat:New:Bak:UrWeapon\}, \$a_fun: \$defence_options[0][2], \$b_fun: \$defence_options[1][2], \$expire_fun: \$defence_options[1][2], \$par: ([ "fighter":\$fighter, "target":\$target, "weapon":\$weapon]));
+\} else if(sizeof(\$defence_options) == 1) \{
+  Call(this, "combat:attack-roll", \$fighter: \$actor, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence_options[0][0]);
+\} else \{
+  Call(this, "combat:attack-roll", \$fighter: \$actor, \$target: \$target, \$weapon: \$weapon, \$defence: "none");
+\}
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:attack-roll">
+         X[M] /* Make rolls to see how successful the PC is at hitting with this weapon */
+/* return the attack roll for this hit */
+int hit, damage, i;
+mixed *new_actions;
+
+if(!\$fighter) return FALSE;
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* Does the weapon do it's own hit roll? */
+if(FindMerry(NRefOb(\$weapon), "lib", "combat:hit-roll")) \{
+  \$attackpool = Call(NRefOb(\$weapon), "combat:hit-roll", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence);
+\} else \{
+  \$attackpool = Call(this, "combat:hit-roll", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence);
+\}
+
+\$attackroll = ironclaw::dicepool_highest(\$dicearray: \$attackpool);
+\$defenceroll = Call(this, "combat:defence-roll", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence);
+
+EmitTo(\$az, "Attackroll: "+dump_value(\$attackroll));
+EmitTo(\$az, "Defenceroll: "+dump_value(\$defenceroll));
+EmitTo(\$az, "Attackpool: "+dump_value(\$attackpool));
+
+/* Describe the outcomes */
+
+\$desclib = \$\{Ironclaw:Lib:Combat:New:Descriptions\};
+if(!\$adverb) \$adverb = Call(\$desclib, "get-adverb", \$skill: \$attackroll);
+
+if(\$attackroll \> \$defenceroll) \{
+  /* They hit their opponent (we don't care what the defence was) */
+/* Does the weapon do it's own damage roll? */
+if(FindMerry(NRefOb(\$weapon), "lib", "combat:damage-roll")) \{
+  \$damage = Call(NRefOb(\$weapon), "combat:damage-roll", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackroll: \$attackroll, \$defenceroll: \$defenceroll, \$attackpool: \$attackpool);
+\} else \{
+  \$damage = Call(this, "combat:damage-roll", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackroll: \$attackroll, \$defenceroll: \$defenceroll, \$attackpool: \$attackpool);
+\}
+
+EmitTo(\$az, "Damage: "+dump_value(\$damage));
+
+/* Did the damage roll handle the rest of the action? */
+if(\$damage == -1) return TRUE;
+
+EmitTo(\$az, "Damage: "+dump_value(\$damage));
+
+
+
+
+  Call(this, "combat:describe-hit", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackval: \$attackroll, \$defenceval: \$defenceroll, \$damage: \$damage);
+\} else if(\$defence == "counterattack") \{
+  if(\$attackroll \< \$defenceroll) \{
+    /* defender hits */
+    EmitTo(\$fighter, Describe(\$target)+" turns around and smacks you, as you try to hit "+NRefOb(\$target)."base:objective"+" with "+Describe(\$weapon, nil, \$fighter)+".");
+  \} else \{
+    /* tie. They both hit. */
+    EmitTo(\$fighter, Describe(\$target)+" smacks you at the same time as you try to hit "+NRefOb(\$target)."base:objective"+" with "+Describe(\$weapon, nil, \$fighter)+".");
+  \}
+  combat::action_complete(\$actor: \$fighter);
+\} else if(\$defence == "parry") \{
+  if(\$attackroll \< \$defenceroll) \{
+    /* attacker misses */
+    EmitTo(\$fighter, Describe(\$target)+" parries, as you try to hit "+NRefOb(\$target)."base:objective"+" with "+Describe(\$weapon, nil, \$fighter)+".");
+    Call(\$desclib, "describe:parry");
+  \} else \{
+    /* tie. Close miss? */
+    EmitTo(\$fighter, Describe(\$target)+" just barely blocks, as you try to hit "+NRefOb(\$target)."base:objective"+" with "+Describe(\$weapon, nil, \$fighter)+".");
+    Call(\$desclib, "describe:parry");
+    /* Also, send them reeling */
+    if(!NRefOb(\$target)."combat:state:reeling") \{
+      NRefOb(\$target)."combat:state:reeling" = TRUE;
+      Social(\$actor, "reel");
+    \}
+  \}
+  combat::action_complete(\$actor: \$fighter);
+\} else \{
+  /* dodge (and also any unknown defences) */
+  if(\$attackroll \< \$defenceroll) \{
+    /* attacker misses */
+    Call(\$desclib, "describe:dodge");
+  \} else \{
+    /* tie. Close miss? */
+    Call(\$desclib, "describe:dodge");
+    /* Also, send them reeling */
+    if(!NRefOb(\$target)."combat:state:reeling") \{
+      NRefOb(\$target)."combat:state:reeling" = TRUE;
+      Social(\$actor, "reel");
+    \}
+  \}
+  combat::action_complete(\$actor: \$fighter);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:damage-roll">
+         X[M] /* Calculate how much damage should be done for this attack */
+/*   \$damage = Call(this, "combat:damage-roll", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackroll: \$attackroll, \$defenceroll: \$defenceroll, \$attackpool: \$attackpool);
+*/
+
+/* Sanity check */
+\$dicearray = nil; /* Should not be set already */
+
+EmitTo(\$az, "Calculating damage");
+EmitTo(\$az, "Calculating successes");
+EmitTo(\$az, dump_value(\$attackpool)+" vs "+dump_value(\$defenceroll));
+\$successes = ironclaw::dicepool_target(\$dicearray: \$attackpool, \$target: \$defenceroll);
+EmitTo(\$az, dump_value(\$successes)+" successes");
+
+/* Add weapon effects, like critical or slaying weapons */
+if(\$weapon."weapon:descriptor:critical") \{
+  \$successes += \$successes/2;
+\}
+if(\$weapon."weapon:descriptor:slaying") \{
+  \$successes += \$successes;
+\}
+
+/* Add weapon bonus damage */
+EmitTo(\$az, "Add weapon bonus damage");
+\$successes += Int(\$weapon."weapon:bonus:damage");
+EmitTo(\$az, dump_value(\$successes)+" successes");
+
+/* Add bonuses due to status */
+if(NRefOb(\$target)."combat:state:hurt") \$successes += 1;
+if(NRefOb(\$target)."combat:state:injured") \$successes += 1;
+
+/* Calculate defender's soak */
+\$soak = (\{ "trait:body" \});
+\$soak += (\{ "combat:armor:rating" \});
+EmitTo(\$az, "Rolling soak of "+dump_value(\$soak));
+\$soak = ironclaw::roll_dicepool(\$roller: NRefOb(\$target), \$skills: \$soak, \$rolltype: "target", \$target: 3);
+if(\$weapon."weapon:descriptor:weak") \{ /* Roll soak twice against weak weapons */
+EmitTo(\$az, "Rolling soak twice");
+  \$soak += ironclaw::roll_dicepool(\$roller: NRefOb(\$target), \$skills: \$soak, \$rolltype: "target", \$target: 3);
+\}
+EmitTo(\$az, dump_value(\$soak)+" soak successes");
+
+\$successes -= \$soak;
+EmitTo(\$az, dump_value(\$successes)+" successes");
+if(\$successes \< 0) \$successes = 0; /* Can't get less than 0 successes */
+
+return \$successes;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:defence-roll">
+         X[M] /* Make rolls to see how successful the PC is at avoiding being hit */
+/* return the defence roll for this hit */
+
+/*\$defence: "dodge"*/
+/* \$defencepool = Call(this, "combat:defence-roll", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence); */
+
+\$defender = NRefOb(\$target);
+\$defencepool = (\{ \});
+
+/* May only parry or counterattack brawling and melee attacks */
+if(\$defence == "counterattack" \&\& NRefOb(\$weapon)."combat:nocounter")  \$defence = "dodge";
+if(\$defence == "parry" \&\& NRefOb(\$weapon)."combat:noparry") \$defence = "dodge";
+/* May only parry if you have a weapon */
+if(\$defence == "counterattack") \{
+  \$def_weapon = combat::get_weapon(\$fighter: \$defender, \$type: "primary");
+  if(!\$def_weapon) \$defence = "dodge";
+\}
+if(\$defence == "parry") \{
+  \$def_weapon = combat::get_weapon(\$fighter: \$defender, \$type: "parry");
+  if(!\$def_weapon) \$defence = "dodge";
+\}
+
+if(\$defence == "counterattack") \{
+  \$defencepool += (\{ "trait:body" \});
+  /* Set the attribute to use */
+  if(\$def_weapon."weapon:attribute")
+    \$defencepool += (\{ Str(\$def_weapon."weapon:attribute") \});
+  else
+    \$defencepool += (\{ "trait:body" \});
+  /* set the weapon skill */
+  if(\$def_weapon."weapon:skill")
+    \$defencepool += (\{ "combat:"+Str(\$def_weapon."weapon:skill") \});
+  else
+    \$defencepool += (\{ "combat:unarmed" \});
+  /* Include weapon's attack bonus */
+  if(\$def_weapon."weapon:bonus:attack")
+    \$defencepool += (\{ Int(\$def_weapon."weapon:bonus:attack") \});
+
+\} else if(\$defence == "parry") \{
+  \$defencepool += (\{ "trait:body" \});
+  \$defencepool += (\{ "combat:parry" \});
+  /* Include weapon's attack bonus */
+  if(\$def_weapon."weapon:bonus:attack")
+    \$defencepool += (\{ Int(\$def_weapon."weapon:bonus:attack") \});
+
+\} else if(TRUE \|\| \$defence == "dodge") \{
+  /* All other attacks should be dodged */
+  \$defencepool += (\{ "trait:speed" \});
+  \$defencepool += (\{ "combat:dodge" \});
+\}
+
+/* Add any guarding bonus */
+if(\$defender."combat:state:guarding") \{
+  \$defencepool += (\{ 8 \});
+\}
+
+return ironclaw::roll_dicepool(\$roller: \$defender, \$skills: \$defencepool, \$rolltype: "highest");
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:defence_counterattack">
+         X[M] Call(this, "combat:attack-roll", \$fighter: \$par["fighter"], \$target: \$par["target"], \$weapon: \$par["weapon"], \$defence: "counterattack");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:defence_dodge">
+         X[M] Call(this, "combat:attack-roll", \$fighter: \$par["fighter"], \$target: \$par["target"], \$weapon: \$par["weapon"], \$defence: "dodge");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:defence_parry">
+         X[M] Call(this, "combat:attack-roll", \$fighter: \$par["fighter"], \$target: \$par["target"], \$weapon: \$par["weapon"], \$defence: "parry");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:describe-hit">
+         X[M] /* Describe a successful hit in combat */
+/*   Call(this, "combat:describe-hit", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackval:\$attackpool, \$defenceval:\$defencepool, \$damage:\$damagepool); */
+
+/* Describe the hit */
+
+/* Search for weapon attack descriptions */
+\$desclib = \$\{Ironclaw:Lib:Combat:New:Descriptions\};
+if(!\$adverb) \$adverb = Call(\$desclib, "get-adverb", \$skill: \$attackpool);
+\$injury = FALSE; /* \$injury will hold the injury type, or TRUE/FALSE, depending on whether the description wants to set a specific injury */
+
+/* Does the weapon do it's own descriptions? */
+if(FindMerry(NRefOb(\$weapon), "lib", "combat:describe:hit")) \{
+  \$injury = Call(NRefOb(\$weapon), "combat:describe:hit", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackval: \$attackpool, \$defenceval: \$defencepool, \$damage: \$damagepool);
+\}
+
+
+if(\$weapon."damage:type")
+  \$damagetype = \$weapon."damage:type";
+else
+  \$damagetype = "cutting";
+
+if(!\$injury \&\& FindMerry(\$desclib, "lib", "describe:"+\$damagetype+":hit:"+\$defence)) \{
+  \$injury = Call(\$desclib, "describe:"+\$damagetype+":hit:"+\$defence, \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackval: \$attackpool, \$defenceval: \$defencepool, \$damage: \$damagepool);
+\}
+if(!\$injury \&\& FindMerry(\$desclib, "lib", "describe:"+\$damagetype+":hit")) \{
+  \$injury = Call(\$desclib, "describe:"+\$damagetype+":hit", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackval: \$attackpool, \$defenceval: \$defencepool, \$damage: \$damagepool);
+\}
+if(!\$injury \&\& FindMerry(\$desclib, "lib", "describe:hit:"+\$defence)) \{
+  \$injury = Call(\$desclib, "describe:hit:"+\$defence, \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackval: \$attackpool, \$defenceval: \$defencepool, \$damage: \$damagepool);
+\}
+if(!\$injury \&\& FindMerry(\$desclib, "lib", "describe:hit")) \{
+  \$injury = Call(\$desclib, "describe:hit", \$fighter: \$fighter, \$target: \$target, \$weapon: \$weapon, \$defence: \$defence, \$attackval: \$attackpool, \$defenceval: \$defencepool, \$damage: \$damagepool);
+\}
+
+/* What happens from the damage? */
+\$states = (\{ \});
+if(\$damage \>= 6) \{
+  /* Overkilled */
+  \$states = (\{ "dead", "overkilled" \});
+\} else if(\$damage == 5) \{
+  /* Killed */
+  \$states = (\{ "dead" \});
+\} else if(\$damage == 4) \{
+  /* Hurt, Afraid, Injured, and Dying */
+  \$states = (\{ "hurt", "afraid", "injured", "dying" \});
+\} else if(\$damage == 3) \{
+  /* Hurt, Afraid and Injured */
+  \$states = (\{ "hurt", "afraid", "injured" \});
+\} else if(\$damage == 2) \{
+  /* Hurt and Afraid */
+  \$states = (\{ "hurt", "afraid" \});
+\} else if(\$damage == 1) \{
+  /* Hurt */
+  \$states = (\{ "hurt" \});
+\} else \{
+  /* Reeling */
+  /* No need to do anything here, since all successful hits send the target reeling */
+\}
+
+if(member("dead", \$states)) \{
+  /* If they are dead, handle that */
+  combat::set_state(\$char: NRefOb(\$target), \$state: "dead", \$description: TRUE);
+
+  /* Were they also overkilled? */
+  if(member("overkilled", \$states))
+    combat::set_state(\$char: NRefOb(\$target), \$state: "overkilled", \$description: TRUE);
+
+  \$delay(0.1, TRUE, "a220");
+\} else \{
+  /* Not dead. Do other injury effects */
+
+  /* Since they've been hit, send them reeling */
+  if(!NRefOb(\$target)."combat:state:reeling") \{
+    combat::set_state(\$char: NRefOb(\$target), \$state: "reeling", \$description: TRUE);
+    \$delay(0.1, TRUE, "6a66");
+  \}
+
+  if(member("dying", \$states) \&\& !NRefOb(\$target)."combat:state:dying")
+    combat::set_state(\$char: NRefOb(\$target), \$state: "dying", \$description: TRUE);
+
+  if(member("injured", \$states) \&\& !NRefOb(\$target)."combat:state:injured")
+    combat::set_state(\$char: NRefOb(\$target), \$state: "injured", \$description: TRUE);
+
+  if(member("hurt", \$states) \&\& !NRefOb(\$target)."combat:state:hurt")
+    combat::set_state(\$char: NRefOb(\$target), \$state: "hurt", \$description: TRUE);
+
+  if(member("afraid", \$states) \&\& !NRefOb(\$target)."combat:state:afraid")
+    combat::set_state(\$char: NRefOb(\$target), \$state: "afraid", \$description: TRUE);
+\}
+
+/* Now do the injury (if any) */
+\$delay(0.1, TRUE, "1bdc");
+injuries::add_wound(\$target: \$target, \$wound: \$injury, \$attacker: \$fighter, \$weapon: \$weapon, \$damage: \$damage);
+\$delay(0.1, TRUE, "5c56");
+combat::action_complete(\$actor: \$fighter);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:combat:hit-roll">
+         X[M] /* Make rolls to see how successful the PC is at hitting with this weapon */
+/* return the attack roll for this hit */
+
+\$attackpool = (\{ \});
+/* Set the attribute to use */
+if(\$weapon."weapon:attribute")
+  \$attackpool += (\{ Str(\$weapon."weapon:attribute") \});
+else
+  \$attackpool += (\{ "trait:body" \});
+
+/* Add the weapon's bonus to attack */
+if(\$weapon."weapon:bonus:attack")
+  \$attackpool += (\{ Int(\$weapon."weapon:bonus:attack") \});
+
+/* set the weapon skill */
+if(\$weapon."weapon:skill")
+  \$attackpool += (\{ "combat:"+Str(\$weapon."weapon:skill") \});
+else
+  \$attackpool += (\{ "combat:unarmed" \});
+
+/* Add any aiming bonus */
+if(\$fighter."combat:state:aiming") \{
+  \$attackpool += (\{ 8 \});
+  \$fighter."combat:state:aiming" = nil;
+\}
+
+return ironclaw::roll_dicepool(\$roller: \$fighter, \$skills: \$attackpool, \$rolltype: "pool");
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:color">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:material">
+         X[M] return Call(\$\{Ironclaw:Lib:Crafting:Lib\}, "replaceadj", \$object: this);
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1167565387, "tonyd", "E", 1171370916, "tonyd", "E", 1171370932, "tonyd", "E", 1186814595, "tonyd", "P", 1186814648, "tonyd", "P", 1239044105, "morwenlorelie", "R", 1240678578, "balkaar", "E", 1240678597, "balkaar", "E", 1246656665, "rastalabor", "X", 1270687002, "jominey", "E", 1270687058, "jominey", "E", 1284322416, "jominey", "S", 1288579862, "jominey", "K", 1288834685, "jominey", "K", 1288835059, "jominey", "K", 1288838964, "jominey", "K", 1290116038, "jominey", "K", 1302221038, "jominey", "E", 1302222518, "jominey", "E", 1309417031, "tonyd", "P", 1309417049, "tonyd", "P", 1320560117, "tonyd", "P", 1320560438, "tonyd", "P", 1320560876, "tonyd", "P", 1320561789, "tonyd", "P", 1320562419, "tonyd", "P", 1320562583, "tonyd", "P", 1320562626, "tonyd", "P", 1320566552, "tonyd", "P", 1320566590, "tonyd", "P", 1320566761, "tonyd", "P", 1320566783, "tonyd", "P", 1320566796, "tonyd", "P", 1320566801, "tonyd", "P", 1320566808, "tonyd", "P", 1320566966, "tonyd", "P", 1320569048, "tonyd", "P", 1320569668, "tonyd", "P", 1320569686, "tonyd", "P", 1320569743, "tonyd", "P", 1320732153, "tonyd", "P", 1320732295, "tonyd", "P", 1320732379, "tonyd", "P", 1320732786, "tonyd", "P", 1320732800, "tonyd", "P", 1320732816, "tonyd", "P", 1320732920, "tonyd", "P", 1320732966, "tonyd", "P", 1320733085, "tonyd", "P", 1320733603, "tonyd", "P", 1320733773, "tonyd", "P", 1320733846, "tonyd", "P", 1320734231, "tonyd", "P", 1320734247, "tonyd", "P", 1320734819, "tonyd", "P", 1320734929, "tonyd", "P", 1320735013, "tonyd", "P", 1320735046, "tonyd", "P", 1320735319, "tonyd", "P", 1320735370, "tonyd", "P", 1320735399, "tonyd", "P", 1320735474, "tonyd", "P", 1320735546, "tonyd", "P", 1329623447, "tonyd", "P", 1329623745, "tonyd", "P", 1329623777, "tonyd", "P", 1329623840, "tonyd", "P", 1329624110, "tonyd", "P", 1329624370, "tonyd", "P", 1329624392, "tonyd", "P", 1329624433, "tonyd", "P", 1329625442, "tonyd", "P", 1329626128, "tonyd", "P", 1329626144, "tonyd", "P", 1329629097, "tonyd", "P", 1329629184, "tonyd", "P", 1329629197, "tonyd", "P", 1329629377, "tonyd", "P", 1329629399, "tonyd", "P", 1329629425, "tonyd", "P", 1329629568, "tonyd", "P", 1329629591, "tonyd", "P", 1329629602, "tonyd", "P", 1329632249, "tonyd", "P", 1329632316, "tonyd", "P", 1329633870, "tonyd", "P", 1329634787, "tonyd", "P", 1329635114, "tonyd", "P", 1329640765, "tonyd", "P", 1329640917, "tonyd", "P", 1329640940, "tonyd", "P", 1329641028, "tonyd", "P", 1329641040, "tonyd", "P", 1329641248, "tonyd", "P", 1329641291, "tonyd", "P", 1329641387, "tonyd", "P", 1329641583, "tonyd", "P", 1329641626, "tonyd", "P", 1329641641, "tonyd", "P", 1329641673, "tonyd", "P", 1329641687, "tonyd", "P", 1329641709, "tonyd", "P", 1329641718, "tonyd", "P", 1329641800, "tonyd", "P", 1329641975, "tonyd", "P", 1329716344, "tonyd", "P", 1329716355, "tonyd", "P", 1329716492, "tonyd", "P", 1329716503, "tonyd", "P", 1329716557, "tonyd", "P", 1329716596, "tonyd", "P", 1329716932, "tonyd", "P", 1329719162, "tonyd", "P", 1329719176, "tonyd", "P", 1329719604, "tonyd", "P", 1329720070, "tonyd", "P", 1329720153, "tonyd", "P", 1329720317, "tonyd", "P", 1329720358, "tonyd", "P", 1329720394, "tonyd", "P", 1329720625, "tonyd", "P", 1329798470, "tonyd", "P", 1329799005, "tonyd", "P", 1329799061, "tonyd", "P", 1329799195, "tonyd", "P", 1329799253, "tonyd", "P", 1329799302, "tonyd", "P", 1329799328, "tonyd", "P", 1329799344, "tonyd", "P", 1329799510, "tonyd", "P", 1329799719, "tonyd", "P", 1329799727, "tonyd", "P", 1329800706, "tonyd", "P", 1329801013, "tonyd", "P", 1329801104, "tonyd", "P", 1329801246, "tonyd", "P", 1329801302, "tonyd", "P", 1329801382, "tonyd", "P", 1329801508, "tonyd", "P", 1329801579, "tonyd", "P", 1329801684, "tonyd", "P", 1329801774, "tonyd", "P", 1329801822, "tonyd", "P", 1329801851, "tonyd", "P", 1329801941, "tonyd", "P", 1329801972, "tonyd", "P", 1329802018, "tonyd", "P", 1329802040, "tonyd", "P", 1329802099, "tonyd", "P", 1329802116, "tonyd", "P", 1329805314, "tonyd", "P", 1329805376, "tonyd", "P", 1329805457, "tonyd", "P", 1329805481, "tonyd", "P", 1329805561, "tonyd", "P", 1329805592, "tonyd", "P", 1329806631, "tonyd", "P", 1329807312, "tonyd", "P", 1329895930, "tonyd", "P", 1329896335, "tonyd", "P", 1329896362, "tonyd", "P", 1329896408, "tonyd", "P", 1329896438, "tonyd", "P", 1329896486, "tonyd", "P", 1329896511, "tonyd", "P", 1329896549, "tonyd", "P", 1329896573, "tonyd", "P", 1329959190, "tonyd", "P", 1329959214, "tonyd", "P", 1329961007, "tonyd", "P", 1329961373, "tonyd", "P", 1330048376, "tonyd", "P", 1330048894, "tonyd", "P", 1330048930, "tonyd", "P", 1330166915, "tonyd", "P", 1330166960, "tonyd", "P", 1330167987, "tonyd", "P", 1330216652, "tonyd", "P", 1330216991, "tonyd", "P", 1330217103, "tonyd", "P", 1330217669, "tonyd", "P", 1330217917, "tonyd", "P", 1330218061, "tonyd", "P", 1330218075, "tonyd", "P", 1330218179, "tonyd", "P", 1330223542, "tonyd", "P", 1330223550, "tonyd", "P", 1330223555, "tonyd", "P", 1330224111, "tonyd", "P", 1330224172, "tonyd", "P", 1330224245, "tonyd", "P", 1330733408, "tonyd", "P", 1330733549, "tonyd", "P", 1330733569, "tonyd", "P", 1330733730, "tonyd", "P", 1330733784, "tonyd", "P", 1330733802, "tonyd", "P", 1330733846, "tonyd", "P", 1330734008, "tonyd", "P", 1330734046, "tonyd", "P", 1330734186, "tonyd", "P", 1330734244, "tonyd", "P", 1330734254, "tonyd", "P", 1330734386, "tonyd", "P", 1330735248, "tonyd", "P", 1330735281, "tonyd", "P", 1330735320, "tonyd", "P", 1330741439, "tonyd", "P", 1330741476, "tonyd", "P", 1330741591, "tonyd", "P", 1330741677, "tonyd", "P", 1330741689, "tonyd", "P", 1330743174, "tonyd", "P", 1330743192, "tonyd", "P", 1330743683, "tonyd", "P", 1330743746, "tonyd", "P", 1330744699, "tonyd", "P", 1330744843, "tonyd", "P", 1330745195, "tonyd", "P", 1330745215, "tonyd", "P", 1330745512, "tonyd", "P", 1330745660, "tonyd", "P", 1330745721, "tonyd", "P", 1330745779, "tonyd", "P", 1330745808, "tonyd", "P", 1330745833, "tonyd", "P", 1330745882, "tonyd", "P", 1330745895, "tonyd", "P", 1330745952, "tonyd", "P", 1330746837, "tonyd", "P", 1330747245, "tonyd", "P", 1330747272, "tonyd", "P", 1330747337, "tonyd", "P", 1330747452, "tonyd", "P", 1330747513, "tonyd", "P", 1330747662, "tonyd", "P", 1330747883, "tonyd", "P", 1330749024, "tonyd", "P", 1330749155, "tonyd", "P", 1330749466, "tonyd", "P", 1330750053, "tonyd", "P", 1330750084, "tonyd", "P", 1330750666, "tonyd", "P", 1330928473, "tonyd", "P", 1330928569, "tonyd", "P", 1330929415, "tonyd", "P", 1330929806, "tonyd", "P", 1330929826, "tonyd", "P", 1330929912, "tonyd", "P", 1330929978, "tonyd", "P", 1330930076, "tonyd", "P", 1331434650, "tonyd", "P", 1331434669, "tonyd", "P", 1331434938, "tonyd", "P", 1331435013, "tonyd", "P", 1331435074, "tonyd", "P", 1331435228, "tonyd", "P", 1331435304, "tonyd", "P", 1331435419, "tonyd", "P", 1331435519, "tonyd", "P", 1331435564, "tonyd", "P", 1331435654, "tonyd", "P", 1331435890, "tonyd", "P", 1331436122, "tonyd", "P", 1331436238, "tonyd", "P", 1331436290, "tonyd", "P", 1331874622, "tonyd", "P", 1331874816, "tonyd", "P", 1331874851, "tonyd", "P", 1331875307, "tonyd", "P", 1331875403, "tonyd", "P", 1331875539, "tonyd", "P", 1331875740, "tonyd", "P", 1331875906, "tonyd", "P", 1331875992, "tonyd", "P", 1331877200, "tonyd", "P", 1331877232, "tonyd", "P", 1331877239, "tonyd", "P", 1331877583, "tonyd", "P", 1331877723, "tonyd", "P", 1331877860, "tonyd", "P", 1331877878, "tonyd", "P", 1331877930, "tonyd", "P", 1331877985, "tonyd", "P", 1331878043, "tonyd", "P", 1331878169, "tonyd", "P", 1331878222, "tonyd", "P", 1331878274, "tonyd", "P", 1331880872, "tonyd", "P", 1331880928, "tonyd", "P", 1331881017, "tonyd", "P", 1332558583, "tonyd", "P", 1332558662, "tonyd", "P", 1332560167, "tonyd", "P", 1332560378, "tonyd", "P", 1332560665, "tonyd", "P", 1332560712, "tonyd", "P", 1332560756, "tonyd", "P", 1332560863, "tonyd", "P", 1332561100, "tonyd", "P", 1332561144, "tonyd", "P", 1332561388, "tonyd", "P", 1332561466, "tonyd", "P", 1332561662, "tonyd", "P", 1332561762, "tonyd", "P", 1332562042, "tonyd", "P", 1332562062, "tonyd", "P", 1332562087, "tonyd", "P", 1332562170, "tonyd", "P", 1332562216, "tonyd", "P", 1332562490, "tonyd", "P", 1332562507, "tonyd", "P", 1332565814, "tonyd", "P", 1332572288, "tonyd", "P", 1333168672, "tonyd", "P", 1333168765, "tonyd", "P", 1333168883, "tonyd", "P", 1333169165, "tonyd", "P", 1333676812, "tonyd", "P", 1333677055, "tonyd", "P", 1333678211, "tonyd", "P", 1337344148, "tonyd", "R", 1337345183, "tonyd", "P", 1337345227, "tonyd", "P", 1337345264, "tonyd", "P", 1337345642, "tonyd", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

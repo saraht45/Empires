@@ -1,0 +1,137 @@
+<object clone="/obj/properties" owner="sendnoodlez">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" actor="\$(actor)" item="\$(item)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+    \<title\>Custom Painting\</title\>
+    \<meta http-equiv="content-type" content="text/html; charset=UTF-8"/\>
+\</head\>
+   \<body\>
+      \$(this.xtra:header)
+      \<div id="main"\>
+        \<div id="textareafull"\>
+        \$[::popup_initialize();           
+            \$actor = Obj(\$actor);]
+            \$(this.html:paint)
+        \</div\>
+        \<span id="bottombox"\>
+          \<div id="footer"\>\\\&nbsp;\</div\>
+        \</span\>
+      \</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:paint">
+         X[S] \<zform actor="\$(actor)" item="\$(item)" paint="\$(action)" using="\$(using)" error="\$(error)" brief1="\$(brief1)" examine1="\$(examine1)"\>
+\$[\$item = Obj(\$item);                     
+    \$actor = Obj(\$actor);            
+    \$paint = \$paint;              
+    \$words = (Int(\$actor."skill:academic:art")+1) * 15;]
+\<input type="hidden" name="paint" value="\$(paint)"/\>
+\<input type="hidden" name="words" value="\$(words)"/\>
+\<input type="hidden" name="error" value="\$(error)"/\>
+\<table\>
+\{? \| \$(error) \| \<font color="red"\>\<b\>You have exceeded your allotted word limit by \$(error) words.\</b\>\</font\> \}
+\<tr\>
+        \<td colspan="3"\>\<font size="2"\>\<i\>You have \$[Str(Int(\$actor."skill:academic:art"))] levels of art. You are allowed \$(words) words to describe your painting.\</i\>\</font\>\</td\>
+\</tr\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td\>\<b\>Description:\</b\>\</td\>
+        \<td colspan="2"\>\$[Set(\$item, "trait:painting", "PAINTING_TEXT");   
+                          \$desc = UnSAM(ParseXML("\<describe-view view=\\"\$(item)\\" type=\\"examine\\"/\>"));   
+                          Set(\$item, "trait:painting", nil);   
+                          if(!contains(\$desc, "PAINTING_TEXT")) error("This item cannot be painted.");   
+                          return \$desc;]\</td\>
+\</tr\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td valign="top"\>\<b\>PAINTED_TEXT:\</b\>\</td\>
+        \<td colspan="2"\>\<textarea name="examine" style="height:350px; width:100%"\>\$(examine1)\</textarea\>\</td\>
+\</tr\>
+\<tr\>
+        \<td colspan="3" align="right"\>(Note: By clicking "Finish" you agree to the rules outlined below.) \<input type="submit" name="update" value="Finish" style="height:30px"/\>\</td\>
+\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>Rules:\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>1. Submissions can have magical/supernatural themes but cannot be magical/supernatural themselves (ie. a painting of a figure that moves around the item).\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>2. Vulgar/sexually explicit material is forbidden--if the content is not acceptable for a minor, do not submit it! When in doubt, contact staff.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>3. Avoid phrasing that forces the viewer to think or feel a certain way (ie 'this painting is so beautiful you can't help but cry').\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>4. Do not reference details of the item that do not actually exist.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>5. I understand if I violate these rules, access to this command will be revoked.\</font\>\</td\>\</tr\>
+\</table\>
+    \<action\>
+        \$["";              
+          \$counter = sizeof(explode(\$examine, " "));              
+          if(\$counter \< Int(\$words)) \{              
+              Call(\$this, "paint", \$design: \$examine, \$actor: \$actor, \$item: \$item);          
+              \$error = nil;          
+          \} else \{              
+              \$error = \$counter - Int(\$words);              
+          \}]
+        \{? \| \$(error) \| \<redirect propob="\$(this)" prop="index" actor="\$(actor)" action="\$(paint)" item="\$(item)" using="\$(using)" error="\$(error)" brief1="\$(brief)" examine1="\$(examine)"/\> \| \<redirect propob="\$(this)" prop="finish" actor="\$(actor)" action="\$(paint)" item="\$(item)" using="\$(using)" error="\$(error)" brief1="\$(brief)" examine1="\$(examine)"/\> \}
+    \</action\>
+\</zform\>
+      </Core:Property>
+      <Core:Property property="merry:lib:paint">
+         X[M] /* paint an item */    
+
+/* Emit because nobody likes a sneaky painter. */
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " paints " + Describe(\$item) + ".", \$actor);           
+EmitTo(\$actor, "You paint " + Describe(\$item) +  "."); 
+
+  
+/* set the painting */         
+\$item."trait:painting" = \$design;  
+\$text = "! PAINTING ! " + Describe(\$item) + ":\<" + Str(\$item) + "\> -\> " + \$design;  
+assist::dofileassist(\$data: Obj("Data:DB:assist:AssistGeneralDB"), \$char: Str(\$actor), \$queue: "custom", \$assisttext: \$text, \$log: "[TAS]");
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] if(\$dat == nil) \{ 
+    error("page reached without a udat"); 
+\} 
+if(\$name == nil) \{ 
+    error("page reached without a name"); 
+\} 
+if(\$actor == nil) \{ 
+    error("page reached without an actor"); 
+\} 
+if(!Obj(\$actor)) \{ 
+    error("page reached without a valid actor"); 
+\} 
+\$actor = Obj(\$actor); 
+ 
+if(!Obj(\$item)) \{ 
+    error("page reached without a valid item"); 
+\} 
+\$item = Obj(\$item); 
+ 
+if(\$item."trait:painting") \{ 
+    error("item has already been painted"); 
+\} 
+ 
+if(\$item."base:environment" != \$actor) \{ 
+    error("you  must be holding the item"); 
+\} 
+ 
+/* Check the player isn't trying to access someone else's body */ 
+/* Check if the players roster of characters */ 
+\$bodies = Udat::query_bodies_in_roster(\$user: \$name); 
+ 
+if(!member(\$actor, \$bodies)) \{ 
+    error(dump_value(\$actor)+" body not found in "+dump_value(\$name)+" character roster"); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1502934130, "jominey", "E", 1502934270, "jominey", "E", 1502934474, "jominey", "E", 1502935277, "jominey", "E", 1502935379, "jominey", "E", 1502935482, "jominey", "E", 1502936770, "jominey", "E", 1502936785, "jominey", "E", 1503019225, "jominey", "R", 1503100205, "jominey", "E", 1503100373, "jominey", "E", 1504058157, "jominey", "E", 1570294679, "jominey", "R", 1572303374, "jominey", "E", 1572303548, "jominey", "E", 1572304427, "jominey", "E", 1585355170, "sendnoodlez", "E", 1585355184, "sendnoodlez", "E", 1642027195, "sendnoodlez", "E", 1642027226, "sendnoodlez", "E", 1642027340, "sendnoodlez", "E", 1642027351, "sendnoodlez", "E", 1642027453, "sendnoodlez", "E", 1642027769, "sendnoodlez", "E", 1642027827, "sendnoodlez", "E", 1642028092, "sendnoodlez", "E", 1642028808, "sendnoodlez", "E", 1642029140, "sendnoodlez", "E", 1642029380, "sendnoodlez", "E", 1642029649, "sendnoodlez", "E", 1642029833, "sendnoodlez", "E", 1642030175, "sendnoodlez", "E", 1642044469, "sendnoodlez", "E", 1642044658, "sendnoodlez", "E", 1643222477, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

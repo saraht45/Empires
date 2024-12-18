@@ -1,0 +1,210 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:start">
+         X[M] /* Set the default stance */
+\$this."base:stance" = Int(\$this."nip:trait:mounting:mount-stance");
+
+/* This script fires when mount is purchased through npc */
+\$this.owner = \$actor;
+
+/* Add owner's name to mount for ease of targeting */
+Set(\$this, "details:default:adjectives:" + Str(\$actor."skotos:charname"), TRUE);
+
+/* This code handles renting of mount */
+if(\$this."trait:rent:time") \{
+    /* Add renter to master log with time stamp */
+    \$rentTime = \$this."trait:rent:time"; /* Time (in seconds) that renter will be in possession of mount */
+
+    \$this."trait:rent:location" = \$this."base:environment";
+
+    \$delay(\$rentTime, FALSE, "e0d9");
+
+    \$riders = \$this."npc:mounted";
+    \$loc = \$this."trait:rent:location";
+    if(\$riders \&\& sizeof(\$riders)) \{
+        if(\$this."nip:trait:mounting:mount-stable-type" == "dock") \{
+            EmitIn(\$this."base:environment", TAG("A group of irritated sailors show up to haul away " + Describe(\$this) + ", taking " + Describe(\$riders) + " with them.", "social:third"));
+            EmitIn(\$loc, TAG("A group of irritated sailors arrive, hauling " + Describe(\$this) + " and " + Describe(\$riders) + " with them.", "social:third"));
+        \} else \{
+            EmitIn(\$this."base:environment", TAG("A group of irritated workers show up to haul away " + Describe(\$this) + ".", "social:third"));
+        \}
+
+        for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+            if(\$this."nip:trait:mounting:mount-stable-type" == "dock") \{
+                /* Move boat and riders to home base */
+                if(\$this."base:environment" != \$loc) \{
+                    Set(\$this, "base:environment", \$loc);
+                    Set(\$riders[\$i], "base:environment", \$loc);
+                    EmitTo(\$riders[\$i], UnSAM(ParseXML("\<describe-view view=\\"\$(" + Str(\$this."base:environment") + ")\\" type=\\"glance\\" looker=\\"\$(" + Str(\$riders[\$i]) + ")\\"/\>")));
+                \}
+            \} 
+
+            mount::remove_rider(\$mount: \$this, \$rider: \$riders[\$i]);
+        \}
+    \} else \{
+        if(\$this."nip:trait:mounting:mount-stable-type" == "dock") \{
+            EmitIn(\$this."base:environment", TAG("A group of irritated sailors show up to haul away " + Describe(\$this) + ".", "social:third"));
+        \} else \{
+            EmitIn(\$this."base:environment", TAG("A group of irritated workers show up to haul away " + Describe(\$this) + ".", "social:third"));
+        \}
+    \}
+
+    /* Collect late fee from owner */
+    if(\$this.owner) \{
+         \$owner = \$this.owner;
+         \$owner."trait:money" = Int(\$owner."trait:money") - Int(\$this."trait:rent:penalty");
+    \}
+
+    Slay(\$this);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:ask-dob%stabling">
+         X[M] /* What kind of stable is this? */
+\$stable = Get(\$this, "export:nip:trait:mounting:mount-stable-type");
+
+if(!\$stable) return TRUE;
+
+if(\$stable == "dock") \{
+    \$type = "ships";
+    \$desc = "docked";
+    \$stableboy = "dock master";
+\} else \{
+    \$type = "mounts";
+    \$desc = "stabled";
+    \$stableboy = "stable master";
+\}
+
+if(!\$(about:words) \&\& !\$(for:words)) \{
+    /* Get a list of mounts stabled here */
+    \$roster = Get(\$actor, "stabled:" + \$stable);
+
+    \$msg = "You have the following " + \$type + " " + \$desc + " here:\<br/\>";
+    if(!\$roster \|\| !sizeof(\$roster)) \{
+        \$msg += "None";
+    \} else \{
+        for(\$i = 0; \$i \< sizeof(\$roster); \$i++) \{
+            \$msg += "\<acmd tag=\\"command\\" cmd=\\"ask " + \$stableboy+ " for " + Str(\$roster[\$i]."trait:name") + "\\"\>" + Describe(\$roster[\$i]) + " named " + \$roster[\$i]."trait:name" + "\</acmd\>\<br/\>";
+        \}
+    \}
+
+    EmitTo(\$actor, UnSAM(ParseXML(\$msg)));
+\} else \{
+    \$word = \$(for:words);
+    \$roster = (\{ \});
+    \$roster = Get(\$actor, "stabled:" + \$stable);
+
+    \$found = (\{ \});
+    for(\$i = 0; \$i \< sizeof(\$roster); \$i++) \{
+        if(lower_case(implode(\$word, " ")) == lower_case(Str(Describe(\$roster[\$i]) + " named " + \$roster[\$i]."trait:name")) \|\| lower_case(implode(\$word, " ")) == lower_case(\$roster[\$i]."trait:name")) \{
+            \$found += (\{ \$roster[\$i] \});
+        \}
+    \}
+
+    if(!sizeof(\$found)) \{
+        EmitTo(\$actor, "You have no " + \$type + " here matching that description.");
+        return FALSE;
+    \}
+
+    if(sizeof(\$found) \> 1) \{
+        EmitTo(\$actor, "Multiple " + \$type + " match that description. Please be more specific.");
+        return FALSE;
+    \}
+
+    if(\$stable == "dock") \{
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " has a few words with " + Describe(\$this) + " who immediately barks commands at nearby sailors. Several moments pass before they return with " + Describe(\$found[0]) + ".", "social:third"));
+    \} else \{
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " has a few words with " + Describe(\$this) + " who nods and eagerly hurries inside. Several moments pass before " + "he" + " returns with " + Describe(\$found[0]) + " in tow.", "social:third"));
+    \}
+
+    \$found[0]."base:environment" = \$actor."base:environment";
+    Set(\$actor, "virtualhome:" + Str(\$found[0]), nil);
+    Set(\$actor, "stabled:" + \$stable, \$roster - \$found);
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:return-dob%stabling">
+         X[M] if(!\$this."npc:controlledby" \|\| \$this."npc:controlledby" != \$actor) \{
+    EmitTo(\$actor, "Only the controller can return " + Describe(\$this) + ".");
+    return FALSE;
+\}
+
+\$stable = Str(\$this."nip:trait:mounting:mount-stable-type");
+
+if(\$this."trait:rent:location") \{
+    if(\$this."base:environment" != \$this."trait:rent:location") \{
+        EmitTo(\$actor, "You must return " + Describe(\$this) + " to a " + \$stable + ".");
+        return FALSE;
+    \}
+
+    \$riders = \$this."npc:mounted";
+
+    EmitTo(\$actor, TAG("You return " + Describe(\$this) + " to the " + \$stable + ".", "social:first"));
+    EmitIn(\$this."base:environment", TAG(Describe(\$actor) + " returns " + Describe(\$this) + " to the " + \$stable + ".", "social:third"), \$actor);
+
+    for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+        mount::remove_rider(\$mount: \$this, \$rider: \$riders[\$i]);
+    \}
+
+    \$inventory = \$this."base:inventory";
+    for(\$i = 0; \$i \< sizeof(\$inventory); \$i++) \{
+        \$inventory[\$i]."base:environment" = \$this."base:environment";
+    \}
+
+    Slay(\$this);
+
+    return FALSE;
+\} else if(\$this."npc:controlledby" == \$actor \&\& !\$this."trait:rent:location") \{
+    /* Is a stable boy nearby? */
+    \$inv = \$this."base:environment"."base:inventory";
+    \$found = 0;
+    for(\$i = 0; \$i \< sizeof(\$inv); \$i++) \{
+        if(\$this."nip:trait:mounting:mount-stable-type" == \$inv[\$i]."nip:trait:mounting:mount-stable-type") \{
+            \$found = 1;
+        \}
+    \}
+
+    /* This is a stable room. Return mount to owner's stable, even if someone else is returning it. */
+    if(!\$this.owner) \{
+        EmitTo(\$actor, TAG("[OOC: No owner has been specified. Please contact staff with this error.]", "imp"));
+        return FALSE;
+    \}
+
+    \$owner = \$this.owner;
+
+    if(!\$this."trait:name") \{
+        EmitTo(\$actor, TAG("[OOC: Please name your mount before stabling it.]", "imp"));
+        return FALSE;
+    \}
+
+    if(\$this.reins) \$this.reins.mount = nil;
+    \$this.reins = nil;
+
+    \$riders = \$this."npc:mounted";
+    for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+        mount::remove_rider(\$rider: \$riders[\$i], \$mount: \$this);
+    \}
+
+    \$stable = \$this."nip:trait:mounting:mount-stable-type";
+
+    \$roster = (\{ \});
+    if(Get(\$owner, "stabled:" + \$stable)) \$roster = Get(\$owner, "stabled:" + \$stable);
+    \$roster += (\{ \$this \});
+    Set(\$owner, "stabled:" + \$stable, \$roster);
+    Set(\$owner, "virtualhome:" + Str(\$this), \$this);
+    \$this."base:environment" = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1510177476, "jominey", "R", 1510177893, "jominey", "E", 1510177921, "jominey", "E", 1510177925, "jominey", "E", 1510178970, "jominey", "E", 1510180083, "jominey", "E", 1510181080, "jominey", "E", 1510181105, "jominey", "E", 1510182508, "jominey", "E", 1510182859, "jominey", "E", 1510184011, "jominey", "E", 1510184091, "jominey", "E", 1510184691, "jominey", "E", 1510184698, "jominey", "E", 1510184702, "jominey", "E", 1510185430, "jominey", "E", 1510185537, "jominey", "E", 1510185864, "jominey", "E", 1510185898, "jominey", "E", 1510185933, "jominey", "E", 1510185958, "jominey", "E", 1510185974, "jominey", "E", 1510185988, "jominey", "E", 1510186010, "jominey", "E", 1510186027, "jominey", "E", 1510186054, "jominey", "E", 1510186164, "jominey", "E", 1510186273, "jominey", "E", 1510186424, "jominey", "E", 1510186949, "jominey", "E", 1510187016, "jominey", "E", 1510187031, "jominey", "E", 1510187035, "jominey", "E", 1510413525, "jominey", "E", 1510413599, "jominey", "E", 1510414219, "jominey", "P", 1510414253, "jominey", "P", 1510414278, "jominey", "P", 1510414356, "jominey", "P", 1510414608, "jominey", "P", 1510522515, "jominey", "P", 1510716283, "jominey", "P", 1510716609, "jominey", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

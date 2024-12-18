@@ -1,0 +1,83 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:react-pre:ask-dob%ask-about">
+         X[M] /* ([ "topic":([ "keywords":(\{ \}), "prop":""  ]) ]) */
+
+mapping topicsMap, topic;
+mixed* topics, keywords, temp;
+string input, prop;
+int i, j;
+
+topicsMap = ([ ]);
+ 
+if(\$this."topics:all") \{
+    topicsMap = \$this."topics:all";
+\}
+
+topics = map_indices(topicsMap);
+
+temp = (\{ \});
+if(!\$(about:words)) \{
+    for(i = 0; i \< sizeof(topics); i++) \{
+        topic = topicsMap[topics[i]];
+
+        if(topic["loyalty"]) \{
+            if(topic["loyalty"] == Str(\$actor."loyalty:group")) \{
+                temp += (\{ topics[i] \});
+            \}
+        \} else \{
+            temp += (\{ topics[i] \});
+        \}
+    \}
+
+    if(sizeof(temp)) \{
+        EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " can tell you about: " + implode(temp, ", ") + ".", "imp"));
+    \}
+
+    if(!\$actor."trait:tips-disabled") \{
+        EmitTo(\$actor, TAG("[OOC TIP: ask NPC about TOPIC]", "imp"));
+    \}
+
+    return TRUE;
+\}
+
+input = implode(\$(about:words), " ");
+
+for(i = 0; i \< sizeof(topics); i++) \{
+    topic = topicsMap[topics[i]];
+    keywords = topic["keywords"];
+
+    for(j = 0; j \< sizeof(keywords); j++) \{
+        if(keywords[j] == input) \{
+            if(!topic["loyalty"] \|\| (topic["loyalty"] \&\& topic["loyalty"] == Str(\$actor."loyalty:group"))) \{
+                prop = topic["prop"];
+
+                if(FindMerry(\$this, "lib", prop)) \{
+                    Call(\$this, prop);
+                    return FALSE;
+                \} else \{
+                    if(Get(\$this, prop)) \{
+                        EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " tells you, \\"" + Get(\$this, prop) + "\\"", "social:second"));
+                        return FALSE;
+                    \} else \{
+                        EmitTo(\$actor, TAG("[ERROR: No data found for topic '" + topics[i] + "']", "imp"));
+                        return FALSE;
+                    \}
+                \}
+            \}
+        \}
+    \}
+\}
+
+EmitTo(\$actor, TAG(capitalize(Describe(\$this)) + " tells you, \\"I don't know anything about that.\\"", "social:second"));
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1541370289, "jominey", "E", 1541370347, "jominey", "E", 1541370373, "jominey", "E", 1541370384, "jominey", "E", 1541370546, "jominey", "E", 1541370549, "jominey", "E", 1541372308, "jominey", "E", 1541372401, "jominey", "E", 1541372453, "jominey", "E", 1541372465, "jominey", "E", 1541372528, "jominey", "E", 1541372577, "jominey", "E", 1541372606, "jominey", "E", 1541375930, "jominey", "E", 1541375961, "jominey", "E", 1541376054, "jominey", "E", 1541460992, "jominey", "E", 1541461342, "jominey", "E", 1541461365, "jominey", "E", 1541461626, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

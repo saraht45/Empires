@@ -1,0 +1,204 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="disguise:namefix">
+         (\{ "trait:superbrief", "trait:playercapname", "skotos:playercapname" \})
+      </Core:Property>
+      <Core:Property property="merry:lib:disguise_post">
+         X[M] /* disguise code end -
+ * disguise a character via any item.
+ * requirements in item: trait:brief (string "mask"),
+ * disguise:appearance (mapping (["eyes":"shadowed"]) ),
+ * and optional disguise:show (string "appearance:furcolor"),
+ * a pointer to this script in a react-post:verb (merry:react-post:wear) including a
+ * return Call(\$\{Ironclaw:Lib:Characters:Disguises\}, "disguise_post", \$disguise:\$this);
+ */
+
+/* ensure \$disguise is an object */
+\$disguise = Obj(\$disguise);
+if(!\$disguise) return TRUE;
+
+/* EmitTo(\$actor, "Disguise is "+dump_value(\$disguise)); */
+
+/* obtain properties used in new descriptions
+ * Example brief = a type itemed show animal = a butterfly masked brown fox
+ * Example look = A type itemed show animal. = A shadowy cloaked brawny bear.
+ * Example examine = A show animal disguised via a type item = A short cat disguised via a patchwork hood.
+ */
+
+\$item = \$disguise."trait:brief";
+if(\$disguise."trait:type") \$type = \$disguise."trait:type";
+if(\$disguise."disguise:show") \{
+  \$showtmp = \$disguise."disguise:show";
+  \$show = Get(\$actor, \$showtmp);
+\}
+\$animal = \$actor."trait:sex";
+/* exceptions for animal types */
+if(\$animal == "elephant" \|\| \$animal == "rhinoceros") \$animal = "pachyderm";
+if(\$animal == "lion" \|\| \$animal == "lioness") \$animal = "cat";
+
+/* build descriptions
+ * brief first
+ */
+ 
+if(\$disguise_brief) \{
+  \$b = \$disguise_brief;
+\} else \{
+  if(\$type) \{ \$b = \$type+" "+\$item+"ed"; \} else \{ \$b = \$item+"ed"; \}
+  while(strlen(\$b)\>1 \&\& \$b[0..] == " ") \$b = \$b[1..];
+  if(member(\$b[0..0], (\{"a", "e", "i", "o", "u"\}))) \{ \$b = "an "+\$b; \} else \{ \$b = "a "+\$b; \}
+  if(\$show) \$b += " "+\$show;
+  \$b += " "+\$animal;
+\}
+
+/* base look on brief */
+if(\$disguise_look) \{
+  \$l = \$disguise_look;
+\} else \{
+  \$l = capitalize(\$b)+".";
+\}
+/* build examine */
+if(\$disguise_examine) \{
+  \$e = \$disguise_examine;
+  if(\$show) \$e = \$show+" "+\$e;
+\} else \{
+  if(\$show) \{ \$e = \$show+" "+\$animal; \} else \{\$e = \$animal; \}
+  while(strlen(\$e)\>1 \&\& \$e[0..] == " ") \$e = \$e[1..];
+  if(member(\$e[0..0], (\{"a", "e", "i", "o", "u"\}))) \{ \$e = "An "+\$e; \} else \{ \$e = "A "+\$e; \}
+  \$e += " disguised via ";
+  if(\$type) \{ \$tmp = \$type+" "+\$item+"."; \} else \{ \$tmp = \$item+"."; \}
+  while(strlen(\$tmp)\>1 \&\& \$tmp[0..] == " ") \$tmp = \$tmp[1..];
+  if(member(\$tmp[0..0], (\{"a", "e", "i", "o", "u"\}))) \{ \$tmp = "an "+\$tmp; \} else \{ \$tmp = "a "+\$tmp; \}
+  \$e += \$tmp;
+  \$tmp = nil;
+\}
+/* set the brief, look, and examine
+ * using a map to store \$id for each
+ */
+
+\$removal_array = (\{ \});
+
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "disguised", \$value: TRUE);
+\$removal_array += (\{ (\{ \$id, "disguised" \}) \});
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:superbrief", \$value: \$b);
+\$removal_array += (\{ (\{ \$id, "trait:superbrief" \}) \});
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:override:look", \$value: \$l);
+\$removal_array += (\{ (\{ \$id, "trait:override:look" \}) \});
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:override:examine", \$value: \$e);
+\$removal_array += (\{ (\{ \$id, "trait:override:examine" \}) \});
+/* remove title */
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: "trait:title", \$value: nil);
+\$removal_array += (\{ (\{ \$id, "trait:title" \}) \});
+
+/* grab disguise:appearance mapping from object */
+\$map2 = Get(\$disguise, "disguise:appearance");
+/* get the indices from map2 */
+\$m2 = \$map2 ? map_indices(\$map2) : Arr(nil);
+/* switch out values for each property in indices */
+for(\$z=0;\$z\<sizeof(\$m2);\$z++) \{
+  \$prop = \$m2[\$z]; \$value = \$map2[\$prop];
+  \$id = ironclaw::set_prop(\$obj: \$actor, \$prop: \$prop, \$value: \$value);
+  \$removal_array += (\{ (\{ \$id, \$prop \}) \});
+\}
+
+/* remove real name as an sname 
+\$nam = Get(\$actor, "skotos:charname");
+\$prop = "details:default:snames:"+\$nam;
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: \$prop, \$value: 0);
+\$removal_array += (\{ (\{ \$id, \$prop \}) \}); */
+
+/* set disguise value for the sake of the 'who' verb */
+\$prop = "disguise";
+\$id = ironclaw::set_prop(\$obj: \$actor, \$prop: \$prop, \$value: 1);
+\$removal_array += (\{ (\{ \$id, \$prop \}) \});
+
+/* gather adjectives to be added */
+/* delay momentarily to allow the adjectives to be set */
+\$delay(2, TRUE, "8510");
+\$adjs = (\{ "disguised", \$item+"ed" \});
+/* I think the bug was here for when no type existed and we tried to add it to the array
+ * removed \$type from line above and added check here */
+if(\$type) \$adjs += (\{ \$type \});
+/* in case \$show is missing, we do the same check here instead of higher up */
+if(\$show) \$adjs += (\{ \$show \});
+/* EmitTo(\$actor, "Adjs: "+dump_value(\$adjs)); */
+for(\$y=0;\$y\<sizeof(\$adjs);\$y++) \{
+  \$prop = "details:default:adjective:"+\$adjs[\$y]+":local";
+/*  EmitTo(\$actor, "Adjective: "+dump_value(\$prop));
+  EmitTo(\$actor, dump_value(\$actor."details:default:adjectives:local")); */
+  \$id = ironclaw::set_prop(\$obj: NRefOb(\$actor), \$prop: \$prop, \$value: 1);
+/* commenting out the below line as not every mask is a butterfly and we fixed \$type above
+ * NRefOb(\$actor)."details:default:adjective:butterfly" = TRUE; */
+/*  EmitTo(\$actor, dump_value(\$actor."details:default:adjectives:local")); */
+  \$removal_array += (\{ (\{ \$id, \$prop \}) \});
+\}
+
+/* Hide requested details */
+if(\$disguise."disguise:details") \{
+    \$details = Get(\$disguise, "disguise:details");
+    for(\$z = 0; \$z \< sizeof(\$details); \$z++) \{
+        Set(\$actor, "details:" + \$details[\$z] + ":hidden", TRUE);
+    \}
+\}
+
+/* save new map in object */
+\$disguise."disguise:id:array" = \$removal_array;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:disguise_pre">
+         X[M] /* disguise code start -   
+ * disguise a character via any item.   
+ * requirements in item: trait:brief (string "mask"),   
+ * a pointer to this script in a react-pre:verb (merry:react-pre:wear) including a   
+ * return Call(\$\{Ironclaw:Lib:Characters:Disguises\}, "disguise_pre", \$disguise:\$this);   
+ */   
+   
+/* repair possible lost chatter names */   
+\$names = Get(\$\{Ironclaw:Lib:Characters:Disguises\}, "disguise:namefix");   
+for(\$i=0;\$i\<sizeof(\$names);\$i++) \{   
+  if(!Get(\$actor, \$names[\$i])) Set(\$actor, \$names[\$i], capitalize(Get(\$actor, "skotos:charname")));   
+\}   
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:disguise_remove">
+         X[M] /* disguise removal code -
+ * remove the disguise from a character via the original item
+ * requirements in item: disguise:id:map (mapping ([ "id1":(\{\$id, "property" \}) ])
+ * a pointer to this script in a react-pre:verb (merry:react-pre:unwear) including a
+ * return Call(\$\{Ironclaw:Lib:Characters:Disguises\}, "disguise_remove", \$disguise:\$this);
+ */
+
+/* ensure \$disguise is an object */
+
+\$disguise = Obj(\$disguise);
+if(!\$disguise) return TRUE;
+
+
+/* return properties to original state */
+\$removal_array = Arr(\$disguise."disguise:id:array");
+for(\$i=0;\$i\<sizeof(\$removal_array);\$i++) \{
+
+  \$id = \$removal_array[\$i][0];
+  \$prop = \$removal_array[\$i][1];
+  ironclaw::unset_prop(\$obj: \$actor, \$prop: \$prop, \$id: \$id);
+\}
+
+/* Hide requested details */
+if(\$disguise."disguise:details") \{
+    \$details = Get(\$disguise, "disguise:details");
+    for(\$z = 0; \$z \< sizeof(\$details); \$z++) \{
+        Set(\$actor, "details:" + \$details[\$z] + ":hidden", FALSE);
+    \}
+\}
+
+\$disguise."disguise:id:array" = nil;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1308343544, "tunk_bodin", "X", 1308343586, "tunk_bodin", "X", 1308343889, "tunk_bodin", "X", 1308343962, "tunk_bodin", "X", 1308345787, "tunk_bodin", "X", 1308380274, "tonyd", "P", 1308380349, "tonyd", "P", 1308380720, "tonyd", "P", 1308509650, "tunk_bodin", "X", 1308509742, "tunk_bodin", "X", 1308511180, "tunk_bodin", "X", 1368346419, "tonyd", "P", 1368346465, "tonyd", "P", 1368346519, "tonyd", "P", 1368348708, "tonyd", "P", 1435783201, "jominey", "E", 1435783232, "jominey", "E", 1539894925, "jominey", "E", 1539894955, "jominey", "E", 1539894991, "jominey", "E", 1547007253, "jominey", "E", 1547007287, "jominey", "E", 1547008700, "jominey", "E", 1572188120, "sendnoodlez", "E", 1624231614, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

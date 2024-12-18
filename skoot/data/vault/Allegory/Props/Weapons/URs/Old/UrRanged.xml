@@ -1,0 +1,226 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Weapons:URs:Updated:UrWeapon)"/>
+    <Base:Bulk immobile="false" mass="0.5" density="5"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="projectile" prime="false" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames/>
+          <Base:PNames/>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             <describe look="brief" what="$(this)" nonposs="1" detail="default"/>'s loaded $(this.trait:ammotype)
+          </Base:Description>
+          <Base:Description type="examine">
+             <describe-view type="examine" view="$(this.weapon:ammo)" nonposs="1"/>
+          </Base:Description>
+          <Base:Description type="look">
+             <describe-view type="look" view="$(this.weapon:ammo)" nonposs="1"/>
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:Covered value="back"/>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="backup:export:combat:descriptions:attack:hit">
+         (\{ (\{ "You shoot your \$(weapon) at \<describe what='\$(target)'/\>", "\<describe what='\$(attacker)'/\> \$adverb shoots \$(attacker.base:possessive) \$(weapon) at \<describe what='\$(target)' looker='\$(target)'/\>", "\<describe what='\$(attacker)'/\> \$adverb shoots \$(attacker.base:possessive) \$(weapon) at \<describe what='\$(target)'/\>" \}) \})
+      </Core:Property>
+      <Core:Property property="bak:export:weapon:bonus:attack">
+         1
+      </Core:Property>
+      <Core:Property property="bak:export:weapon:bonus:damage">
+         1
+      </Core:Property>
+      <Core:Property property="bak:export:weapon:parry">
+         0
+      </Core:Property>
+      <Core:Property property="export:combat:descriptions:attack:hit">
+         (\{ (\{ "You \$adverb shoot your \$(weapon) at \<describe what='\$(target)'/\>", "\<describe what='\$(attacker)'/\> \$adverb shoots \$(attacker.base:possessive) \$(weapon) at \<describe what='\$(target)' looker='\$(target)'/\>", "\<describe what='\$(attacker)'/\> \$adverb shoots \$(attacker.base:possessive) \$(weapon) at \<describe what='\$(target)'/\>" \}) \})
+      </Core:Property>
+      <Core:Property property="export:combat:descriptions:attack:missed">
+         (\{ (\{ "You \{\{try\|fail\} to \$adverb shoot\|\{\$adverb shoot at, but \|\}miss\} \<describe what='\$(target)'/\>", "\<describe what='\$(attacker)'/\> \{\{tries\|fails\} to \$adverb shoot\|miss\} \<describe what='\$(target)' looker='\$(target)'/\>", "\<describe what='\$(attacker)'/\> \{\{\{tries\|fails\} to \$adverb shoot\|misses\} \<describe what='\$(target)'/\>\|shoots at \<describe what='\$(target)'/\>, but misses\}" \}) \})
+      </Core:Property>
+      <Core:Property property="export:combat:weapon:size">
+         2
+      </Core:Property>
+      <Core:Property property="export:weapon:attribute">
+         "agility"
+      </Core:Property>
+      <Core:Property property="export:weapon:skill">
+         "ranged"
+      </Core:Property>
+      <Core:Property property="export:weapon:speed">
+         75
+      </Core:Property>
+      <Core:Property property="export:weapon:woundtype">
+         (\{ "puncture", "punctures", "punctured" \})
+      </Core:Property>
+      <Core:Property property="merry:act-pre:attack%ranged">
+         X[M] int l;
+object env;
+
+\$bow = \$actor."base:combat:weapon";
+
+if(!\$bow) \{
+    return TRUE;
+\}
+
+if(FindMerry(\$bow, "lib", "checkammo")) \{
+    if(!Call(\$bow, "checkammo", \$bow: \$bow)) \{
+        EmitTo(\$actor, "" + Describe(\$bow, nil, \$actor) + " is not loaded.");
+        return FALSE;
+    \}
+\}
+
+if(\$actor."combat:actions:current" == 0) \{
+    EmitTo( \$actor, "You don't have enough actions remaining. An attack costs 25 actions. Type @cstat to see your combat details.");
+    Act(\$actor, "combat_no_actions");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:attack%ranged">
+         X[M] \$projectile = \$bow."weapon:ammo";
+Slay(\$projectile);
+\$bow."weapon:ammo" = nil;
+
+\$ammo = Str(\$bow."trait:ammotype");
+Set(\$bow, "details:projectile:sname:" + \$ammo, FALSE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:checkammo">
+         X[M] if(!\$bow."weapon:ammo") \{
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:load-dob">
+         X[M] if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + ".");
+    return FALSE;
+\}
+
+\$this."weapon:ammo" = \$projectile;
+\$projectile."base:environment" = \$\{Ironclaw:Staff:Death:Sandbox:OOCStorage\};
+
+\$ammo = Str(\$this."trait:ammotype");
+Set(\$this, "details:projectile:sname:" + \$ammo, TRUE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:unload-dob">
+         X[M] \$projectile = \$this."weapon:ammo";
+\$this."weapon:ammo" = nil;
+\$projectile."base:environment" = \$actor;
+
+\$ammo = Str(\$this."trait:ammotype");
+Set(\$this, "details:projectile:sname:" + \$ammo, FALSE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:unwield%ranged">
+         X[M] \$actor."merry:inherit:act-pre:attack%ranged" = nil;
+\$actor."merry:inherit:act:attack%ranged" = nil;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:wield%ranged">
+         X[M] \$actor."merry:inherit:act-pre:attack%ranged" = \$\{Allegory:Props:Weapons:URs:UrRanged\};
+\$actor."merry:inherit:act:attack%ranged" = \$\{Allegory:Props:Weapons:URs:UrRanged\};
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:load-dob">
+         X[M] if(!\$using) \{
+    EmitTo(\$actor, "What did you want to load " + Describe(\$this, nil, \$actor) + " with?");
+    return FALSE;
+\}
+
+if(!sizeof(\$using)) \{
+    EmitTo(\$actor, "What did you want to load " + Describe(\$this, nil, \$actor) + " with?");
+    return FALSE;
+\}
+
+\$ammo = Str(\$this."trait:ammotype");
+
+if(\$this."weapon:ammo") \{
+    EmitTo(\$actor, Describe(\$this) + " is already loaded with " + common::aan(\$what: \$ammo) + ".");
+    return FALSE;
+\}
+
+if(sizeof(\$using) \> 1) \{
+    EmitTo(\$actor, "You can only load " + Describe(\$this, nil, \$actor) + " with one " + \$ammo + " at a time.");
+    return FALSE;
+\}
+
+\$projectile = NRefOb(\$using[0]);
+
+if(\$projectile."trait:objecttype" != \$ammo) \{
+    EmitTo(\$actor, "You can only load " + Describe(\$this, nil, \$actor) + " with " + \$ammo + "s.");
+    return FALSE;
+\}
+
+if (!Call(\$\{Shared:Systems:Combat:ABC:Lib\}, "action-cost", \$victim: \$actor, \$cost: 25)) \{
+    EmitTo( \$actor, "You don't have enough actions remaining to reload "+Describe(\$this, nil, \$actor)+". Reloading a firearm costs 25 actions. Type @cstat to see your combat details.");
+    Act(\$actor, "combat_no_actions");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unload-dob">
+         X[M] if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + ".");
+    return FALSE;
+\}
+
+if(!\$this."weapon:ammo") \{
+    EmitTo(\$actor, Describe(\$this) + " is not loaded.");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1567898225, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

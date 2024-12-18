@@ -1,0 +1,100 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="!chatban" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="true" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] if(!\$dob \|\| !sizeof(\$dob)) \{
+    EmitTo(\$actor, "This command bans or unbans an account from using any form of OOC chatlines (@chat, @wb, @ooc, and @msg)");
+    EmitTo(\$actor, "SYNTAX: !chatban \<player\>");
+    return FALSE;
+\}
+
+\$player = NRefOb(\$dob[0]);
+if(!\$player."skotos:creator") \{
+    EmitTo(\$actor, "You can only use this command on PCs who were created with chargen.");
+    return FALSE;
+\}
+
+\$account = \$player."skotos:creator";
+
+\$wb = \$\{Ironclaw:Neoct:Verbs:OOC:W:@wb\};
+\$ooc = \$\{Ironclaw:Neoct:Verbs:OOC:O:@ooc\};
+\$msg = \$\{Ironclaw:Neoct:Verbs:OOC:M:@msg\};
+\$chat = \$\{Ironclaw:Neoct:Verbs:OOC:C:@chat\};
+
+\$wbbanlist = (\{ \});
+if(\$wb.banlist) \$wbbanlist = \$wb.banlist;
+
+\$oocbanlist = (\{ \});
+if(\$ooc.banlist) \$oocbanlist = \$ooc.banlist;
+
+\$msgbanlist = (\{ \});
+if(\$msg.banlist) \$msgbanlist = \$msg.banlist;
+
+\$chatbanlist = (\{ \});
+if(\$chat.banlist) \$chatbanlist = \$chat.banlist;
+
+if(member(\$account, \$wbbanlist) \|\|
+   member(\$account, \$oocbanlist) \|\|
+   member(\$account, \$msgbanlist) \|\|
+   member(\$account, \$chatbanlist)) \{
+
+       EmitTo(\$actor, "Unbanning account " + Str(\$name) + " from using OOC chatlines.");
+
+       \$wbbanlist -= (\{ \$account \});
+       \$player."skotos:ignore-wb" = 0;
+
+       \$oocbanlist -= (\{ \$account \});
+       \$player."skotos:ignore-ooc" = 0;
+
+       \$msgbanlist -= (\{ \$account \});
+       \$player."skotos:ignore-msg" = 0;
+
+       \$chatbanlist -= (\{ \$account \});
+       \$bodies = udat::query_bodies_in_roster(\$user: \$account);
+
+       \$listeners = Get(\$\{Data:DB:chat:chat\}, "chat:listeners") + \$bodies;
+       Set(\$\{Data:DB:chat:chat\}, "chat:listeners", \$listeners);
+\} else \{
+       EmitTo(\$actor, "Banning account " + Str(\$name) + " from using OOC chatlines.");
+
+       \$wbbanlist \|= (\{ \$account \});
+       \$player."skotos:ignore-wb" = 1;
+
+       \$oocbanlist \|= (\{ \$account \});
+       \$player."skotos:ignore-ooc" = 1; 
+
+       \$msgbanlist \|= (\{ \$account \});
+       \$player."skotos:ignore-msg" = 1;
+
+       \$chatbanlist \|= (\{ \$account \});
+       \$bodies = udat::query_bodies_in_roster(\$user: \$account);
+
+       \$listeners = Get(\$\{Data:DB:chat:chat\}, "chat:listeners") - \$bodies;
+       Set(\$\{Data:DB:chat:chat\}, "chat:listeners", \$listeners);
+\}
+
+\$wb.banlist = \$wbbanlist;
+\$ooc.banlist = \$oocbanlist;
+\$msg.banlist = \$msgbanlist;
+\$chat.banlist = \$chatbanlist;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1347817866, "jominey", "E", 1347818904, "jominey", "E", 1347818930, "jominey", "E", 1347818946, "jominey", "E", 1347819630, "jominey", "E", 1347819723, "jominey", "E", 1347819812, "jominey", "E", 1347819944, "jominey", "E", 1347819955, "jominey", "E", 1347820730, "jominey", "E", 1347820936, "jominey", "E", 1347821098, "jominey", "E", 1347821242, "jominey", "E", 1355690582, "jominey", "E", 1522179743, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

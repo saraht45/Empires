@@ -1,0 +1,135 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.0001" density="4"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="arrow"/>
+            <Base:SName sname="projectile"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="arrows"/>
+            <Base:PName pname="projectiles"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="blunted"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) love arrow
+          </Base:Description>
+          <Base:Description type="examine">
+             A $(this.trait:color) blunted arrow bedecked with $(this.trait:type) feathers along the shaft. It boasts a large $(this.trait:variation) heart at the uppermost portion. (ooc you can rp poking one person with this arrow but they need to poke your arrow for it to be active, something about consent goes here)
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.trait:color) blunted arrow bedecked with $(this.trait:type) feathers.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="effect:type">"loved"</Core:Property>
+      <Core:Property property="export:effect:type">
+         "loved"
+      </Core:Property>
+      <Core:Property property="export:nip:item:cost">
+         2400
+      </Core:Property>
+      <Core:Property property="merry:act:kiss%lovesick">
+         X[M] /* Cures the PC of lovesickness... */
+/* No longer lovesick. Clear the properties */
+\$actor."merry:inherit:act:kiss%lovesick" = nil;
+\$actor."curse:lovesick" = nil;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:lovesick">
+         X[M] /* Drug the PC with lovesickness... */
+if(!\$victim) return FALSE;
+if(\$victim."curse:lovesick") \{
+  /* Already cursed. */
+  return TRUE;
+\}
+
+/* Curse them, until they kiss someone */
+/* (Actually, the curse also runs out after a week - in case they stop playing while cursed */
+ironclaw::set_prop(\$obj: \$victim, \$prop: "curse:lovesick", \$value: 1, \$timer: 60*60*24*5);
+\$victim."merry:inherit:act:kiss%lovesick" = \$\{Ironclaw:Props:Plot:Vday2013:CupidArrow\};
+
+/* Keep emitting while they're lovesick */
+while(\$victim."curse:lovesick") \{
+  \$delay(10*random(60*5), TRUE, "f8cb");
+  if(\$victim."curse:lovesick")
+    Call(\$\{IronClaw:Lib:Effects\}, "valentinesemits", \$actor: \$victim);
+\}
+
+/* No longer lovesick. Clear the properties */
+\$victim."merry:inherit:act:kiss%lovesick" = nil;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:poke-using">
+         X[M] /* Drug the victim PC with lovesickness... */
+if(!\$dob \|\| sizeof(\$dob) != 1) return TRUE;
+
+/* Only allow them to curse currently-possessed PCs */
+if(!NRefOb(\$dob[0])."udat:possessed") return TRUE;
+
+Call(\$\{Ironclaw:Props:Plot:Vday2013:CupidArrow\}, "lovesick", \$victim: NRefOb(\$dob[0]));
+\$delay(0.5, TRUE, "44b6");
+EmitTo(\$actor, Describe(this, nil, \$actor)+" vanishes in a puff of sweet-smelling smoke.");
+EmitIn(\$actor."base:environment", Describe(this)+" vanishes in a puff of sweet-smelling smoke.", \$actor);
+Slay(this);
+return TRUE;
+
+/* And below code to use "normal" effects */
+\$ob = \$this;
+Call(\$\{IronClaw:Lib:Effects\}, "effects");
+Slay(this);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:start">
+         X[M] \$this."trait:color" = oneof( "blush red", "blood red", "pretty pink", "pale pink" ); \$this."trait:type" = oneof( "pheasant", "peacock", "crow", "eagle" ); \$this."trait:variation" = oneof ("golden", "silver", "bronze", "copper" ); return TRUE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1360893669, "meandmine", "X", 1360894068, "meandmine", "K", 1360894556, "meandmine", "X", 1360894606, "meandmine", "X", 1360894650, "meandmine", "X", 1360894814, "meandmine", "X", 1360894928, "meandmine", "X", 1360894973, "meandmine", "X", 1360897423, "meandmine", "X", 1360897636, "meandmine", "X", 1360898263, "meandmine", "X", 1360898551, "meandmine", "X", 1360899126, "tonyd", "P", 1360899373, "tonyd", "P", 1360899381, "tonyd", "P", 1360899409, "tonyd", "P", 1360899573, "tonyd", "P", 1360899624, "tonyd", "P", 1360899684, "tonyd", "P", 1360900151, "tonyd", "P", 1360900216, "tonyd", "P", 1360900306, "tonyd", "P", 1360900362, "tonyd", "P", 1360900389, "tonyd", "P", 1360900434, "tonyd", "P", 1360900481, "tonyd", "P", 1360900497, "tonyd", "P", 1360900543, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

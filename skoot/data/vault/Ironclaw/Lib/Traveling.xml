@@ -1,0 +1,266 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:check_travel_delay">
+         X[M] if(\$who."travel:delay") \{
+    \$now = time();
+    if(\$now \< \$who."travel:delay") \{
+        \$timeLeft = Flt(\$who."travel:delay" - \$now)/3600.0;
+        if(\$timeLeft \< 1.0) \{
+            \$timeLeft = Flt(\$who."travel:delay" - \$now)/60.0;
+            if(\$timeLeft \< 1.0) \{
+                \$str = "less than a minute";
+            \} else \{
+                \$str = Str(\$timeLeft)[0..2] + " minutes";
+            \}
+        \} else \{
+            \$str = Str(\$timeLeft)[0..2] + " hours";
+        \}
+        EmitTo(\$who, TAG("[OOC: It is too soon for you to travel to a new area. You must wait " + \$str + ".]", "imp"));
+        return FALSE;
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:enter-danger">
+         X[M] \$actor = \$par["actor"];
+\$env = \$actor."base:environment";
+\$exit = \$par["exit"];
+if(\$par["tollDelay"]) \$tollDelay = \$par["tollDelay"];
+
+
+/* If there is a toll, look for a ticket */
+if(\$tollDelay) \{
+    if(!Call(\$\{Ironclaw:Lib:Traveling\}, "check_travel_delay", \$who: \$actor)) \{
+        return FALSE;
+    \}
+    
+    \$ticket = Get(\$env, "toll:" + \$exit + ":ticket");
+    \$inventory = \$actor."base:inventory";
+
+    for(\$i = 0; \$i \< sizeof(\$inventory) \&\& !\$found; \$i++) \{
+        if(\$inventory[\$i]."base:urparent") \{
+            if(\$inventory[\$i]."base:urparent" == \$ticket) \{
+                \$found = \$inventory[\$i];
+            \}
+        \}
+    \}
+
+    if(\$found) \{
+        EmitTo(\$actor, TAG("You hand " + Describe(\$found, nil, \$actor) + " to a toll guard as you pass through.", "social:first"));
+        Slay(\$found);
+    \} else \{
+        EmitTo(\$actor, TAG("A toll guard stops you, \\"Halt! You may not pass through without a toll ticket.\\"", "social:first"));
+        return FALSE;
+    \}
+\}
+
+/* enter the danger area */
+\$actor."danger:consented" = 1;
+Act(\$actor, "enter", \$what: NewNRef(\$env, \$exit));
+\$actor."danger:consented" = nil;
+
+/* Passage allowed. Don't let them return for until travel time has expired. */
+\$actor."travel:delay" = time() + Int(\$tollDelay);
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:enter-danger-mounted">
+         X[M] \$who = \$par["actor"];
+\$env = \$who."base:environment";
+\$exit = \$par["exit"];
+\$riders = \$par["riders"];
+\$mount = \$par["mount"];
+if(\$par["tollDelay"]) \$tollDelay = \$par["tollDelay"];
+
+
+/* If there is a toll, look for a ticket */
+if(\$tollDelay) \{
+    if(!Call(\$\{Ironclaw:Lib:Traveling\}, "check_travel_delay", \$who: \$who)) \{
+        return FALSE;
+    \}
+    \$ticket = Get(\$env, "toll:" + \$exit + ":ticket");
+    \$inventory = \$who."base:inventory";
+
+    for(\$i = 0; \$i \< sizeof(\$inventory) \&\& !\$found; \$i++) \{
+        if(\$inventory[\$i]."base:urparent") \{
+            if(\$inventory[\$i]."base:urparent" == \$ticket) \{
+                \$found = \$inventory[\$i];
+            \}
+        \}
+    \}
+
+    if(\$found) \{
+        \$who."toll:ticket" = \$found;
+    \} else \{
+        EmitTo(\$who, TAG("A toll guard stops you, \\"Halt! You may not pass through without a toll ticket.\\"", "social:first"));
+        return FALSE;
+    \}
+\}
+
+/* enter the danger area */
+\$who."danger:consented" = 1;
+
+for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+    /* Check if riders are still present and consented */
+    if(\$riders[\$i]."base:environment" != \$env \|\| !\$riders[\$i]."danger:consented") \{
+        return FALSE;
+    \}
+\}
+
+/* All riders have given consent */
+\$controller = \$mount."npc:controlledby";
+
+if(!\$controller) \{
+    \$controller = \$mount.reins."base:environment";
+\}
+
+\$lostTicket = (\{ \});
+for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+    if(\$tollDelay) \{
+        if(\$riders[\$i]."toll:ticket") \{
+            EmitTo(\$riders[\$i], TAG("You hand your ticket to a toll guard as you pass through.", "social:first"));
+            Slay(\$riders[\$i]."toll:ticket");
+        \} else \{
+            /* Ticket is missing */
+            \$lostTicket += (\{ \$riders[\$i] \});
+        \}
+    \}
+\}
+
+/* Remove any riders that have lost their ticket */
+\$riders -= \$lostTicket;
+\$controller."travel:waiting" = nil;
+Act(\$controller, "enter", \$what: NewNRef(\$env, \$exit));
+
+\$delay(3, FALSE, "b480");
+
+for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+    \$riders[\$i]."danger:consented" = nil;
+
+    /* Passage allowed. Don't let them return for until travel time has expired. */
+    \$riders[\$i]."travel:delay" = time() + Int(\$tollDelay);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:no-danger-mounted">
+         X[M] \$actor = \$par["actor"];
+\$env = \$actor."base:environment";
+\$exit = \$par["exit"];
+\$riders = \$par["riders"];
+
+EmitTo(\$actor, "You decide it would be best to stay here.");
+
+for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+    if(\$riders[\$i] != \$actor) EmitTo(\$riders[\$i], Describe(\$actor) + " is not ready yet.");
+    \$riders[\$i]."danger:consented" = nil; 
+    \$riders[\$i]."toll:ticket" = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:enter-into%dangerarea">
+         X[M] \$lib = \$\{Ironclaw:Lib:Traveling\};
+
+if(!\$this."danger:exits") \{
+    return TRUE;
+\}
+
+\$dangerExits = \$this."danger:exits";
+\$door = NRefDetail(\$target);
+
+/* if they have already consented, let them through */
+if(\$actor."danger:consented" \&\& !\$actor."travel:waiting") return TRUE;
+
+/* Check if actor is targeting one of the danger exits */
+if(!\$dangerExits \|\| !sizeof(\$dangerExits) \|\| !member(\$door, \$dangerExits)) return TRUE;
+
+/* Check for a travel delay. Don't let them proceed to new area until travel time has passed. */
+if(!Call(\$\{Ironclaw:Lib:Traveling\}, "check_travel_delay", \$who: \$actor)) \{
+    return FALSE;
+\}
+
+/* Check if holding reins. If so, treat it as if actor is mounted */
+\$inventory = \$actor."base:inventory";
+if(!\$actor."npc:mounting") \{
+    for(\$i = 0; \$i \< sizeof(\$inventory); \$i++) \{
+        if(\$inventory[\$i]."trait:objecttype" == "reins" \&\& \$inventory[\$i].mount) \{
+            \$holdingreins = \$inventory[\$i].mount;
+        \}
+    \}
+\}
+
+/* Check for toll exit */
+if(!\$this."toll:exits") return TRUE;
+
+\$tollExits = \$this."toll:exits";
+if(\$tollExits \&\& sizeof(\$tollExits) \&\& member(\$door, \$tollExits)) \{
+    \$tollDelay = 86400;
+    if(\$this."toll:traveldelay") \$tollDelay = Int(\$this."toll:traveldelay");
+
+    if(\$actor."npc:mounting" \|\| \$holdingreins) \{
+        if(\$holdingreins) \{
+            \$mount = \$holdingreins;
+        \} else \{
+            \$mount = \$actor."npc:mounting";
+        \}
+
+        /* Get the mount speed */
+        \$mountSpeed = 0.5;
+        if(\$mount."nip:trait:mounting:speed") \$mountSpeed = Flt(\$mount."nip:trait:mounting:speed");
+
+        /* Determine bonus based on rider's skill */
+        \$riderSkill = Flt(Int(\$actor."career:combat:riding") + Int(\$actor."skill:combat:riding"))/24.0;
+        if(\$riderSkill \> 1.0) \$riderSkill = 1.0;
+
+        \$bonus = 1.0 + \$mountSpeed * \$riderSkill;
+
+        /* Adjust toll delay based on rider's bonus */
+        \$tollDelay = Int(86400.0/\$bonus);
+        \$riders = \$mount."npc:mounted";
+
+        if(\$holdingreins) \$riders += (\{ \$actor \});
+
+        if(\$actor."travel:debugging") \$tollDelay = 1;
+
+        \$actor."travel:waiting" = 1;
+        for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+            EmitTo(\$riders[\$i], "You are entering a danger area. By entering, you automatically consent to possible death for "+Describe(\$actor)+".\\nIn addition, you will not be able to return to Triskellian until " + Str(\$tollDelay/3600) + " real life hours have passed. This is meant to represent travel time.");
+            interaction::question(\$actor: \$riders[\$i], \$question: "Are you sure you wish to continue?", \$env: "TRUE", \$expires: 60, \$yes_ob: \$lib, \$yes_fun: "enter-danger-mounted", \$no_ob: \$lib, \$no_fun: "no-danger-mounted", \$expire_ob: \$lib, \$expire_fun: "no-danger-mounted", \$par: ([ "actor": \$riders[\$i], "mount": \$mount, "tollDelay": \$tollDelay, "riders": \$riders, "exit": \$door ]));
+        \}
+        return FALSE;
+    \} else \{
+        if(\$actor."travel:debugging") \$tollDelay = 0;
+        EmitTo(\$actor, "You are entering a danger area. By entering, you automatically consent to possible death for "+Describe(\$actor)+".\\nIn addition, you will not be able to return to Triskellian until " + Str(\$tollDelay/3600) + " real life hours have passed. This is meant to represent travel time.");
+        interaction::question(\$question: "Are you sure you wish to continue?", \$env: "TRUE", \$expires: 60, \$yes_ob: \$lib, \$yes_fun: "enter-danger", \$no: "You decide it would be best to stay here.", \$expire: "You decide it would be best to stay here.", \$par: ([ "actor": \$actor, "exit": \$door, "tollDelay": \$tollDelay ]));
+    \}
+\} else \{
+    if(\$actor."npc:mounting" \|\| \$holdingreins) \{
+        if(\$holdingreins) \{
+            \$mount = \$holdingreins;
+        \} else \{
+            \$mount = \$actor."npc:mounting";
+        \}
+        \$riders = \$mount."npc:mounted";
+        if(\$holdingreins) \$riders += (\{ \$actor \});
+        \$actor."travel:waiting" = 1;
+        for(\$i = 0; \$i \< sizeof(\$riders); \$i++) \{
+            EmitTo(\$riders[\$i], "You are entering a danger area. By entering, you automatically consent to possible death for "+Describe(\$actor)+".");
+            interaction::question(\$actor: \$riders[\$i], \$question: "Are you sure you wish to continue?", \$env: "TRUE", \$expires: 60, \$yes_ob: \$lib, \$yes_fun: "enter-danger-mounted", \$no_ob: \$lib, \$no_fun: "no-danger-mounted", \$expire_ob: \$lib, \$expire_fun: "no-danger-mounted", \$par: ([ "actor": \$riders[\$i], "mount": \$mount, "riders": \$riders, "exit": \$door ]));
+        \}
+    \} else \{
+        EmitTo(\$actor, "You are entering a danger area. By entering, you automatically consent to possible death for "+Describe(\$actor)+".");
+        interaction::question(\$question: "Are you sure you wish to continue?", \$env: "TRUE", \$expires: 60, \$yes_ob: \$lib, \$yes_fun: "enter-danger", \$no: "You decide it would be best to stay here.", \$expire: "You decide it would be best to stay here.", \$par: ([ "actor": \$actor, "exit": \$door]));
+    \}
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1509936315, "jominey", "E", 1509936414, "jominey", "E", 1509936749, "jominey", "E", 1509936879, "jominey", "E", 1509936961, "jominey", "E", 1509937138, "jominey", "E", 1509937221, "jominey", "E", 1509937338, "jominey", "E", 1509937413, "jominey", "E", 1509938187, "jominey", "E", 1509938214, "jominey", "E", 1509938399, "jominey", "E", 1509938501, "jominey", "E", 1509938569, "jominey", "E", 1509939769, "jominey", "E", 1509940096, "jominey", "E", 1509940291, "jominey", "E", 1509940508, "jominey", "E", 1509940811, "jominey", "E", 1509940827, "jominey", "E", 1509940836, "jominey", "E", 1509941029, "jominey", "E", 1509941051, "jominey", "E", 1509941426, "jominey", "P", 1509941458, "jominey", "P", 1509941473, "jominey", "P", 1509941585, "jominey", "E", 1509941696, "jominey", "E", 1509941811, "jominey", "E", 1509941855, "jominey", "E", 1509942105, "jominey", "E", 1509942199, "jominey", "E", 1509942325, "jominey", "P", 1509942339, "jominey", "P", 1509942379, "jominey", "P", 1509942632, "jominey", "P", 1509943012, "jominey", "P", 1509943113, "jominey", "P", 1509943608, "jominey", "P", 1509943657, "jominey", "E", 1509943814, "jominey", "P", 1509943930, "jominey", "P", 1509944142, "jominey", "P", 1509944499, "jominey", "P", 1509944606, "jominey", "P", 1509944784, "jominey", "E", 1509944869, "jominey", "E", 1509945011, "jominey", "E", 1509945041, "jominey", "E", 1509945183, "jominey", "E", 1509945228, "jominey", "E", 1509945347, "jominey", "E", 1510009049, "jominey", "E", 1510009184, "jominey", "E", 1510009252, "jominey", "E", 1510009297, "jominey", "E", 1510009473, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

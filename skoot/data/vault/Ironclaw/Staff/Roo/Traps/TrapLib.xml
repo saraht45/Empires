@@ -1,0 +1,343 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:config">
+         X[M] if(\$flag == "set") \{
+    \$val = \$\{Ironclaw:Staff:Roo:Traps:TrapLib\};
+\} else\{
+    \$val = nil;
+\}
+
+Set(\$room, "merry:inherit:react-post:enter-from", \$val);
+Set(\$room, "merry:inherit:react-pre:disarm-dob", \$val);
+Set(\$room, "merry:inherit:lib:disarm", \$val);
+Set(\$room, "merry:inherit:react:enter-into", \$val);
+Set(\$room, "merry:inherit:lib:triggertrap", \$val);
+Set(\$room, "merry:inherit:timer:reset", \$val);
+Set(\$room, "merry:inherit:lib:reset", \$val);
+Set(\$room, "merry:inherit:lib:set", \$val);
+Set(\$room, "merry:inherit:lib:config", \$val);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:disarm">
+         X[M] \$trap = \$env.trap;
+\$trap[3] = 1;
+\$t = Get(\$\{Ironclaw:Staff:Roo:Traps:TrapLib\}, "trap:reset");
+this."trap:disarm:id" = In("reset", \$t);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:remove">
+         X[M] /*
+** Remove a trap from a specified room
+** \$room
+*/
+
+mapping data;
+
+EmitTo(nil /* defunct */, "Removing trap");
+
+if(\$room."trap:disarm:id") \{
+    Stop(\$room."trap:disarm:id");
+    Set(\$room, "trap:disarm:id", nil);
+\}
+
+/* Configure trap data in room */
+\$trap = \$room.trap;
+\$trapDB = \$trap[1];
+\$trapType = \$trap[0];
+
+data = Get(\$trapDB, "trap:" + \$trapType);
+data["RoomsUsed"] -= (\{ \$room \});
+data["RoomsAvailable"] += (\{ \$room \});
+Set(\$trapDB, "trap:" + \$trapType, data);
+
+::config(\$room: \$room, \$flag: "clear");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:reset">
+         X[M] /*
+** Trap reset code. Choose random room.
+** trap[0] = trap type
+** trap[1] = trap db
+** trap[2] = trap difficulty
+** trap[3] = disarm flag; 0 - trap is not disarmed, 1 - trap is disarmed
+*/
+
+int i, num, rand, flag;
+object tempRoom, room, trapDB, newRoom;
+mixed* list, trap, roomsUsed, roomsAvailable, inv;
+string trapType;
+mapping data;
+
+EmitTo(nil /* defunct */, "Resetting trap");
+
+/* Stop and clear timer ids */
+Stop(this."trap:disarm:id");
+Set(this, "trap:disarm:id", nil);
+
+this."trap:reset" = nil;
+
+/* Get current trap info */
+trap = this.trap;
+trapType = trap[0];	/* Trap type */
+trapDB = trap[1];	/* Trap DB */
+data = Get(trapDB, "trap:" + trapType);
+roomsUsed = data["RoomsUsed"];	/* Rooms using this trap */
+roomsAvailable = data["RoomsAvailable"]; /* Available rooms not using trap */
+
+/* Copy available room list */
+list = copy(roomsAvailable);
+
+/* Find a room randomly and make sure it doesn't already have a trap and make sure it is not occupied by a PC */
+/* If no room can be found, just reset it in its current room */
+while(sizeof(list) \&\& !newRoom) \{
+    flag = 0;
+    num = sizeof(list);
+    rand = random(num);
+    tempRoom = list[rand];
+    inv = tempRoom."base:inventory";
+
+    /* Look for PCs in chosen room */
+    for(i = 0; i \< sizeof(inv); i++) \{
+        if(inv[i]."udat:possessed") \{
+            flag = 1;
+        \}
+    \}
+
+    /* Does a trap exist? Are there PCs in there? */
+    if(!tempRoom.trap \&\& flag == 0) \{
+	/* Nope. Put trap here. */
+        newRoom = tempRoom;
+
+        /* Remove old room from used rooms list. Add new room to list. */
+        roomsUsed -= (\{ this \});
+        roomsUsed += (\{ tempRoom \});
+        data["RoomsUsed"] = roomsUsed;
+        Set(trapDB, "trap:" + trapType, data);
+
+        /* Add old room to available list. Remove new room from list. */
+        roomsAvailable \|= (\{ this \});
+        roomsAvailable -= (\{ tempRoom \});
+	data["RoomsAvailable"] = roomsAvailable;
+        Set(trapDB, "trap:" + trapType, data);
+    \} else \{
+        /* A trap exists and/or there is a PC in there. Remove this option and look again. */
+        list -= (\{ tempRoom \});
+    \}
+\}
+
+/* Was a new room found? */
+if(!newRoom) \{
+    /* No. Reset in current room. */
+    newRoom = this;
+\}
+
+this.trap = nil;
+
+Set(trapDB, "trap:" + trapType, data);
+
+/* Set the trap */
+::set(\$room: newRoom, \$trapType: trapType, \$trapDB: trapDB);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:set">
+         X[M] /*
+** Set a trap in a specified room
+** \$trapDB
+** \$trapType
+** \$room
+*/
+
+mapping data;
+
+EmitTo(nil /* defunct */, "Setting trap");
+
+/* Configure trap data in room */
+\$room.trap = (\{ 0, 0, 0, 0 \});
+
+\$room.trap[0] = \$trapType;
+\$room.trap[1] = \$trapDB;
+\$room.trap[2] = random(24) + 1;	/* trap difficulty */
+\$room.trap[3] = 0;	/* Disarm flag. Initialized at 0. */
+
+data = Get(\$trapDB, "trap:" + \$trapType);
+data["RoomsUsed"] \|= (\{ \$room \});
+data["RoomsAvailable"] -= (\{ \$room \});
+Set(\$trapDB, "trap:" + \$trapType, data);
+
+::config(\$room: \$room, \$flag: "set");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:triggertrap">
+         X[M] \$trap = this.trap;
+\$trapType = \$trap[0];
+\$trapDB = \$trap[1];
+
+\$data = Get(\$trapDB, "trap:" + Str(\$trapType));
+
+\$disarmSuccess = replace_strings(\$data["DisarmEmitSuccess"], "ACTOR", Describe(\$actor));
+\$disarmFailure = replace_strings(\$data["DisarmEmitFailure"], "ACTOR", Describe(\$actor));
+\$triggerEmit = replace_strings(\$data["TriggerEmit"], "ACTOR", Describe(\$actor));
+
+if(\$disarm) \{
+    EmitIn(\$actor."base:environment", \$disarmFailure);
+\} else \{
+    EmitIn(\$actor."base:environment", \$triggerEmit);
+\}
+
+::disarm(\$env: this);
+
+Call(\$trapDB, \$trapType, \$actor: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:enter-from">
+         X[M] /*
+** Property "trap" in room:
+** (\{ trap type,
+**    trap DB,
+**    trap difficulty,
+**    disarmed flag
+** \})
+*/
+
+object env;
+int skill;
+mixed* trap;
+
+env = this; /* Room we are entering */
+
+/* Is there a trap in the room? */
+if(env.trap) \{
+    trap = env.trap;
+
+    \$trapType = trap[0]; /* Trap type */
+    \$trapDB = trap[1]; /* Trap DB */
+    \$difficulty = Int(trap[2]); /* Difficulty of trap will determine how hard it is to notice */
+    \$disarmed = Int(trap[3]); /* 0 - not disarmed; 1 - disarmed */
+
+    /* Check chatter's observation. Take larger of skill and career levels. */
+    if(Int(\$actor."skill:mental:observation") \> Int(\$actor."career:mental:observation")) \{
+        skill = Int(\$actor."skill:mental:observation");
+    \} else \{
+        skill = Int(\$actor."career:mental:observation");
+    \}
+
+    /* If skill is less than difficulty, character does not notice trap */
+    if(skill \< \$difficulty) \{
+        return TRUE;
+    \}
+
+    \$delay(2, FALSE, "44a6");
+
+    \$data = Get(\$trapDB, "trap:" + \$trapType);
+    \$desc = \$data["SpotEmit"];
+
+    /* Trap spotted. Emit to character. */
+    if(\$disarmed == 0) \{
+        EmitTo(\$actor, \$desc);
+    \} else \{
+        EmitTo(\$actor, \$desc + " It has been previously disarmed.");
+    \}
+
+    return TRUE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:disarm-dob">
+         X[M] /*
+** Property "trap" in room:
+** (\{ trap type,
+**    trap DB,
+**    trap difficulty,
+**    disarmed flag (0 or 1)
+** \})
+*/
+
+object env;
+int skill, roll;
+mixed* trap;
+
+env = this; /* Room we are entering */
+
+/* Is there a trap in the room? */
+if(env.trap) \{
+    trap = env.trap;
+
+    \$trapType = trap[0]; /* Trap type */
+    \$trapDB = trap[1]; /* Trap DB */
+    \$difficulty = Int(trap[2]); /* Difficulty of trap will determine how hard it is to notice */
+    \$disarmed = Int(trap[3]); /* 0 - not disarmed; 1 - disarmed */
+
+    if(\$disarmed == 1) \{
+        return TRUE;
+    \}
+
+    roll = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "mental:observation" \}));
+
+    if(roll \>= \$difficulty) \{
+        EmitIn(\$actor."base:environment", Describe(\$actor) + " disarms the trap.");
+        ::disarm(\$env: env);
+    \} else \{
+        ::triggertrap(\$trap: trap, \$actor: \$actor, \$disarm: 1);
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:enter-into">
+         X[M] /*
+** Property "trap" in room:
+** (\{ trap type,
+**    trap DB,
+**    trap difficulty,
+**    disarmed flag (0 or 1)
+** \})
+*/
+
+object env;
+int skill;
+mixed* trap;
+
+env = this; /* Room we are entering */
+
+/* Is there a trap in the room? */
+if(env.trap \&\& \$actor."udat:possessed") \{
+    trap = env.trap;
+
+    \$trapType = trap[0]; /* Trap type */
+    \$trapDB = trap[1]; /* Trap DB */
+    \$difficulty = Int(trap[2]); /* Difficulty of trap will determine how hard it is to notice */
+    \$disarmed = Int(trap[3]); /* 0 - not disarmed; 1 - disarmed */
+
+    if(\$disarmed == 1) \{
+        return TRUE;
+    \}
+
+    ::triggertrap(\$actor: \$actor);
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:reset">
+         X[M] ::reset();
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1240004011, "jominey", "E", 1240004019, "jominey", "E", 1240004424, "jominey", "E", 1240009448, "jominey", "E", 1240009511, "jominey", "E", 1240010588, "jominey", "E", 1240011674, "jominey", "E", 1240011745, "jominey", "E", 1240012619, "jominey", "E", 1240012656, "jominey", "E", 1240013610, "jominey", "E", 1240013745, "jominey", "E", 1240013770, "jominey", "E", 1240013841, "jominey", "E", 1240443977, "jominey", "E", 1240688033, "jominey", "E", 1240688483, "jominey", "E", 1240689128, "jominey", "E", 1240689224, "jominey", "E", 1240690902, "jominey", "E", 1240691223, "jominey", "E", 1240691271, "jominey", "E", 1240691293, "jominey", "E", 1240691316, "jominey", "E", 1240691348, "jominey", "E", 1240691393, "jominey", "E", 1240691420, "jominey", "E", 1240691437, "jominey", "E", 1240691710, "jominey", "E", 1240691928, "jominey", "E", 1240696400, "jominey", "E", 1243881871, "jominey", "E", 1243882135, "jominey", "E", 1243882941, "jominey", "E", 1243883406, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="trap:dbs">
+         ([ "necrolair":\<Ironclaw:Staff:Roo:Traps:TrapNecroLairDB\> ])
+      </Core:Property>
+      <Core:Property property="trap:reset">60</Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

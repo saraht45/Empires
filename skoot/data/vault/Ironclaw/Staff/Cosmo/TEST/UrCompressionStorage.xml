@@ -1,0 +1,229 @@
+<object clone="/base/obj/thing" owner="lidiab">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Crafting:UrCraftingContainer)"/>
+    <Base:Bulk immobile="false" mass="5" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="3" maxweight="100"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:alteration:add:default:lock">
+         ([ "adj-prop":(\{ "trait:material", "trait:size", "trait:color", "trait:brief" \}), "names":(\{ (\{ "sname", "lock" \}), (\{ "pname", "locks" \}) \}), "properties":(\{ (\{ "trait:material", "trait:lock:material" \}), (\{ "trait:size", "trait:lock:size" \}), (\{ "trait:color", "trait:lock:color" \}), (\{ "trait:brief", "trait:lock:brief" \}), (\{ "trait:examine", "trait:lock:examine" \}), (\{ "trait:quality", "trait:lock:quality" \}), (\{ "trait:lockpicking", "trait:lockpicking" \}), (\{ "details:default:exit:keycode", "details:default:exit:keycode" \}), (\{ "base:urparent", "trait:lock:parent" \}), (\{ "lock:default:lockpick:history", "lock:default:lockpick:history" \}), (\{ "trait:madeby", "trait:lock:madeby" \}), (\{ "trait:madeby:account", "trait:lock:madeby:account" \}), (\{ "trait:madeby:object", "trait:lock:madeby:object" \}) \}), "stopvalue":(\{ "trait:lock:brief", nil, "This piece of furniture already holds a lock." \}) ])
+      </Core:Property>
+      <Core:Property property="export:compression:suffix_plural">
+         " fabrics"
+      </Core:Property>
+      <Core:Property property="export:compression:suffix_singular">
+         " fabric"
+      </Core:Property>
+      <Core:Property property="export:trait:basematerial">
+         "wood"
+      </Core:Property>
+      <Core:Property property="merry:lib:check_object_is_valid">
+         X[M] /* check if this object can be compressed */
+
+/* example code here is for a fabric storage item */
+if(\$item."trait:objecttype" != "cloth") \{
+ EmitTo(\$actor, Describe(\$item, nil, \$actor)+" is not a fabric.");
+ return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:find_key">
+         X[M] /* find the key used to identify this item */
+string key;
+if(\$item."trait:color") \{
+ key = Str(\$item."trait:color")+" "+Str(\$item."trait:material");
+\} else \{
+ key = Str(\$item."trait:material");
+\}
+if(!key \|\| key == " ")
+ key = "uncolored";
+return key;
+      </Core:Property>
+      <Core:Property property="merry:react-post:place-where%compress">
+         X[M] /* If someone puts fabric into the chest, the information about the fabric should be recorded (for later retrieval) and the item should be deleted */
+int i;
+object item;
+
+if(!\$what \|\| !sizeof(\$what)) return TRUE;
+
+/* it should be alright to compress the items now */
+
+/* do we have a mapping of compressed items? */
+if(!this."compression:storing") this."compression:storing" = ([ ]);
+
+for(i=0;i\<sizeof(\$what);i++) \{
+ /* store information */
+ item = NRefOb(\$what[i]);
+ \$key = ::find_key(\$item: item);
+
+ /* add the information under the key */
+ \$array = this."compression:storing"[\$key];
+ if(!\$array)
+  \$array = (\{ \});
+
+ \$array += (\{ (\{ item."core:ur:parent", Get(item, "*") \}) \});
+ \$key = strip_right(\$key);
+ this."compression:storing"[\$key] = \$array;
+
+ /* delete original item */
+ Slay(item);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:place-where%compress">
+         X[M] /* If someone puts fabric into the chest, the information about the fabric should be recorded (for later retrieval) and the item should be deleted */
+int i;
+
+/* sanity check */
+if(!\$what \|\| !sizeof(\$what)) return TRUE;
+
+/* only accept fabrics */
+for(i=0;i\<sizeof(\$what);i++) \{
+  if(!::check_object_is_valid(\$item: NRefOb(\$what[i])))
+   return FALSE;
+  /* sanity check: check they have no child objects */
+  if(NRefOb(\$what[i])."core:ur:firstchild") \{
+   EmitTo(\$actor, "You cannot store "+Describe(\$what[i], nil, \$actor)+" in "+Describe(this, nil, \$actor)+".");
+   return FALSE;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:search-dob%compress">
+         X[M] /* allows the retrieval of items from compression/storage */
+
+if(this."details:default:exit:closed") \{
+    EmitTo(\$actor, "Alas, " + Describe(\$this, nil, \$actor) + " is closed!");
+    return FALSE;
+\}
+
+if(this."compression:storing" \&\& sizeof(map_indices(this."compression:storing"))) \{
+ \$indices = copy(map_indices(this."compression:storing"));
+
+\} else \{
+ EmitTo(\$actor, "There is nothing being stored in "+Describe(this, nil, \$actor)+".");
+ return FALSE;
+\}
+
+\$instructions = "To remove an item, type \\"search "+Describe(this, nil, nil, STYLE_NONPOSS)+" 'description\\"\\nFor example: search "+Describe(this, nil, nil, STYLE_NONPOSS)+" '"+Str(\$indices[0]);
+
+/* are we specifying what to remove or not? */
+if(!\$evoke) \{
+ /* list what's available */
+  EmitTo(\$actor, "You find the following in "+Describe(this, nil, \$actor)+":");
+  for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{
+   \$size = sizeof(this."compression:storing"[\$indices[\$i]]);
+   \$output = desc_cardinal(\$size)+" "+\$indices[\$i]+" ";
+   if(\$size != 1) \{
+    \$output += Str(this."compression:suffix_plural");
+   \} else \{
+    \$output += Str(this."compression:suffix_singular");
+   \}
+   EmitTo(\$actor, \$output);
+  \}
+  EmitTo(\$actor, \$instructions);
+\} else \{
+ /* try to remove specific items */
+
+ /* what are they trying to take? */
+ \$search = \$(raw-evoke);
+ \$search = replace_strings(\$search, ".", "", "!", "", "?", "");
+ \$search = explode(\$search, " ");
+
+ /* try to find search phrases that give a match */
+ \$match = nil;
+ /* try matching substrings */
+ \$end = sizeof(\$search)-1;
+ while(!\$match \&\& \$end \>= 0) \{
+  for(\$i=0;\$i\<=\$end\&\&!\$match;\$i++) \{
+   if(member(implode(\$search[\$i..\$end], " "), \$indices))
+    \$match = implode(\$search[\$i..\$end], " ");
+  \}
+  \$end--;
+ \}
+ if(!\$match) \{
+  /* didn't find what they were looking for */
+  EmitTo(\$actor, "Could not find any items matching that description.");
+  EmitTo(\$actor, \$instructions);
+  return FALSE;
+ \}
+
+ /* we've got a match. Give them the items */
+ \$items = (\{ \});
+ \$search = this."compression:storing"[\$match];
+
+ /* loop through creating the items */
+ for(\$i=0;\$i\<sizeof(\$search);\$i++) \{
+  /* create the item */
+  \$item = Spawn(\$search[\$i][0]);
+  /* put it in the PC's hands */
+  \$item."base:environment" = \$actor;
+  /* check it was put into the PC's hands properly */
+  if(\$item."base:environment" != \$actor) \{
+   /* wasn't taken out (maybe their hands are full?) */
+   /* destroy this item, and assume it was never removed from storage */
+   Slay(\$item);
+  \} else \{
+   /* moved to the PC correctly */
+   /* add to list of items removed */
+   \$items += (\{ \$item \});
+   \$delay(0.1, FALSE, "2eb5");
+   /* set properties for the item */
+   for(\$j=0;\$j\<sizeof(map_indices(\$search[\$i][1]));\$j++) \{
+    Set(\$item, map_indices(\$search[\$i][1])[\$j], \$search[\$i][1][map_indices(\$search[\$i][1])[\$j]]);
+   \}
+   /* remove the item from the chest */
+   \$search[\$i] = nil;
+  \}
+ \}
+ /* clean up any removed items */
+ \$search -= (\{ nil \});
+ if(!sizeof(\$search))
+  this."compression:storing"[\$match] = nil;
+
+ if(!sizeof(\$items)) \{
+  /* couldn't remove anything */
+  EmitTo(\$actor, "You find the items in "+Describe(this, nil, \$actor)+" are too heavy for you to take out.");
+  return FALSE;
+ \}
+
+ EmitTo(\$actor, "You retrieve "+Describe(\$items, nil, nil, STYLE_NONPOSS)+" from "+Describe(this, nil, \$actor)+".");
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1231226088, "tonyd", "P", 1231226346, "tonyd", "P", 1231226402, "tonyd", "P", 1231226773, "tonyd", "P", 1231226828, "tonyd", "P", 1231226913, "tonyd", "P", 1231226934, "tonyd", "P", 1231227043, "tonyd", "P", 1231227187, "tonyd", "P", 1231227573, "tonyd", "P", 1231227648, "tonyd", "P", 1231227757, "tonyd", "P", 1231227800, "tonyd", "P", 1231227989, "tonyd", "P", 1231306433, "tonyd", "P", 1231306614, "tonyd", "P", 1231306682, "tonyd", "P", 1231306756, "tonyd", "P", 1231306812, "tonyd", "P", 1231306832, "tonyd", "P", 1231307050, "tonyd", "P", 1231307137, "tonyd", "P", 1231307264, "tonyd", "P", 1231307558, "tonyd", "P", 1231307595, "tonyd", "P", 1231307650, "tonyd", "P", 1231307675, "tonyd", "P", 1231307740, "tonyd", "P", 1231307826, "tonyd", "P", 1231307834, "tonyd", "P", 1231307850, "tonyd", "P", 1231307897, "tonyd", "P", 1231307906, "tonyd", "P", 1231307992, "tonyd", "P", 1231308086, "tonyd", "P", 1231308165, "tonyd", "P", 1231308641, "tonyd", "P", 1231308668, "tonyd", "P", 1231308850, "tonyd", "P", 1231308887, "tonyd", "P", 1231308971, "tonyd", "P", 1231309012, "tonyd", "P", 1231309054, "tonyd", "P", 1231309122, "tonyd", "P", 1231309154, "tonyd", "P", 1231310175, "tonyd", "P", 1231310906, "tonyd", "P", 1231386123, "tonyd", "P", 1231386341, "tonyd", "P", 1231386360, "tonyd", "P", 1231386382, "tonyd", "P", 1231386440, "tonyd", "P", 1231386739, "tonyd", "P", 1231386841, "tonyd", "P", 1231386921, "tonyd", "P", 1231387783, "tonyd", "P", 1231387799, "tonyd", "P", 1231387818, "tonyd", "P", 1231387847, "tonyd", "P", 1231388084, "tonyd", "P", 1231388122, "tonyd", "P", 1231388315, "tonyd", "P", 1231388340, "tonyd", "P", 1233068828, "morwenlorelie", "E", 1265671790, "jominey", "E", 1283991182, "jominey", "E", 1284326190, "jominey", "E", 1294380576, "jominey", "E", 1305003092, "slurpeeslurp", "E", 1305003144, "slurpeeslurp", "E", 1305003176, "slurpeeslurp", "E", 1305003232, "jominey", "E", 1305003300, "jominey", "E", 1305003318, "jominey", "E", 1305166828, "jominey", "E", 1433453825, "jominey", "E", 1433453871, "jominey", "E", 1433453927, "jominey", "E", 1433454061, "jominey", "E", 1433454103, "jominey", "E", 1433454136, "jominey", "E", 1433454172, "jominey", "E", 1433454200, "jominey", "E", 1433454260, "jominey", "E", 1433454435, "jominey", "P", 1433454578, "jominey", "E", 1444979199, "lidiab", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

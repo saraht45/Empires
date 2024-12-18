@@ -1,0 +1,267 @@
+<object clone="/base/obj/thing" owner="jominey">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="0.6"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="flag"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="flags"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="oversized"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             over-sized $(this.trait:color) flag
+          </Base:Description>
+          <Base:Description type="look">
+             An over-sized $(this.trait:color) flag on a wooden pole.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:announce">
+         X[M] \$delay(0.1, FALSE, "300e");
+
+switch(\$event) \{
+    case "take_flag_offense":
+    \{
+        \$roomEmit = "Two high pitched blows of a battle horn indicate that a flag has been retrieved by an opposing team.";
+        \$areaEmit = "Two high pitched blows of a battle horn indicate that a flag has been retrieved by an opposing team.";
+        break;
+    \}
+    case "drop_flag":
+    \{
+        \$roomEmit = "A single short blow of a pea whistle announces the vulnerability of one of the flags.";
+        \$areaEmit = "A single short blow of a pea whistle announces the vulnerability of one of the flags.";
+        break;
+    \}
+    case "pickup_flag":
+    \{
+        \$roomEmit = "Two short blows of a pea whistle indicate that a flag has been picked up by an opposing team.";
+        \$areaEmit = "Two short blows of a pea whistle indicate that a flag has been picked up by an opposing team.";
+        break;
+    \}
+    case "return_flag_defense":
+    \{
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " claims " + Describe(\$this) + "!", "social:third"), \$actor);
+        EmitTo(\$actor, TAG("You claim " + Describe(\$this) + "!", "social:first"));
+        break;
+    \}
+    case "return_flag":
+    \{
+        \$roomEmit = "A game attendant blows his pea whistle signaling a flag runner to return the flag to its home base.";
+        \$areaEmit = "The piercing shrill of a pea whistle indicates that a flag has been returned to its base.";
+        break;
+    \}
+    case "capture_flag":
+    \{
+        EmitTo(\$actor, TAG("You capture the flag!", "social:first"));
+        EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " captures the flag!", "social:third"), \$actor);
+        \$roomEmit = "The deep drawn out cry of a battle horn indicates that the game is over.";
+        \$areaEmit = "The deep drawn out cry of a battle horn indicates that the game is over.";
+        break;
+    \}
+    case "start_game":
+    \{
+        \$roomEmit = "Three long blows of a battle horn indicates that the game has begun!";
+        \$areaEmit = "Three long blows of a battle horn indicates that the game has begun!";
+        break;
+    \}
+\}
+
+if(\$roomEmit) EmitIn(\$room, TAG(\$roomEmit, "imp"));
+
+if(\$areaEmit) \{
+    if(\$room.allrooms) \{
+        \$rooms = \$room.allrooms - (\{ \$room \});
+        for(\$i = 0; \$i \< sizeof(\$rooms); \$i++) \{
+            EmitIn(\$rooms[\$i], TAG(\$areaEmit, "imp"));
+        \}
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:capture_flag">
+         X[M] object flagA, flagB, flag, base;
+object* inv;
+
+if(\$where \&\& sizeof(\$where)) \{
+    if(!NRefOb(\$where[0]).flag) \{
+        EmitTo(\$actor, Describe(\$this, nil, \$actor) + " doesn't fit there.");
+        return FALSE;
+    \}
+
+    base = NRefOb(\$where[0]);
+    flag = \$this;
+
+    /* FlagA is the flag that goes in this stand */
+    flagA = base.flag;
+    if(flag == flagA) return TRUE;
+
+    /* FlagB is the opponent's flag. Only allow it to be placed here if our flag is in place. */
+    flagB = base.opponent.flag;
+
+    if(flag == flagB) \{
+        inv = base."base:inventory";
+
+        if(sizeof(inv) \&\& member(flagA, inv)) \{
+            \$flagB = flagB;
+            Call(\$\{Ironclaw:Staff:Roo:CaptureTheFlag:UrFlag\}, "announce", \$event: "capture_flag", \$room: \$actor."base:environment");
+            \$delay(0.5, FALSE, "00d2");
+            Call(\$flagB, "return_flag", \$silent: TRUE);
+            return FALSE;
+        \} else \{
+            EmitTo(\$actor, TAG("A burly attendant rumbles, \\"You can't capture your opponent's flag until your team's flag has been returned to your base.\\"", "social:third"));
+            return FALSE;
+        \}
+    \}
+
+    EmitTo(\$actor, Describe(flag, nil, \$actor) + " doesn't fit in there.");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:drop_flag">
+         X[M] \$this."base:environment" = \$actor."base:environment";
+\$this.vulnerable = TRUE;
+
+EmitTo(\$actor, TAG("You drop " + Describe(\$this) + "!", "social:first"));
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " drops " + Describe(\$this) + "!", "social:third"), \$actor);
+
+Call(\$\{Ironclaw:Staff:Roo:CaptureTheFlag:UrFlag\}, "announce", \$event: "drop_flag", \$room: \$actor."base:environment");
+
+\$delay(10, FALSE, "5f78");
+
+if(\$this.vulnerable) ::return_flag();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:return_flag">
+         X[M] \$this.vulnerable = FALSE;
+
+if(!\$silent) \{
+    Call(\$\{Ironclaw:Staff:Roo:CaptureTheFlag:UrFlag\}, "announce", \$event: "return_flag", \$room: \$this."base:environment");
+\}
+
+EmitIn(\$this."base:environment", TAG("A flag runner returns " + Describe(\$this) + " back to its base.", "social:third"));
+
+if(\$this."base:environment" != \$this.base."base:environment") \{
+    \$this."base:environment" = nil;
+    \$delay(20, FALSE, "9a79");
+    EmitIn(\$this.base."base:environment", TAG("A flag runner returns " + Describe(\$this) + " back to its base.", "social:third"));
+\}
+
+\$this."base:environment" = \$this.base;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_flag">
+         X[M] string team;
+
+if(!\$actor.capturetheflag) \{
+    EmitTo(\$actor, TAG("A game attendant prevents you from taking the flag, \\"If you're gonna play, you'll need an armband.\\"", "social:third"));
+    return FALSE;
+\}
+
+team = \$actor.capturetheflag;
+
+if(team != \$this."trait:color") \{
+    if(!\$this.vulnerable) \{
+        Call(\$\{Ironclaw:Staff:Roo:CaptureTheFlag:UrFlag\}, "announce", \$event: "take_flag_offense", \$room: \$actor."base:environment");
+    \} else \{
+        Call(\$\{Ironclaw:Staff:Roo:CaptureTheFlag:UrFlag\}, "announce", \$event: "pickup_flag", \$room: \$actor."base:environment");
+    \}
+
+    \$this.vulnerable = FALSE;
+    return TRUE;
+\} else \{
+    if(!\$this.vulnerable) \{
+        EmitTo(\$actor, TAG("A game attendant prevents you from taking the flag, \\"You can't take your team's flag from your own base.\\"", "social:third"));
+        return FALSE;
+    \} else \{
+        Call(\$\{Ironclaw:Staff:Roo:CaptureTheFlag:UrFlag\}, "announce", \$event: "return_flag_defense", \$room: \$actor."base:environment");
+        ::return_flag();
+    \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:catch-what">
+         X[M] return ::take_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:deposit-what">
+         X[M] return ::drop_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:drop-what">
+         X[M] return ::drop_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:hand-dob">
+         X[M] return ::drop_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:offer">
+         X[M] return ::drop_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:place-what">
+         X[M] return ::capture_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:retrieve-what">
+         X[M] return ::take_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:store-what">
+         X[M] return ::drop_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:stow-what">
+         X[M] return ::drop_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take">
+         X[M] return ::take_flag();
+      </Core:Property>
+      <Core:Property property="merry:react-pre:zthrow-what">
+         X[M] return ::drop_flag();
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1469657221, "jominey", "E", 1469657444, "jominey", "E", 1469657618, "jominey", "E", 1469657851, "jominey", "P", 1469657952, "jominey", "E", 1469658075, "jominey", "P", 1469658145, "jominey", "E", 1469658291, "jominey", "E", 1469658357, "jominey", "E", 1469658408, "jominey", "E", 1469659007, "jominey", "E", 1469667257, "jominey", "P", 1469667345, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

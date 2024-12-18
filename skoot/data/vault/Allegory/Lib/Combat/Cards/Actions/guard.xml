@@ -1,0 +1,69 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="jominey">
+  <SkotOS:MerAcHa action_id="guard_backup">
+    <Core:PCProperties>
+      <Core:Property property="merry:global:action">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:global:action instead! */
+/* Allow one PC to protect another during combat */
+
+/* No target, or target is \$actor, just emote */
+if(!\$target) return TRUE;
+if(NRefOb(\$target) == \$actor) return TRUE;
+
+/* Neither are in combat, just emote */
+if(!\$actor.combat \&\& !NRefOb(\$target).combat) return TRUE;
+
+/* Target isn't in combat, don't need to be defended */
+if(!NRefOb(\$target).combat) \{
+  EmitTo(\$actor, TAG(Describe(NRefOb(\$target))+" is not in combat.", "imp"));
+  return TRUE;
+\}
+
+/* \$actor needs to be in combat before defending */
+if(!\$actor.combat) \{
+  combat::start_fight_joinfight(\$target: nil);
+  EmitTo(\$actor, TAG("You have joined the combat.", "imp"));
+\}
+
+if(\$actor.combat) \{
+  /* Actor was (or now is) in a fight */
+  if(\$actor.combat["guarding"] == NRefOb(\$target)) \{
+    EmitTo(\$actor, "You are already guarding "+Describe(NRefOb(\$target))+".");
+    return TRUE;
+  \}
+  
+  if(\$actor.combat["actions"] \&\& \$actor.combat["actions"] \>= 1) \{
+    /* Got some spare actions. */
+    \$delay(0.01, TRUE, "76f1");
+    
+    /* Remove the previous PC that you were guarding */
+    if(\$actor.combat["guarding"]
+    \&\& \$actor.combat["guarding"].combat
+    \&\& \$actor.combat["guarding"].combat["guarded_by"]) \{
+      \$actor.combat["guarding"].combat["guarded_by"] -= (\{ \$actor \});
+    \}
+    
+    \$actor.combat["guarding"] = NRefOb(\$target);
+    if(!NRefOb(\$target).combat["guarded_by"]) NRefOb(\$target).combat["guarded_by"] = (\{ \});
+    NRefOb(\$target).combat["guarded_by"] \|= (\{ \$actor \});
+    
+    \$actor.combat["target"] = nil;
+    
+    combat::charge_action(\$char: \$actor);
+  \} else \{
+    EmitTo(\$actor, "You shift yourself, trying to get into position to protect "+Describe(NRefOb(\$target))+".");
+    \$actor.combat["to_guard"] = NRefOb(\$target);
+    return FALSE;
+  \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1567177179, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

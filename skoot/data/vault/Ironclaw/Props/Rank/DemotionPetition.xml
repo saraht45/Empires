@@ -1,0 +1,910 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="objskin" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="petition"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="petitions"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="demoting"/>
+          <Base:Adjective adjective="demotion"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $[::describe_petition($type: "brief")]
+          </Base:Description>
+          <Base:Description type="examine">
+             $[::describe_petition($type: "examine")]
+          </Base:Description>
+          <Base:Description type="look">
+             $[::describe_petition($type: "look")]
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:nip:item:cost">
+         5000
+      </Core:Property>
+      <Core:Property property="export:writable">1</Core:Property>
+      <Core:Property property="merry:lib:describe_petition">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:describe_petition instead! */
+/* Generates the look and examine description for the petitions */
+int i;
+string *indices;
+if(!\$type) \$type = "examine";
+
+if(\$type == "brief") \{
+  if(!\$this."trait:target") return "demotion petition";
+  return "demoting "+\$this."trait:target:name"+" petition";
+\}
+
+if(\$this.id \&\& \$this."trait:target") \{
+  \$data = \$this."trait:target"."demotion:petition";
+  if(!\$data \|\| (\$data \&\& \$data["id"] != \$this.id)) \{
+    \$data = Get(\$this."trait:target", "demotion:petition:"+\$this.id);
+    if(\$data) \{
+      /* Since this is a historical petition, mark this document as such */
+      \$this."petition:complete" = TRUE;
+      \$this."petition:closed" = TRUE;
+    \}
+  \}
+\}
+if(!\$data) \{
+  /* Haven't yet submitted. Generate the bits we need */
+  \$data = ([ ]);
+  \$data["justification"] = \$this."trait:justification";
+\}
+
+/*
+// Store all the info into this \$data
+\$data["target"] = \$this."trait:target";
+\$data["target:name"] = \$this."trait:target:name";
+\$data["petitioner"] = \$this."trait:petitioner";
+\$data["petitioner:name"] = \$this."trait:petitioner:name";
+\$data["justification"] = \$this."trait:justification";
+\$data["defence"] = "";
+\$data["timestamp"] = time();
+\$data["yes_timestamp"] = time();
+\$data["yes_votes"] = 0;
+\$data["yes_points"] = 0;
+\$data["no_timestamp"] = time();
+\$data["no_votes"] = 0;
+\$data["no_points"] = 0;
+
+// Set an ID and store in the target
+\$this.id = random(10000000);
+\$data["id"] = \$this.id;
+\$this."trait:target"."demotion:petition" = \$data;
+
+// Update the petition now we've moved into the next stage
+\$this."gather:defence" = TRUE;
+\$this."signatures" = ([ "yes":([]), "no":([]) ]);
+*/
+
+\$output = "An official demotion petition";
+if(\$data["target:name"]) \$output += " requesting the demotion of "+\$data["target:name"];
+
+if(\$type == "examine" \&\& \$data["petitioner:name"]) \$output += ", submitted by "+\$data["petitioner:name"];
+\$output += ".";
+
+if(!\$data["justification"] \&\& !\$data["defence"]) \{
+  if(\$type == "look")
+    \$output += " with room to write.";
+  else
+    \$output += ". This has room to write a reason and who it's about, as well as space to gather signatures.";
+\} else \{
+  /* There is at least one explanation text */
+  if(\$data["justification"] \&\& \$data["justification"] != "") \{
+    \$output += "\\n";
+    \$output += \$data["petitioner:name"] ? \$data["petitioner:name"] : "The petitioner";
+    if(\$type == "look")
+      \$output += " has provided an explanation for this petition.\\n";
+    else
+      \$output += " has provided the following justification for this demotion:\\n"+\$data["justification"]+"\\n";
+  \}
+  if(\$data["defence"] \&\& \$data["defence"] != "") \{
+    \$output += "\\n";
+    \$output += \$data["target:name"] ? \$data["target:name"] : "The accused";
+    if(\$type == "look")
+      \$output += " has provided a written defence against these claims.\\n";
+    else
+      \$output += " has provided the following defence against these claims:\\n"+\$data["defence"]+"\\n";
+  \}
+\}
+\$output += "\\n";
+
+/* What state is this petition in? */
+/* Nothing set when filling the initial petition */
+/* Set \$this."gather:defence" when waiting for defence */
+/* Set \$this."petition:complete" when waiting for signatures */
+/* Set \$this."petition:closed" when a decision has been made */
+/* Except... where do we store these, when there are multiple objects floating around? Probably in the victim or petitioner? */
+
+if(!\$this."gather:defence" \&\& \$this."base:environment" == \$actor) \{
+  /* Holding this petition, and it's not complete. Tell them what more needs to be done. */
+  if(!\$this."trait:target:name") \$output += "To begin a demotion petition against someone, address this petition to them.\\n";
+  if(!\$this."trait:justification" \|\| \$this."trait:justification" == "") \$output += "Before submitting the petition, write an explanation about why the target should be demoted.\\n";
+  \$output += "Sign this petition, to begin the demotion process.";
+\} else if(\$this."gather:defence" \&\& !\$this."petition:complete" \&\& !\$this."petition:closed" \&\& \$this."base:environment" == \$actor \&\& \$this."trait:target" == \$actor) \{
+  if(!\$this."trait:defence" \|\| \$this."trait:defence" == "") \{
+    \$output += "You can write an explanation about why you should not be demoted onto this petition.\\n";
+  \}
+\}
+
+/* Are there any visible signatures? */
+if((\$this."gather:defence" \|\| \$this."petition:complete") \&\& \$this.signatures) \{  
+
+  if(\$this.signatures \&\& \$this.signatures["yes"] \&\& sizeof(map_indices(\$this.signatures["yes"]))) \{
+    \$output += "This petition has "+sizeof(map_indices(\$this.signatures["yes"]))+" signatures in favour of demoting "+\$this."trait:target:name";
+    if(\$type == "look") \$output += ".\\n";
+    else \{
+      \$output += ":\\n";
+      indices = map_indices(\$this.signatures["yes"]);
+      for(i=0; i\<sizeof(indices); i++) \{
+        \$output += " - "+\$this.signatures["yes"][indices[i]]+"\\n";
+      \}
+      \$output += "\\n";
+    \}
+  \}
+  if(\$this.signatures \&\& \$this.signatures["no"] \&\& sizeof(map_indices(\$this.signatures["no"]))) \{
+    \$output += "This petition has "+sizeof(map_indices(\$this.signatures["no"]))+" signatures in favour of protecting "+\$this."trait:target:name"+"'s rank";
+    if(\$type == "look") \$output += ".\\n";
+    else \{
+      \$output += ":\\n";
+      indices = map_indices(\$this.signatures["no"]);
+      for(i=0; i\<sizeof(indices); i++) \{
+        \$output += " - "+\$this.signatures["no"][indices[i]]+"\\n";
+      \}
+      \$output += "\\n";
+    \}
+  \}
+\}
+
+/* Can they sign the petition? */
+if((\$this."gather:defence" \|\| \$this."petition:complete") \&\& !\$this."petition:closed") \{
+  /* Allow them to sign the petition   */
+  if(\$type == "look") \{
+    \$output += "\\nExamine this petition, if you would like to sign it in support or opposition of this demotion.\\n";
+  \} else \{
+    \$delay(0.1, \$output, "e66b"); /* Make the question happen after the description */
+    
+    if(\$data["new_name"])
+      \$b_question = "Sign the petition in favour of demoting "+\$data["target:name"]+" from "+\$data["name"]+" to "+\$data["new_name"];
+    else
+      \$b_question = "Sign the petition in favour of demoting "+\$data["target:name"]+", and stripping "+\$data["target"]."base:possessive"+" rank of "+\$data["name"];
+
+    \$c_question = "Sign the petition in favour of "+\$data["target:name"]+" keeping their rank of "+\$data["name"];
+    
+    interaction::question(\$actor: \$actor, \$question: "Will you sign this petition?", \$a: "Do not sign", \$b: \$b_question, \$c: \$c_question, \$expires: 30, \$expire: "You choose not to sign the petition. You can always read it again if you want to sign.", \$a_ob: \$this, \$b_ob: \$this, \$c_ob: \$this, \$a_fun: "sign_petition", \$b_fun: "sign_petition", \$c_fun: "sign_petition", \$par: ([ "petition":\$this ]));
+
+    /*
+    Required arguments:
+    \$actor    (object): The user.
+    \$question (string): The question to ask.
+
+  Supported arguments:
+    \$yes_ob   (object): If we answer 'yes', call a function in \$yes_ob.
+    \$yes_fun  (string): Namely, this function.
+    \$yes      (string): Alternatively, emit this message and exit.
+    \$yes_act  (string): Action to perform if 'yes'.
+    \$no_ob    (object): If we say 'no', cafi \$no_ob
+    \$no_fun   (string): Namely, this.
+    \$no       (string): Alternatively, emit this message and exit.
+    \$no_act   (string): Action to perform if 'no'.
+    \$par      (mixed):  Parameter to pass to the function called.
+    ----
+    \$env      (bool):   Is this question bound to the current environment?
+    \$expires  (int):    Number of seconds before question expires.
+    \$expire_ob (object): Object in which function exists to handle expired questions.
+    \$expire_fun (string): Function name.
+    \$expire (string):   Message to emit when question expired.
+    */
+  \}  
+\}
+
+return \$output;
+      </Core:Property>
+      <Core:Property property="merry:lib:process_petition">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:process_petition instead! */
+/* Check if this petition is good to go! */
+int i;
+
+\$az = \$\{Chatters:AE:az:azrael\};
+
+/* What state is this petition in? */
+/* Nothing set when filling the initial petition */
+/* Set \$this."gather:defence" when waiting for defence */
+/* Set \$this."petition:complete" when waiting for signatures */
+/* Set \$this."petition:closed" when a decision has been made */
+/* Except... where do we store these, when there are multiple objects floating around? Probably in the victim or petitioner? */
+
+if(\$this."petition:complete" \|\| \$this."petition:closed") return TRUE; /* Petition complete already */
+if(\$this."gather:defence") return TRUE; /* Gathering defence. No need to do anything here. */
+
+/* Are we ready to finalize this petition? */
+
+/* Do we have a target? */
+/* Do we have a justification? */
+/* Do we have a signature? */
+if(!\$this."trait:target") return TRUE;
+if(!\$this."trait:justification") return TRUE;
+if(!\$this."lastsigner:object") return TRUE;
+
+\$actor = \$this."lastsigner:object";
+\$vic = \$this."trait:target";
+
+/* Petition is complete. What path do we want to demote? */
+\$demotion_options = (\{ \});
+\$ranks = prefixed_map(\$vic."*", "rank:status:");
+\$ranks_indices = map_indices(\$ranks);
+if(sizeof(\$ranks_indices)) \{
+  for(i=0;i\<sizeof(\$ranks_indices);i++) \{
+    \$group = \$ranks_indices[i][5..];
+    \$loyalty = \$\{Allegory:Lib:Characters:Rank\}."data:paths"[\$group];
+    
+    \$influence_cost = 0;
+    
+    /* Is this PC able to call for this petition? */
+    if(!Get(\$actor, "rank:status:"+\$loyalty) \&\& !Get(\$actor, "rank:status:"+\$loyalty+"_mil")) \{
+      /* Petitioner doesn't have any rank with this group. Can they pay with influence? */
+      if(\$loyalty == "underworld") continue;  /* May not pay with influence if this is an underworld demotion */
+      if(Int(Get(\$actor, "rank:influence:"+\$loyalty)) \>= 5)
+        \$influence_cost = 5;
+      else
+        continue;
+    \}
+    
+    \$ranklevel = Get(\$vic, \$ranks_indices[i]);
+    \$rankname = Get(\$vic, "rankname:"+\$ranks_indices[i][5..]);
+    \$new_ranklevel = \$ranklevel-1;
+    \$new_rankname = Get(\$vic, "rankname:"+\$ranks_indices[i][5..]+":"+\$new_ranklevel);
+    
+    /* How close a "match" is the petitioner to the petitioned? */
+    \$multiplier = 1;
+    /* Are they the right loyalty? */
+    if(\$actor."loyalty:group" != \$loyalty) \$multiplier += 1;
+    /* Are they lower ranked in this path? */
+    if(Int(Get(\$actor, \$ranks_indices[i])) \< \$ranklevel) \$multiplier += 1; /* Lower ranked with this path */
+    /* Are they higher ranked in this group? */
+    if(Int(Get(\$actor, "rank:status:"+\$loyalty)) \> \$ranklevel \|\| Int(Get(\$actor, "rank:status:"+\$loyalty+"_mil")) \> \$ranklevel) \{
+      /* Higher rank with the group. Do nothing. */
+    \} else if(Int(Get(\$actor, "rank:status:"+\$loyalty)) == \$ranklevel \|\| Int(Get(\$actor, "rank:status:"+\$loyalty+"_mil")) == \$ranklevel) \{
+      /* Equal rank with the group */
+      \$multiplier += 1;
+    \} else \{
+      /* Lower rank with the group */
+      \$multiplier += 2;
+    \}
+    
+    \$demotion_options += (\{ ([ "path":\$group, "level":\$ranklevel, "name":\$rankname, "new_level":\$new_ranklevel, "new_name":\$new_rankname, "multiplier":\$multiplier, "influence_cost":\$influence_cost, "loyalty":\$loyalty ]) \});
+  \}
+\}
+
+if(sizeof(\$demotion_options)) \{
+  while(sizeof(\$demotion_options) \> 5) \{
+    \$demotion_options[random(sizeof(\$demotion_options))] = nil;
+    \$demotion_options -= (\{ nil \});
+  \}
+  
+  \$par = ([ "petition":\$this ]);
+  if(sizeof(\$demotion_options) \>= 1) \{
+    i = 0;
+    if(\$demotion_options[i]["new_name"])
+      \$a = "Demote "+\$this."trait:target:name"+" from "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+") to "+\$demotion_options[i]["new_name"]+" (rank "+\$demotion_options[i]["new_level"]+")";
+    else
+      \$a = "Demote "+\$this."trait:target:name"+", and remove "+\$this."trait:target"."base:possessive"+" rank of "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+")";
+    if(\$demotion_options[i]["influence_cost"]) \$a += " [Costs "+\$demotion_options[i]["influence_cost"]+" influence]";
+    \$par["a_data"] = \$demotion_options[i];
+  \} else
+    \$a = nil;
+  if(sizeof(\$demotion_options) \>= 2) \{
+    i = 1;
+    if(\$demotion_options[i]["new_name"])
+      \$b = "Demote "+\$this."trait:target:name"+" from "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+") to "+\$demotion_options[i]["new_name"]+" (rank "+\$demotion_options[i]["new_level"]+")";
+    else
+      \$b = "Demote "+\$this."trait:target:name"+", and remove "+\$this."trait:target"."base:possessive"+" rank of "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+")";
+    if(\$demotion_options[i]["influence_cost"]) \$b += " [Costs "+\$demotion_options[i]["influence_cost"]+" influence]";
+    \$par["b_data"] = \$demotion_options[i];
+  \} else
+    \$b = nil;
+  if(sizeof(\$demotion_options) \>= 3) \{
+    i = 2;
+    if(\$demotion_options[i]["new_name"])
+      \$c = "Demote "+\$this."trait:target:name"+" from "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+") to "+\$demotion_options[i]["new_name"]+" (rank "+\$demotion_options[i]["new_level"]+")";
+    else
+      \$c = "Demote "+\$this."trait:target:name"+", and remove "+\$this."trait:target"."base:possessive"+" rank of "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+")";
+    if(\$demotion_options[i]["influence_cost"]) \$c += " [Costs "+\$demotion_options[i]["influence_cost"]+" influence]";
+    \$par["c_data"] = \$demotion_options[i];
+  \} else
+    \$c = nil;
+  if(sizeof(\$demotion_options) \>= 4) \{
+    i = 3;
+    if(\$demotion_options[i]["new_name"])
+      \$d = "Demote "+\$this."trait:target:name"+" from "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+") to "+\$demotion_options[i]["new_name"]+" (rank "+\$demotion_options[i]["new_level"]+")";
+    else
+      \$d = "Demote "+\$this."trait:target:name"+", and remove "+\$this."trait:target"."base:possessive"+" rank of "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+")";
+    if(\$demotion_options[i]["influence_cost"]) \$d += " [Costs "+\$demotion_options[i]["influence_cost"]+" influence]";
+    \$par["d_data"] = \$demotion_options[i];
+  \} else
+    \$d = nil;
+  if(sizeof(\$demotion_options) \>= 5) \{
+    i = 4;
+    if(\$demotion_options[i]["new_name"])
+      \$e = "Demote "+\$this."trait:target:name"+" from "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+") to "+\$demotion_options[i]["new_name"]+" (rank "+\$demotion_options[i]["new_level"]+")";
+    else
+      \$e = "Demote "+\$this."trait:target:name"+", and remove "+\$this."trait:target"."base:possessive"+" rank of "+\$demotion_options[i]["name"]+" (rank "+\$demotion_options[i]["level"]+")";
+    if(\$demotion_options[i]["influence_cost"]) \$e += " [Costs "+\$demotion_options[i]["influence_cost"]+" influence]";
+    \$par["e_data"] = \$demotion_options[i];
+  \} else
+    \$e = nil;
+  
+  interaction::question(\$actor: \$actor, \$question: "Are you ready to submit this demotion petition?", \$a: \$a, \$b: \$b, \$c: \$c, \$d: \$d, \$e: \$e, \$expires: 30, \$expire: "You choose not to submit the petition yet. You can always sign it again when you're ready to submit.", \$a_ob: \$this, \$b_ob: \$this, \$c_ob: \$this, \$d_ob: \$this, \$e_ob: \$this, \$a_fun: "submit_petition", \$b_fun: "submit_petition", \$c_fun: "submit_petition", \$d_fun: "submit_petition", \$e_fun: "submit_petition", \$par: \$par);
+\} else \{
+  EmitTo(\$actor, "Either you don't have enough rank or status to call for a demotion petition for "+\$this."trait:target:name"+", or "+\$this."trait:target:name"+" has no rank to lose.");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:recount_signature_points">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:recount_signature_points instead! */
+/* Count the points for signatures, decide how long the petition should continue for, and trigger the outcome if the timer runs out */
+int a, b, i;
+string *indices;
+
+/* Sanity check */
+if(!\$target) return TRUE;
+if(!\$petition) return TRUE;
+if(!\$target."demotion:petition") return TRUE; /* Why don't they have a current demotion petition in progress? */
+if(!\$voting) return TRUE;
+
+\$data = \$target."demotion:petition";
+if(\$petition.id != \$data["id"]) return TRUE;
+
+/* EmitTo(\$actor, dump_value(\$data)); */
+/* EmitTo(\$actor, "ID: "+\$petition.id+" and "+\$data["id"]); */
+/* EmitTo(\$actor, "Signatures: "+dump_value(\$petition.signatures)); */
+
+/* Count up the points */
+
+EmitTo(\$actor, dump_value(\$data));
+
+\$data["yes_points"] = 0;
+for(i=0; i\<sizeof(\$data["yes_signatures"]); i++) \{
+  \$char = \$data["yes_signatures"][i];
+  \$value = 1;
+  
+  /* Same loyalty? */
+  if(!\$data["loyalty"] \|\| \$char."loyalty:group" == \$data["loyalty"])
+    \$value++;
+  
+  /* Higher rank overall? */
+  if(Int(\$char."rank:rank") \> Int(\$target."rank:rank"))
+    \$value++;
+
+  /* Higher rank with this loyalty group? */
+  a = Int(Get(\$char, "rank:status:"+\$data["loyalty"])) \> Int(Get(\$char, "rank:status:"+\$data["loyalty"]+"_mil"))
+  ? Int(Get(\$char, "rank:status:"+\$data["loyalty"])) : Int(Get(\$char, "rank:status:"+\$data["loyalty"]+"_mil"));
+  b = Int(Get(\$target, "rank:status:"+\$data["loyalty"])) \> Int(Get(\$target, "rank:status:"+\$data["loyalty"]+"_mil"))
+  ? Int(Get(\$target, "rank:status:"+\$data["loyalty"])) : Int(Get(\$target, "rank:status:"+\$data["loyalty"]+"_mil"));
+  if(a \> b)
+    \$value++;
+
+  /* Higher rank on this path? */
+  if(Int(Get(\$char, "rank:"+\$data["path"])) \> Int(Get(\$target, "rank:"+\$data["path"])))
+    \$value++;
+  
+  /* Patron calling for this demotion? */
+  if(\$data["original_patron"] == \$char)
+    \$value += 5;
+    
+  \$data["yes_points"] += \$value;
+\}
+\$data["no_points"] = 0;
+for(i=0; i\<sizeof(\$data["no_signatures"]); i++) \{
+  \$char = \$data["no_signatures"][i];
+  \$value = 1;
+  
+  /* Same loyalty? */
+  if(!\$data["loyalty"] \|\| \$char."loyalty:group" == \$data["loyalty"])
+    \$value++;
+  
+  /* Higher rank overall? */
+  if(Int(\$char."rank:rank") \> Int(\$target."rank:rank"))
+    \$value++;
+
+  /* Higher rank with this loyalty group? */
+  a = Int(Get(\$char, "rank:status:"+\$data["loyalty"])) \> Int(Get(\$char, "rank:status:"+\$data["loyalty"]+"_mil"))
+  ? Int(Get(\$char, "rank:status:"+\$data["loyalty"])) : Int(Get(\$char, "rank:status:"+\$data["loyalty"]+"_mil"));
+  b = Int(Get(\$target, "rank:status:"+\$data["loyalty"])) \> Int(Get(\$target, "rank:status:"+\$data["loyalty"]+"_mil"))
+  ? Int(Get(\$target, "rank:status:"+\$data["loyalty"])) : Int(Get(\$target, "rank:status:"+\$data["loyalty"]+"_mil"));
+  if(a \> b)
+    \$value++;
+
+  /* Higher rank on this path? */
+  if(Int(Get(\$char, "rank:"+\$data["path"])) \> Int(Get(\$target, "rank:"+\$data["path"])))
+    \$value++;
+  
+  /* Patron calling for this demotion doesn't overly help. We expect patrons would want to protect their proteges */
+  /* if(\$data["original_patron"] == \$char) */
+  /*   \$value += 5; */
+    
+  \$data["no_points"] += \$value;
+\}
+
+/* Is this the first time this PC has signed? */
+if(!member(\$actor, \$data["all_signatures"])) \{
+  /* First time signing. */
+  \$data["all_signatures"] \|= (\{ \$actor \});
+
+  /* Do we reset the timer? */
+  if(
+  !\$data["all_timestamp"]
+  \|\| (\$voting == "yes" \&\& \$data["yes_points"] \<= \$data["no_points"])
+  \|\| (\$voting == "no" \&\& \$data["yes_points"] \> \$data["no_points"])
+  ) \{
+    \$this_timestamp = time();
+    \$data[\$voting+"_timestamp"] = \$this_timestamp;
+    \$data["all_timestamp"] = \$this_timestamp;
+    
+    \$delay(60*60*24*5, TRUE, "3c0f"); /* 5 days to get the next signature */
+
+    if(!\$target) return TRUE;
+    if(!\$target."demotion:petition") return TRUE;
+    \$data = \$target."demotion:petition";
+
+    /* Has the timestamp changed? Or the petition closed? */
+    if(\$data["all_timestamp"] != \$this_timestamp) return TRUE;
+    if(\$data["closed"]) return TRUE;
+
+    /* Same timestamp, end the vote */
+    /* Who has more points? */
+    if(\$data["yes_points"] \> \$data["no_points"]) \{
+      /* Demote! */
+
+      /* Tell the target */
+      \$message = \$data["petitioner:name"]+"'s petition to have you demoted from "+\$data["name"];
+      if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+      \$message += " has been successful.\\nYour rank has been reduced as appropriate.";
+      general::opage(\$to: \$target, \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+
+      /* Tell the petitioner */
+      if(\$data["petitioner"]) \{
+        \$message = "Your petition to have "+\$data["target:name"]+" demoted from "+\$data["name"];
+        if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+        \$message += " was successful.\\nCongratulations!";
+        general::opage(\$to: \$data["petitioner"], \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+      \}
+      
+      /* Does the patron lose standing? Tell them! */
+      if(\$data["original_patron"]) \{
+      
+        if(member(\$data["original_patron"], \$data["yes_signatures"])) \{
+          /* Patron voted to demote */
+          \$message = \$data["petitioner:name"]+"'s petition to have "+\$data["target:name"]+" demoted from "+\$data["name"];
+          if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+          \$message += " was successful. As you were one of the signatures calling for this demotion, this does not reflect upon you.";
+          general::opage(\$to: \$data["original_patron"], \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+        \} else \{
+          /* Patron didn't vote to demote. Do they lose standing? */
+          /* NOT WRITTEN YET - right now they don't lose anything. */
+          \$message = \$data["petitioner:name"]+"'s petition to have "+\$data["target:name"]+" demoted from "+\$data["name"];
+          if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+          \$message += " was successful. As "+\$data["target:name"]+"'s patron, this reflects badly upon you.";
+          general::opage(\$to: \$data["original_patron"], \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+        \}
+      \}
+
+      
+      \$promotions_lib = \$\{Allegory:Lib:Characters:Rank\};
+      \$rank_info = Call(\$promotions_lib, "check_status", \$char: \$target, \$path: \$data["path"]);
+      \$new_rank_info = Call(\$promotions_lib, "check_status", \$char: \$target, \$path: \$data["path"], \$give_demotion: TRUE);
+      if(\$rank_info["level"] \>= \$data["level"])
+        Call(\$promotions_lib, "give_demotion", \$par: (["char":\$target, "info":\$new_rank_info]) );
+
+      /* File an assist */
+      \$assisttext = \$data["petitioner:name"]+"'s petition to have "+\$data["target:name"]+" demoted from "+\$data["name"];
+      if(\$data["new_name"]) \$assisttext += " to "+\$data["new_name"];
+      \$assisttext += " has been successful.";
+      assist::dofileassist(\$data: \$\{Data:DB:assist:AssistGeneralDB\}, \$char: Str(\$target), \$queue: "new", \$assisttext: \$assisttext, \$log: "[TAS]", \$silence: TRUE);
+
+
+    \} else \{
+      /* No demote!       */
+      /* Tell the target */
+      \$message = \$data["petitioner:name"]+"'s petition to have you demoted from "+\$data["name"];
+      if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+      \$message += " was unsuccessful.\\nCongratulations!";
+      general::opage(\$to: \$target, \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+
+      /* Tell the petitioner */
+      if(\$data["petitioner"]) \{
+        \$message = "Your petition to have "+\$data["target:name"]+" demoted from "+\$data["name"];
+        if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+        \$message += " was unsuccessful.\\nBetter luck next time!";
+        general::opage(\$to: \$data["petitioner"], \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+      \}
+      
+      /* Tell the patron */
+      if(\$data["original_patron"]) \{
+        \$message = \$data["petitioner:name"]+"'s petition to have "+\$data["target:name"]+" demoted from "+\$data["name"];
+        if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+        \$message += " was unsuccessful.\\nYour protege has pulled through!";
+        general::opage(\$to: \$data["original_patron"], \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+      \}
+
+    \}
+    
+    /* Update the petition */
+    Set(\$target, "demotion:petition:"+\$data["id"], \$data);
+    \$target."demotion:petition" = nil;
+    \$data["closed"] = TRUE;
+    
+    /* Are we removing the patron? */
+    if(\$data["original_patron"] \&\& member(\$data["original_patron"], \$data["yes_signatures"])) \{
+      /* Patron signed for the demotion. Remove them as patron. */
+      if(\$target.patron == \$data["original_patron"]) \{
+        if(!\$target."patron:old") \$target."patron:old" = (\{ \});
+        \$target."patron:old" \|= (\{ \$target.patron \}); 
+        \$target.patron = nil;
+        \$data["original_patron"].proteges -= (\{ \$target \});
+      \}
+    \}
+
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:sign_petition">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:sign_petition instead! */
+/* Function called by the sign petition CYOA */
+
+/* Sanity checks */
+if(!\$par \|\| !\$par["petition"]) return TRUE; /* No petition passed. Who are we answering this about? */
+if(!\$key) return TRUE; /* Not called from a CYOA */
+if(!\$this."trait:target") return TRUE; /* Who is this petition about? We don't know! */
+if(!\$this."trait:target"."demotion:petition") return TRUE; /* Why don't they have a current demotion petition in progress? */
+
+if(\$key == "a") return TRUE; /* \$actor chose not to sign */
+
+/* Do we have a mapping to store the signatures in? */
+if(!\$par["petition"].signatures) \$par["petition"].signatures = ([ ]);
+if(!\$par["petition"].signatures["yes"]) \$par["petition"].signatures["yes"] = ([ ]);
+if(!\$par["petition"].signatures["no"]) \$par["petition"].signatures["no"] = ([ ]);
+
+EmitTo(\$actor, "You sign "+Describe(\$this, nil, \$actor)+".");
+if(\$this."base:environment" != \$actor) EmitTo(\$this."base:environment", Describe(\$actor)+" signs "+Describe(\$this, nil, \$this."base:environment")+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" signs "+Describe(\$this, \$actor)+".", \$actor, \$this."base:environment");
+
+\$data = \$this."trait:target"."demotion:petition";
+
+/* Temporary fix */
+/* Only needed for the existing petitions. New petitions won't need this. Remove before release. */
+/* if(!\$data["yes_signatures"]) \$data["yes_signatures"] = (\{ \}); */
+/* if(!\$data["no_signatures"]) \$data["no_signatures"] = (\{ \}); */
+/* End Temporary fix */
+
+if(\$key == "b") \{
+  /* Vote to demote! */
+  \$par["petition"].signatures["no"][name(\$actor)] = nil;
+  \$par["petition"].signatures["yes"][name(\$actor)] = \$actor."skotos:charname" ? 
+  capitalize(\$actor."skotos:charname") : Describe(\$actor);
+  \$data["yes_timestamp"] = time();
+  \$data["yes_signatures"] \|= (\{ \$actor \});
+  \$data["no_signatures"] -= (\{ \$actor \});
+  ::recount_signature_points(\$target: \$this."trait:target", \$petition: \$par["petition"], \$voting: "yes");
+\} else if(\$key == "c") \{
+  /* Vote not to demote! */
+  \$par["petition"].signatures["yes"][name(\$actor)] = nil;
+  \$par["petition"].signatures["no"][name(\$actor)] = \$actor."skotos:charname" ? 
+  capitalize(\$actor."skotos:charname") : Describe(\$actor);
+  \$data["no_timestamp"] = time();
+  \$data["no_signatures"] \|= (\{ \$actor \});
+  \$data["yes_signatures"] -= (\{ \$actor \});
+  ::recount_signature_points(\$target: \$this."trait:target", \$petition: \$par["petition"], \$voting: "no");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:submit_petition">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:lib:submit_petition instead! */
+/* Submitting a demotion petition */
+
+/* EmitTo(\$actor, "Submission received"); */
+
+/* Sanity checks */
+if(!\$par \|\| !\$par["petition"]) return TRUE; /* No petition passed. Who are we answering this about? */
+if(!\$key) return TRUE; /* Not called from a CYOA */
+if(!\$this."trait:target") return TRUE; /* Who is this petition about? We don't know! */
+
+\$data = \$par[\$key+"_data"];
+/* EmitTo(\$actor, dump_value(\$data)); */
+
+if(\$this."trait:target"."demotion:petition") \{
+  EmitTo(\$actor, "There is already a current demotion petition active for "+Describe(\$this."trait:target")+". Please wait for that to complete before beginning another.");
+  /* return TRUE; */
+\}
+
+if(\$data["influence_cost"]) \{
+  \$points = Int(Get(\$actor, "rank:influence:"+\$data["loyalty"]));
+  if(\$points \>= \$data["influence_cost"]) \{
+    \$points -= \$data["influence_cost"];
+    Set(\$actor, "rank:influence:"+\$data["loyalty"], \$points);
+  \} else \{
+    EmitTo(\$actor, "You do not have enough influence to submit this petition.");
+    return TRUE;
+  \}
+\}
+
+/* Store all the info into this \$data */
+\$data["target"] = \$this."trait:target";
+\$data["target:name"] = \$this."trait:target:name";
+\$data["petitioner"] = \$actor;
+\$data["petitioner:name"] = \$actor."skotos:charname" ? capitalize(\$actor."skotos:charname") : Describe(\$actor);
+\$data["justification"] = \$this."trait:justification";
+\$data["defence"] = "";
+\$data["timestamp"] = time();
+\$data["yes_timestamp"] = time();
+\$data["yes_signatures"] = (\{ \});
+\$data["yes_votes"] = 0;
+\$data["yes_points"] = 0;
+\$data["no_timestamp"] = time();
+\$data["no_signatures"] = (\{ \});
+\$data["no_votes"] = 0;
+\$data["no_points"] = 0;
+\$data["all_signatures"] = (\{ \});
+\$data["original_patron"] = \$this."trait:target".patron;
+
+/* Set an ID and store in the target */
+\$this.id = random(10000000);
+\$data["id"] = \$this.id;
+\$this."trait:target"."demotion:petition" = \$data;
+
+/* Update the petition now we've moved into the next stage */
+\$this."gather:defence" = TRUE;
+\$this."block:signing" = TRUE;
+\$this."lastsigner:object" = \$this."trait:target";
+\$this.lastwriter = nil;
+\$this.lastwriter_object = nil;
+\$this."block:signing" = nil;
+\$this.signatures = ([ "yes":([]), "no":([]) ]);
+
+/* Create a new petition for the person being demoted */
+\$new_petition = Duplicate(\$this);
+\$new_petition."base:environment" = \$this."trait:target";
+
+/* Sanity check that they received the petition */
+if(!\$new_petition."base:environment")
+  if(\$this."trait:target"."base:environment") \$new_petition."base:environment" = \$this."trait:target"."base:environment";
+if(!\$new_petition."base:environment")
+  if(\$this."trait:target"."virtualhome:home") \$new_petition."base:environment" = \$this."trait:target"."virtualhome:home";
+
+/* Inform them of the petition */
+/* ([ "influence_cost":0, "level":6, "loyalty":"church", "multiplier":2, "name":"Pastor", "new_level":5, "new_name":"Brother" ]) */
+\$message = \$data["petitioner:name"]+" has started a petition to have you demoted from "+\$data["name"];
+if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+/* \$message += " within the "+\$data["loyalty"]+".\\n\\n"; */
+\$message += ".\\n\\n";
+\$message += "For this petition to be successful, "+\$data["petitioner:name"]+" will need to gather ";
+if(\$data["multiplier"] \<= 1)
+  \$message += "more";
+else
+  \$message += desc_cardinal(\$data["multiplier"])+" times as many";
+\$message += " votes than you.\\n";
+\$message += "The value of each signature for this petition depends on many factors, including loyalty, relative rank, and other factors.\\n\\n";
+\$message += "You have a few choices:\\n";
+\$message += "- You can accept this demotion.";
+if(\$data["new_name"])
+  \$message += " You will be demoted to "+\$data["new_name"]+" and the petition will be complete. Please @assist if you would like this.\\n";
+else
+  \$message += " You will lose your rank of "+\$data["name"]+" and the petition will be complete. Please @assist if you would like this.\\n";
+\$message += "- You can fight this petition. To do so, take the demotion petition that should now be in your possession, and gather signatures. Other PCs might know something about this petition and be able to help you out. You can 'copy' this petition if you want to have other PCs also gather signatures.\\n";
+\$message += "- You might be able to transfer your ranks to another path. For example, converting social rank into military rank, or council rank into underworld rank. This would be roleplayed as your PC being stripped of their previous rank, but the new organization recognizing their status and experience. If you would like to take this option, please @assist and staff will discuss what (if any) options are available.\\n\\n";
+\$message += "Please remember that competition and conflict are an expected part of this game, and use this as an opportunity to continue telling the story of your PC, through the various twists and turns of their fortune. Gracefully accepting the petition, roleplaying to gather signatures to protect your rank, or shifting career paths into a new area of the game are all great ways to continue your character's story!";
+
+general::opage(\$to: \$this."trait:target", \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+
+
+
+if(\$data["original_patron"]) \{
+  \$message = \$data["petitioner:name"]+" has started a petition to have "+\$data["target:name"]+" demoted from "+\$data["name"];
+  if(\$data["new_name"]) \$message += " to "+\$data["new_name"];
+  \$message += ".\\nAs you are their patron, if this petition is successful it will reflect badly upon you.\\n\\nYou have two options:\\n- Support your protege. Help them gather signatures to keep their rank.\\n- Agree with this petition. If you sign the petition in support of "+\$data["target:name"]+" being demoted, your patronage will be removed and their demotion will not reflect on you.";
+  general::opage(\$to: \$data["original_patron"], \$from: \$\{Chatters:IC:me:mercutio\}, \$timestamp: TRUE, \$message: \$message);
+\}
+
+
+/* Petition timer will begin after someone signs one of the petitions */
+
+EmitTo(\$actor, "Your petition has been submitted. You can now start gathering signatures - have PCs examine your petition, or sign your petition, and they'll be able to vote for or against the demotion.");
+EmitTo(\$actor, "You can 'copy' this petition if you want to have other PCs also gather signatures.");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:copy-dob">
+         X[M] EmitTo(\$actor, "You carefully make a copy of "+Describe(\$this, nil, \$actor)+".");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" carefully makes a copy of "+Describe(\$this, \$actor)+".", \$actor);
+
+\$spawn = Duplicate(\$this);
+\$spawn."base:environment" = \$actor;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:brain:deliver-to">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:setprop-post:brain:deliver-to instead! */
+/* \$az = \$\{Chatters:IC:az:azrael\}; */
+
+if(\$this."gather:defence") return TRUE;
+
+if(\$(hook-value) \&\& typeof(\$(hook-value)) == T_OBJECT) \{
+  \$this."trait:target" = \$(hook-value);
+  /* EmitTo(\$az, "Setprop post brain:deliver-to set target as "+dump_value(\$(hook-value))); */
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:details:objskin:description:delivery-to">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:setprop-post:details:objskin:description:delivery-to instead! */
+/* \$az = \$\{Chatters:IC:az:azrael\}; */
+/* EmitTo(\$az, "Setprop post details:objskin:description:delivery-to non-local!"); */
+
+if(\$this."gather:defence") return TRUE;
+
+if(!\$(hook-property) \|\| lower_case(\$(hook-property)) != "details:objskin:description:delivery-to") return TRUE;
+
+/* Set properties once the target is set */
+if(typeof(\$this."details:objskin:description:delivery-to") == T_NIL) return TRUE;
+if(\$this."details:objskin:description:delivery-to") Set(\$this, "details:objskin:adjective:"+lower_case(\$this."details:objskin:description:delivery-to"), TRUE);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:details:objskin:description:writing">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:setprop-post:details:objskin:description:writing instead! */
+/* \$az = \$\{Chatters:IC:az:azrael\}; */
+/* EmitTo(\$az, "Setprop post writing non-local"); */
+/* EmitTo(\$az, dump_value(\$this."details:objskin:description:writing")); */
+
+/* EmitTo(\$az, \$this."details:objskin:description:writing"); */
+
+if(\$(hook-value) \&\& typeof(\$(hook-value)) == T_STRING) \{
+  if(!\$this."gather:defence") \{
+    \$this."trait:justification" = \$(hook-value);
+  \} else \{
+    if(\$this."trait:target"
+    \&\& \$this.id
+    \&\& \$this."trait:target"."demotion:petition"
+    \&\& \$this."trait:target"."demotion:petition"["id"] == \$this.id) \{
+      \$this."trait:target"."demotion:petition"["defence"] = \$(hook-value);
+    \}
+  \}
+  
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:lastsigner:object">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:setprop-post:lastsigner:object instead! */
+/* Check if we are signing this petition to start it, or to enter our opinion */
+/* Can they sign the petition? */
+if(!\$this."lastsigner:object") return TRUE;
+if(\$this."block:signing") return TRUE;
+
+if(\$this."gather:defence" \&\& \$this."lastsigner:object" != \$this."trait:target") \{
+  /* Don't allow signing... */
+
+  /* Let them examine it. That'll give the "do you want to sign" question */
+  Social(\$this."lastsigner:object", "examine", nil, nil, nil, \$this);
+
+  /* Restore the original signature */
+  \$this."block:signing" = TRUE;
+  \$this."lastsigner:object" = \$this."trait:target";
+  \$this."block:signing" = nil;
+\} else if(!\$this."gather:defence") \{
+  /* Signing to begin the petition */
+  \$delay(0.1, TRUE, "a8d0");
+  ::process_petition();
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:nip:delivery:recipient">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:setprop-post:nip:delivery:recipient instead! */
+/* \$az = \$\{Chatters:IC:az:azrael\}; */
+
+if(\$this."gather:defence") return TRUE;
+
+if(\$(hook-value) \&\& typeof(\$(hook-value)) == T_OBJECT) \{
+  \$this."trait:target" = \$(hook-value);
+  /* EmitTo(\$az, "Setprop post nip:delivery:recipient target as "+dump_value(\$(hook-value))); */
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:petitioner">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:setprop-post:trait:petitioner instead! */
+/* \$az = \$\{Chatters:IC:az:azrael\}; */
+/* EmitTo(\$az, "Setprop post petitioner"); */
+
+if(\$this."gather:defence") return TRUE;
+if(!\$(hook-property) \|\| lower_case(\$(hook-property)) != "trait:petitioner") return TRUE;
+
+/* EmitTo(\$az, "Setting the petitioner to "+dump_value(\$this."trait:petitioner")); */
+
+/* Set properties once the target is set */
+if(typeof(\$this."trait:petitioner") == T_NIL) return TRUE;
+if(typeof(\$this."trait:petitioner") != T_OBJECT) \{
+  \$this."trait:petitioner" = nil;
+  \$this."trait:petitioner:name" = nil;
+\}
+
+if(\$this."trait:petitioner"."skotos:charname")
+  \$this."trait:petitioner:name" = capitalize(\$this."trait:petitioner"."skotos:charname");
+else
+  \$this."trait:petitioner:name" = Describe(\$this."trait:petitioner");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:trait:target">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:setprop-post:trait:target instead! */
+/* Set the target name if the target changes */
+if(\$this."gather:defence") return TRUE;
+if(\$(hook-property) != "trait:target") return TRUE;
+
+/* \$az = \$\{Chatters:IC:az:azrael\}; */
+/* EmitTo(\$az, "Target is "+dump_value(\$this."trait:target")); */
+
+if(!\$this."trait:target")
+  \$this."trait:target:name" = nil;
+else if(\$this."trait:target"."skotos:charname")
+  \$this."trait:target:name" = capitalize(\$this."trait:target"."skotos:charname");
+else
+  \$this."trait:target:name" = Describe(\$this."trait:target");
+/* Set(\$this, "details:default:adjective:"+lower_case(\$this."trait:target:name"), TRUE); // Not needed - set by other setprop values */
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1593982203, "jominey", "E", 1593982224, "jominey", "E", 1593982243, "jominey", "E", 1593982244, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

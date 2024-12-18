@@ -1,0 +1,1489 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Lib:Teaching:UrPopup)"/>
+    <Core:PCProperties>
+      <Core:Property property="html:general_script">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>\$[Call(this, "general_script")]\</z\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */      
+  ::popup_initialize();      
+  return nil;]
+\</z\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Skill/Career popup\</title\>
+  \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+  \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+  \$(this.html:javascript)
+  \$(this.html:guildscript)
+\</head\>
+\<body\>
+\$[::switchblock(\$id: "skilllist", \$script: "list_skills", \$heading: "Skills")]
+\$[::switchblock(\$id: "careerlist", \$script: "list_careers", \$heading: "Careers")]
+\<div id="top_strip"\>
+\</div\>
+\</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:javascript">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+function GetXmlHttpObject() \\\{
+  var xmlHttp;
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+function run_script(script, variables) \\\{
+  if(!script) return;
+  variables = escape(variables);
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\} else if(xmlHttp.responseText != "") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function display_block(block, script, variables) \\\{
+  if(!block) return;
+  if(!script) \\\{
+    document.getElementById("block").innerHTML="";
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById(block).innerHTML=xmlHttp.responseText;
+      document.getElementById(block).style.display = 'block';
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function switch_block(block) \\\{
+  if(!block) return;
+  if(document.getElementById(block).style.display == "block") \\\{
+    document.getElementById(block).style.display = 'none';
+  \\\} else \\\{
+    document.getElementById(block).style.display = 'block';
+  \\\}
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="merry:lib:general_script">
+         X[M] /* run some initial code */ 
+string output; 
+int i, sz, j, jx; 
+::popup_initialize(); 
+ 
+\$az = Obj("Chatters:IC:az:azrael"); 
+ 
+/* set variables (if any) */ 
+if(typeof(\$vars) != T_ARRAY) 
+  \$vars = explode(Str(\$vars), "\|"); 
+ 
+output = ""; 
+ 
+if(\$script == "list_skills") \{ 
+ return "We don't yet have a list of skills, or info about those skills"; 
+\} else if(\$script == "list_careers") \{ 
+ \$db = \$\{Ironclaw:Lib:Teaching:newCareersDB\}; 
+ \$list = map_indices(\$db."*"); 
+\$list -= (\{ "revisions" \}); 
+if( member( "teaching_categories", \$list )) \{ 
+\$list -= (\{ "teaching_categories" \});  
+\} 
+ output += "\<table border=1\>\\n"; 
+ output += "\<tr\>\<td\>Name\</td\>\<td\>Income\</td\>\<td\>Skills\</td\>\<td\>Teaching\</td\>\<td\>Tokens\</td\>\<td\>Mod\</td\>\<td\>Value\</td\>\</tr\>\\n"; 
+ 
+ for(i=0;i\<sizeof(\$list);i++) \{ 
+  \$career = Get(\$db, \$list[i]); 
+  if(typeof(\$career) != T_MAPPING) \{ 
+   output += "\<tr\>\<td colspan=7\>Something has gone wrong with the "+\$list[i]+" career.\</td\>\</tr\>\\n"; 
+  \} else \{ 
+   /* career name */ 
+   output += "\<tr\>\<td\>"+\$list[i]+"\</td\>\<td\>"+Str(\$career["income"])+"\</td\>\<td\>"; 
+   /* skill list */ 
+   \$skills = Arr(\$career["skills"]); 
+   jx = sizeof(\$skills); 
+   for(j=0;j\<sizeof(\$skills);j++) \{ 
+    \$skill = Arr(\$skills[j]); 
+    sscanf(Str(\$skill[0]), "%*s:%s", \$tmp); 
+    output += Str(\$tmp); 
+ 
+/*    output += Str(\$skill[0]);*/ 
+    if(sizeof(\$skill) \> 1) 
+     output += "("+Str(\$skill[1])+")"; 
+    if(j \< jx-1) 
+     output += ", "; 
+   \} 
+   output += "\</td\>\<td\>"; 
+   /* teaching category */ 
+   output += Str(\$career["teaching"])+"\</td\>\<td\>"; 
+   /* token production */ 
+   \$tokens = Arr(\$career["tokens"]); 
+   for(j=0;j\<sizeof(\$tokens);j++) \{ 
+    output += Str(\$tokens[j])+" "; 
+   \} 
+   /* Value estimate */ 
+   /* Value modifications */ 
+   output += "\</td\>\<td\>"; 
+   /* any modifications to the points values? */ 
+   if(\$career["mod"]) \{ 
+    for(j=0;j\<sizeof(\$career["mod"]);j++) \{ 
+     output += Str(\$career["mod"][j][0])+"("+Str(\$career["mod"][j][1])+") "; 
+    \} 
+   \} 
+   /* count the total value */ 
+   output += "\</td\>\<td\>"; 
+   \$value = 0; 
+   /* how much value does the income add? */ 
+   \$value += Int(\$career["income"]); 
+   /* being able to learn from the NPCs adds value */ 
+   if(\$career["teaching"]) \$value += 50; 
+   /* how much value do the skills add? */ 
+   for(j=0;j\<sizeof(\$skills);j++) \{ 
+    \$skill = Arr(\$skills[j]); 
+    sscanf(Str(\$skill[0]), "%s:%*s", \$tmp); 
+    switch(\$tmp) \{ 
+      case "career": 
+       \$skillval = 100; 
+       break; 
+      case "alteration": 
+       \$skillval = 150; 
+       break; 
+      case "lang": 
+       \$skillval = 30; 
+       break; 
+      default: 
+       \$skillval = 50; 
+    \} 
+ 
+    if(sizeof(\$skill) \> 1) \{ 
+     if(\$skill[1] \<= 0.35) \{ 
+      \$skillval = \$skillval / 4; 
+     \} else if(\$skill[1] \<= 0.5) \{ 
+      \$skillval = \$skillval / 3; 
+     \} else if(\$skill[1] \<= 0.68) \{ 
+      \$skillval = \$skillval / 2; 
+     \} 
+    \} 
+    \$value += \$skillval; 
+   \} 
+   /* value of the generated tokens */ 
+   /* token production */ 
+   if(\$career["tokens"]) 
+    \$value += 50; 
+   if(sizeof(Arr(\$career["tokens"])) \> 1) 
+    \$value += (sizeof(Arr(\$career["tokens"]))-1)*20; 
+ 
+   /* any modifications to the points values? */ 
+   if(\$career["mod"]) \{ 
+    for(j=0;j\<sizeof(\$career["mod"]);j++) \{ 
+     \$value += \$career["mod"][j][1]; 
+    \} 
+   \} 
+   if(\$value \< 250 \|\| \$value \> 350) \{ 
+    output += "\<font color=red\>"; 
+   \} else 
+    output += "\<font\>"; 
+   output += Str(\$value); 
+   output += "\</font\>"; 
+   output += "\</td\>\</tr\>\\n"; 
+  \} 
+ 
+ 
+ \} 
+ output += "\</table\>\\n"; 
+ 
+ output += "\<br/\>We are still in the process of creating a list of careers and info about the careers.\<br/\>"; 
+ 
+ return output; 
+\} else if(\$script == "change_members_auth") \{ 
+  /* only let members have access if they have authority */ 
+  if(!\$guildrank) return FALSE; 
+  if(\$guildleader) return TRUE; 
+  if(\$actor."guild:authority") \{ 
+    if(member(\$setting, \$actor."guild:authority")) 
+      return TRUE; 
+  \} 
+  return FALSE; 
+\} else if(\$script == "list_members") \{ 
+  /* only let them see the members list if they are in the guild */ 
+  if(!\$guildrank) return FALSE; 
+  if(!sizeof(\$vars)) \$vars = (\{ "active" \}); 
+  output = "\<table border=\\"0\\"\>\\n"; 
+  output += "\<tr\>\<td\>\<strong\>Name\</strong\>\</td\>\<td\>\<strong\>Social Rank\</strong\>\</td\>\<td\>\<strong\>Position\</strong\>\</td\>\<td\>\<strong\>Notes\</strong\>\</td\>\<td\>\<strong\>Bluebooked Job\</strong\>"; 
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment")) 
+    output += "\</td\>\<td\>\<strong\>Daily Payment\</strong\>"; 
+  output += "\</td\>\</tr\>\\n"; 
+  \$members = Arr(\$guild.members); 
+  \$members -= (\{ nil \}); 
+  /* sort the members in terms of rank */ 
+  j = \$members[0]."rank:rank"; 
+  for(i=1;i\<sizeof(\$members);i++) \{ 
+    \$member = \$members[i]; 
+    if(\$member."rank:rank" \> j) \{ 
+      /* swap them */ 
+      \$members[i] = \$members[i-1]; 
+      \$members[i-1] = \$member; 
+      if(i == 1) \{ 
+        j = \$member."rank:rank"; 
+        i = 0; 
+      \} else \{ 
+        i -= 2; 
+        j = \$members[i]."rank:rank"; 
+      \} 
+    \} else \{ 
+      j = \$member."rank:rank"; 
+    \} 
+  \} 
+  \$guild.members = \$members; 
+  for(i=0;i\<sizeof(\$members);i++) \{ 
+    \$member = \$members[i]; 
+    if(\$vars[0] != "active" \|\| Int(\$member."cdat:lastlogin")+60*60*24*5 \> time()) \{ 
+      /* display this character */ 
+      if(\$vars[0] == "edit") \{ 
+        output += "\<tr\>\<td\>\<u class=\\"clickable\\" onclick=\\"display_block('editmember"+Str(\$member."skotos:charname")+"', 'edit_members', '"+name(\$member)+"'); switch_block('editmember"+Str(\$member."skotos:charname")+"');\\"\>"+capitalize(Str(\$member."skotos:charname"))+"\</u\>"; 
+      \} else \{ 
+        output += "\<tr\>\<td\>"+capitalize(Str(\$member."skotos:charname")); 
+      \} 
+      output += "\</td\>\<td\>"+Str(\$member."rank:name"); 
+      output += "\</td\>\<td\>"+Str(\$member."guild:position"); 
+      output += "\</td\>\<td\>"+Str(\$member."guild:notes"); 
+      output += "\</td\>\<td\>"; 
+      if(\$member."guild:job") \{ 
+        output += Str(\$member."guild:job"); 
+      \} else \{ 
+        output += "earning"; 
+      \} 
+      if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment")) \{ 
+        \$max = Int(\$member."trait:income")+Int(\$member."trait:extraincome"); 
+        if(\$member."guild:daily_payment" \&\& \$member."guild:daily_payment" \> \$max) \{ 
+          output += "\</td\>\<td\>"+Str(\$max); 
+        \} else \{ 
+          output += "\</td\>\<td\>"+Str(Int(\$member."guild:daily_payment")); 
+        \} 
+      \} 
+      output += "\</td\>\</tr\>\\n"; 
+      if(\$vars[0] == "edit") \{ 
+        output += "\<tr\>\<td colspan=3\>\<span id=\\"editmember"+Str(\$member."skotos:charname")+"\\" style=\\"display:none;\\"\>\</span\>\</td\>\</tr\>\\n"; 
+      \} 
+    \} 
+  \} 
+  output += "\</table\>\\n"; 
+ 
+  /* recruit or release members */ 
+  if((\$guildleader \|\| \$char."guild:guild_recruiting") \&\& \$guildrank) \{ 
+   output += "\<br/\>Recruit a new member: "; 
+   output += "\<input onchange=\\"run_script('recruit_member', this.value);\\"/\>\<br/\>\\n"; 
+   output += "\<br/\>Release a member "; 
+   output += "\<select id=\\"release_member_honor\\"\\"\>\\n"; 
+   output += "\<option value=\\"honorable\\" selected=\\"1\\"\>honorably\</option\>\\n"; 
+   output += "\<option value=\\"dishonorable\\"\>dishonorably\</option\>\\n"; 
+   output += "\</select\>\\n"; 
+   output += " from service: "; 
+   output += "\<input onchange=\\"display_block('release_member_confirm', 'release_member', this.value+'\|'+document.getElementById('release_member_honor').value);\\"/\>\<br/\>\\n"; 
+   output += "\<div id=\\"release_member_confirm\\"\>\</div\>\<br/\>\\n"; 
+  \} 
+ 
+/* 
+  output += "\<br/\>Release a member from service: "; 
+  output += "\<select NAME=\\"editmember_inventory\\" id=\\"editmember_inventory\\" onchange=\\"run_script('editmember_setval', 'inventory\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:inventory');\\"\>\\n"; 
+  output += "\<option value=\\"honorable\\" selected=\\"1\\"\>honorably released from service\</option\>\\n"; 
+  output += "\<option value=\\"dishonorable\\"\>dishonorably released\</option\>\\n"; 
+  output += "\</select\>\\n"; 
+  output += "\<input value=\\""+Str(\$member."guild:position")+"\\" onchange=\\"run_script('editmember_setval', 'position\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:position');\\"/\>\<br/\>\\n"; 
+*/ 
+\} else if(\$script == "release_member") \{ 
+  /* are we allowed to? */ 
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members."; 
+  /* check that this is a valid character */ 
+  if(sizeof(\$vars) \< 2) return ""; 
+  if(strlen(\$vars[0]) \< 1) return ""; 
+  if(strlen(\$vars[0]) \< 2) return "Unknown Character."; 
+  \$victim = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]); 
+  if(!\$victim) return "Unknown Character: "+\$vars[0]+"."; 
+  /* is \$victim a member of the guild? */ 
+  if(\$victim.guild != \$guild) \{ 
+    /* Are we forgiving them for a previous dishonorable discharge? */ 
+    if(\$vars[1] == "honorable" \&\& member(\$guild, Arr(\$victim."guild:betrayed"))) \{ 
+      output = capitalize(\$vars[0])+" is not a member of "+\$guild.fullname+", but was previously a member, and was dishonorably discharged.\<br/\>"; 
+      output += "Did you want to forgive "+capitalize(\$vars[0])+" and inform the guild administrators to wipe the dishonorable discharge clean?\<br/\>"; 
+      output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'forgive_member', '"+\$vars[0]+"');\\"\>Forgive "+capitalize(\$vars[0])+"\</u\>]"; 
+      output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>DON'T forgive "+capitalize(\$vars[0])+"\</u\>]"; 
+      return output; 
+    \} else \{ 
+      return capitalize(\$vars[0])+" is not a member of "+\$guild.fullname+"."; 
+    \} 
+  \} 
+ 
+  /* release the member */ 
+  output = "Did you want to release "+capitalize(\$vars[0])+" from service"; 
+  if(\$vars[1] == "dishonorable") 
+   output += ", and inform the guild administrators that the discharge was dishonorable"; 
+  output += "?\<br/\>"; 
+  if(\$vars[1] == "dishonorable") \{ 
+   output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'discharge_member', '"+\$vars[0]+"\|"+\$vars[1]+"');\\"\>Dishonorably discharge "+capitalize(\$vars[0])+"\</u\>]"; 
+   output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>Leave "+capitalize(\$vars[0])+" as a member\</u\>]"; 
+  \} else \{ 
+   output += "[\<u class=\\"clickable\\" onclick=\\"display_block('release_member_confirm', 'discharge_member', '"+\$vars[0]+"\|"+\$vars[1]+"');\\"\>Honorably discharge "+capitalize(\$vars[0])+"\</u\>]"; 
+   output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('release_member_confirm').innerHTML = ''\\"\>Leave "+capitalize(\$vars[0])+" as a member\</u\>]"; 
+  \} 
+  return output; 
+\} else if(\$script == "discharge_member") \{ 
+  /* are we allowed to? */ 
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members."; 
+  /* check that this is a valid character */ 
+  if(sizeof(\$vars) \< 1 \|\| strlen(\$vars[0]) \< 2) return "Unknown Character."; 
+  \$victim = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]); 
+  if(!\$victim) return "Unknown Character: "+\$vars[0]+"."; 
+  /* is \$victim a member of the guild? */ 
+  if(\$victim.guild != \$guild) return capitalize(\$vars[0])+" is no longer a member of this guild."; 
+  if(\$vars[1] == "honorable") \{ 
+   Call(\$this, "leave_guild", \$member: \$victim, \$honorable: TRUE); 
+   EmitTo(\$victim, "You have been honorably discharged from "+\$guild.fullname+"."); 
+   return capitalize(\$vars[0])+" has been honorably discharged from "+\$guild.fullname+"."; 
+  \} else \{ 
+   Call(\$this, "leave_guild", \$member: \$victim); 
+   EmitTo(\$victim, "You have been dishonorably discharged from "+\$guild.fullname+"."); 
+   return capitalize(\$vars[0])+" has been dishonorably discharged from "+\$guild.fullname+"."; 
+  \} 
+\} else if(\$script == "forgive_member") \{ 
+  /* are we allowed to? */ 
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to dismiss guild members."; 
+  /* check that this is a valid character */ 
+  if(sizeof(\$vars) \< 1 \|\| strlen(\$vars[0]) \< 2) return "Unknown Character."; 
+  \$victim = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]); 
+  if(!\$victim) return "Unknown Character: "+\$vars[0]+"."; 
+  /* did \$victim betray the guild? */ 
+  \$victim."guild:betrayed" = Arr(\$victim."guild:betrayed"); 
+  \$victim."guild:betrayed" -= (\{ \$guild \}); 
+  return "The guild records of "+capitalize(\$vars[0])+"'s dishonorable discharge have been removed."; 
+\} else if(\$script == "recruit_member") \{ 
+  /* are they allowed to recruit? */ 
+  if(!\$guildrank \|\| (!\$guildleader \&\& !\$char."guild:guild_recruiting")) return "You are not authorized to recruit members into this guild."; 
+ 
+  /* are they recruiting a PC? */ 
+  if(!sizeof(\$vars)) return "Something went wrong when recruiting."; 
+  \$vars[0] = lower_case(\$vars[0]); 
+  \$recruitee = Obj("Chatters:IC:"+\$vars[0][0..1]+":"+\$vars[0]); 
+  if(!\$recruitee) return "Unknown character: "+\$vars[0]; 
+ 
+  /* trying to recruit \$recruitee */ 
+  if(\$recruitee.guild == \$guild) return capitalize(\$vars[0])+" is already a member of this guild."; 
+ 
+  /* slaves can't join guilds that aren't slavery guilds */ 
+  if(\$recruitee."trait:slave" \&\& !\$guild."trait:slave_trading_charter") return capitalize(\$vars[0])+" is a slave, and can only be traded to a guild with a slave trading charter."; 
+ 
+  /* ask if they want to join */ 
+    /* EXTENSION: Make this work when they are offline as well */ 
+  if(!\$recruitee."udat:object") return capitalize(\$vars[0])+" is not logged into the game at the moment."; 
+ 
+  if(\$recruitee.guild) \{ 
+    EmitTo(\$recruitee, capitalize(Str(\$char."skotos:charname"))+" invites you to join "+\$guild.fullname+"."); 
+    \$question = "Warning: You are currently a member of "+\$recruitee.guild.fullname+" - if you change guilds without first leaving your current guild, you will have forsaken your oaths of service. Do you want to join "+\$guild.fullname+"?"; 
+  \} else \{ 
+    \$question = capitalize(Str(\$char."skotos:charname"))+" invites you to join "+\$guild.fullname+". Would you like to join?"; 
+  \} 
+  interaction::question(\$actor: \$recruitee, \$expires: 80, \$env: "FALSE", \$yes_ob: \$\{Ironclaw:Lib:Guilds:New\}, \$no_ob: \$\{Ironclaw:Lib:Guilds:New\}, \$expire_ob: \$\{Ironclaw:Lib:Guilds:New\}, \$yes_fun: "join_guild", \$no_fun: "join_guild_denied", \$expire_fun: "join_guild_expire", \$par: ([ "sender": \$char, "guild": \$guild])); 
+ 
+  return "You invite "+capitalize(\$vars[0])+" to join "+\$guild.fullname+"."; 
+\} else if(\$script == "edit_members") \{ 
+  /* what guild member is this? */ 
+  \$member = Obj(Str(\$vars[0])); 
+  if(!\$member) return "Error: Unknown character."; 
+  if(!\$member.guild \|\| \$member.guild != \$guild) return "Error: Character is not a member of this guild."; 
+ 
+  /* Allow them to change the bluebooked job of the guild member */ 
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "job")) \{ 
+    if(\$guildleader) \{ 
+      output += "\<input type=\\"checkbox\\""; 
+      if(member("job", Arr(\$member."guild:authority"))) 
+        output += " checked=\\"1\\""; 
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|job\|addarr\|guild:authority\|Authority to change bluebooked jobs granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|job\|subarr\|guild:authority\|Authority to change bluebooked jobs revoked.'); \}\\"/\>"; 
+    \} 
+    output += "Change Bluebooked Job \\n"; 
+    output += "\<select NAME=\\"editmember_job\\" id=\\"editmember_job\\" onchange=\\"run_script('editmember_setval', 'job\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:job');\\"\>\\n"; 
+    output += "\<option value=\\"earning\\""; 
+    if(\$member."guild:job" == "earning") output += " selected=\\"1\\""; 
+    output += "\>Earning\</option\>\\n"; 
+    output += "\<option value=\\"working\\""; 
+    if(\$member."guild:job" == "working") output += " selected=\\"1\\""; 
+    output += "\>Working\</option\>\\n"; 
+    \$jobs = Arr(\$member."guild:jobs"); 
+    for(i=0;i\<sizeof(\$jobs);i++) \{ 
+      output += "\<option value=\\""+\$jobs[i]+"\\""; 
+      if(\$member."guild:job" == \$jobs[i]) output += " selected=\\"1\\""; 
+      output += "\>"+capitalize(Str(\$jobs[i]))+"\</option\>\\n"; 
+    \} 
+    output += "\</select\>\\n"; 
+    output += "\<br/\>\\n"; 
+  \} 
+ 
+  /* Allow them to change the position of the guild member */ 
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "position")) \{ 
+    if(\$guildleader) \{ 
+      output += "\<input type=\\"checkbox\\""; 
+      if(member("position", Arr(\$member."guild:authority"))) 
+        output += " checked=\\"1\\""; 
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|position\|addarr\|guild:authority\|Authority to change job position descriptions granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|position\|subarr\|guild:authority\|Authority to change job position descriptions revoked.'); \}\\"/\>"; 
+    \} 
+    output += "Guild Position \\n"; 
+    output += "\<input value=\\""+Str(\$member."guild:position")+"\\" onchange=\\"run_script('editmember_setval', 'position\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:position');\\"/\>\<br/\>\\n"; 
+  \} 
+ 
+  /* Allow them to change the notes of the guild member */ 
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "notes")) \{ 
+    if(\$guildleader) \{ 
+      output += "\<input type=\\"checkbox\\""; 
+      if(member("notes", Arr(\$member."guild:authority"))) 
+        output += " checked=\\"1\\""; 
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|notes\|addarr\|guild:authority\|Authority to change member notes granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|notes\|subarr\|guild:authority\|Authority to change member notes revoked.'); \}\\"/\>"; 
+    \} 
+    output += "Change Notes \\n"; 
+    output += "\<input value=\\""+Str(\$member."guild:notes")+"\\" onchange=\\"run_script('editmember_setval', 'notes\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:notes');\\"/\>\<br/\>\\n"; 
+  \} 
+ 
+  /* Allow them to change the daily payment of the guild member */ 
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "daily_payment")) \{ 
+    if(\$guildleader) \{ 
+      output += "\<input type=\\"checkbox\\""; 
+      if(member("daily_payment", Arr(\$member."guild:authority"))) 
+        output += " checked=\\"1\\""; 
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|notes\|addarr\|guild:authority\|Authority to change members daily payment granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|notes\|subarr\|guild:authority\|Authority to change members daily payment revoked.'); \}\\"/\>"; 
+    \} 
+    output += "Change Daily Payment \\n"; 
+    \$max = Int(\$member."trait:income")+Int(\$member."trait:extraincome"); 
+    \$max = Str(\$max/100)+"."+Str(\$max%100); 
+    output += "\<input value=\\""+Str(Int(\$member."guild:daily_payment")/100)+"."+Int(\$member."guild:daily_payment")%100+"\\" onchange=\\"run_script('editmember_setval', 'daily_payment\|"+name(\$member)+"\|'+this.value*100+'\|setint\|guild:daily_payment');\\"/\> (cannot be more than "+\$max+")\<br/\>\\n"; 
+  \} 
+ 
+ 
+  /* Allow them to change the inventory access of the guild member */ 
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "inventory")) \{ 
+    if(\$guildleader) \{ 
+      output += "\<input type=\\"checkbox\\""; 
+      if(member("inventory", Arr(\$member."guild:authority"))) 
+        output += " checked=\\"1\\""; 
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|inventory\|addarr\|guild:authority\|Authority to change inventory settings granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|inventory\|subarr\|guild:authority\|Authority to change inventory settings revoked.'); \}\\"/\>"; 
+    \} 
+    output += "Access Guild Inventory? \\n"; 
+    output += "\<select NAME=\\"editmember_inventory\\" id=\\"editmember_inventory\\" onchange=\\"run_script('editmember_setval', 'inventory\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:inventory');\\"\>\\n"; 
+    output += "\<option value=\\"no access\\""; 
+    if(\$member."guild:inventory" == "no access") output += " selected=\\"1\\""; 
+    output += "\>No\</option\>\\n"; 
+    output += "\<option value=\\"access\\""; 
+    if(\$member."guild:inventory" == "access") output += " selected=\\"1\\""; 
+    output += "\>Yes\</option\>\\n"; 
+    output += "\</select\>\\n"; 
+    output += "\<br/\>\\n"; 
+  \} 
+ 
+  /* Allow them to create new guild pages */ 
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: "create_page")) \{ 
+    if(\$guildleader) \{ 
+      output += "\<input type=\\"checkbox\\""; 
+      if(member("create_page", Arr(\$member."guild:authority"))) 
+        output += " checked=\\"1\\""; 
+      output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|create_page\|addarr\|guild:authority\|Authority to create new guild pages granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|create_page\|subarr\|guild:authority\|Authority to create new guild pages revoked.'); \}\\"/\>"; 
+    \} 
+    output += "Create new guild pages? \\n"; 
+    output += "\<select NAME=\\"editmember_create_page\\" id=\\"editmember_create_page\\" onchange=\\"run_script('editmember_setval', 'create_page\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:create_page');\\"\>\\n"; 
+    output += "\<option value=\\"nil\\""; 
+    if(!\$member."guild:create_page") output += " selected=\\"1\\""; 
+    output += "\>No\</option\>\\n"; 
+    output += "\<option value=\\"access\\""; 
+    if(\$member."guild:create_page" == "access") output += " selected=\\"1\\""; 
+    output += "\>Yes\</option\>\\n"; 
+    output += "\</select\>\\n"; 
+    output += "\<br/\>\\n"; 
+  \} 
+ 
+  /* Allow them to recruit and dismiss members */ 
+  output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_recruiting", \$message: "recruit and dismiss members"); 
+ 
+  /* Allow them to use guild resources for lessons */ 
+  output += Call(this, "general_script", \$script: "edit_members_option", \$property: "guild_lessons", \$message: "pay NPC teacher from guild resources"); 
+ 
+  /* Allow them to edit the motd */ 
+  output += Call(this, "general_script", \$script: "edit_members_option", \$property: "edit_guildsettings_motd", \$message: "edit the MOTD"); 
+ 
+  if(output == "") 
+    output += "You do not have authority to change any settings for the guild members."; 
+\} else if(\$script == "edit_members_option") \{ 
+ /* Allow them to change an option for the member */ 
+ string output; 
+ output = ""; 
+ if(Call(this, "general_script", \$script: "change_members_auth", \$setting: \$property)) \{ 
+  if(\$guildleader) \{ 
+   output += "\<input type=\\"checkbox\\""; 
+   if(member(\$property, Arr(\$member."guild:authority"))) 
+    output += " checked=\\"1\\""; 
+   output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|"+\$property+"\|addarr\|guild:authority\|Authority to choose who can "+Str(\$message)+" granted.'); \} else \{ run_script('editmember_setval', 'guildleader\|"+name(\$member)+"\|"+\$property+"\|subarr\|guild:authority\|Authority to choose who can "+Str(\$message)+" revoked.'); \}\\"/\>"; 
+  \} 
+  output += capitalize(Str(\$message))+" \\n"; 
+  output += "\<select NAME=\\"editmember_"+\$property+"\\" id=\\"editmember_"+\$property+"\\" onchange=\\"run_script('editmember_setval', '"+\$property+"\|"+name(\$member)+"\|'+this.value+'\|setstring\|guild:"+\$property+"\|Authority to "+Str(\$message)+" granted.');\\"\>\\n"; 
+  output += "\<option value=\\"nil\\""; 
+  if(!Get(\$member, "guild:"+\$property)) output += " selected=\\"1\\""; 
+  output += "\>No\</option\>\\n"; 
+  output += "\<option value=\\"access\\""; 
+  if(Get(\$member, "guild:"+\$property) == "access") output += " selected=\\"1\\""; 
+  output += "\>Yes\</option\>\\n"; 
+  output += "\</select\>\\n"; 
+  output += "\<br/\>\\n"; 
+ \} 
+ return output; 
+\} else if(\$script == "editmember_setval") \{ 
+  /*rank\|"+name(\$member)+"\|'+this.value+'\|setint\|guild:rank*/ 
+  /* first, check we have authority to change this value */ 
+  if(Call(this, "general_script", \$script: "change_members_auth", \$setting: \$vars[0])) \{ 
+    \$member = Obj(\$vars[1]); 
+    if(!\$member) return "Error: Unknown character."; 
+    if(!\$member.guild \|\| \$member.guild != \$guild) return "Error: Character is not a member of this guild."; 
+    if(\$vars[2] == "nil") \$vars[2] = nil; 
+    if(\$vars[3] == "setstring") \{ 
+      Set(\$member, \$vars[4], \$vars[2]); 
+    \} else if(\$vars[3] == "setint") \{ 
+      Set(\$member, \$vars[4], Int(\$vars[2])); 
+    \} else if(\$vars[3] == "addarr") \{ 
+      if(!(\$arr = Get(\$member, \$vars[4]))) \{ 
+        Set(\$member, \$vars[4], (\{ \})); 
+        \$arr = Get(\$member, \$vars[4]); 
+      \} 
+      \$arr \|= Arr(\$vars[2]); 
+      Set(\$member, \$vars[4], \$arr); 
+    \} else if(\$vars[3] == "subarr") \{ 
+      if(!(\$arr = Get(\$member, \$vars[4]))) \{ 
+        Set(\$member, \$vars[4], (\{ \})); 
+        \$arr = Get(\$member, \$vars[4]); 
+      \} 
+      \$arr -= Arr(\$vars[2]); 
+      Set(\$member, \$vars[4], \$arr); 
+    \} 
+    if(sizeof(\$vars) \> 5) \{ 
+     \$message = capitalize(Str(\$vars[5])); 
+     if(!\$vars[2]) \$message = replace_strings(\$message, "granted", "revoked"); 
+     return capitalize(\$message); 
+    \} 
+    if(!\$vars[2]) \$vars[2] = "nothing"; 
+    return capitalize(Str(\$vars[0]))+" has been set to "+Str(\$vars[2])+"."; 
+  \} 
+  return "Error: You do not have authority to make this change."; 
+\} else if(\$script == "show_guild_settings") \{ 
+  output += "\<h2\>Guild Settings\</h2\>"; 
+ 
+  if(\$guildleader) \{ 
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_type');\\"\>\<strong\>\<u\>Guild Type\</u\>\</strong\>\</span\>"; 
+   output += "\<span id=\\"guild_type\\" style=\\"display:none;\\"\>"; 
+   output += "\<p\>Guild Type (noble/military/tradesmen/shady) - This code isn't yet functional.\</p\>"; 
+   output += "\</span\>\<br/\>"; 
+  \} 
+ 
+  if(\$guildleader \|\| \$char."guild:edit_guildsettings_motd") \{ 
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('motd');\\"\>\<strong\>\<u\>Message of the Day\</u\>\</strong\>\</span\>"; 
+   output += "\<span id=\\"motd\\" style=\\"display:none;\\"\>"; 
+   output += "\<p\>Guild members will see this message when they log into the game.\<br/\>"; 
+   output += "\<textarea id=\\"motd_text\\" rows=5 cols=80\>"+Str(\$guild.motd)+"\</textarea\>\<br/\>"; 
+   output += "\<input type=\\"submit\\" value=\\"Submit\\" class=\\"clickable\\" onclick=\\"run_script('set_motd', getElementById('motd_text').value);\\"/\>\</p\>"; 
+   output += "\</span\>\<br/\>"; 
+  \} 
+  if(\$guildleader) \{ 
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_page_header');\\"\>\<strong\>\<u\>Page Header\</u\>\</strong\>\</span\>"; 
+   output += "\<span id=\\"guild_page_header\\" style=\\"display:none;\\"\>"; 
+   output += "\<p\>This code isn't yet functional.\</p\>"; 
+   output += "\</span\>\<br/\>"; 
+  \} 
+  if(\$guildleader) \{ 
+   output += "\<span class=\\"clickable\\" onclick=\\"switch_block('guild_page_footer');\\"\>\<strong\>\<u\>Page Footer\</u\>\</strong\>\</span\>"; 
+   output += "\<span id=\\"guild_page_footer\\" style=\\"display:none;\\"\>"; 
+   output += "\<p\>This code isn't yet functional.\</p\>"; 
+   output += "\</span\>\<br/\>"; 
+  \} 
+ 
+  if(output == "") 
+    output += "You do not have authority to change any settings for this guild."; 
+\} else if(\$script == "set_motd") \{ 
+ if(\$guildleader \|\| \$char."guild:edit_guildsettings_motd") \{ 
+  \$guild.motd = replace_strings(Str(\$vars[0]), "\<", "\&lt;", "\>", "\&gt;"); 
+  return "Guild Message of the Day set."; 
+ \} 
+ return "Error: You are not authorized to set the guild Message of the Day."; 
+\} else if(\$script == "list_tokens") \{ 
+  /* only let them see the tokens list if they are in the guild */ 
+  if(!\$guildrank) return FALSE; 
+ 
+  \$token_list = map_indices(prefixed_map(\$guild."*", "tokens:")); 
+  if(!sizeof(\$token_list)) return "This guild has no tokens."; 
+ 
+  output = "\<table border=\\"0\\"\>\\n"; 
+  output += "\<tr\>\<td\>\<strong\>Token\</strong\>\</td\>\<td\>\<strong\>Quantity\</strong\>\</td\>\</tr\>\\n"; 
+  for(i=0;i\<sizeof(\$token_list);i++) \{ 
+    output += "\<tr\>\<td\>"+capitalize(\$token_list[i][7..strlen(\$token_list[i])-1])+"\</td\>\<td\>"; 
+    output += Str(Get(\$guild, \$token_list[i]))+"\</td\>\</tr\>\\n"; 
+  \} 
+  output += "\</table\>\\n"; 
+\} else if(\$script == "show_trading_deals") \{ 
+ string *guilds; 
+ 
+ /* only let them see the deals if they are in the guild */ 
+ if(!\$guildrank) return FALSE; 
+ if(\$guildleader \|\| \$char."guild:inventory") \{ 
+  output += "\<p\>\<b\>Transfer guild kitty to another guild\</b\> (kitty is currently at "+Str(Int(\$guild.kitty)/100)+" denarii)\<br/\>\\n"; 
+  output += "Transfer "; 
+  output += "\<input NAME=\\"transfer_kitty_amount\\" id=\\"transfer_kitty_amount\\" size=\\"3\\" value=\\"0\\"/\>"; 
+  output += " denarii to "; 
+ 
+  /* get a list of all guilds */ 
+  output += "\<select NAME=\\"transfer_kitty_guildlist\\" id=\\"transfer_kitty_guildlist\\"\>\\n"; 
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n"; 
+  guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Ironclaw:Guilds"); 
+  for(i=0;i\<sizeof(guilds);i++) 
+   output += "\<option value=\\""+guilds[i]+"\\"\>"+guilds[i]+"\</option\>\\n"; 
+  output += "\</select\>\\n"; 
+  output += " \<input type=\\"submit\\" value=\\"Send\\" class=\\"clickable\\" onclick=\\"run_script('do_kitty_transfer', getElementById('transfer_kitty_amount').value +'\|'+ getElementById('transfer_kitty_guildlist').value); getElementById('transfer_kitty_amount').value = '0';\\"/\>\</p\>"; 
+ \} 
+ 
+ /* allow the creation of new trading deals */ 
+  /* not written yet */ 
+ 
+ /* show any active trading deals */ 
+ output += "\<p\>There are no active trading deals\</p\>\\n"; 
+\} else if(\$script == "do_kitty_transfer") \{ 
+ /* Transfer money from one guild to the other */ 
+ if(!\$guildleader \&\& !\$char."guild:inventory") return nil; 
+ 
+ /* sanity check that they requested the transfer properly */ 
+ if(!\$vars \|\| sizeof(\$vars) != 2) return nil; 
+ if(!sscanf(\$vars[0], "%d", i)) 
+  return "Unknown amount of money to transfer."; 
+ if(i\<=0) 
+  return nil; 
+ /* because a denar is "100" (for bits) multiply i by 100 before checking \& transferring */ 
+ i = i*100; 
+ if(i\>Int(\$guild.kitty)) 
+  return "You don't have "+Str(i)+" denarii in your guild kitty."; 
+ \$otherguild = Obj("Ironclaw:Guilds:"+\$vars[1]); 
+ if(!\$otherguild) 
+  return "Sorry, we can't find the guild you're trying to transfer money to."; 
+ if(!\$otherguild.kitty) \$otherguild.kitty = 0; 
+ 
+ /* all looks in order. Transfer the money */ 
+ \$guild.kitty -= i; 
+ \$otherguild.kitty += i; 
+ 
+ /* record the transfer */ 
+ if(!\$guild.transfers) \$guild.transfers = (\{ \}); 
+ \$guild.transfers += (\{ (\{ \$actor, i, \$otherguild, time() \}) \}); 
+ return Str(i)+" denarii successfully transferred to the "+Str(\$otherguild.fullname)+"."; 
+\} else if(\$script == "list_npc_teacher") \{ 
+  /* only let them see the teacher list if they are in the guild */ 
+  if(!\$guildrank) return FALSE; 
+ 
+  if(\$guild."npc:teacher") \{ 
+   /* CODE TO HANDLE OLD object-based NPC TEACHERS */ 
+   /* should be able to remove the old teachers, then assume that we'll always find a mapping */ 
+   if(typeof(\$guild."npc:teacher") == T_OBJECT) \{ 
+    \$teacher = ([ ]); 
+    \$teacher["skills"] = Arr(\$guild."npc:teacher"."teaching:skills"); 
+   \} else if(typeof(\$guild."npc:teacher") == T_MAPPING) \{ 
+    \$teacher = \$guild."npc:teacher"; 
+   \} 
+  \} else \{ 
+   \$teacher = ([ ]); 
+  \} 
+ 
+  if(\$teacher["name"]) \{ 
+   output = capitalize(\$teacher["name"]); 
+  \} else \{ 
+   output = capitalize(\$guild.fullname)+" teacher"; 
+  \} 
+  if(!\$teacher["skills"] \|\| !sizeof(\$teacher["skills"])) \{ 
+   output += " doesn't know anything useful to teach you."; 
+  \} else \{ 
+   output += " can teach the following skills:\<br/\>\\n"; 
+   /* list skills */ 
+   /* gather categories */ 
+   \$categories = (\{ \}); 
+   for(\$i=0;\$i\<sizeof(\$teacher["skills"]);\$i++) \{ 
+    \$tmp = explode(\$teacher["skills"][\$i], ":"); 
+    if(sizeof(\$tmp) \>= 3) 
+     \$categories \|= (\{ \$tmp[1] \}); 
+   \} 
+   /* list the categories */ 
+   output += "\<select onchange=\\"display_block('skilllist', 'list_npc_teacher_skills', value);\\"\>\\n"; 
+   output += "\<option value=\\"nil\\"\>\</option\>\\n"; 
+   if(member("career", \$categories)) 
+    output += "\<option value=\\"career\\"\>Careers\</option\>\\n"; 
+   if(member("social", \$categories)) 
+    output += "\<option value=\\"social\\"\>Social\</option\>\\n"; 
+   if(member("academics", \$categories)) 
+    output += "\<option value=\\"academics\\"\>Academics\</option\>\\n"; 
+   if(member("lang", \$categories)) 
+    output += "\<option value=\\"lang\\"\>Languages\</option\>\\n"; 
+   if(member("mental", \$categories)) 
+    output += "\<option value=\\"mental\\"\>Mental\</option\>\\n"; 
+   if(member("combat", \$categories)) 
+    output += "\<option value=\\"hunting\\"\>Hunting\</option\>\\n"; 
+   if(member("combat", \$categories)) 
+    output += "\<option value=\\"combat\\"\>Combat\</option\>\\n"; 
+   if(member("alteration", \$categories)) 
+    output += "\<option value=\\"alteration\\"\>Crafting\</option\>\\n"; 
+   output += "\</select\>\\n"; 
+ 
+   /* now list the skills in this category */ 
+   output += "\<span id=\\"skilllist\\"\>\<br/\>\\n"; 
+   output += Call(this, "general_script", \$script: "list_npc_teacher_skills"); 
+   output += "\</span\>\\n"; 
+ 
+  \} 
+  /* if they should be able to see the teaching record */ 
+  if(\$guildleader \|\| member("guild_lessons", Arr(\$char."guild:authority"))) \{ 
+   if(!\$guild."costs:teaching") \$guild."costs:teaching" = ([ ]); 
+   /* clear out the old records */ 
+    /* NOT CODED YET */ 
+   \$index = map_indices(\$guild."costs:teaching"); 
+   if(sizeof(\$index)) \{ 
+    output += "\<div id=\\"teaching_record\\"\>"; 
+    for(i=0;i\<sizeof(\$index);i++) \{ 
+     \$char = Obj(\$index[i]); 
+     if(\$char) \{ 
+      if(\$char."skotos:playercapname") \{ 
+       output += Str(\$char."skotos:playercapname")+"\<br/\>"; 
+      \} else if(\$char."skotos:charname") \{ 
+       output += capitalize(Str(\$char."skotos:charname"))+"\<br/\>"; 
+      \} else \{ 
+       output += Describe(\$char)+"\<br/\>"; 
+      \} 
+ 
+      \$info = \$guild."costs:teaching"[\$index[i]]; 
+      output += "\<ul\>"; 
+      for(\$j=0;\$j\<sizeof(map_indices(\$info));\$j++) \{ 
+       \$cost = \$info[map_indices(\$info)[\$j]][1]; 
+       if(\$cost == 1) \{ 
+        \$cost = "1 denar"; 
+       \} else \{ 
+        \$cost = Str(\$cost)+" denarii"; 
+       \} 
+       output += "\<li\>"+Str(map_indices(\$info)[\$j])+" - "+\$cost+"\</li\>\\n"; 
+      \} 
+      output += "\</ul\>"; 
+     \} else \{ 
+      output += "Deleted character\<br/\>\\n"; 
+     \} 
+    \} 
+    output += "\</div\>\\n"; 
+   \} else \{ 
+    output += "No records\\n"; 
+   \} 
+  \} 
+ 
+\} else if(\$script == "list_npc_teacher_skills") \{ 
+ /* list the skills (not the skill categories) for the NPC teacher */ 
+ /* only let them see the teacher list if they are in the guild */ 
+ if(!\$guildrank) return FALSE; 
+ 
+ if(\$vars \&\& sizeof(\$vars)) \{ 
+  \$startcat = \$vars[0]; 
+ \} else \{ 
+  \$startcat = "nil"; 
+ \} 
+ 
+ if(\$startcat == "undefined" \|\| \$startcat == "nil") return ""; 
+ 
+ if(\$guild."npc:teacher") \{ 
+  /* CODE TO HANDLE OLD object-based NPC TEACHERS */ 
+  /* should be able to remove the old teachers, then assume that we'll always find a mapping */ 
+  if(typeof(\$guild."npc:teacher") == T_OBJECT) \{ 
+   \$teacher = ([ ]); 
+   \$teacher["skills"] = Arr(\$guild."npc:teacher"."teaching:skills"); 
+  \} else if(typeof(\$guild."npc:teacher") == T_MAPPING) \{ 
+   \$teacher = \$guild."npc:teacher"; 
+  \} 
+ \} else \{ 
+  \$teacher = ([ ]); 
+ \} 
+ 
+ if(!\$teacher["skills"] \|\| !sizeof(\$teacher["skills"])) 
+  return FALSE; 
+ 
+ output += "\<select onchange=\\"display_block('skilllist_confirm', 'confirm_npc_teacher_skills', value);\\"\>\\n"; 
+ 
+ output += "\<option value=\\"\\"\>\</option\>\\n"; 
+ for(\$i=0;\$i\<sizeof(\$teacher["skills"]);\$i++) \{ 
+  \$tmp = explode(\$teacher["skills"][\$i], ":"); 
+  if(sizeof(\$tmp) \>= 3 \&\& \$tmp[1] == \$startcat) \{ 
+   output += "\<option value=\\""+\$teacher["skills"][\$i]+"\\"\>"+capitalize(\$tmp[2])+"\</option\>\\n"; 
+  \} 
+ \} 
+ output += "\</select\>\<br/\>\\n"; 
+ output += "\<div id=\\"skilllist_confirm\\"\>\</div\>\\n"; 
+\} else if(\$script == "confirm_npc_teacher_skills") \{ 
+ /* ask if they want to study this skill */ 
+ /* only let them see the teacher list if they are in the guild */ 
+ if(!\$guildrank) return FALSE; 
+ 
+ if(\$vars \&\& sizeof(\$vars)) \{ 
+  \$subject = \$vars[0]; 
+ \} else \{ 
+  return ""; 
+ \} 
+ 
+ if(\$message = ironclaw::busy_check(\$character: \$actor)) 
+  return "You cannot take this lesson, you are already busy "+\$message+". If you wish to stop that action so you can take this lesson, use the in-game @stop command. [\<u class=\\"clickable\\" onclick=\\"display_block('skilllist_confirm', 'confirm_npc_teacher_skills', '"+\$vars[0]+"');\\"\>Try again\</u\>]"; 
+ 
+ \$skill_name = explode(\$subject, ":"); 
+ 
+ if(sizeof(\$skill_name) != 3) return "Something has gone wrong. Please @assist and report this."; 
+ \$skill_name = \$skill_name[2]; 
+ \$level = Int(Get(\$actor, \$subject)); 
+ \$cost = Call(\$this, "general_script", \$script: "check_learning_cost", \$level: \$level+1); 
+ output += "Studying this will raise you to level "+Str(\$level+1)+" in "+\$skill_name+".\<br/\>\\n"; 
+ 
+ if(\$char."guild:guild_lessons") \{ 
+  output += "This will cost "+Str(\$cost)+" learning points, and will cost your guild "+Str((\$level+1)*(\$level+1))+" denarii.\<br/\>\\n"; 
+  /* check if they can pay the costs */ 
+  if(Int(\$actor."student:learningpoints") \< \$cost) \{ 
+   output += "You currently only have "+Str(Int(\$actor."student:learningpoints"))+" learning points.\<br/\>\\n"; 
+   if(Int(\$guild.kitty) \< (\$level+1)*(\$level+1)*100) 
+    output += "Your guild cannot afford this lesson.\<br/\>\\n"; 
+   return output; 
+  \} 
+  if(Int(\$guild.kitty) \< (\$level+1)*(\$level+1)*100) \{ 
+   /* can they pay it with their own money? */ 
+   if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) \{ 
+    output += "Your guild cannot afford this lesson.\<br/\>\\n"; 
+    return output; 
+   \} else \{ 
+    output += "Your guild cannot afford the entire cost of this lesson. "+Str(Int(Flt((\$level+1)*(\$level+1)*100-Int(\$guild.kitty))/100.0))+" denarii will need to be paid from your personal bank account.\<br/\>\\n"; 
+   \} 
+  \} 
+ \} else \{ 
+  output += "This will cost "+Str(\$cost)+" learning points, and will cost you "+Str((\$level+1)*(\$level+1))+" denarii from your bank account to pay the teacher.\<br/\>\\n"; 
+  if(\$guildleader \|\| member("guild_lessons", Arr(\$char."guild:authority"))) 
+   output += "(However, you have authority to set who can get their lessons paid by the guild by going into the members list, then edit the settings. You should see the option \\"Pay NPC teacher from guild resources\\")\<br/\>\\n"; 
+  /* check if they can pay the costs */ 
+  if(Int(\$actor."student:learningpoints") \< \$cost) \{ 
+   output += "You currently only have "+Str(Int(\$actor."student:learningpoints"))+" learning points.\<br/\>\\n"; 
+   if(Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) 
+    output += "You cannot afford this lesson.\<br/\>\\n"; 
+   return output; 
+  \} 
+  if(Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) \{ 
+   output += "You cannot afford this lesson.\<br/\>\\n"; 
+   return output; 
+  \} 
+ \} 
+ output += "[\<u class=\\"clickable\\" onclick=\\"display_block('skilllist_confirm', 'teach_npc_teacher_skills', '"+Str(\$subject)+"');\\"\>Study "+\$skill_name+" now\</u\>]"; 
+\} else if(\$script == "teach_npc_teacher_skills") \{ 
+ /* going to learn the skill */ 
+ /* only let them see the teacher list if they are in the guild */ 
+ if(!\$guildrank) return FALSE; 
+ 
+ if(\$vars \&\& sizeof(\$vars)) \{ 
+  \$subject = \$vars[0]; 
+ \} else \{ 
+  return ""; 
+ \} 
+ 
+ if(\$message = ironclaw::busy_check(\$character: \$actor)) 
+  return "You cannot take this lesson, you are already busy "+\$message+". If you wish to stop that action so you can take this lesson, use the in-game @stop command. [\<u class=\\"clickable\\" onclick=\\"display_block('skilllist_confirm', 'confirm_npc_teacher_skills', '"+\$vars[0]+"');\\"\>Try again\</u\>]"; 
+ 
+ /* sanity check before teaching */ 
+ if(\$message = ironclaw::busy_check(\$character: \$actor)) 
+  return "You cannot take this lesson, you are already busy "+\$message+". If you wish to stop that action so you can take this lesson, use the in-game @stop command."; 
+ \$skill_name = explode(\$subject, ":"); 
+ if(sizeof(\$skill_name) != 3) return "Something has gone wrong. Please @assist and report this."; 
+ \$skill_name = \$skill_name[2]; 
+ \$level = Int(Get(\$actor, \$subject))+1; 
+ \$cost = Call(\$this, "general_script", \$script: "check_learning_cost", \$level: \$level); 
+ if(Int(\$actor."student:learningpoints") \< \$cost) 
+  return "The lesson could not continue because you only have "+Str(Int(\$actor."student:learningpoints"))+" learning points.\\n"; 
+ if(!\$guild.kitty) \$guild.kitty = 0; 
+ if(\$char."guild:guild_lessons") \{ 
+  if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) 
+   return "Your guild cannot afford this lesson."; 
+ \} else if(Int(\$actor."trait:money") \< (\$level+1)*(\$level+1)*100) \{ 
+  return "You cannot afford this lesson."; 
+ \} 
+ /* check that the teacher knows this (check again) */ 
+ if(!\$guild."npc:teacher") return "Your guild no longer has a teacher."; 
+ /* CODE TO HANDLE OLD object-based NPC TEACHERS */ 
+ /* should be able to remove the old teachers, then assume that we'll always find a mapping */ 
+ if(typeof(\$guild."npc:teacher") == T_OBJECT) \{ 
+  if(!member(\$subject, Arr(\$guild."npc:teacher"."teaching:skills"))) 
+   return "Your guild teacher isn't able to teach that skill."; 
+ \} else \{ 
+  if(!\$guild."npc:teacher"["skills"] \|\| !member(\$subject, \$guild."npc:teacher"["skills"])) 
+   return "Your guild teacher isn't able to teach that skill."; 
+ \} 
+ /* check skill limits */ 
+ if(\$nsubject[1] == "career") \{ 
+  /* Check they don't learn over 48 levels in this skill */ 
+  /* temporarily do this check even if they aren't learning a career. Until all \>48 level people have dropped down to the right number of careers. */ 
+  int count, i; 
+  string *list; 
+  list = map_indices(prefixed_map(\$actor."*", "skill:career:")); 
+  count = 0; 
+  for(i=0;i\<sizeof(list);i++) \{ 
+   count += Int(Get(\$actor, list[i])); 
+  \} 
+  if(count \>= 48) \{ 
+   output = "You have too many careers to learn anything more. You may only have 48 ranks of careers (although you may have any number of skills).\<br/\>\\n"; 
+   output += "You will be unable to learn any more skills until you reduce the number of careers you have down to 48."; 
+   return output; 
+  \} 
+ \} else if(\$level \> 24) \{ 
+  return "Your skill level is too high, you cannot learn any more."; 
+ \} 
+ /* start teaching the skill */ 
+ \$id = ironclaw::busy_start(\$character: \$actor, \$action: "practicing "+\$skill_name); 
+ \$actor."teaching:npc:lesson_end_time" = time()+60*60*4; 
+ if(\$actor."base:environment") \{ 
+  EmitTo(\$actor, "You begin to practice the "+\$skill_name+" skills that you were studying with your guild teacher."); 
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" begins to practice "+\$actor."base:possessive"+" "+\$skill_name+" skills.", \$actor); 
+ \} 
+ \$delay(60*3, "You begin to study "+\$skill_name+". If you wish to end this lesson early, just use the in-game @stop command.\<br/\>Other PCs near your character will be able to see you practicing this skill.\<br/\>The lesson will take around four hours, but you will continue studying "+\$skill_name+" even after you log off.", "0f5b"); 
+ while(time() \< \$actor."teaching:npc:lesson_end_time") \{ 
+  if(\$actor."busy:id" != \$id) return TRUE; 
+  if(\$actor."base:environment") \{ 
+   EmitTo(\$actor, "You continue to practice "+\$skill_name+"."); 
+   EmitIn(\$actor."base:environment", Describe(\$actor)+" continues to practice "+\$actor."base:possessive"+" "+\$skill_name+" skills.", \$actor); 
+  \} 
+  \$delay(60*10+(random(10)*60), TRUE, "433d"); 
+ \} 
+ if(\$actor."busy:id" != \$id) return TRUE; 
+ ironclaw::busy_stop(\$character: \$actor, \$id: \$id); 
+ 
+ /* another sanity check */ 
+ 
+ if(\$char."guild:guild_lessons") \{ 
+  if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< \$level*\$level*100) 
+   return "Your guild cannot afford this lesson."; 
+ \} else if(Int(\$actor."trait:money") \< \$level*\$level*100) \{ 
+  return "You cannot afford this lesson."; 
+ \} 
+ 
+ if(\$char."guild:guild_lessons") \{ 
+  if(Int(\$guild.kitty)+Int(\$actor."trait:money") \< \$level*\$level*100) \{ 
+   if(\$actor."base:environment") \{ 
+    EmitTo(\$actor, "You finish practicing "+\$skill_name+", but don't increase your understanding. [OOC: Your guild can't afford to pay for the NPC lesson.]"); 
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" finishes practicing "+\$skill_name+".", \$actor); 
+   \} else \{ 
+    if(!\$actor."login:messages") \$actor."login:messages" = (\{ \}); 
+    \$actor."login:messages" \|= (\{ "You have finished practicing your "+\$skill_name+" skills, but don't increase your understanding. [OOC: Your guild couldn't afford to pay for the NPC lesson.]" \}); 
+   \} 
+   return FALSE; 
+  \} 
+ \} else \{ 
+  if(Int(\$actor."trait:money") \< \$level*\$level*100) \{ 
+   if(\$actor."base:environment") \{ 
+    EmitTo(\$actor, "You finish practicing "+\$skill_name+", but don't increase your understanding. [OOC: You can't afford to pay for the NPC lesson.]"); 
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" finishes practicing "+\$skill_name+".", \$actor); 
+   \} else \{ 
+    if(!\$actor."login:messages") \$actor."login:messages" = (\{ \}); 
+    \$actor."login:messages" \|= (\{ "You have finished practicing your "+\$skill_name+" skills, but don't increase your understanding. [OOC: You couldn't afford to pay for the NPC lesson.]" \}); 
+   \} 
+   return FALSE; 
+  \} 
+ \} 
+ 
+ /* another sanity check */ 
+ if(\$level != Int(Get(\$actor, \$subject))+1) return FALSE; 
+ 
+ /* charge the cost and grant the skill */ 
+ if(Int(\$actor."student:learningpoints") \>= \$cost) \{ 
+  \$actor."student:learningpoints" -= \$cost; 
+ \} else \{ 
+  return FALSE; 
+ \} 
+ 
+ if(\$char."guild:guild_lessons") \{ 
+  \$spent = 0; 
+  if(Int(\$guild.kitty) \>= \$level*\$level*100) \{ 
+   \$guild.kitty -= \$level*\$level*100; 
+   \$spent = \$level*\$level*100; 
+   \$spent = Int(Flt(\$spent)/100.0); 
+  \} else \{ 
+   /* take the money from both guild kitty and personal account */ 
+   \$spent = \$guild.kitty; 
+   \$guild.kitty = 0; 
+   \$actor."trait:money" -= (\$level*\$level*100 - \$spent); 
+   \$spent = Int(Flt(\$spent)/100.0); 
+  \} 
+ \} else \{ 
+  \$actor."trait:money" -= \$level*\$level*100; 
+ \} 
+ 
+ Set(\$actor, \$subject, \$level); 
+ 
+ /* record this in the guild */ 
+ if(\$char."guild:guild_lessons" \&\& \$spent) \{ 
+  if(!\$guild."costs:teaching") \$guild."costs:teaching" = ([ ]); 
+  if(\$guild."costs:teaching"[name(\$actor)]) \{ 
+   \$info = \$guild."costs:teaching"[name(\$actor)]; 
+  \} else \{ 
+   \$info = ([ ]); 
+  \} 
+  if(\$info[\$skill_name] \&\& time() \< \$info[\$skill_name][0] + 60*60*24*14 ) \{ 
+   /* Add the cost of this lesson */ 
+   \$info[\$skill_name][0] = time(); 
+   \$info[\$skill_name][1] = \$info[\$skill_name][1] + \$spent; 
+  \} else \{ 
+   /* add this lesson */ 
+   \$info[\$skill_name] = (\{ time(), \$spent \}); 
+  \} 
+  \$guild."costs:teaching"[name(\$actor)] = \$info; 
+ \} 
+ return TRUE; 
+\} else if(\$script == "check_learning_cost") \{ 
+ /* returns the cost of studying \$subject to level \$level */ 
+ if(!\$subject) return 0; 
+ if(!\$level) return 0; 
+ \$nsubject = explode(\$subject, ":"); 
+ if(sizeof(\$nsubject) != 3) return 0; 
+ if(\$nsubject[1] == "career") \{ 
+  \$cost = \$level*10; 
+  if(\$cost \> 100) \$cost = 100; 
+ \} else if (\$nsubject[1] == "lang") \{ 
+  \$cost = \$level*3; 
+  if(\$cost \> 30) \$cost = 30; 
+ \} else \{ 
+  \$cost = \$level*5; 
+  if(\$cost \> 50) \$cost = 50; 
+ \} 
+ \$cost = Int(Flt(\$cost)*1.1); 
+ return \$cost; 
+\} else if(\$script == "list_inventory") \{ 
+  string *items; 
+  object inventory; 
+  /* only let them see the inventory list if they are in the guild */ 
+  if(!\$guildrank) return "You are not authorized to view this inventory."; 
+  /* only let them take items or dump stock if they have access */ 
+  if(\$actor."guild:inventory" == "access" \|\| \$guildleader) \{ 
+    \$inv_editor = TRUE; 
+  \} else \{ 
+    \$inv_editor = nil; 
+  \} 
+ 
+  if(!\$guild.inventory)\{ 
+    catch(Call(\$\{Lib:objects\}, "create_of_type", \$name: "Ironclaw:Guilds:Inventories:"+name(\$guild)[16..strlen(name(\$guild))-1], \$type: "propcontainer")); 
+    \$guild.inventory = Obj("Ironclaw:Guilds:Inventories:"+name(\$guild)[16..strlen(name(\$guild))-1]); 
+  \} 
+  inventory = \$guild.inventory; 
+ 
+  /* display the inventory for this guild */ 
+  items = map_indices(prefixed_map(inventory."*", "tradingitem:")); 
+  if(!sizeof(items)) return "The warehouses are currently empty."; 
+ 
+  output = "\<table border=\\"0\\"\>\\n"; 
+  output += "\<tr\>\<td colspan="; 
+  if(\$inv_editor) \{ 
+    output += "5"; 
+  \} else \{ 
+    output += "3"; 
+  \} 
+  output += "\>Guild kitty: \<strong\>"+Str(Int(\$guild.kitty)/100)+" denarii\</strong\>\</td\>\</tr\>\\n"; 
+  output += "\<tr\>\<td\>\<strong\>Quantity\</strong\>\</td\>\<td\>\<strong\>Item\</strong\>\</td\>\<td\>\<strong\>Notes\</strong\>\</td\>"; 
+  if(\$inv_editor) 
+    output += "\<td\>\<strong\>Take Item\</strong\>\</td\>\<td\>\<strong\>Dump Stock\</strong\>\</td\>"; 
+  output += "\</tr\>\\n"; 
+ 
+ 
+  /* guild cloaks */ 
+  if(\$guild.cloak) \{ 
+    output += "\<tr\>\<td\>unlimited\</td\>\<td\>guild cloak\</td\>\<td\>Fly your colours proudly!\</td\>"; 
+    if(\$inv_editor) 
+      output += "\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', 'guildcloak');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\&nbsp;\</td\>"; 
+    output += "\</tr\>"; 
+  \} 
+ 
+  /* for each item in the inventory... */ 
+  sz = sizeof(items); 
+  for(i=0;i\<sz;i++) \{ 
+    output += "\<tr\>\<td\>"; 
+    if(Get(inventory, items[i])[1] == -1) \{ 
+      output += "unlimited"; 
+    \} else \{ 
+      output += Str(Get(inventory, items[i])[1]); 
+    \} 
+    output += "\</td\>\<td\>"+Get(inventory, items[i])[0]+"\</td\>\<td\>"; 
+    output += "\&nbsp;"; 
+    /* Allow them to take items if they have access */ 
+    if(\$inv_editor) \{ 
+      output += "\</td\>\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', '"+items[i]+"'); display_block('inventorylist', 'list_inventory');\\"\\\>take item\</u\>\</strong\>]"; 
+      output += "\</td\>\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"alert('Dumping of stock temporarily disabled, to avoid unpleasant accidents.');\\"\\\>dump_stock\</u\>\</strong\>]"; 
+    \} 
+    output += "\</td\>\</tr\>"; 
+  \} 
+ 
+  output += "\</table\>\\n"; 
+\} else if(\$script == "take_inv_item") \{ 
+  /* only let them take items if they are in the guild and have access */ 
+  if(!\$guildrank \|\| (\$actor."guild:inventory" != "access" \&\& !\$guildleader)) 
+    return "You do not have access to remove items from the guild inventory."; 
+  if(!\$vars \|\| !sizeof(\$vars)) return "Unknown item."; 
+ 
+  /* are they removing the guild cloak? */ 
+  /* AT SOME POINT WE PROBABLY WANT TO INCORPORATE GUILD CLOAKS AS NORMAL INV ITEMS */ 
+  if(\$vars[0] == "guildcloak" \&\& \$guild.cloak) \{ 
+    object item; 
+    item = Spawn(\$guild.cloak); 
+    item."base:environment" = \$actor; 
+    item.guild = \$guild; 
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory."; 
+  \} else \{ 
+    /* if it's some other item */ 
+    object item; 
+    int i, sz; 
+    \$inventory = \$guild.inventory; 
+    \$info = Get(\$inventory, \$vars[0]); 
+    /* check there is stock */ 
+    if(\$info[1] == -1) \{ 
+      /* unlimited stock. Do nothing */ 
+    \} else if (!\$info[1]) \{ 
+      /* no stock */ 
+      return "There is no stock left in the guild inventory."; 
+    \} else \{ 
+      /* reduce the stock */ 
+      \$info[1]--; 
+    \} 
+    item = Spawn(\$info[2]); 
+    item."base:environment" = \$actor; 
+    /* set quality */ 
+    i=random(4)+random(4)+random(4)+random(4); 
+    if(i\>8) i=random(4)+random(4)+random(4)+random(4); 
+    if(i\<1) i=1; 
+    item."trait:quality" = i; 
+    /* set properties */ 
+    item.guild = \$guild; 
+    if(\$props = Get(\$inventory, "settings:"+\$vars[0]+":properties")) \{ 
+      sz = sizeof(\$props); 
+      for(i=0;i\<sz-1;i=i+2) \{ 
+        Set(item, \$props[i], \$props[i+1]); 
+      \} 
+    \} 
+ 
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory."; 
+  \} 
+  output = Describe(\$actor)+" could not find this item in the inventory."+dump_value(\$vars); 
+\} else if(\$script == "voting_start") \{ 
+  /* is it valid to start a new vote? */ 
+  if(\$guild."vote:voting") return ::general_script(\$script: "voting_display"); 
+  \$valid = nil; 
+  if(!\$guild.leader) \{ 
+    \$valid = TRUE; 
+  \} else if(\$guild."vote:vp_guild") \{ 
+    if(Int(\$guild.leader."cdat:lastlogin")+60*60*24*30 \< time()) \$valid = TRUE; 
+    if(Int(\$guild."vote:newleader:time")+60*60*24*30*3 \< time()) \$valid = TRUE; 
+  \} 
+  if(!\$valid) return ::general_script(\$script: "voting_display"); 
+  \$valid = nil; 
+ 
+  /* Ok, so we can start a vote. Remove the old properties. */ 
+  \$guild."vote:begin" = nil; 
+  \$guild."vote:nominations" = nil; 
+  \$guild."vote:nominees" = (\{ \}); 
+  \$guild."vote:selections" = ([ ]); 
+ 
+  /* what level should the nominations start at? */ 
+  /* count how many peers there are */ 
+  \$count = 0; 
+  for(i=0;i\<sizeof(\$guild.members);i++) \{ 
+    if(\$guild.members[i] \&\& \$guild.members[i]."rank:rank" \>= 11 \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time()) 
+      \$count++; 
+  \} 
+  if(\$count \>= 3) 
+    \$guild."vote:nominations" = 1; 
+  if(!\$guild."vote:nominations") \{ 
+    /* count how many peers and gentry there are */ 
+    \$count = 0; 
+    for(i=0;i\<sizeof(\$guild.members);i++) \{ 
+      if(\$guild.members[i] \&\& \$guild.members[i]."rank:rank" \>= 7 \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time()) 
+        \$count++; 
+    \} 
+    if(\$count \>= 3) 
+      \$guild."vote:nominations" = 2; 
+  \} 
+  if(!\$guild."vote:nominations") 
+    \$guild."vote:nominations" = 3; 
+ 
+  /* start the vote */ 
+  \$id = time(); 
+  \$guild."vote:voting" = \$id; 
+  \$delay(1, ::general_script(\$script: "voting_display"), "ab9d"); 
+  /* give a week for nominations */ 
+  \$delay(60*60*24*7, TRUE, "5f6a"); 
+  if(\$guild."vote:voting" != \$id) return FALSE; 
+  if(!\$guild."vote:begin" \&\& \$guild."vote:nominations" == 1) \{ 
+    \$guild."vote:nominations"++; 
+    \$delay(60*60*24*7, TRUE, "be18"); 
+    if(\$guild."vote:voting" != \$id) return FALSE; 
+  \} 
+  if(!\$guild."vote:begin" \&\& \$guild."vote:nominations" == 2) \{ 
+    \$guild."vote:nominations"++; 
+  \} 
+  if(!\$guild."vote:begin") 
+    \$guild."vote:begin" = time(); 
+ 
+  /* Start final countdown */ 
+  /* give two weeks more */ 
+  \$time = \$guild."vote:begin"+60*60*24*7*2-time(); 
+  if(\$time \< 0) \$time = 0; 
+  \$delay(\$time, TRUE, "f7f5"); 
+  if(\$guild."vote:voting" != \$id) return FALSE; 
+ 
+  /* vote is over. Calculate winner. */ 
+  \$guild."vote:voting" = nil; 
+  \$tmp = ([ ]); 
+  for(i=0;i\<sizeof(map_indices(\$guild."vote:selections"));i++) \{ 
+    \$nominee = \$guild."vote:selections"[map_indices(\$guild."vote:selections")[i]]; 
+    if(\$tmp[\$nominee]) \{ 
+      \$tmp[\$nominee]++; 
+    \} else \{ 
+      \$tmp[\$nominee] = 1; 
+    \} 
+  \} 
+  if(!sizeof(map_indices(\$tmp))) \{ 
+    /* no winner. Should we destroy this guild? */ 
+    if(!\$guild."vote:vp_guild") \{ 
+      /* destroy the guild */ 
+      /* NOT WRITTEN YET */ 
+      /* would be nice to put the guild kitty and inventory up on the auction house, too */ 
+      EmitTo(\$az, "Should destroy "+dump_value(\$guild)); 
+      return TRUE; 
+    \} 
+    EmitTo(\$az, "Would destroy "+dump_value(\$guild)+", but it's a VP guild. Flag it for new membership, maybe using the quest system?"); 
+    return TRUE; 
+  \} 
+  /* find the winner */ 
+  \$max = 0; 
+  \$winner = (\{ \}); 
+  for(i=0;i\<sizeof(map_indices(\$tmp));i++) \{ 
+    if(\$tmp[map_indices(\$tmp)[i]] \> \$max) \{ 
+      \$max = \$tmp[map_indices(\$tmp)[i]]; 
+      \$winner = (\{ map_indices(\$tmp)[i] \}); 
+    \} else if(\$tmp[map_indices(\$tmp)[i]] == \$max) \{ 
+      \$winner \|= (\{ map_indices(\$tmp)[i] \}); 
+    \} 
+  \} 
+  /* is there a tie? */ 
+  if(sizeof(\$winner) \> 1) \{ 
+    \$winner = (\{ \$winner[random(sizeof(\$winner))] \}); 
+  \} 
+  /* set the new leader */ 
+  \$guild.leader = \$winner[0]; 
+  /* leave a message for the guild members */ 
+  \$guild."vote:newleader" = Str(\$winner[0]."skotos:playercapname"); 
+  \$guild."vote:newleader:time" = time(); 
+  return TRUE; 
+\} else if(\$script == "voting_display") \{ 
+  /* sanity checking */ 
+  /* make sure a vote is happening */ 
+  if(!\$guild."vote:voting") \{ 
+    /* can they call for a vote? */ 
+    if(!\$guild.leader) \{ 
+      output += capitalize(Str(\$guild.fullname))+" has no current leader.\<br/\>\\n"; 
+      output += "\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here to call a vote for a new guildleader.\</u\>\<br/\>\\n"; 
+      return output; 
+    \} 
+    /* Are they a great house or VP guild? In that case, call for a vote if the leader is idle, or if it's been three months. */ 
+    if(\$guild."vote:vp_guild") \{ 
+      if(Int(\$guild.leader."cdat:lastlogin")+60*60*24*30 \< time()) \{ 
+        output += "The current guild leader, "+Str(\$guild.leader."skotos:playercapname")+", has not been seen in over a month.\<br/\>\\n"; 
+        output += "[\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here if you want to call a vote for a new guildleader.\</u\>]\<br/\>\\n"; 
+        return output; 
+      \} 
+      if(Int(\$guild."vote:newleader:time")+60*60*24*30*3 \< time()) \{ 
+        output += "It has been over three months since there was a vote for the guild leader.\<br/\>\\n"; 
+        output += "[\<u class=\\"clickable\\" onclick=\\"display_block('vote', 'voting_start');\\"\>Click here if you want to call a vote for a new guildleader.\</u\>]\<br/\>\\n"; 
+        return output; 
+      \} 
+    \} 
+    /* was there a new leader appointed? */ 
+    if(\$guild."vote:newleader:time" \&\& \$guild."vote:newleader:time"+60*60*24*7 \> time()) 
+      return capitalize(Str(\$guild."vote:newleader"))+" has been appointed the new leader of "+Str(\$guild.fullname)+"."; 
+    return ""; 
+  \} 
+  /* remove deleted candidates */ 
+  \$guild."vote:nominees" -= (\{ nil \}); 
+ 
+  output = "There is currently a vote for the leadership of "+\$guild.fullname+".\<br/\>"; 
+  /* vote based on rank */ 
+  if(\$guild."vote:nominations" == 2) \{ 
+    output += "Gentry, Knights, or Peers may nominate themselves.\<br/\>\\n"; 
+  \} else if(\$guild."vote:nominations" == 1) \{ 
+    output += "Peers (Barons and above) may nominate themselves.\<br/\>\\n"; 
+  \} else \{ 
+    output += "All guild members may nominate themselves.\<br/\>\\n"; 
+  \} 
+ 
+  if(!member(\$actor, Arr(\$guild."vote:nominees"))) \{ 
+    /* actor isn't nominated for this vote */ 
+    /* check they have the right rank, and can nominate themselves */ 
+    if(Call(this, "general_script", \$script: "voting_check_nomination")) \{ 
+      output += "\<u class=\\"clickable\\" onclick=\\"run_script('voting_nominate'); display_block('vote', 'voting_display');\\"\>Click here to nominate "+Str(\$actor."skotos:playercapname")+" for the position of guildleader.\</u\>\<br/\>\\n"; 
+    \} 
+  \} 
+  if(sizeof(\$guild."vote:nominees")) \{ 
+    if(\$guild."vote:selections" \&\& \$guild."vote:selections"[name(\$actor)]) \{ 
+      output += "Your vote is for "+capitalize(Str(\$guild."vote:selections"[name(\$actor)]."skotos:charname"))+"\<br/\>\\n"; 
+      output += "Vote for \\n"; 
+    \} else \{ 
+      output += "Vote for one of the nominees \\n"; 
+    \} 
+    output += "\<select NAME=\\"vote_preference\\" id=\\"vote_preference\\" onchange=\\"voting_select(this.value); display_block('vote', 'voting_display');\\"\>\\n"; 
+    if(\$guild."vote:selections" \&\& \$guild."vote:selections"[name(\$actor)]) \{ 
+      output += "Your vote is for \<br/\>\\n"; 
+      output += "\<option value=\\""+name(\$guild."vote:selections"[name(\$actor)])+"\\"\>"+capitalize(Str(\$guild."vote:selections"[name(\$actor)]."skotos:charname"))+"\</option\>\\n"; 
+    \} else \{ 
+      output += "\<option value=\\"nil\\"\>\&nbsp;\</option\>\\n"; 
+    \} 
+    for(i=0;i\<sizeof(\$guild."vote:nominees");i++) \{ 
+      output += "\<option value=\\""+name(\$guild."vote:nominees"[i])+"\\"\>"+capitalize(Str(\$guild."vote:nominees"[i]."skotos:charname"))+"\</option\>\\n"; 
+    \} 
+    output += "\</select\>\<br/\>\\n"; 
+  \} else \{ 
+    output += "There have not yet been any nominees for the position of guild leader.\<br/\>\\n"; 
+  \} 
+  return output; 
+\} else if(\$script == "voting_check_nomination") \{ 
+  /* check they have the right rank, and can nominate themselves * / 
+  /* sanity check */ 
+  if(!\$guildrank) return FALSE; 
+  if(!\$guild."vote:voting") return FALSE; 
+ 
+  /* slaves can't be nominated */ 
+  if(\$actor."rank:rank" == 1) return FALSE; 
+ 
+  /* if it's at stage three, any member can be nominated */ 
+  if(\$guild."vote:nominations" \>= 3) return TRUE; 
+ 
+  /* vote based on rank */ 
+  if(\$guild."vote:nominations" == 2) \{ 
+    if(\$actor."rank:rank" \&\& 
+      \$actor."rank:rank" \>= 7) return TRUE; 
+  \} else \{ 
+    if(\$actor."rank:rank" \>= 11) return TRUE; 
+  \} 
+  return FALSE; 
+\} else if(\$script == "voting_nominate") \{ 
+  /* nominate a PC for guild leader */ 
+  /* sanity check */ 
+  if(!\$guild."vote:voting") return FALSE; 
+ 
+  if(!\$guild."vote:nominees") return "Error: The guild is not accepting nominations at this time."; 
+ 
+  /* check their priority or rank vs what is being accepted */ 
+  if(!Call(this, "general_script", \$script: "voting_check_nomination")) return FALSE; 
+ 
+  /* add them to the list */ 
+  \$guild."vote:nominees" \|= (\{ \$actor \}); 
+ 
+  /* set them to be voting for themselves */ 
+  \$guild."vote:selections"[name(\$actor)] = \$actor; 
+ 
+  /* should we begin the vote? */ 
+  if(!\$guild."vote:begin" \&\& sizeof(\$guild."vote:nominees") == 3) 
+    \$guild."vote:begin" = time(); 
+ 
+  return "Nomination accepted."; 
+\} else if(\$script == "voting_select") \{ 
+  /* vote for someone */ 
+  /* sanity check */ 
+  if(!\$guildrank) return "You are not a member of this guild."; 
+  if(!\$guild."vote:voting") return "No vote currently in progress"; 
+ 
+  \$nominee = Obj(\$vars[0]); 
+  if(\$nominee) \{ 
+    /* set them to be voting for whoever they selected */ 
+    \$guild."vote:selections"[name(\$actor)] = \$nominee; 
+    /* check if this wins the vote */ 
+    /* count active members of the guild */ 
+    \$count = 2; 
+    for(i=0;i\<sizeof(\$guild.members);i++) \{ 
+      if(\$guild.members[i] \&\& Int(\$guild.members[i]."cdat:lastlogin")+60*60*24*14 \> time()) 
+        \$count++; 
+    \} 
+    /* we only need half the votes (1 more than half, hence starting \$count at 2) to win the vote */ 
+    \$count = \$count / 2; 
+    /* now count how many people voted for this nominee */ 
+    \$newcount = 0; 
+    for(i=0;i\<sizeof(map_indices(\$guild."vote:selections"));i++) \{ 
+      if(\$guild."vote:selections"[map_indices(\$guild."vote:selections")[i]] == \$nominee) 
+        \$newcount++; 
+    \} 
+    if(\$newcount \>= \$count) \{ 
+      /* they have more than half the vote */ 
+      /* assign the new guild leader */ 
+      \$guild."vote:voting" = nil; 
+      \$guild.leader = \$nominee; 
+      /* leave a message for the guild members */ 
+      \$guild."vote:newleader" = Str(\$nominee."skotos:playercapname"); 
+      \$guild."vote:newleader:time" = time(); 
+    \} 
+  \} else \{ 
+    return "Error: Could not find the member that you're voting for"; 
+  \} 
+ 
+  return "Vote cast"; 
+\} 
+ 
+if(output != "") return output; 
+return "Error: Unknown script";
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1233969139, "tonyd", "E", 1233969153, "tonyd", "E", 1233969159, "tonyd", "E", 1233969165, "tonyd", "E", 1233969172, "tonyd", "E", 1233970405, "tonyd", "P", 1233970442, "tonyd", "P", 1233970463, "tonyd", "P", 1233970534, "tonyd", "P", 1233970572, "tonyd", "P", 1233970594, "tonyd", "P", 1233970735, "tonyd", "P", 1233971277, "tonyd", "P", 1233971325, "tonyd", "P", 1233971349, "tonyd", "P", 1233971369, "tonyd", "P", 1233971413, "tonyd", "P", 1233971451, "tonyd", "P", 1233971495, "tonyd", "P", 1233971504, "tonyd", "P", 1233971536, "tonyd", "P", 1233971584, "tonyd", "P", 1233971628, "tonyd", "P", 1233971669, "tonyd", "P", 1233974145, "tonyd", "P", 1233974207, "tonyd", "P", 1233974233, "tonyd", "P", 1233974399, "tonyd", "P", 1233974420, "tonyd", "P", 1233974594, "tonyd", "P", 1287434395, "rastalabor", "X", 1287434919, "rastalabor", "X" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,398 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="bak:merry:lib:sum-word">
+         X[M] /*     
+** Expects:     
+**     
+**   \$word - the word to be summed     
+*/     
+     
+int val, sum, i;     
+     
+sum = 0;     
+for (i = 0; i \< strlen(\$word); i ++) \{     
+  /* evaluate how common this (downcased) letter is */     
+  switch(\$word[i] \| 0x20) \{     
+ case 'e': val = 1; break;     
+ case 't': val = 2; break;     
+ case 'a': val = 3; break;     
+ case 'i': val = 4; break;     
+ case 'n': val = 5; break;     
+ case 'o': val = 6; break;     
+ case 's': val = 7; break;     
+ case 'h': val = 8; break;     
+ case 'r': val = 9; break;     
+ case 'd': val = 10; break;     
+ case 'l': val = 11; break;     
+ case 'u': val = 12; break;     
+ case 'c': val = 13; break;     
+ case 'm': val = 14; break;     
+ case 'f': val = 15; break;     
+ case 'w': val = 16; break;     
+ case 'y': val = 17; break;     
+ case 'g': val = 18; break;     
+ case 'p': val = 19; break;     
+ case 'b': val = 20; break;     
+ case 'v': val = 21; break;     
+ case 'k': val = 22; break;     
+ case 'q': val = 23; break;     
+ case 'j': val = 24; break;     
+ case 'x': val = 25; break;     
+ case 'z': val = 26; break;     
+ case '0' .. '9': val = 5; break;     
+  \}     
+  sum += val;     
+\}     
+return sum;
+      </Core:Property>
+      <Core:Property property="merry:lib:cache-stats">
+         X[M] /* 
+ * Expects: 
+ *   \$body - Who to emit the information to. 
+ */ 
+ 
+int     i, sz, hit_sum, miss_sum; 
+string  *names, output; 
+mapping props; 
+mixed   *values; 
+ 
+output = "Language Caching Statistics:\\n\\n" + 
+         "Language  Hits   Words  Vocabulary  Resets\\n"; 
+ 
+props = \$\{Data:Languages:cache\}."*"; 
+sz = map_sizeof(props); 
+names = map_indices(props); 
+values = map_values(props); 
+for (i = 0; i \< sz; i++) \{ 
+    string language; 
+ 
+    if (sscanf(names[i], "%s:stats", language) == 1) \{ 
+        int hit, miss; 
+ 
+        hit  = values[i]["hit"]; 
+        miss = values[i]["miss"]; 
+        hit_sum += hit; 
+        miss_sum += miss; 
+        output += pad_right(capitalize(language), 8) + "  " + 
+                  pad_left(format_float((float)hit * 100.0 / (float)(hit + miss), 1) + "%", 5) + "  " + 
+                  pad_left((string)(hit + miss), 5) + "  " + 
+                  pad_left((string)map_sizeof(Get(\$\{Data:Languages:cache\}, language)), 10) + "  " + 
+                  pad_left((string)values[i]["reset"], 6)  + "\\n"; 
+    \} 
+\} 
+output += "----\\n"; 
+output += "Overall " + "  " + 
+          pad_left(format_float((float)hit_sum * 100.0 / (float)(hit_sum + miss_sum), 1) + "%", 5) + "  " + 
+          pad_left((string)(hit_sum + miss_sum), 5) + "\\n"; 
+EmitTo(\$body, output);
+      </Core:Property>
+      <Core:Property property="merry:lib:garble">
+         X[M] /*
+** Expects:
+**
+**   \$text - the string to be garbled
+**   \$lang - the language identifier - The language NAME, not the language ID number!
+**   \$lvl  - the amount of garbling performed, from 0 to 10 (can now be a float).
+**   \$skill - the skill of the listener
+**   \$legibility - the clarity of the speaker
+*/
+
+string output, word;
+int seed, sum, begin, i;
+
+/*
+EmitTo(\$\{Chatters:AE:ro:roo\}, "text is: " +\$text);
+EmitTo(\$\{Chatters:AE:ro:roo\}, "language is: " +\$lang);
+EmitTo(\$\{Chatters:AE:ro:roo\}, "skill is: " +\$skill);
+EmitTo(\$\{Chatters:AE:ro:roo\}, "legibility is: " +\$legibility);
+*/
+
+/* seperate words and punctuation */
+output = "";
+
+i = 0;
+while (TRUE) \{
+  if (i \< strlen(\$text)) \{
+    switch(\$text[i]) \{
+      case 'a' .. 'z':
+      case 'A' .. 'Z':
+      case '0' .. '9':
+      case '\\'':
+        if (!word) \{
+          /* this begins a new word */
+          begin = i;
+          seed = 0;
+        \}
+        word = \$text[begin .. i];
+
+        i ++;
+        continue;
+    \}
+  \}
+
+  if (word) \{
+    /* we have a pending word; deal with it */
+      /* sum the word, to get an idea of its complexity */
+        sum = Call(this, "sum-word", \$word: lower_case(word));
+        seed = 10 * (i+1 - begin) * (lower_case(word)[0]-64) * sum;
+
+
+/* Sum words, and garble any that we can't understand */
+    if(sum \> \$skill)
+    \{
+      /* capitalize translated words appropriately */
+      if((word[0] \>= 'A') \&\& (word[0] \<= 'Z')) \{
+        if((strlen(word) \> 1) \&\& (word[1] \>= 'A') \&\& (word[1] \<= 'Z')) \{
+          word = upper_case(Call(this, "garbled-word", \$word: word, \$lang: \$lang, \$seed: seed));
+        \} else \{
+          word = capitalize(Call(this, "garbled-word", \$word: word, \$lang: \$lang, \$seed: seed));
+        \}
+      \} else \{
+        word = Call(this, "garbled-word", \$word: word, \$lang: \$lang, \$seed: seed);
+      \}
+    \}
+      output += word;
+    word = nil;
+  \}
+
+  /* checking if we're done */
+  if (i == strlen(\$text)) \{
+    /* OK: we're done */
+    return output;
+  \}
+
+  output += \$text[i .. i];
+  i ++;
+\}
+
+return "speaking "+\$lang+" - garbled: "+output;
+      </Core:Property>
+      <Core:Property property="merry:lib:garbled-word">
+         X[M] /*
+** Expects:
+**
+**   \$lang - the language to garble in
+**   \$seed - the seed for the pseudo-random sequence
+**   \$word - the original word that is being garbled
+**   word = Call(this, "garbled-word", \$word: word, \$lang: \$lang, \$seed: 0);
+*/
+
+string *syllables;
+string *out, result;
+int sylix, i;
+
+/*
+ * Fetch the caching data structures:
+ */
+mapping cache, stats;
+
+stats  = Get(\$\{Ironclaw:Lib:Languages:Data:cache\}, \$lang + ":stats");
+if (!stats) \{
+    stats = ([ "hit": 0, "miss": 0, "reset": 0 ]);
+    Set(\$\{Ironclaw:Lib:Languages:Data:cache\}, \$lang + ":stats", stats);
+\}
+
+cache  = Get(\$\{Ironclaw:Lib:Languages:Data:cache\}, \$lang);
+if (!cache \|\| map_sizeof(cache) \>= status()[ST_ARRAYSIZE]) \{
+    cache = ([ ]);
+    Set(\$\{Ironclaw:Lib:Languages:Data:cache\}, \$lang, cache);
+    stats["reset"]++;
+\}
+
+/*
+ * The caching is based on the assumption that the same word in a given language is
+ * always garbled the same way, because the \$seed value is a direct function of the
+ * given word and the only thing that changes with skill-combinations is how long a
+ * word needs to be to (not) be garbled.
+ */
+
+if (cache[\$word]) \{
+    /*
+     * Sweet, use the cached version and get the heck outta here.
+     */
+    stats["hit"]++;
+    return cache[\$word];
+\}
+
+/*
+ * No luck, ok do the actual garbling and add it to the cache after that:
+ */
+
+/* If this word is a substitution */
+
+if(Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "replacements:"+\$lang) \&\& (Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "replacements:"+\$lang)[lower_case(\$word)]))
+\{
+  result = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "replacements:"+\$lang)[lower_case(\$word)];
+\} else \{
+  syllables = Call(this, "get-syllables", \$lang: \$lang);
+  \$prefixes = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "prefixes:"+\$lang);
+  \$suffixes = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "suffixes:"+\$lang);
+
+  Call(\$\{Neoct:Languages:Lib:pseudorandom\}, "randomize", \$seed: \$seed);
+
+  /* construct a word of 1-4 syllables */
+  out = allocate(1 + Call(\$\{Neoct:Languages:Lib:pseudorandom\}, "random", \$n: 4));
+
+  for (i = 0; i \< sizeof(out); i ++) \{
+    sylix = Call(\$\{Neoct:Languages:Lib:pseudorandom\}, "random", \$n: sizeof(syllables));
+    out[i] = syllables[sylix];
+  \}
+  /* mush the syllables together and return the result */
+  result = implode(out, "");
+
+  /* Add a prefix and suffix */
+  if(\$prefixes) \{
+ /*   if(Call(\$\{Neoct:Languages:Lib:pseudorandom\}, "random", \$n: 5) == 0) \{ */
+      sylix = Call(\$\{Neoct:Languages:Lib:pseudorandom\}, "random", \$n: sizeof(\$prefixes));
+      result = \$prefixes[sylix] + result;
+ /*   \} */
+  \}
+
+  if(\$suffixes) \{
+  /*  if(Call(\$\{Neoct:Languages:Lib:pseudorandom\}, "random", \$n: 5) == 0) \{ */
+      sylix = Call(\$\{Neoct:Languages:Lib:pseudorandom\}, "random", \$n: sizeof(\$suffixes));
+      result += \$suffixes[sylix];
+  /*  \} */
+  \}
+\}
+/*
+ * Adding garbled version to the cache:
+ */
+stats["miss"]++;
+/*cache[\$word] = result;*/
+
+return result;
+      </Core:Property>
+      <Core:Property property="merry:lib:get-languages">
+         X[M] /*      
+** Expects:  nothing!    
+**    
+*/      
+  
+mapping map;  
+ 
+/* 
+** If this pointer could be gotten from elsewhere, such 
+** as from a configuration file/object, then we could have 
+** proper separation between the garble code and language 
+** data... right now Marrach languages are in Neoct, ick. 
+**  -- Zell 
+*/ 
+map = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "*");  
+map = prefixed_map(map, "language:settings:", TRUE);  
+  
+return map_indices(map);
+      </Core:Property>
+      <Core:Property property="merry:lib:get-maxskill">
+         X[M] /*
+** Wrapper that fetches the property which indicates what the maximum level is that a
+** language skill can reach, so that the garbling can be properly scaled.
+*/
+
+return Int(\$\{Data:Languages:languages\}."skill:maximum");
+      </Core:Property>
+      <Core:Property property="merry:lib:get-skill">
+         X[M] /*
+** Expects:
+**
+**   \$body - whose skill we're seeking
+**   \$lid  - the Eric language id, e.g. 2 or '2'
+**
+*/
+
+mixed skill;
+
+skill = Int(Get(\$body, "skill:lang:" + Call(this, "lid-to-lang", \$lid: \$lid)));
+
+return Int(skill);
+      </Core:Property>
+      <Core:Property property="merry:lib:get-syllables">
+         X[M] /*
+** Expects:
+**
+**   \$lang - the language for which to return syllables
+*/
+
+return Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "syllables:" + \$lang);
+      </Core:Property>
+      <Core:Property property="merry:lib:lang-to-lid">
+         X[M] /*
+** Expects:
+**
+**   \$lang - the language name, e.g. 'eastern'
+**
+*/
+mapping map;
+
+map = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "*");
+map = reverse_mapping(prefixed_map(map, "language:id:", TRUE));
+
+return map[\$lang];
+      </Core:Property>
+      <Core:Property property="merry:lib:lid-to-lang">
+         X[M] /*
+** Expects:
+**
+**   \$lid - the short language name, e.g. "common" instead of "Calabrese"
+**
+*/
+if(Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + \$lid))
+\{
+  return Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + \$lid);
+\}
+return \$lid;
+      </Core:Property>
+      <Core:Property property="merry:lib:sum-word">
+         X[M] /*     
+** Expects:     
+**     
+**   \$word - the word to be summed     
+*/     
+     
+int val, sum, i;     
+     
+sum = 0;     
+for (i = 0; i \< strlen(\$word); i ++) \{     
+  /* evaluate how common this (downcased) letter is */     
+  switch(\$word[i] \| 0x20) \{     
+ case 'e': val = 1; break;     
+ case 't': val = 2; break;     
+ case 'a': val = 3; break;     
+ case 'i': val = 4; break;     
+ case 'n': val = 5; break;     
+ case 'o': val = 6; break;     
+ case 's': val = 7; break;     
+ case 'h': val = 8; break;     
+ case 'r': val = 9; break;     
+ case 'd': val = 10; break;     
+ case 'l': val = 11; break;     
+ case 'u': val = 12; break;     
+ case 'c': val = 13; break;     
+ case 'm': val = 14; break;     
+ case 'f': val = 15; break;     
+ case 'w': val = 16; break;     
+ case 'y': val = 17; break;     
+ case 'g': val = 18; break;     
+ case 'p': val = 19; break;     
+ case 'b': val = 20; break;     
+ case 'v': val = 21; break;     
+ case 'k': val = 22; break;     
+ case 'q': val = 23; break;     
+ case 'j': val = 24; break;     
+ case 'x': val = 25; break;     
+ case 'z': val = 26; break;     
+ case '0' .. '9': val = 5; break;     
+  \}     
+  sum += (val*3);     
+\}     
+return sum;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1057277671, "zell", "X", 1057277717, "zell", "E", 1057277816, "zell", "E", 1057278019, "zell", "X", 1057278212, "zell", "E", 1057278268, "zell", "E", 1058802108, "zell", "E", 1068944934, "kargh", "E", 1068945049, "kargh", "E", 1068945823, "kargh", "E", 1069002519, "kargh", "E", 1069003549, "kargh", "E", 1069003570, "kargh", "E", 1069004392, "kargh", "E", 1075264500, "nino", "P", 1075265446, "nino", "P", 1075265624, "nino", "P", 1075266272, "nino", "P", 1075301728, "nino", "P", 1075303759, "nino", "P", 1075303767, "nino", "P", 1075305558, "nino", "P", 1075307521, "nino", "P", 1075393956, "nino", "P", 1075399921, "nino", "P", 1075400160, "nino", "P", 1075402006, "nino", "P", 1075402043, "nino", "P", 1075404059, "nino", "P", 1075404151, "nino", "P", 1075404359, "nino", "P", 1075404382, "nino", "P", 1075404438, "nino", "P", 1075404588, "nino", "P", 1075404625, "nino", "P", 1075404679, "nino", "P", 1075404745, "nino", "P", 1075404762, "nino", "P", 1075404868, "nino", "P", 1083194000, "nino", "P", 1083194151, "nino", "P", 1089950352, "nino", "P", 1090005316, "nino", "P", 1090005351, "nino", "P", 1090275780, "nino", "P", 1090275871, "nino", "P", 1090275902, "nino", "P", 1110158507, "toddnilson", "X", 1112163812, "tonyd", "E", 1112164155, "tonyd", "E", 1112168279, "tonyd", "E", 1112168341, "tonyd", "E", 1112168712, "tonyd", "E", 1112169632, "tonyd", "E", 1112169741, "tonyd", "E", 1112231895, "tonyd", "E", 1112232940, "tonyd", "E", 1112316217, "tonyd", "P", 1112318061, "tonyd", "P", 1112318168, "tonyd", "P", 1112318352, "tonyd", "P", 1112318395, "tonyd", "P", 1112318422, "tonyd", "P", 1112945598, "tonyd", "P", 1112945673, "tonyd", "P", 1112945726, "tonyd", "P", 1112946051, "tonyd", "P", 1112946070, "tonyd", "P", 1113012646, "tonyd", "P", 1113012724, "tonyd", "P", 1113013133, "tonyd", "P", 1113013168, "tonyd", "P", 1113013217, "tonyd", "P", 1113013289, "tonyd", "P", 1113013318, "tonyd", "P", 1113013353, "tonyd", "P", 1113013368, "tonyd", "P", 1113013386, "tonyd", "P", 1113013405, "tonyd", "P", 1113013445, "tonyd", "P", 1113013565, "tonyd", "P", 1113013884, "tonyd", "P", 1113014171, "tonyd", "P", 1113014210, "tonyd", "P", 1113014331, "tonyd", "P", 1113014400, "tonyd", "P", 1113015877, "tonyd", "P", 1113016076, "tonyd", "P", 1113016322, "tonyd", "P", 1113016675, "tonyd", "P", 1113017077, "tonyd", "P", 1113017148, "tonyd", "P", 1113017204, "tonyd", "P", 1113017542, "tonyd", "P", 1113018020, "tonyd", "P", 1113018067, "tonyd", "P", 1113018256, "tonyd", "P", 1113018304, "tonyd", "P", 1113018347, "tonyd", "P", 1113018374, "tonyd", "P", 1113018411, "tonyd", "P", 1113018435, "tonyd", "P", 1113018450, "tonyd", "P", 1113018505, "tonyd", "P", 1113018548, "tonyd", "P", 1113018655, "tonyd", "P", 1113019457, "tonyd", "P", 1113022689, "tonyd", "P", 1113023066, "tonyd", "P", 1113023105, "tonyd", "P", 1113023148, "tonyd", "P", 1113093300, "tonyd", "P", 1113093321, "tonyd", "P", 1113093446, "tonyd", "P", 1113104159, "tonyd", "P", 1113104631, "tonyd", "P", 1113104663, "tonyd", "P", 1113104688, "tonyd", "P", 1113104705, "tonyd", "P", 1113104724, "tonyd", "P", 1113104744, "tonyd", "P", 1113376691, "tonyd", "P", 1113471106, "tonyd", "P", 1113471227, "tonyd", "P", 1113549303, "tonyd", "P", 1113549347, "tonyd", "P", 1113549359, "tonyd", "P", 1113549569, "tonyd", "P", 1113699826, "tonyd", "P", 1114245497, "tonyd", "P", 1114311422, "tonyd", "P", 1114311465, "tonyd", "P", 1114311498, "tonyd", "P", 1114311531, "tonyd", "P", 1114311947, "tonyd", "P", 1114312000, "tonyd", "P", 1114312084, "tonyd", "P", 1114312118, "tonyd", "P", 1114312163, "tonyd", "P", 1114312189, "tonyd", "P", 1114312238, "tonyd", "P", 1114312270, "tonyd", "P", 1114312298, "tonyd", "P", 1114312345, "tonyd", "P", 1114312362, "tonyd", "P", 1114312423, "tonyd", "P", 1114312495, "tonyd", "P", 1114313200, "tonyd", "P", 1114313214, "tonyd", "P", 1114313374, "tonyd", "P", 1114313495, "tonyd", "P", 1114313517, "tonyd", "P", 1114313597, "tonyd", "P", 1114313629, "tonyd", "P", 1114313769, "tonyd", "P", 1114313818, "tonyd", "P", 1114313858, "tonyd", "P", 1114313915, "tonyd", "P", 1114313936, "tonyd", "P", 1114313989, "tonyd", "P", 1114314049, "tonyd", "P", 1114314972, "tonyd", "P", 1114315236, "tonyd", "P", 1114315371, "tonyd", "P", 1114315403, "tonyd", "P", 1114315443, "tonyd", "P", 1114315466, "tonyd", "P", 1114315505, "tonyd", "P", 1114315568, "tonyd", "P", 1114315592, "tonyd", "P", 1114315617, "tonyd", "P", 1114315663, "tonyd", "P", 1114315699, "tonyd", "P", 1114315817, "tonyd", "P", 1114315935, "tonyd", "P", 1114315980, "tonyd", "P", 1114316052, "tonyd", "P", 1114316143, "tonyd", "P", 1114316182, "tonyd", "P", 1114316209, "tonyd", "P", 1114316453, "tonyd", "P", 1140958538, "tonyd", "P", 1140958662, "tonyd", "P", 1140958888, "tonyd", "P", 1140959014, "tonyd", "P", 1140959091, "tonyd", "P", 1141176784, "tonyd", "P", 1141176852, "tonyd", "P", 1141177029, "tonyd", "P", 1141177076, "tonyd", "P", 1141177143, "tonyd", "P", 1141177220, "tonyd", "P", 1141177274, "tonyd", "P", 1141177333, "tonyd", "P", 1141177385, "tonyd", "P", 1141177410, "tonyd", "P", 1141177431, "tonyd", "P", 1141177453, "tonyd", "P", 1141177490, "tonyd", "P", 1141177507, "tonyd", "P", 1141177522, "tonyd", "P", 1141177536, "tonyd", "P", 1141177575, "tonyd", "P", 1141177622, "tonyd", "P", 1141177650, "tonyd", "P", 1141177668, "tonyd", "P", 1141177710, "tonyd", "P", 1141177729, "tonyd", "P", 1141177926, "tonyd", "P", 1141178398, "tonyd", "P", 1141178685, "tonyd", "P", 1141178816, "tonyd", "P", 1141178857, "tonyd", "P", 1141181824, "tonyd", "P", 1142744510, "tonyd", "P", 1196069006, "tonyd", "R", 1199611525, "tonyd", "E", 1569975586, "jominey", "R", 1570297372, "jominey", "E", 1579728103, "jominey", "E", 1579728250, "jominey", "E", 1579728306, "jominey", "E", 1579728413, "jominey", "E", 1579728698, "jominey", "E", 1579728736, "jominey", "E", 1579728765, "jominey", "E", 1579728789, "jominey", "E", 1579728814, "jominey", "E", 1579728923, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

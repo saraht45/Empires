@@ -1,0 +1,133 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="pliar"/>
+            <Base:SName sname="plier"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="pliars"/>
+            <Base:PName pname="pliers"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="declawing"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             declawing pliers
+          </Base:Description>
+          <Base:Description type="look">
+             A nasty looking set of pliers. The clamps are stained with dried blood.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:declaw">
+         X[M] /* do they have claws? */
+\$victim = \$par["victim"];
+if(\$victim."details:fingernails:pnames" \&\& sizeof(Arr(\$victim."details:fingernails:pnames"))) \{
+  EmitTo(\$actor, "One by one you pull out "+Describe(NewNRef(\$victim, "fingernails"))+".");
+  EmitTo(\$victim, "One by one "+Describe(\$actor)+" pulls out "+Describe(NewNRef(\$victim, "fingernails"), nil, \$victim)+".");
+  EmitIn(\$actor."base:environment", "One by "+Describe(\$actor)+" you pulls out "+Describe(NewNRef(\$victim, "fingernails"))+".", \$actor, \$victim);
+\} else \{
+  EmitTo(\$actor, "One by one you pull out "+Describe(\$victim)+"'s nails.");
+  EmitTo(\$victim, "One by one "+Describe(\$actor)+" pulls out your nails.");
+  EmitIn(\$actor."base:environment", "One by "+Describe(\$actor)+" pulls out "+Describe(\$victim)+"'s nails.", \$actor, \$victim);
+\}
+
+\$victim.declawed = TRUE;
+
+/* create the removed claws */
+\$claws = Spawn(\$\{Ironclaw:Props:Guild:Constabulary:DeclawedClaws\});
+if(\$claws) \{
+ \$claws."base:environment" = \$actor;
+ if(!\$claws."base:environment") \{
+  Slay(\$claws);
+ \} else \{
+  \$claws.victimname = capitalize(Str(\$victim."skotos:charname"));
+  \$claws.animal = \$victim."trait:animal";
+  \$claws.type = \$victim."appearance:clawtype";
+  if(!\$claws.type) \$claws.type = "claws";
+  \$claws.singtype = \$victim."appearance:clawtype"[0..strlen(\$victim."appearance:clawtype")-2];
+  Set(\$claws, "details:default:adjective:"+\$claws.singtype, 1);
+  Set(\$claws, "details:default:adjective:"+\$claws.type, 1);
+
+  Set(\$claws, "details:default:adjective:"+Str(\$victim."skotos:charname"), 1);
+  Set(\$claws, "details:default:adjective:"+Str(\$victim."skotos:charname")+"s", 1);
+ \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:expired_declaw">
+         X[M] \$victim = \$par["victim"];
+EmitTo(\$actor, "Your request to declaw "+Describe(\$victim)+" has expired.");
+EmitTo(\$victim, "The request to declaw you has expired.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:no_declaw">
+         X[M] \$victim = \$par["victim"];
+EmitTo(\$actor, Describe(\$victim)+" does not consent to being declawed..");
+EmitTo(\$victim, "You have decided not to consent to being declawed.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:pull-dob-2">
+         X[M] /* declaw someone. yay! */
+
+/* are we declawing someone? */
+if(!\$dob) return TRUE;
+if(sizeof(\$dob) \> 1) \{
+  EmitTo(\$actor, "You can only declaw one person at a time. Sorry.");
+  return FALSE;
+\}
+
+\$victim = NRefOb(Arr(\$dob)[0]);
+EmitTo(\$actor, "Requesting OOC consent to declaw "+Describe(\$victim)+".");
+
+interaction::question(\$actor: \$victim, \$question: "Do you consent to "+Describe(\$actor)+" declawing you? NOTE: THIS CANNOT BE UNDONE. "+Describe(\$victim)+" will likely remain without claws forever more.", \$expires: 80, \$env: "FALSE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "declaw", \$no_fun: "no_declaw", \$expire_fun: "expired_declaw", \$par: ([ "victim": \$victim, "actor": \$actor]));
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1192452480, "tonyd", "E", 1192452510, "tonyd", "E", 1192452525, "tonyd", "E", 1192452565, "tonyd", "E", 1192453035, "tonyd", "P", 1192453094, "tonyd", "P", 1192453115, "tonyd", "P", 1192453259, "tonyd", "P", 1192453390, "tonyd", "P", 1192453404, "tonyd", "P", 1192453499, "tonyd", "P", 1192453926, "tonyd", "P", 1192454156, "tonyd", "P", 1192454187, "tonyd", "P", 1192454235, "tonyd", "P", 1192454475, "tonyd", "P", 1192454499, "tonyd", "P", 1192454542, "tonyd", "P", 1192454569, "tonyd", "P", 1192454641, "tonyd", "P", 1192454779, "tonyd", "P", 1192454831, "tonyd", "P", 1192454873, "tonyd", "P", 1192454897, "tonyd", "P", 1192454927, "tonyd", "P", 1192454965, "tonyd", "P", 1192454990, "tonyd", "P", 1192455195, "tonyd", "P", 1192455240, "tonyd", "P", 1192455384, "tonyd", "P", 1192455483, "tonyd", "E", 1192457730, "tonyd", "P", 1233982510, "tonyd", "E", 1233982588, "tonyd", "E", 1233984429, "tonyd", "E", 1233987647, "tonyd", "E", 1233988430, "tonyd", "E", 1532489567, "lidiab", "E", 1560564764, "jominey", "K" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

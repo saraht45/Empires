@@ -1,0 +1,228 @@
+<object clone="/usr/SkotOS/obj/verb" owner="jominey">
+  <Socials:Verb imp="mine" second="mine" third="mines" evoke="forbidden" default-role="dob" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="false" single="true" raw="false" requirement="optional" distance="armslength">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="in"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="for" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="for"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="from" direct="false" single="true" raw="false" requirement="optional" distance="armslength">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="on"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="iob" direct="false" single="false" raw="false" requirement="optional" distance="owned">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="with"/>
+          <Socials:SocObPrep prep="using"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /* mining somewhere */
+
+/* are they already busy? */
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+    EmitTo(\$actor, "You are already busy "+\$message+".");
+    return FALSE;
+\}
+
+if(\$actor."trait:class1" != "miner" \&\& \$actor."trait:class2" != "miner") \{
+    EmitTo(\$actor, "You don't know how to mine.");
+    return FALSE;
+\}
+
+/* what are they mining with? */
+if(\$iob) \{
+    /* Only use one tool at a time */
+    if(sizeof(\$iob) \> 1) \{
+        EmitTo(\$actor, "You can only mine using one tool at a time.");
+        return FALSE;
+    \}
+  
+    /* Are we using a pickaxe? */
+    if(NRefOb(\$iob[0])."trait:objecttype" != "pickaxe") \{
+        EmitTo(\$actor, "You can only mine with a pickaxe.");
+        return FALSE;
+    \}
+
+    /* Don't use someone else's tools */
+    if(NRefOb(\$iob[0])."base:environment" != \$actor) \{
+        EmitTo(\$actor, "You must be holding " + Describe(\$iob[0]) + " in order to use it.");
+        return FALSE;
+    \}
+
+    \$pickaxe = NRefOb(\$iob[0]);
+\} else \{
+    /* Checkinventory for a pickaxe */
+    \$inv = \$actor."base:inventory";
+
+    for(\$i = 0; \$i \< sizeof(\$inv); \$i++) \{
+        if(\$inv[\$i]."trait:objecttype" == "pickaxe") \{
+            \$pickaxe = \$inv[\$i];
+        \}
+    \}
+
+    if(!\$pickaxe) \{
+        EmitTo(\$actor, "You can't mine without a pickaxe.");
+        return FALSE;
+    \}
+\}
+
+/* Where are we mining?*/
+if(\$dob) \{
+    /* are we trying to mine in too many places? */
+    if(sizeof(\$dob) \> 1) \{
+        return TRUE;
+    \}
+    \$target = NRefOb(\$dob[0]);
+    \$detail = NRefDetail(\$dob[0]);
+\} else \{
+    /* no DOB, so return true */
+    EmitTo(\$actor, "Where would you like to mine?");
+    return FALSE;
+\}
+
+/* Check that the object is a mineable location */
+if(!Get(\$target, "mining:"+\$detail+":array")) \{
+  EmitTo(\$actor, "You may only mine at designated mine.");
+  return FALSE;
+\}
+
+if(Int(\$actor."effect:energy:severity") \>= 95) \{
+    EmitTo(\$actor, "You are too tired to mine right now.");
+    return FALSE;
+\}
+
+/* We started mining here */
+
+/* Make the mining roll */
+\$attribute = "trait:strength";
+\$penalty = 0;
+\$mineskills = (\{ "alteration:mining" \});
+\$delayattribute = "trait:strength";
+
+EmitTo(\$actor, "You start swinging " + Describe(\$pickaxe, nil, \$actor) + " at " + Describe(\$dob[0]) + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " starts swinging " + Describe(\$pickaxe, \$actor) + " at " + Describe(\$dob[0]) + ".", \$actor);
+
+/* delay while they mine */
+\$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{ \}), \$bonus: \$delayattribute, \$modifier: 0);
+/* delay based on how good their roll was */
+\$mtimer = 37-(\$result*3);
+
+/* mark them as busy */
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "mining");
+\$mine = \$actor."base:environment";
+
+/* check if they are still mining */
+while(\$mtimer \> 0) \{
+  \$mtimer -= 10;
+  \$delay(10, FALSE, "52a6");
+
+  if(\$actor."busy:id" != \$id) \{
+    /* they @stopped mining. Just exit */
+    return FALSE;
+  \}
+  /* check that they are still in the room */
+  if(\$actor."base:environment" != \$mine) \{
+    EmitTo(\$actor, "You will have to stay in one place if you want to mine.");
+    /* mark them as not busy */
+    ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+    return TRUE;
+  \}
+\}
+
+/* mark them as not busy */
+ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+
+/* check if they still hold the original tool */
+if(\$pickaxe."base:environment" != \$actor) \{
+   EmitTo(\$actor, "You seem to have misplaced " +Describe(NRefOb(\$iob[0]), nil, nil, STYLE_NONPOSS)+ ". Mining has ceased.");
+   return FALSE;
+\}
+
+/* We've waited for our catch, make another mining roll to see if we catch anything */
+\$result = ironclaw::roll(\$roller: \$actor, \$skills: \$mineskills, \$bonus: \$attribute, \$modifier: \$penalty);
+
+/* reset settings */
+\$reducestock = nil;
+
+/* have they used up their number of minerals for the day? */
+if(!\$actor."mining:limit") \$actor."mining:limit" = 0;
+if(\$actor."mining:limit" \>= Int(\$actor."skill:alteration:mining") + 10) \{
+  /* hit the limit. Should the limit be reset? */
+  if(\$actor."mining:timelimit" \&\& \$actor."mining:timelimit" \> time()) \{
+    /* hit limit, and the limit isn't yet reset */
+    /* are there mine here anyway? */
+    if(!\$target."mining:stock" \|\| \$target."mining:stock" \< 1) \{
+      \$result = 0;
+    \} else \{
+      \$reducestock = TRUE;
+    \}
+  \} else \{
+    /* reset the time limit */
+    \$actor."mining:timelimit" = time()+60*60*20;
+    /* reset the mine limit */
+    \$actor."mining:limit" = 0;
+  \}
+\}
+
+/* figure out the mine they got */
+if(\$reducestock \&\& \$result) NRefOb(\$target)."mining:stock"--;
+
+/* Pick a mineral from the array, and let the actor find it */
+\$minearray = Get(\$target, "mining:"+\$detail+":array");
+
+\$result = Int((Flt(\$result)/24.0)*Flt(sizeof(\$minearray)));
+
+\$result = random(\$result);
+
+if(\$result) \{
+    \$mineral = Spawn(\$minearray[\$result]);
+
+    /* Set the quality of the mineral */
+    \$mineral."trait:quality" = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "alteration:mining" \}), \$bonus: \$attribute);
+
+    EmitTo(\$actor, "You mine " + Describe(\$mineral) + ".");
+    EmitIn(\$actor."base:environment", Describe(\$actor) + " mines " + Describe(\$mineral) + ".", \$actor);
+
+    \$mineral."base:environment" = \$actor;
+
+    if(!\$mineral."base:environment") \{
+        EmitTo(\$actor, capitalize(Describe(\$mineral)) + " falls to the ground.");
+        \$mineral."base:environment" = \$actor."base:environment";
+    \}
+
+    \$actor."mining:limit"++;
+\} else \{
+    /* didn't find anything */
+    EmitTo(\$actor, "After a few minutes of mining, you fail to find anything.");
+    EmitIn(\$actor."base:environment", "After a few minutes of mining, " + Describe(\$actor) + " fails to find anything.", \$actor);
+\}
+
+if(!\$this."crafting:override") \{
+    status::change_status(\$char: \$actor, \$type: "energy", \$amount: 10);
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1579970564, "jominey", "E", 1579972218, "jominey", "E", 1579972304, "jominey", "E", 1579972402, "jominey", "E", 1592364808, "jominey", "E", 1592365291, "jominey", "E", 1592533958, "jominey", "E", 1592536213, "jominey", "E", 1593260463, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

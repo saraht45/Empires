@@ -1,0 +1,1391 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Staff:Roo:Guilds:GuildLib-Voting)"/>
+    <Core:PCProperties>
+      <Core:Property property="html:bid">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" biditem="\$[Get(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item)]"\>
+\$[/* run some initial code */        
+   ::popup_initialize();]
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+    \<title\>Bidding on \$(biditem.2) - \$(guild.shortname)\</title\>
+    \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+\</head\>
+   \<body\>
+      \<div id="main"\>
+        \<div id="textareafull"\>
+\{? \| \$[if(\$biditem \|\| \$guild != \$char.guild) return TRUE; return FALSE;] \|
+          \<h1\>Bidding\</h1\>
+          \<table\>
+            \<tr\>
+              \<td\>Item\</td\>\<td\>\$(biditem.2)\</td\>
+            \</tr\>\<tr\>
+              \<td\>Quantity\</td\>\<td\>\$(biditem.0)\</td\>
+            \</tr\>\<tr\>
+              \<td\>Notes\</td\>\<td\>\$(biditem.3)\</td\>
+            \</tr\>\<tr\>
+              \<td\>Recurring\</td\>\<td\>
+\$[/* How often is this shipment sent? */        
+  if(\$biditem[5][1] == -1) \{        
+    \$output = "a new shipment";        
+  \} else if(\$biditem[5][1] == 1) \{        
+    \$output = "1 shipment";        
+  \} else \{        
+    \$output = Str(\$biditem[5][1])+" shipments, one sent";        
+  \}        
+  if(\$biditem[5][2] == 1) \{        
+    \$output += " every day.";        
+  \} else if(\$biditem[5][2] != 0) \{        
+    \$output += " every "+Str(\$biditem[5][2])+" days";        
+  \}        
+  return \$output;]
+              \</td\>
+            \</tr\>\<tr\>
+              \<td\>Transport:\</td\>\<td\>\$(biditem.5.0)\</td\>
+            \</tr\>\<tr\>
+              \<td\>Highest Bid:\</td\>\<td\>
+\$[/* give bid price, and allow the chance to bid */        
+  if(\$biditem[6]) \{        
+    if(\$biditem[6] == 1) \{        
+      \$output = "1 denar";        
+    \} else \{        
+      \$output = Str(\$biditem[6])+" denarii";        
+    \}        
+    if(\$biditem[7] == \$guild) \{        
+      \$output += " placed by "+\$guild.fullname+".";        
+      \$output = "\<font color=\\"red\\"\>"+\$output+"\</font\>";        
+    \} else \{        
+      \$output += " placed by another guild.";        
+      \$output = "\<font color=\\"blue\\"\>"+\$output+"\</font\>";        
+    \}        
+  \} else \{        
+    \$output = "no bid";        
+  \}        
+  return \$output;]
+              \</td\>
+\</tr\>\<tr\>
+              \<td\>Remaining Time:\</td\>\<td\>
+\$[/* display how much time is left to bid on this */        
+  if(\$biditem[8]) \{        
+    \$output = \$biditem[8] - time();        
+    /* now work it out in seconds, hours, and days */        
+    \$seconds = \$output%60;        
+    if(\$seconds == 1) \{        
+      \$seconds = "1 second";        
+    \} else \{        
+      \$seconds = Str(\$seconds)+" seconds";        
+    \}        
+    \$minutes = (\$output/60)%60;        
+    if(\$minutes == 1) \{        
+      \$minutes = "1 minute";        
+    \} else \{        
+      \$minutes = Str(\$minutes)+" minutes";        
+    \}        
+    \$hours = (\$output/(60*60))%24;        
+    if(\$hours == 1) \{        
+      \$hours = "1 hour";        
+    \} else \{        
+      \$hours = Str(\$hours)+" hours";        
+    \}        
+    \$days = (\$output/(60*60*24));        
+    if(\$days == 1) \{        
+      \$days = "1 day";        
+    \} else \{        
+      \$days = Str(\$days)+" days";        
+    \}        
+    /*\$output = \$days+", "+\$hours+", "+\$minutes+", "+\$seconds+" remaining."; */       
+    if((\$output/(60*60*24)) \>= 3) \{       
+     \$output = \$days+" remaining.";       
+    \} else if(((\$output+60*60*3)/(60*60*24)) \>= 1) \{       
+     \$output = "less than three days remaining.";           
+    \} else \{       
+     \$output = "less than a day remaining.";        
+    \}       
+  \} else \{        
+    \$output = "-";        
+  \}        
+  return \$output;]
+              \</td\>
+            \</tr\>
+          \</table\>
+          \{? \| \$[if(\$guildrank == 1 \|\| \$char."guild:trader") return TRUE; return FALSE;] \|
+            \<zform char="\$(char)" guild="\$(guild)" page="\$(page)" item="\$(item)" biditem="\$(biditem)"\>
+          \<p\>
+                \<font color="red" size="3"\>\$(error)\</font\>\<br/\>
+         \<p\>Note: The bid price is the price that must be paid PER SHIPMENT.\</p\>
+          How much do you want to bid (in denarii): \<input name="bid"/\>
+          \<input type="submit" value="Submit" class="submit-button"/\>
+ \</p\>
+         \<p\>Guild kitty: \$[if(Int(Flt(\$guild.kitty)/100.0)==1)\{ return "1 denar"; \} else \{ return Str(Int(Flt(\$guild.kitty)/100.0))+" denarii";\}] - Bad credit: 0 denarii\</p\>
+         \<action\>
+      \$[\$error = "Bid placed!";        
+    /* check if they belong to this guild */        
+    if(!\$char.guild \|\| \$char.guild != \$guild) \{        
+      \$error = "Uh, dude, this isn't your guild.";        
+      return nil;        
+    \}        
+        
+    /* check if the bid is numeric */        
+    if(sscanf(\$bid, "%d", \$bid_amount) != 1) \{        
+      \$error = "That is not valid input. Please enter the number of denarii you wish to bid.";        
+      return nil;        
+    \}        
+        
+    /* check if this auction is still happening */        
+    if(\$biditem[8] \&\& (\$biditem[8] - time()) \< 0) \{        
+      \$error = "This auction has finished.";        
+      return nil;        
+    \}        
+        
+    /* we're bidding on the item */        
+      
+    /* refresh the item information, in case it changed before this bid was placed */        
+    \$biditem = Get(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item);        
+          
+    /* sanity check for new 'max bid' code */      
+    if(sizeof(\$biditem) \< 10) \{      
+     \$biditem += (\{ 0 \});      
+     Set(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item, \$biditem);      
+    \}      
+   
+    /* Prohibit blacklisted guilds from bidding */   
+    if(\$biditem[10]) \{   
+        if(typeof(\$biditem[10]) == 4) \{   
+            \$importingGuild = \$biditem[10];   
+        \} else \{   
+            if(Obj(Str(\$biditem[10]))) \{   
+                \$importingGuild = Obj(Str(\$biditem[10]));   
+            \}   
+        \}   
+   
+        if(typeof(\$importingGuild) == 4) \{   
+            if(!\$importingGuild.blacklisted_people) \{   
+                \$blacklistedPeople = (\{ \});   
+            \} else \{   
+                \$blacklistedPeople = \$importingGuild.blacklisted_people;   
+            \}   
+  
+            /* Is the bidding character on the blacklist? */   
+            for(\$p = 0; sizeof(\$blacklistedPeople) \&\& \$p \< sizeof(\$blacklistedPeople); \$p++) \{   
+                if(\$blacklistedPeople[\$p][0] == \$char) \{   
+                    \$error = "You have been blacklisted by the importing guild. You cannot bid on this item.";   
+                    return nil;   
+                \}   
+            \}   
+   
+            if(!\$importingGuild.blacklisted_guilds) \{   
+                \$blacklistedGuilds = (\{ \});   
+            \} else \{   
+                \$blacklistedGuilds = \$importingGuild.blacklisted_guilds;   
+            \}   
+  
+            /* Is the bidding character's guild on the blacklist? */   
+            for(\$p = 0; sizeof(\$blacklistedGuilds) \&\& \$p \< sizeof(\$blacklistedGuilds); \$p++) \{   
+                if(\$blacklistedGuilds[\$p][0] == \$char.guild) \{   
+                    \$error = "Your guild has been blacklisted by the importing guild. You cannot bid on this item.";   
+                    return nil;   
+                \}   
+            \}   
+        \}   
+    \}   
+      
+    /* are they resetting their max bid? */      
+    if(\$biditem[7] == \$char.guild) \{      
+     if(\$bid_amount \>= Int(\$biditem[6])) \{      
+      \$old = \$biditem[9];      
+      \$biditem[9] = \$bid_amount;      
+      Set(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item, \$biditem);      
+      \$error = "Your maximum bidding amount has been changed from "+Str(Int(\$old))+" to "+Str(\$biditem[9])+".";      
+      return nil;                 
+     \} else \{      
+      \$biditem[9] = Int(\$biditem[6]);      
+      Set(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item, \$biditem);      
+      \$error = "The bidding has already exceeded that value, however the auctioneer has been told not to increase your bid any further.";      
+      return nil;                      
+     \}      
+    \}      
+        
+    /* can't give anything for free */        
+    if(\$bid_amount \< 1) \{        
+      if(random(5)) \{        
+        \$error = "Ha! Nice try, buddy.";        
+      \} else \{        
+        \$error = "Have you considered becoming an accountant? With \&quot;creative accountancy\&quot; like that, you could make a mint.";        
+      \}        
+      return nil;        
+    \}        
+        
+    /* check we have enough money in the guild kitty */        
+    if(\$guild.kitty \< (\$bid_amount*100)) \{        
+      \$error = "Your guild kitty does not currently contain "+Str(\$bid_amount)+" denarii.";        
+      return nil;        
+    \}        
+        
+    /* check if this is the highest bid */        
+    /* not worrying about bad credit just yet */        
+    if(\$biditem[6] \&\& Int(\$biditem[6]) \>= \$bid_amount) \{        
+      \$error = "Unfortunately, you were outbid. Please consider placing a new, higher bid.";        
+      return nil;        
+    \}      
+      
+    /* is there already a max bid that's higher? */      
+    if(Int(\$biditem[9]) \>= \$bid_amount) \{      
+      \$biditem[6] = \$bid_amount;        
+      Set(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item, \$biditem);      
+      \$error = "You placed your bid, but were outbid by the previous holder. You could try again with a higher amount.";      
+      return nil;            
+    \}      
+          
+    /* Looks like this bid is successful. Let's mark that down */        
+    /* new winning amount? */      
+      
+    \$new_amount = Int(\$biditem[9])+1;      
+    /* sanity check */      
+    if(\$new_amount \<= Int(\$biditem[6]))      
+     \$new_amount = Int(\$biditem[6])+1;      
+      
+    /* set the new current bid amount */      
+    \$biditem[6] = \$new_amount;      
+      
+    /* set the new max bid */      
+    \$biditem[9] = \$bid_amount;      
+      
+      
+    /* new winning guild? */      
+    \$biditem[7] = \$char.guild;      
+    /* new ending time? */      
+    if(!\$biditem[8]) \{      
+      /* set a new ending time */      
+      \$biditem[8] = time()+(14*24*60*60)+random(24)*60*60;      
+      /* start the timer, so something happens when the bidding is over */      
+      Call(\$this, "end_bid_countdown", \$time: \$biditem[8], \$item: \$item);      
+    \}      
+    \$error = "You successfully bid "+Str(\$bid_amount)+" denarii.";        
+        
+    return nil;]
+           \<redirect base="/SAM/Prop/Ironclaw:Staff:Roo:Guilds:GuildPage/index" char="\$(char.name)" guild="\$[Str(explode(Str(\$guild), ":")[2])]" page="bid" item="\$(item)" error="\$(error)"/\>
+        \</action\>
+      \</zform\>
+    \}
+\<zform char="\$(char.name)" guild="\$(guild)" page="\$(page)" item="\$(item)"\>
+  \<p\>\<input type="submit" value="Refresh" class="submit-button"/\>\</p\>
+  \<action\>
+    \<redirect base="/SAM/Prop/Ironclaw:Staff:Roo:Guilds:GuildPage/index" char="\$(char)" guild="\$[Str(explode(Str(\$guild), ":")[2])]" page="bid" item="\$(item)"/\>
+  \</action\>
+\</zform\>
+\<zform char="\$(char.name)" page="\$(page)" guild="\$(guild)"\>
+  \<p\>\<input type="submit" value="Cancel/Done" class="submit-button"/\>\</p\>
+  \<action\>
+    \<redirect base="/SAM/Prop/Ironclaw:Staff:Roo:Guilds:GuildPage/index" char="\$(char)" guild="\$[Str(explode(Str(\$guild), ":")[2])]" page="trading"/\>
+  \</action\>
+\</zform\>
+        \|
+\<p\>This auction has already finished.\</p\>
+\<zform char="\$(char.name)" page="\$(page)" guild="\$(guild)"\>
+  \<p\>\<input type="submit" value="Cancel/Done" class="submit-button"/\>\</p\>
+  \<action\>
+    \<redirect base="/SAM/Prop/Ironclaw:Staff:Roo:Guilds:GuildPage/index" char="\$(char)" guild="\$[Str(explode(Str(\$guild), ":")[2])]" page="trading"/\>
+  \</action\>
+\</zform\>
+        \}
+        \</div\>
+      \</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:blacklist">
+         X[S] \<h2\>The Blacklist\</h2\>
+\<table border="0"\>
+  \<tr\>
+    \<td colspan="3"\>
+\<h3\>The following individuals have been blacklisted:\</h3\>
+    \</td\>
+  \</tr\>
+\$["";       
+  \$output = "";       
+  \$blacklist = (\{ \});       
+  if(\$guild.blacklisted_people) \{       
+      \$blacklist = \$guild.blacklisted_people;       
+  \}       
+       
+  for(\$i = 0; \$i \< sizeof(\$blacklist); \$i++) \{       
+    \$temp = \$blacklist[\$i];       
+    \$who = \$temp[0];  
+ 
+    if(!\$who) break; 
+ 
+    \$why = \$temp[1];       
+    \$when = \$temp[3];       
+    \$authorizedby = \$temp[2];       
+    \$output += "\<tr\>";   
+    \$output += "    \<td colspan='3'\>";   
+    \$output += "        \<span class='clickable' onclick=\\"switch_block('" + proper(Str(\$who."skotos:charname")) + "');\\"\>";   
+    \$output += "            \<strong\>\<u\>" + proper(Str(\$who."skotos:charname")) + "\</u\>\</strong\>";   
+    \$output += "        \</span\>";   
+    \$output += "    \</td\>";   
+    \$output += "\</tr\>";   
+    \$output += "\<tr\>";   
+    \$output += "    \<td width='20px'\> \</td\>";   
+    \$output += "    \<td colspan='2'\>";   
+    \$output += "        \<span id='" + proper(Str(\$who."skotos:charname")) + "' style='display:none;'\>";   
+    \$output += "            \<table\>";   
+    \$output += "                \<tr\>\<td valign='top'\>\<b\>Reason: \</b\>\</td\>\<td\>" + Str(\$why) + "\</td\>\</tr\>";   
+    \$output += "                \<tr\>\<td width='120px'\>\<b\>Authorized by: \</b\>\</td\>\<td\>" + proper(Str(\$authorizedby."skotos:charname")) + "\</td\>\</tr\>";   
+    \$output += "                \<tr\>\<td\>\<b\>Date: \</b\>\</td\>\<td\>" + "[" + Str(short_time(\$when)) + "]\</td\>\</tr\>";   
+  
+    if(\$guildleader \|\| \$char."guild:guild_blacklist") \{  
+        \$output += "\<tr\>\<td\>\</td\>\<td\>\<span class='clickable' onclick=\\"run_script('unblacklist', '" + Str(\$who) + "');\\"\>[Forgive " + proper(Str(\$who."skotos:charname")) +"]\</span\>\</td\>\</tr\>";  
+    \}  
+  
+    \$output += "            \</table\>";   
+    \$output += "        \</span\>";   
+    \$output += "    \</td\>";   
+    \$output += "\</tr\>";   
+  \}       
+        
+  if(\$output == "") \{       
+      \$output = "\<tr\>\<td\>\<i\>No one has been blacklisted (yet).\</i\>\</td\>\</tr\>";       
+  \}       
+   
+  return ParseXML(\$output);]
+\</table\>
+\<table\>
+  \<tr\>
+    \<td colspan="3"\>
+\<h3\>The following guilds have been blacklisted:\</h3\>
+    \</td\>
+  \</tr\>
+\$["";       
+  \$output = "";       
+  \$blacklist = (\{ \});       
+  if(\$guild.blacklisted_guilds) \{       
+      \$blacklist = \$guild.blacklisted_guilds;       
+  \}       
+       
+  for(\$i = 0; \$i \< sizeof(\$blacklist); \$i++) \{       
+    \$temp = \$blacklist[\$i];       
+    \$who = \$temp[0];       
+    \$why = \$temp[1];       
+    \$when = \$temp[3];       
+    \$authorizedby = \$temp[2];       
+    \$output += "\<tr\>";   
+    \$output += "    \<td colspan='3'\>";   
+    \$output += "        \<span class='clickable' onclick=\\"switch_block('" + proper(Str(\$who.fullname)) + "');\\"\>";   
+    \$output += "            \<strong\>\<u\>" + proper(Str(\$who.fullname)) + "\</u\>\</strong\>";   
+    \$output += "        \</span\>";   
+    \$output += "    \</td\>";   
+    \$output += "\</tr\>";   
+    \$output += "\<tr\>";   
+    \$output += "    \<td width='20px'\> \</td\>";   
+    \$output += "    \<td colspan='2'\>";   
+    \$output += "        \<span id='" + proper(Str(\$who.fullname)) + "' style='display:none;'\>";   
+    \$output += "            \<table\>";   
+    \$output += "                \<tr\>\<td valign='top'\>\<b\>Reason: \</b\>\</td\>\<td\>" + Str(\$why) + "\</td\>\</tr\>";   
+    \$output += "                \<tr\>\<td width='120px'\>\<b\>Authorized by: \</b\>\</td\>\<td\>" + proper(Str(\$authorizedby."skotos:charname")) + "\</td\>\</tr\>";   
+    \$output += "                \<tr\>\<td\>\<b\>Date: \</b\>\</td\>\<td\>" + "[" + Str(short_time(\$when)) + "]\</td\>\</tr\>";   
+  
+    if(\$guildleader \|\| \$char."guild:guild_blacklist") \{  
+        \$output += "\<tr\>\<td\>\</td\>\<td\>\<span class='clickable' onclick=\\"run_script('unblacklist', '" + Str(\$who) + "');\\"\>[Forgive " + proper(Str(\$who.fullname)) +"]\</span\>\</td\>\</tr\>";  
+    \}  
+  
+    \$output += "            \</table\>";   
+    \$output += "        \</span\>";   
+    \$output += "    \</td\>";   
+    \$output += "\</tr\>";   
+  \}       
+   
+  if(\$output == "") \{       
+      \$output = "\<tr\>\<td\>\<i\>No one has been blacklisted (yet).\</i\>\</td\>\</tr\>";       
+  \}       
+  return ParseXML(\$output);]
+\</table\>
+\<br/\>
+\{? \| \$[(\$guildleader \|\| \$char."guild:guild_blacklist") \&\& \$guildrank] \|
+    \<h3\>Blacklist a person or a guild:\</h3\>
+    \<table\>
+        \<tr\>
+            \<td\>\<p\>\<b\>Who:\</b\>\</p\>\</td\>
+            \<td\>
+                \<select id="personorguild" onchange="if(this.value=='person') \{ getElementById('person_switch').style.display = 'block'; getElementById('guild_switch').style.display = 'none'; \} else \{ getElementById('person_switch').style.display = 'none'; getElementById('guild_switch').style.display = 'block'; \}"\>
+                    \<option selected="1" value="person"\>Person\</option\>
+                    \<option value="guild"\>Guild\</option\>
+                \</select\>
+            \</td\>
+            \<td width="100%"\>
+                \<span style="display:block;" id="person_switch"\>\<input type="text" id="blacklist_person"/\>\</span\>
+                \<span style="display:none;" id="guild_switch"\>
+                    \<select id="blacklist_guild" style="width:200px"\>
+            \$[/* get a list of all guilds */                       
+                string output, *guilds;                       
+                int i;                       
+                guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Ironclaw:Guilds");                       
+                output = "";                       
+                for(i=0;i\<sizeof(guilds);i++) \{                       
+                    output += "\<option value=\\""+guilds[i]+"\\"\>"+Obj("Ironclaw:Guilds:" + guilds[i]).fullname +"\</option\>";                       
+                \}                       
+                return output;]
+                    \</select\>
+                \</span\>
+            \</td\>
+        \</tr\>
+        \<tr\>
+            \<td valign="top"\>\<p\>\<b\>Reason: \</b\>\</p\>\</td\>
+            \<td colspan="2"\>
+                \<textarea id="blacklist_why" rows="5" cols="60"\>\</textarea\>
+            \</td\>
+        \</tr\>
+        \<tr\>
+            \<td\>\</td\>\<td colspan="2"\>
+            \<input type="submit" value="Submit" class="clickable" onclick="if(getElementById('personorguild').value == 'person') \{ run_script('blacklist', 'Person' + '::' + getElementById('blacklist_person').value + '::' + getElementById('blacklist_why').value); \} else \{ run_script('blacklist', 'Guild' + '::' + getElementById('blacklist_guild').value + '::' + getElementById('blacklist_why').value); \}"/\>
+            \</td\>
+        \</tr\>
+    \</table\>
+\}
+      </Core:Property>
+      <Core:Property property="html:character">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */  
+  ::popup_initialize();  
+  return nil;]
+\</z\>
+\<h1\>Character information for \$[capitalize(\$charname)]\</h1\>
+\<p\>What should go on this page? If you have any ideas of what you'd find useful, @idea them!\<br/\>
+Some ideas are below. I'll build in these features as I have time. ~ Azrael\</p\>
+\<p\>Character:\</p\>
+\<ul\>
+\<li\>What is your background and history\</li\>
+\<li\>What social rank are you\</li\>
+\<li\>What other information is there about you (age, religion marital status)\</li\>
+\<li\>money, income \\\& expenses\</li\>
+\<li\>Lodgings\</li\>
+\<li\>List skills, learning points, etc.\</li\>
+\<li\>Section for general notes\</li\>
+\</ul\>
+\<h3\>You are blacklisted by the following guilds:\</h3\>
+\$[""; 
+  \$output = ""; 
+  if(\$char.blacklistedby) \{ 
+    \$blacklist = \$char.blacklistedby - (\{ nil \}); 
+    if(!sizeof(\$blacklist)) return "\<p\>You are not blacklisted by anyone!\</p\>"; 
+ 
+    \$output += "\<ul\>"; 
+    for(\$i = 0; \$i \< sizeof(\$blacklist); \$i++) \{ 
+        \$output += "\<li\>" + \$blacklist[\$i].fullname + "\</li\>"; 
+    \} 
+    \$output += "\</ul\>"; 
+    return \$output; 
+  \} else \{ 
+    return "\<p\>You are not blacklisted by anyone!\</p\>"; 
+  \}]
+\{? \| \$(guild) \|
+\<h2\>Guild Information\</h2\>
+\<p\>You are
+\$[if(\$guild.leader == \$char) return "the guild leader"; return "a member";]
+of \$(guild.fullname).\</p\>
+\<span id="tokenswitch" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:block;"\>\<strong\>\\\> NPC Tokens\</strong\>\</span\>
+\<span id="tokenswitch2" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:none;"\>\<strong\>v NPC Tokens\</strong\>\</span\>
+\<span id="tokenlist" style="display:none;"\>
+\<p\>\<strong\>What NPC tokens are you willing to produce?\</strong\>\<br/\>
+\$[/* let the PC hide token production from their guild leader */  
+int i;  
+object db;  
+string output;  
+db = \$\{Ironclaw:Lib:Teaching:newCareersDB\};  
+/* figure out what tokens they can make */  
+\$careers = map_indices(prefixed_map(\$char."*", "skill:career"));  
+\$tokens = (\{ \});  
+for(i=0;i\<sizeof(\$careers);i++) \{  
+ \$info = Get(db, \$careers[i][13..strlen(\$careers[i])-1]);  
+ if(\$info) \{  
+  \$tokens += Arr(\$info["tokens"]);  
+ \}  
+\}  
+\$tokens -= (\{ nil \});  
+\$tokens = map_indices(arr_to_set(\$tokens));  
+output = "";  
+for(i=0;i\<sizeof(\$tokens);i++) \{  
+ output += "\<input type=\\"checkbox\\"";  
+ if(!member(\$tokens[i], Arr(\$char."npc:hidetokens")))  
+  output += " checked=\\"1\\"";  
+ output += " class=\\"clickable\\" onclick=\\"if(this.checked) \{ run_script('editmember_setval', 'nil\|"+name(\$char)+"\|"+\$tokens[i]+"\|subarr\|npc:hidetokens\|You are once again creating "+\$tokens[i]+" tokens for your guild.'); \} else \{ run_script('editmember_setval', 'nil\|"+name(\$char)+"\|"+\$tokens[i]+"\|addarr\|npc:hidetokens\|You are no longer creating "+\$tokens[i]+" tokens for your guild.'); \}\\"/\>";  
+ output += " "+\$tokens[i]+" tokens\<br/\>";  
+\}  
+    
+return output;]
+\</p\>
+\</span\>
+\}
+\<h3\>Your guild is blacklisted by the following guilds:\</h3\>
+\$[""; 
+  \$output = ""; 
+  if(\$char.guild \&\& \$char.guild.blacklistedby) \{ 
+    \$blacklist = \$char.guild.blacklistedby - (\{ nil \}); 
+    if(!sizeof(\$blacklist)) return "\<p\>Your guild is not blacklisted by anyone!\</p\>"; 
+ 
+    \$output += "\<ul\>"; 
+    for(\$i = 0; \$i \< sizeof(\$blacklist); \$i++) \{ 
+        \$output += "\<li\>" + \$blacklist[\$i].fullname + "\</li\>"; 
+    \} 
+    \$output += "\</ul\>"; 
+    return \$output; 
+  \} else \{ 
+    return "\<p\>Your guild is not blacklisted by anyone!\</p\>"; 
+  \}]
+\<p\>Social:\</p\>
+\<ul\>
+\<li\>Your social rank is that of a \$[if(\$char."rank:name") return \$char."rank:name"; return "freedman";].\</li\>
+\<li\>Is there any news from your land holdings?\</li\>
+\<li\>Information from criminal record.\</li\>
+\</ul\>
+\\\<!--
+\\\<span id="tokenswitch" class="clickable" onclick="display_block('tokenlist', 'list_tokens'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:block;"\\\>\\\<strong\\\>\\\\\\\> NPC Tokens\\\</strong\\\>\\\</span\\\>
+\\\<span id="tokenswitch2" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:none;"\\\>\\\<strong\\\>v NPC Tokens\\\</strong\\\>\\\</span\\\>
+\\\<span id="tokenlist" style="display:none;"\\\>\\\</span\\\>
+\\\<span class="clickable" onclick="display_block('memberlist', 'list_members', 'active');"\\\>\\\<u\\\>Active Members\\\</u\\\>\\\</span\\\>
+\\\<span id="memberlist" style="display:none;"\\\>\\\</span\\\>
+\\\$[/*run_script('editmember_setval', 'AUTHNEEDED/nil\\\|MEMBER/\\\$char\\\|VALUE\\\|addarr\\\|guild:authority\\\|Authority to change bluebooked jobs granted.');*/return nil;]
+\\\<div id="land_question"\\\>\\\$[return nil; Call(\\\$\\\{Ironclaw:Lib:Guilds:Questions\\\}, "land_question")]\\\</div\\\>
+\\\<p\\\>\\\$[dump_value(args)]\\\</p\\\>--\\\>
+      </Core:Property>
+      <Core:Property property="html:display_guild">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */                      
+  ::popup_initialize();                      
+  return nil;]
+\$[/* get some information about this guild */                  
+if(\$guild \&\& Obj("Ironclaw:Guilds:"+\$guild)) \{                      
+  \$guild = Obj("Ironclaw:Guilds:"+\$guild);                      
+\} else \{                      
+  error("No guild found. Please choose one from the list.");                      
+\}                      
+       
+/*                        
+if(\$guild) \{                     
+  \$guildname = name(\$guild)[16..strlen(name(\$guild))-1];                      
+  \$guildpages = Obj("Ironclaw:Guilds:Pages:new:"+\$guildname);                      
+  if(!\$guildpages) \{                      
+    \$guildpages = Duplicate(\$\{Ironclaw:Guilds:Pages:new:default_page\});                      
+    \$guildpages."core:objectname" = "Ironclaw:Guilds:Pages:new:"+\$guildname;                      
+  \}                      
+\}   */                   
+                          
+/* Check the players rank in this guild */                      
+\$guildrank = nil;                      
+if(\$actor.guild \&\& \$actor.guild == \$guild) \{                      
+  \$guildrank = 3;                      
+  if(\$actor."guild:rank")                      
+    \$guildrank = \$actor."guild:rank";                      
+\}                      
+\$guildleader = nil;                      
+if(\$actor == \$guild.leader) \{                      
+  if(\$guildrank != 1 \&\& \$actor.guild == \$guild) \{                      
+    \$actor."guild:rank" = 1;                      
+    \$guildrank = 1;                      
+  \}                      
+  \$guildleader = 1;                      
+\}                      
+return nil;]
+\{? \| \$[\$guildrank \|\| \$page == "guest" \|\| Get(\$guildpages, \$page)[0] == "visitors"] \|
+    \{?when\| \$(page) \| main \| 
+                            \$(this.html:main_page)
+                                \| guest \| 
+                            \$(this.html:guest_page)
+                                \| guild_settings \| 
+                            \$(this.html:guild_settings)
+                                \| members \| 
+                            \$(this.html:members_page)
+                                \| npc \| 
+                            \$(this.html:npc_page)
+                                \| trading \| 
+                            \$(this.html:trading_page)
+                                \| property \| 
+                            \$(this.html:guild_settings)
+                                \| edit_page \| 
+                            \$(this.html:edit_page)
+                                \| blacklist \| 
+                            \$(this.html:blacklist)
+    \}
+    \$["";             
+       if(\$char.guild) \{                
+           if(Obj("Ironclaw:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2])) \{                
+               \$footer = Get(Obj("Ironclaw:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2]), "footer");                
+                
+               if(\$footer) \{                
+                   return \$footer;                
+               \}                
+           \}                
+       \}]
+    \{? \| \$[(contains(\$page, "page:"))] \|         \$(this.html:view_page)
+ \|
+    \}
+        \$[if(\$page == "main") \$redirect = "page:default"; else if(\$page == "guest") \$redirect = "page:guest"; else \$redirect = \$page;]
+        \$["\<p\>[\<a href='index?actor=" + \$charname + "\\\&amp;guild=" + \$guildname + "\\\&amp;page=edit_page\\\&amp;edit=" + \$redirect + "'\>Edit this page\</a\>]\</p\>"]
+\}
+\{? \| \$[\$guildrank \|\| \$page == "guest" \|\| Get(\$guildpages, \$page)[0] == "visitors"] \| \| You are not authorized to view this page. \}
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:edit_page">
+         X[S] \{? \| \$[if(\$actor."guild:create_page") return TRUE; if(\$guildrank == 1) return TRUE; return nil;] \|
+      \{? \| \$(edit) \|
+        \<h2\>Editing an existing guild page\</h2\>
+      \|
+        \<h2\>Creating a new guild page\</h2\>
+      \}
+      \<zform dat="\$(UDat.Dat)" name="\$(UDat.Name)" actor="\$(actor)" guild="\$(guild)" guildpages="\$(guildpages)" edit="\$(edit)" charname="\$(charname)" guildname="\$(guildname)"\>
+        \{? \| \$(edit) \|
+          Page Title: \$[proper(\$edit[5..])]\<br/\>
+        \|
+          Page Title: \<input name="page_name" value="Guild Policies"/\>\<br/\>
+        \}
+        \{? \| \$(edit) \|
+          \$[\$editdata = Get(\$guildpages, Str(\$edit)); return nil;]
+          Access: \<select NAME="access" id="access"\>
+            \{? \| \$[if(\$editdata[0] == "members") return TRUE; return FALSE;] \|
+            \<option value="members" selected="1"\>Members Only\</option\>
+            \|
+            \<option value="members"\>Members Only\</option\>
+            \}
+            \{? \| \$[if(\$editdata[0] == "visitors") return TRUE; return FALSE;] \|
+            \<option value="visitors" selected="1"\>All Visitors\</option\>
+            \|
+            \<option value="visitors"\>All Visitors\</option\>
+            \}
+            \{? \| \$[if(\$editdata[0] == "hidden") return TRUE; return FALSE;] \|
+            \<option value="hidden" selected="1"\>Nobody (hidden)\</option\>
+            \|
+            \<option value="hidden"\>Nobody (hidden)\</option\>
+            \}
+          \</select\>\<br/\>
+          Content:\<br/\>
+          \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 200px" name="body"\>\$[\$editdata[1]]\</textarea\>\<br/\>
+          \<input type="submit" value="Edit page" class="submit-button"/\>
+        \|
+          Access: \<select NAME="access" id="access"\>
+            \<option value="members" selected="1"\>Members Only\</option\>
+            \<option value="visitors"\>All Visitors\</option\>
+            \<option value="hidden"\>Nobody (hidden)\</option\>
+          \</select\>\<br/\>
+          Content:\<br/\>
+          \<textarea style="BORDER-RIGHT: #CCCCCC 1pt solid; BORDER-TOP: #000000 1pt solid; BORDER-LEFT: #000000 1pt solid; BORDER-BOTTOM: #CCCCCC 1pt solid; BACKGROUND: transparent; WIDTH: 100%; HEIGHT: 200px" name="body"\>Our guild policy is to do the best that we can. And eat pudding. Lots of pudding.\</textarea\>\<br/\>
+          \<input type="submit" value="Create page" class="submit-button"/\>
+        \}
+        \<action\>
+          \$[/* save the changes to this page */               
+          
+          if(!Get(\$guildpages, Str(\$edit))) \{           
+              \$edit = "page:" + \$page_name;          
+          
+              if(Get(\$guildpages, \$edit)) \{         
+                  error("The page " + Str(\$page_name) + " already exists.");         
+                  return nil;         
+              \}         
+         
+              Set(\$guildpages, \$edit, (\{ nil, nil \}));            
+          \}          
+          
+          \$editdata = Get(\$guildpages, Str(\$edit));           
+                    
+          \$editdata[0] = \$access;               
+          \$editdata[1] = \$body;               
+          
+          Set(\$guildpages, Str(\$edit), \$editdata);          
+          return nil;]
+          \<redirect base="/SAM/Prop/Ironclaw:Staff:Roo:Guilds:GuildPage/index" actor="\$(charname)" guild="\$(guildname)" page="\$(edit)"/\>
+        \</action\>
+      \</zform\>
+      \{? \| \$(edit) \| \{?when\| \$(edit) \| page:default \|                   \| page:guest \|                   \| * \| 
+          \<zform dat="\$(UDat.Dat)" name="\$(UDat.Name)" actor="\$(actor)" guild="\$(guild)" guildpages="\$(guildpages)" edit="\$(edit)" charname="\$(charname)" guildname="\$(guildname)"\>
+              \<input type="submit" value="Delete page" class="submit-button"/\>
+              \<action\>
+                  \$["";         
+                       Set(\$guildpages, Str(\$edit), nil);         
+                       return nil;]
+              \<redirect base="/SAM/Prop/Ironclaw:Staff:Roo:Guilds:GuildPage/index" actor="\$(charname)" guild="\$(guildname)" page="main"/\>
+              \</action\>
+          \</zform\>
+      \} \}
+    \|
+      You are not authorized to create new pages in this guild.
+    \}
+      </Core:Property>
+      <Core:Property property="html:general_script">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>\$[Call(this, "general_script")]\</z\>
+      </Core:Property>
+      <Core:Property property="html:guest_page">
+         X[S] \<h2\>Guild Manifesto\</h2\>
+\$[Str(\$guild.manifesto)]\<br/\>
+    \$[/* check if we can find this page or not */            
+    object pages;            
+    string *index, output;            
+    mixed page;            
+    int i;            
+        
+    if(pages = Obj("Ironclaw:Guilds:Pages:new:"+Str(\$guildname))) \{            
+      if(page = Get(pages, "page:guest")) \{            
+        if(typeof(page) == T_ARRAY) \{            
+          /* are we authorised to view this? */          
+          if(page[0] == "visitors" \|\| \$guildrank \|\| (page[0] == "hidden" \&\& \$guildleader)) \{            
+            return Str(page[1]);        
+          \}            
+        \}            
+      \}            
+    \}                
+    return output;]
+      </Core:Property>
+      <Core:Property property="html:guild_settings">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\<h2\>Guild Settings\</h2\>
+\{? \| \$[!\$guildleader \&\& !\$char."guild:edit_guildsettings_motd"] \| You do not have authority to change any settings for this guild. \<br/\> \}
+\{? \| \$(guildleader) \|
+          \<span class="clickable" onclick="switch_block('guild_type');"\>
+              \<strong\>\<u\>Guild Type\</u\>\</strong\>
+          \</span\>
+          \<span id="guild_type" style="display:none;"\>
+              \<p\>Guild Type (noble/military/tradesmen/shady) - This code isn't yet functional.\</p\>
+          \</span\>\<br/\>
+\}
+\{? \| \$[\$guildleader \|\| \$char."guild:edit_guildsettings_motd"] \|
+          \<span class="clickable" onclick="switch_block('motd');"\>
+              \<strong\>\<u\>Message of the Day\</u\>\</strong\>
+          \</span\>
+          \<span id="motd" style="display:none;"\>
+              \<p\>
+                  Guild members will see this message when they log into the game.\<br/\>
+                  \<textarea id="motd_text" rows="5" cols="80"\>\$(guild.motd)\</textarea\>\<br/\>
+                  \<input type="submit" value="Submit" class="clickable" onclick="getElementById('motd_text').value += ' '; run_script('set_motd', getElementById('motd_text').value);"/\>
+              \</p\>
+          \</span\>\<br/\>
+\}
+\{? \| \$[\$guildleader \|\| \$char."guild:create_page"] \|
+          \<span class="clickable" onclick="switch_block('guild_page_header');"\>
+              \<strong\>\<u\>Page Header\</u\>\</strong\>
+          \</span\>
+          \<span id="guild_page_header" style="display:none;"\>
+                  \$[if(\$char.guild) \{       
+                       if(Obj("Ironclaw:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2])) \{                
+                         \$header = Get(Obj("Ironclaw:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2]), "header");             
+       
+                         if(!\$header) \{       
+                             \$bgcolor = "white";       
+                             \$bgcolor2 = "white";      
+                             \$fonttype = "arial";      
+                             \$fontcolor = "black";       
+                             \$h1type = "arial";      
+                             \$h1color = "black";       
+                             \$h2type = "arial";      
+                             \$h2color = "black";       
+                             \$h3type = "arial";      
+                             \$h3color = "black";      
+                             \$bgimg1 = "";     
+                             \$bgimg2 = "";      
+                         \} else \{       
+                             if(\$header["bgcolor"]) \$bgcolor = \$header["bgcolor"]; else \$bgcolor = "white";       
+                             if(\$header["bgimg1"]) \$bgimg1 = \$header["bgimg1"]; else \$bgimg1 = "";     
+                             if(\$header["bgcolor2"]) \$bgcolor2 = \$header["bgcolor2"]; else \$bgcolor2 = "white";       
+                             if(\$header["bgimg2"]) \$bgimg2 = \$header["bgimg2"]; else \$bgimg2 = "";     
+                             if(\$header["fonttype"]) \$fonttype = \$header["fonttype"]; else \$fonttype = "arial";       
+                             if(\$header["fontcolor"]) \$fontcolor = \$header["fontcolor"]; else \$fontcolor = "black";       
+                             if(\$header["h1type"]) \$h1type = \$header["h1type"]; else \$h1type = "arial";       
+                             if(\$header["h1color"]) \$h1color = \$header["h1color"]; else \$h1color = "black";       
+                             if(\$header["h2type"]) \$h2type = \$header["h2type"]; else \$h2type = "arial";       
+                             if(\$header["h2color"]) \$h2color = \$header["h2color"]; else \$h2color = "black";       
+                             if(\$header["h3type"]) \$h3type = \$header["h3type"]; else \$h3type = "arial";       
+                             if(\$header["h3color"]) \$h3color = \$header["h3color"]; else \$h3color = "black";       
+                         \}        
+                       \}       
+                     \}]
+                  \<table\>
+  \<input type="hidden" name="bgcolor" value="\$(bgcolor)"/\>
+  \<input type="hidden" name="bgimg1" value="\$(bgimg1)"/\>
+  \<input type="hidden" name="bgcolor2" value="\$(bgcolor2)"/\>
+  \<input type="hidden" name="bgimg2" value="\$(bgimg2)"/\>
+  \<input type="hidden" name="fonttype" value="\$(fonttype)"/\>
+  \<input type="hidden" name="fontcolor" value="\$(fontcolor)"/\>
+  \<input type="hidden" name="h1type" value="\$(h1type)"/\>
+  \<input type="hidden" name="h1color" value="\$(h1color)"/\>
+  \<input type="hidden" name="h2type" value="\$(h2type)"/\>
+  \<input type="hidden" name="h2color" value="\$(h2color)"/\>
+  \<input type="hidden" name="h3type" value="\$(h3type)"/\>
+  \<input type="hidden" name="h3color" value="\$(h3color)"/\>
+                      \<tr\>
+                          \<td\>Background Color 1: \</td\>
+                          \<td\>
+                              \<select style="background-color: \$(bgcolor);" onChange="this.style.backgroundColor=getElementById('bgcolor').value;" id="bgcolor"\>
+                                  \$[Call(\$this, "general_script", \$script: "color_options", \$color: \$bgcolor)]
+                              \</select\>
+                          \</td\>
+                          \<td\> or Background Image1: \</td\>\<td\>\<input type="text" id="bgimg1" value="\$(bgimg1)"/\>\</td\>
+                      \</tr\>
+                      \<tr\>
+                          \<td\>Background Color 2: \</td\>
+                          \<td\>
+                              \<select style="background-color: \$(bgcolor2);" onChange="this.style.backgroundColor=getElementById('bgcolor2').value;" id="bgcolor2"\>
+                                  \$[Call(\$this, "general_script", \$script: "color_options", \$color: \$bgcolor2)]
+                              \</select\>
+                          \</td\>
+                          \<td\> or Background Image1: \</td\>\<td\>\<input type="text" id="bgimg2" value="\$(bgimg2)"/\>\</td\>
+                      \</tr\>
+                      \<tr\>
+                          \<td\>Font Type: \</td\>
+                          \<td\>
+                              \<select style="fon-family: \$(fonttype);" onChange="this.style.fontFamily=getElementById('fonttype').value;" id="fonttype"\>
+                                  \$[Call(\$this, "general_script", \$script: "font_options", \$font: \$fonttype)]
+                              \</select\>
+                          \</td\>
+                          \<td\>Font Color: \</td\>
+                          \<td\>
+                              \<select style="background-color: \$(fontcolor);" onChange="this.style.backgroundColor=getElementById('fontcolor').value;" id="fontcolor"\>
+                                  \$[Call(\$this, "general_script", \$script: "color_options", \$color: \$fontcolor)]
+                              \</select\>
+                          \</td\>
+                      \</tr\>
+                      \<tr\>
+                          \<td\>Header1 Font: \</td\>
+                          \<td\>
+                              \<select style="font-family: \$(h1type);" onChange="this.style.fontFamily=getElementById('h1type').value;" id="h1type"\>
+                                  \$[Call(\$this, "general_script", \$script: "font_options", \$font: \$h1type)]
+                              \</select\>
+                          \</td\>
+                          \<td\>Header1 Color: \</td\>
+                          \<td\>
+                              \<select style="background-color: \$(h1color);" onChange="this.style.backgroundColor=getElementById('h1color').value;" id="h1color"\>
+                                  \$[Call(\$this, "general_script", \$script: "color_options", \$color: \$h1color)]
+                              \</select\>
+                          \</td\>
+                      \</tr\>
+                      \<tr\>
+                          \<td\>Header2 Font: \</td\>
+                          \<td\>
+                              \<select style="font-family: \$(h2type);" onChange="this.style.fontFamily=getElementById('h2type').value;" id="h2type"\>
+                                  \$[Call(\$this, "general_script", \$script: "font_options", \$font: \$h2type)]
+                              \</select\>
+                          \</td\>
+                          \<td\>Header2 Color: \</td\>
+                          \<td\>
+                              \<select style="background-color: \$(h2color);" onChange="this.style.backgroundColor=getElementById('h2color').value;" id="h2color"\>
+                                  \$[Call(\$this, "general_script", \$script: "color_options", \$color: \$h2color)]
+                              \</select\>
+                          \</td\>
+                      \</tr\>
+                      \<tr\>
+                          \<td\>Header3 Font: \</td\>
+                          \<td\>
+                              \<select style="font-family: \$(h3type);" onChange="this.style.fontFamily=getElementById('h3type').value;" id="h3type"\>
+                                  \$[Call(\$this, "general_script", \$script: "font_options", \$font: \$h3type)]
+                              \</select\>
+                          \</td\>
+                          \<td\>Header3 Color: \</td\>
+                          \<td\>
+                              \<select style="background-color: \$(h3color);" onChange="this.style.backgroundColor=getElementById('h3color').value;" id="h3color"\>
+                                  \$[Call(\$this, "general_script", \$script: "color_options", \$color: \$h3color)]
+                              \</select\>
+                          \</td\>
+                      \</tr\>
+                      \<tr\>\<td\>
+                  \<input type="submit" value="Submit" class="clickable" onclick="getElementById('bgimg1').value += ' '; getElementById('bgimg2').value += ' '; run_script('set_header', getElementById('bgcolor').value + '::' + getElementById('bgimg1').value + '::' + getElementById('bgcolor2').value + '::' + getElementById('bgimg2').value + '::' + getElementById('fonttype').value + '::' +  getElementById('fontcolor').value + '::' + getElementById('h1type').value + '::' +  getElementById('h1color').value + '::' + getElementById('h2type').value + '::' + getElementById('h2color').value + '::' + getElementById('h3type').value + '::' + getElementById('h3color').value);"/\>\</td\>\</tr\>
+                  \</table\>
+          \</span\>\<br/\>
+\}
+\{? \| \$[\$guildleader \|\| \$char."guild:create_page"] \|
+          \<span class="clickable" onclick="switch_block('guild_page_footer');"\>
+              \<strong\>\<u\>Page Footer\</u\>\</strong\>
+          \</span\>
+          \<span id="guild_page_footer" style="display:none;"\>
+                  \$[\$footer = "";                 
+                     if(Obj("Ironclaw:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2])) \{                
+                         \$footer = Str(Get(Obj("Ironclaw:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2]), "footer"));                
+                     \}]
+                  \<textarea id="footer_text" rows="5" cols="80"\>\$(footer)\</textarea\>\<br/\>
+                  \<input type="submit" value="Submit" class="clickable" onclick="getElementById('footer_text').value += ' '; run_script('set_footer', getElementById('footer_text').value);"/\>
+          \</span\>\<br/\>
+\}
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:guildscript">
+         X[S] \<script type="text/javascript"\>
+function link_to_guildpage(guild, page, edit) \\\{
+  if(edit) \\\{
+   location = 'index?actor=\$(charname)\\\&guild='+guild+'\\\&page='+page+'\\\&edit='+edit;
+  \\\} else \\\{
+   location = 'index?actor=\$(charname)\\\&guild='+guild+'\\\&page='+page;
+  \\\}
+\\\}
+function display_guildpage(guild, page, edit) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  if(edit) \{
+    var url='display_guild?actor=\$(charname)\\\&guild='+guild+'\\\&page='+page+'\\\&edit='+edit;
+  \} else \{
+    var url='display_guild?actor=\$(charname)\\\&guild='+guild+'\\\&page='+page;
+  \}
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("page_block").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function display_character() \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='character?actor=\$(charname)';
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("body_content").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function details_display() \\\{
+  if(document.getElementById('show_details').style.display == "block") \\\{
+    document.getElementById("details_tab").innerHTML='\<b\>\\\> Show Details\</b\>';
+    document.getElementById('show_details').style.display = 'none';
+  \\\} else \\\{
+    document.getElementById("details_tab").innerHTML='v \<b\>Hide Details\</b\>';
+    document.getElementById('show_details').style.display = 'block';
+    show_bulk();
+  \\\}
+\\\}
+function voting_select(nominee) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script=voting_select\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+nominee;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\} else \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+    \$[/* run some initial code */                         
+        ::popup_initialize();                         
+        return nil;]
+\</z\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+    \<head\>
+        \<title\>Guild pages: \$[capitalize(\$charname)]\</title\>
+        \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+        \<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/\>
+        \$(this.html:stylesheet)
+        \$(this.html:javascript)
+        \$(this.html:guildscript)
+    \</head\>
+    \<body\>
+      \<table id="body2" cellpadding="10px" align="center" style="position: relative; top: 15px; height: 550px;" width="95%"\>\<tr\>\<td valign="top"\>
+        \<div id="top_strip"\>
+            Character: \<a href="?actor=\$(charname)\\\&charinfo=1"\>\<u\>\$[capitalize(\$charname)]\</u\>\</a\>
+            \{? \| \$(char.guild) \|
+                   - Guild: \<a href="?actor=\$(charname)\\\&guild=\$[name(\$char.guild)[16..strlen(name(\$char.guild))-1]]"\>\<u\>\$(char.guild.shortname)\</u\>\</a\>
+            \}
+            - View another guild:
+            \<select NAME="category" style="width:200px" id="guildselect" onchange="document.location.href='index?actor=\$(charname)\\\&guild='+this.value;"\>
+            \{? \| \$(char.guild) \|
+                   \<option value="\$(guildname)"\>\\\&nbsp;\</option\>
+               \|
+                   \<option value=""\>\\\&nbsp;\</option\>
+            \}
+            \$[/* get a list of all guilds */                        
+                string output, inactive, *guilds;                        
+                int i;                        
+                guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Ironclaw:Guilds");                        
+                output = "";   
+                inactive = "\<option\>INACTIVE\</option\>";                       
+                for(i=0;i\<sizeof(guilds);i++) \{  
+                    if(!Obj("Ironclaw:Guilds:" + guilds[i]).mothballed) \{                    
+                        output += "\<option value=\\""+guilds[i]+"\\"\>"+Obj("Ironclaw:Guilds:" + guilds[i]).fullname +"\</option\>";  
+                    \} else \{  
+                        inactive += "\<option value=\\""+guilds[i]+"\\"\>"+Obj("Ironclaw:Guilds:" + guilds[i]).fullname +"\</option\>";  
+                    \}                      
+                \}                        
+                return output + inactive;]
+            \</select\>
+            \$[/* get some information about this guild */                        
+                if(\$guild \&\& Obj("Ironclaw:Guilds:"+\$guild)) \{                        
+                    \$guild = Obj("Ironclaw:Guilds:"+\$guild);                        
+                \} else if (\$char.guild) \{                        
+                    \$guild = \$char.guild;                        
+                \} else \{                        
+                    return nil;                        
+                \}                       
+                   
+                \$guildname = name(\$guild)[16..strlen(name(\$guild))-1];                      
+                \$guildpages = Obj("Ironclaw:Guilds:Pages:new:"+\$guildname);                        
+                if(!\$guildpages) \{                        
+                    \$guildpages = Duplicate(\$\{Allegory:Guilds:Pages:new:default_page\});                        
+                    \$guildpages."core:objectname" = "Ironclaw:Guilds:Pages:new:"+\$guildname;                        
+                \}                        
+                        
+                /* Check the players rank in this guild */                        
+                \$guildrank = nil;                        
+                if(\$actor.guild \&\& \$actor.guild == \$guild) \{                        
+                    \$guildrank = 3;                        
+                if(\$actor."guild:rank")                        
+                    \$guildrank = \$actor."guild:rank";                        
+                \}                    
+                      
+                return nil;]
+        \</div\>
+       \{? \| \$[!\$guild \|\| \$charinfo] \|
+              \$(this.html:character)
+          \| \{? equal \| \$(page) \| bid \|
+                 \$(this.html:bid)
+              \|
+              \<h1\>\$(guild.fullname)\</h1\>
+              \{? \| \$(guildrank) \|
+                  \<div id="vote"\>
+                      \<script type="text/javascript"\>
+                          display_block("vote", "voting_display");
+                      \</script\>
+                  \</div\>
+              \}
+              \<p\>
+                  \<select NAME="category" id="pageselect" onchange="if(this.value != '----------------------------') link_to_guildpage('\$(guildname)', this.value);"\>
+                  \{? \| \$(guildrank) \|
+                         \<option value="main" selected="1"\>Main Page\</option\>
+                         \<option value="guest"\>Guest Page\</option\>
+                     \|
+                         \<option value="main"\>Main Page\</option\>
+                         \<option value="guest" selected="1"\>Guest Page\</option\>
+                  \}
+                  \<option value="guild_settings"\>Guild Settings\</option\>
+                  \<option value="members"\>Members List\</option\>
+                  \<option value="npc"\>Guild NPCs\</option\>
+                  \<option value="trading"\>Guild Trading\</option\>
+                  \<option value="property"\>Guild Property\</option\>
+                  \<option value="blacklist"\>The Blacklist\</option\>
+                  \<option\>----------------------------\</option\>
+                 \$[/* list all the player-created pages for the guild */                        
+                     object pages;                        
+                     string *index, output;                        
+                     int i;                     
+                     
+                     if(pages = Obj("Ironclaw:Guilds:Pages:new:"+Str(\$guildname))) \{                        
+                         index = map_indices(prefixed_map(Get(pages, "*"), "page:")) - (\{ "page:default", "page:guest", "page:trading" \});                        
+                         output = "";                   
+                       
+                         for(i=0;i\<sizeof(index);i++) \{                        
+                             output += "\<option value=\\""+index[i]+"\\"\>"+proper(index[i][5..])+"\</option\>\\n";                        
+                         \}                  
+                 
+                         if(sizeof(index)) output += "\<option\>----------------------------\</option\>";                
+                         return output;                        
+                     \}                     
+                     
+                     return "";]
+                 \{? \| \$[if(\$actor."guild:create_page") return TRUE; if(\$guildrank == 1) return TRUE; return nil;] \|
+                        \<option value="edit_page"\>Create New Page\</option\>
+                 \}
+                 \</select\>
+             \</p\>
+            \{? \| \$(page) \|
+                   \<script type="text/javascript"\>
+                       document.getElementById("pageselect").value = "\$(page)";
+                   \</script\>
+            \}
+            \<div id="page_block"\>
+                \<script type="text/javascript"\>
+                    display_guildpage("\$(guildname)", document.getElementById("pageselect").value, "\$(edit)");
+                \</script\>
+            \</div\>
+        \} \}
+      \</td\>\</tr\>\</table\>
+    \</body\>
+\</html\>
+      </Core:Property>
+      <Core:Property property="html:javascript">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+function GetXmlHttpObject() \\\{
+  var xmlHttp;
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+function run_script(script, variables) \\\{
+  if(!script) return;
+  variables = escape(variables);
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\} else if(xmlHttp.responseText != "") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function display_block(block, script, variables) \\\{
+  if(!block) return;
+  if(!script) \\\{
+    document.getElementById("block").innerHTML="";
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url='general_script?script='+script+'\\\&actor=\$(charname)\\\&guild=\$(guild)\\\&vars='+variables;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById(block).innerHTML=xmlHttp.responseText;
+      document.getElementById(block).style.display = 'block';
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function switch_block(block) \\\{
+  if(!block) return;
+  if(document.getElementById(block).style.display == "block") \\\{
+    document.getElementById(block).style.display = 'none';
+  \\\} else \\\{
+    document.getElementById(block).style.display = 'block';
+  \\\}
+\\\}
+function switch_list(show, hide) \\\{
+  for(i=0; i \\\< hide.length; i++) \\\{
+      document.getElementById(hide[i]).style.display = 'none';
+  \\\}
+  document.getElementById(show).style.display = 'block';
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:main_page">
+         X[S] \$[/* check if we can find this page or not */             
+    object pages;             
+    string *index, output;             
+    mixed page;             
+    int i;             
+         
+    if(pages = Obj("Ironclaw:Guilds:Pages:new:"+Str(\$guildname))) \{             
+      if(page = Get(pages, "page:default")) \{             
+        if(typeof(page) == T_ARRAY) \{             
+          /* are we authorised to view this? */             
+          if(page[0] == "visitors" \|\| \$guildrank \|\| (page[0] == "hidden" \&\& \$guildleader)) \{             
+            return Str(page[1]);         
+          \}             
+        \}              
+      \}             
+    \}                 
+    return output;]
+      </Core:Property>
+      <Core:Property property="html:members_page">
+         X[S] \<p\>Show: \<strong\>
+\<span class="clickable" onclick="display_block('memberlist', 'list_members', 'active');"\>\<u\>Active Members\</u\>\</span\>
+- \<span class="clickable" onclick="display_block('memberlist', 'list_members', 'all');"\>\<u\>All Members\</u\>\</span\>
+- \<span class="clickable" onclick="display_block('memberlist', 'list_members', 'edit');"\>\<u\>Edit Members\</u\>\</span\>
+\</strong\>\</p\>
+\<span id="memberlist"\>\$[Call(this, "general_script", \$script: "list_members", \$vars: "active")]\</span\>
+      </Core:Property>
+      <Core:Property property="html:npc_page">
+         X[S] \<span id="tokenswitch" class="clickable" onclick="display_block('tokenlist', 'list_tokens'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:block;"\>\<strong\>\\\> Guild Tokens\</strong\>\</span\>
+\<span id="tokenswitch2" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:none;"\>\<strong\>v Guild Tokens\</strong\>\</span\>
+\<span id="tokenlist" style="display:none;"\>\</span\>
+\<span id="teacherswitch" class="clickable" onclick="display_block('teacherlist', 'list_npc_teacher'); switch_block('teacherswitch'); switch_block('teacherswitch2');" style="display:block;"\>\<strong\>\\\> Guild Teacher\</strong\>\</span\>
+\<span id="teacherswitch2" class="clickable" onclick="switch_block('teacherlist'); switch_block('teacherswitch'); switch_block('teacherswitch2');" style="display:none;"\>\<strong\>v Guild Teacher\</strong\>\</span\>
+\<span id="teacherlist" style="display:none;"\>\</span\>
+      </Core:Property>
+      <Core:Property property="html:stylesheet">
+         X[S] \$["";  
+    if(\$guild) \{  
+        \$h = Get(Obj("Ironclaw:Guilds:Pages:new:" + Str(\$guild)), "header");      
+    \} else \{  
+        if(\$char.guild) \{  
+            \$h = Get(Obj("Ironclaw:Guilds:Pages:new:" + explode(Str(\$char.guild), ":")[2]), "header");  
+        \}  
+    \}  
+  
+     
+    if(!\$h) \{      
+        \$bgcolor = "#ffffff";      
+        \$bgimg1 = "";    
+        \$bgcolor2 = "#ffffff";    
+        \$bgimg2 = "";    
+        \$fonttype = "arial";    
+        \$fontcolor = "#000000";     
+        \$h1type = "arial";     
+        \$h1color = "#000000";      
+        \$h2type = "arial";    
+        \$h2color = "#000000";      
+        \$h3type = "arial";    
+        \$h3color = "#000000";      
+    \} else \{      
+        \$bgcolor = \$h["bgcolor"];     
+        \$bgimg1 = \$h["bgimg1"];    
+        \$bgcolor2 = \$h["bgcolor2"];    
+        \$bgimg2 = \$h["bgimg2"];    
+        \$fonttype = \$h["fonttype"];     
+        \$fontcolor = \$h["fontcolor"];    
+        \$h1type = \$h["h1type"];    
+        \$h1color = \$h["h1color"];      
+        \$h2type = \$h["h2type"];    
+        \$h2color = \$h["h2color"];     
+        \$h3type = \$h["h3type"];     
+        \$h3color = \$h["h3color"];      
+    \}     
+         
+    return "";]
+\<style type="text/css"\>
+    body \\\{
+              padding: 0px;
+              background: \$(bgcolor);
+              background-image: url(\$(bgimg1));
+              font-family: \$(fonttype);
+              color: \$(fontcolor);
+         \\\}
+    #body2 \\\{
+              padding: 0px;
+              background: \$(bgcolor2);
+              background-image: url(\$(bgimg2));
+         \\\}
+    p \\\{
+              font-family: \$(fonttype);
+              color: \$(fontcolor);
+      \\\}
+    h1 \\\{
+              font-family: \$(h1type);
+              color: \$(h1color);
+       \\\}
+    h2 \\\{
+              font-family: \$(h2type);
+              color: \$(h2color);
+       \\\}
+    h3 \\\{
+              font-family: \$(h3type);
+              color: \$(h3color);
+       \\\}
+\</style\>
+      </Core:Property>
+      <Core:Property property="html:trading_page">
+         X[S] \<span id="trading_notices"\>\</span\>
+\<span id="auctionswitch" class="clickable" onclick="display_block('auctionlist', 'show_auction'); switch_block('auctionswitch'); switch_block('auctionswitch2');" style="display:block;"\>\<strong\>\\\> Auction\</strong\>\</span\>
+\<span id="auctionswitch2" class="clickable" onclick="switch_block('auctionlist'); switch_block('auctionswitch'); switch_block('auctionswitch2');" style="display:none;"\>\<strong\>v Auction\</strong\>\</span\>
+\<span id="auctionlist" style="display:none;"\>\</span\>
+\<span id="importswitch" class="clickable" onclick="display_block('importlist', 'show_import'); switch_block('importswitch'); switch_block('importswitch2');" style="display:block;"\>\<strong\>\\\> Request New Import\</strong\>\</span\>
+\<span id="importswitch2" class="clickable" onclick="switch_block('importlist'); switch_block('importswitch'); switch_block('importswitch2');" style="display:none;"\>\<strong\>v Request New Import\</strong\>\</span\>
+\<span id="importlist" style="display:none;"\>\</span\>
+\<span id="inventoryswitch" class="clickable" onclick="display_block('inventorylist', 'list_inventory'); switch_block('inventoryswitch'); switch_block('inventoryswitch2');" style="display:block;"\>\<strong\>\\\> Inventory\</strong\>\</span\>
+\<span id="inventoryswitch2" class="clickable" onclick="switch_block('inventorylist'); switch_block('inventoryswitch'); switch_block('inventoryswitch2');" style="display:none;"\>\<strong\>v Inventory\</strong\>\</span\>
+\<span id="inventorylist" style="display:none;"\>\</span\>
+\<span id="tokenswitch" class="clickable" onclick="display_block('tokenlist', 'list_tokens'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:block;"\>\<strong\>\\\> Guild Tokens\</strong\>\</span\>
+\<span id="tokenswitch2" class="clickable" onclick="switch_block('tokenlist'); switch_block('tokenswitch'); switch_block('tokenswitch2');" style="display:none;"\>\<strong\>v Guild Tokens\</strong\>\</span\>
+\<span id="tokenlist" style="display:none;"\>\</span\>
+\<span id="dealswitch" class="clickable" onclick="display_block('deallist', 'show_trading_deals'); switch_block('dealswitch'); switch_block('dealswitch2');" style="display:block;"\>\<strong\>\\\> Trading Deals\</strong\>\</span\>
+\<span id="dealswitch2" class="clickable" onclick="switch_block('deallist'); switch_block('dealswitch'); switch_block('dealswitch2');" style="display:none;"\>\<strong\>v Trading Deals\</strong\>\</span\>
+\<span id="deallist" style="display:none;"\>\</span\>
+\<span id="historyswitch" class="clickable" onclick="display_block('tradehistory', 'show_tradehistory'); switch_block('historyswitch'); switch_block('historyswitch2');" style="display:block;"\>\<strong\>\\\> Transaction History\</strong\>\</span\>
+\<span id="historyswitch2" class="clickable" onclick="switch_block('tradehistory'); switch_block('historyswitch'); switch_block('historyswitch2');" style="display:none;"\>\<strong\>v Transaction History\</strong\>\</span\>
+\<span id="tradehistory" style="display:none;"\>\</span\>
+      </Core:Property>
+      <Core:Property property="html:view_page">
+         X[S] \$[/* check if we can find this page or not */                
+    object pages;                
+    string *index, output;                
+    mixed page;                
+    int i;               
+           
+    if(pages = Obj("Ironclaw:Guilds:Pages:new:"+Str(\$guildname))) \{                
+      if(page = Get(pages, \$page)) \{                
+        if(typeof(page) == T_ARRAY) \{                
+          /* are we authorised to view this? */                
+          if(page[0] == "visitors" \|\| \$guildrank \|\| (page[0] == "hidden" \&\& \$guildleader)) \{                
+            return Str(page[1]);            
+          \} else \{    
+            return "\<p\>You are not authorized to view this page.\</p\>";    
+          \}    
+        \} else \{                
+          return "\<p\>[This page can be viewed by any visitors]\</p\>\\n"+Str(page);                
+        \}                
+      \}                
+    \}               
+             
+    output = "\<p\>You are not authorized to view this page.\</p\>";                
+    return output;]
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1346898900, "jominey", "E", 1346902451, "jominey", "E", 1346902687, "jominey", "E", 1346903026, "jominey", "E", 1346903075, "jominey", "E", 1346903204, "jominey", "E", 1346903261, "jominey", "E", 1346903295, "jominey", "E", 1346903444, "jominey", "E", 1346903603, "jominey", "E", 1346903626, "jominey", "E", 1346903666, "jominey", "E", 1346903992, "jominey", "E", 1346904446, "jominey", "E", 1346904691, "jominey", "E", 1346905002, "jominey", "E", 1346905057, "jominey", "E", 1346905126, "jominey", "E", 1346905152, "jominey", "E", 1346905231, "jominey", "E", 1346905289, "jominey", "E", 1346905455, "jominey", "E", 1346905631, "jominey", "E", 1346905695, "jominey", "E", 1346905742, "jominey", "E", 1346905907, "jominey", "E", 1346905988, "jominey", "E", 1346906087, "jominey", "E", 1346906127, "jominey", "E", 1346906204, "jominey", "E", 1346906447, "jominey", "E", 1346906471, "jominey", "E", 1346906565, "jominey", "E", 1346906598, "jominey", "E", 1346906627, "jominey", "E", 1346906668, "jominey", "E", 1346906695, "jominey", "E", 1346906765, "jominey", "E", 1346907091, "jominey", "E", 1346907179, "jominey", "E", 1346907524, "jominey", "E", 1346907679, "jominey", "E", 1346907758, "jominey", "E", 1346907847, "jominey", "E", 1346907881, "jominey", "E", 1346991577, "jominey", "E", 1346995036, "jominey", "E", 1346995817, "jominey", "E", 1346996156, "jominey", "E", 1346996910, "jominey", "E", 1346997018, "jominey", "E", 1346997466, "jominey", "E", 1346997600, "jominey", "E", 1346997669, "jominey", "E", 1346998717, "jominey", "E", 1346998830, "jominey", "E", 1346999531, "jominey", "E", 1346999598, "jominey", "E", 1346999791, "jominey", "E", 1347000181, "jominey", "E", 1347000278, "jominey", "E", 1347000377, "jominey", "E", 1347000914, "jominey", "E", 1347000988, "jominey", "E", 1347001328, "jominey", "E", 1347001367, "jominey", "E", 1347001489, "jominey", "E", 1347075000, "jominey", "E", 1347075302, "jominey", "E", 1347075676, "jominey", "E", 1347075989, "jominey", "E", 1347076345, "jominey", "E", 1347086980, "jominey", "E", 1347087026, "jominey", "E", 1347087133, "jominey", "E", 1347087141, "jominey", "E", 1347087962, "jominey", "E", 1347088013, "jominey", "E", 1347088282, "jominey", "E", 1347088377, "jominey", "E", 1347089264, "jominey", "E", 1347089410, "jominey", "E", 1347089530, "jominey", "E", 1347089611, "jominey", "E", 1347089628, "jominey", "E", 1347089811, "jominey", "E", 1347089864, "jominey", "E", 1347090146, "jominey", "E", 1347090262, "jominey", "E", 1347091493, "jominey", "E", 1347091549, "jominey", "E", 1347091708, "jominey", "E", 1347091816, "jominey", "E", 1347091855, "jominey", "E", 1347092012, "jominey", "E", 1347092137, "jominey", "E", 1347092156, "jominey", "E", 1347092205, "jominey", "E", 1347092292, "jominey", "E", 1347092338, "jominey", "E", 1347092465, "jominey", "E", 1347092478, "jominey", "E", 1347093095, "jominey", "E", 1347093291, "jominey", "E", 1347140629, "jominey", "E", 1347141120, "jominey", "E", 1347141293, "jominey", "E", 1347141386, "jominey", "E", 1347141525, "jominey", "E", 1347141653, "jominey", "E", 1347141855, "jominey", "E", 1347141994, "jominey", "E", 1347142049, "jominey", "E", 1347142124, "jominey", "E", 1347142135, "jominey", "E", 1347142146, "jominey", "E", 1347142248, "jominey", "E", 1347142740, "jominey", "E", 1347153906, "jominey", "E", 1347153932, "jominey", "E", 1347154353, "jominey", "E", 1347154636, "jominey", "E", 1347154685, "jominey", "E", 1347154758, "jominey", "E", 1347155014, "jominey", "E", 1347155078, "jominey", "E", 1347155117, "jominey", "E", 1347155167, "jominey", "E", 1347155205, "jominey", "E", 1347155249, "jominey", "E", 1347155297, "jominey", "E", 1347155350, "jominey", "E", 1347155404, "jominey", "E", 1347155494, "jominey", "E", 1347155532, "jominey", "E", 1347156163, "jominey", "E", 1347156784, "jominey", "E", 1347159531, "jominey", "E", 1347159599, "jominey", "E", 1347160710, "jominey", "E", 1347160879, "jominey", "E", 1347161006, "jominey", "E", 1347161120, "jominey", "E", 1347161178, "jominey", "E", 1347163434, "jominey", "E", 1347163497, "jominey", "E", 1347163583, "jominey", "E", 1347163687, "jominey", "E", 1347163727, "jominey", "E", 1347163807, "jominey", "E", 1347163891, "jominey", "E", 1347163947, "jominey", "E", 1347163975, "jominey", "E", 1347164015, "jominey", "E", 1347164115, "jominey", "E", 1347164157, "jominey", "E", 1347164196, "jominey", "E", 1347164220, "jominey", "E", 1347164255, "jominey", "E", 1347164322, "jominey", "E", 1347164361, "jominey", "E", 1347164380, "jominey", "E", 1347164484, "jominey", "E", 1347164508, "jominey", "E", 1347164543, "jominey", "E", 1347164571, "jominey", "E", 1347164753, "jominey", "E", 1347164798, "jominey", "E", 1347164915, "jominey", "E", 1347165013, "jominey", "E", 1347165060, "jominey", "E", 1347165127, "jominey", "E", 1347165193, "jominey", "E", 1347165223, "jominey", "E", 1347165275, "jominey", "E", 1347165359, "jominey", "E", 1347165387, "jominey", "E", 1347165602, "jominey", "E", 1347165626, "jominey", "E", 1347165642, "jominey", "E", 1347165843, "jominey", "E", 1347165919, "jominey", "E", 1347166068, "jominey", "E", 1347166149, "jominey", "E", 1347166182, "jominey", "E", 1347166266, "jominey", "E", 1347166293, "jominey", "E", 1347166316, "jominey", "E", 1347166447, "jominey", "E", 1347166505, "jominey", "E", 1347166569, "jominey", "E", 1347166630, "jominey", "E", 1347166663, "jominey", "E", 1347166946, "jominey", "E", 1347167013, "jominey", "E", 1347167121, "jominey", "E", 1347168303, "jominey", "E", 1347168336, "jominey", "E", 1347168559, "jominey", "E", 1347169597, "jominey", "E", 1347830226, "jominey", "E", 1347830294, "jominey", "E", 1347830529, "jominey", "E", 1364319265, "jominey", "E", 1364319315, "jominey", "E", 1364320065, "jominey", "E", 1364320095, "jominey", "E", 1364320199, "jominey", "E", 1364320667, "jominey", "E", 1364320830, "jominey", "E", 1364320866, "jominey", "E", 1364321022, "jominey", "E", 1364322146, "jominey", "E", 1374333780, "jominey", "E", 1374333823, "jominey", "E", 1374345295, "jominey", "E", 1397896536, "tonyd", "P", 1397896562, "tonyd", "P", 1397898191, "tonyd", "P", 1397898257, "tonyd", "P", 1398914074, "jominey", "E", 1398914273, "jominey", "E", 1398914348, "jominey", "E", 1398914744, "jominey", "E", 1398914765, "jominey", "E", 1398914797, "jominey", "E", 1398915176, "jominey", "E", 1398915233, "jominey", "E", 1398915321, "jominey", "E", 1398915513, "jominey", "E", 1398916182, "jominey", "E", 1398916697, "jominey", "E", 1398916781, "jominey", "E", 1398916999, "jominey", "E", 1398917080, "jominey", "E", 1398917132, "jominey", "E", 1398917395, "jominey", "E", 1398917453, "jominey", "E", 1398917482, "jominey", "E", 1398917517, "jominey", "E", 1398917792, "jominey", "E", 1398917857, "jominey", "E", 1398917889, "jominey", "E", 1398918159, "jominey", "E", 1398918247, "jominey", "E", 1401337345, "jominey", "E", 1401337677, "jominey", "E", 1401337799, "jominey", "E", 1401338252, "jominey", "E", 1438014416, "jominey", "E", 1438014702, "jominey", "E", 1438014725, "jominey", "E", 1438014745, "jominey", "E", 1438014816, "jominey", "E", 1438014848, "jominey", "E", 1438015177, "jominey", "E", 1438015258, "jominey", "E", 1438015334, "jominey", "E", 1438015623, "jominey", "E", 1438015694, "jominey", "E", 1438015765, "jominey", "E", 1438015815, "jominey", "E", 1438015937, "jominey", "E", 1438015981, "jominey", "E", 1438016144, "jominey", "E", 1438016207, "jominey", "E", 1438016318, "jominey", "E", 1438016435, "jominey", "E", 1438016517, "jominey", "E", 1438016560, "jominey", "E", 1457915601, "tonyd", "P", 1461303395, "tonyd", "P", 1464186549, "jominey", "E", 1464186958, "jominey", "E", 1464566705, "jominey", "E", 1464567126, "jominey", "E", 1464567309, "jominey", "E", 1464567435, "jominey", "E", 1464567478, "jominey", "E", 1464567529, "jominey", "E", 1464576665, "jominey", "E", 1464576727, "jominey", "E", 1464576961, "jominey", "E", 1464577010, "jominey", "E", 1464579328, "jominey", "E", 1479167327, "jominey", "E", 1479167475, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="trait:black">
+         "tokentype"
+      </Core:Property>
+      <Core:Property property="trait:metallic">
+         "tokentype"
+      </Core:Property>
+      <Core:Property property="trait:vibrant">
+         "tokentype"
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

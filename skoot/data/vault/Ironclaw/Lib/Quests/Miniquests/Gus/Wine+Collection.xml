@@ -1,0 +1,243 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:act:enter%wine_collection">
+         X[M] /* Entering a room. Is it the one to collect the delivery from? */
+if(\$dest \&\& NRefOb(\$dest) == \$\{Ironclaw:World:DockTown:Roads:Piers:04\}) \{
+  /* Sanity check */
+  if(!\$actor."quest:miniquests"
+  \|\| !\$actor."quest:miniquests"["deliver gus wines"]) \{
+    /* Something went wrong. Clear this script */
+    \$actor."merry:inherit:act:enter%wine_collection" = nil;
+    return TRUE;
+  \}
+  
+  \$delay(3, TRUE, "463a");
+  if(\$actor."base:environment" == \$\{Ironclaw:World:DockTown:Roads:Piers:04\}) \{
+    \$item = Spawn(\$\{Ironclaw:Props:Miniquest:Delivery:ShippingCrate\});
+    \$item."delivery:questowner" = \$actor;
+    EmitTo(\$actor, "A dockworker spots you, \\"Ah, you must be the one here to collect the shipment of wine?\\"");
+    EmitIn(\$actor."base:environment", "A dockworker spots "+Describe(\$actor)+", \\"Ah, you must be the one here to collect the shipment of wine?\\"", \$actor);
+    EmitTo(\$actor, "The dockworker hands "+Describe(\$item)+" to you.");
+    EmitIn(\$actor."base:environment", "The dockworker hands "+Describe(\$item)+" to "+Describe(\$actor)+".", \$actor);
+    EmitTo(\$actor, "The dockworker explains, \\"Just put it on the ground outside the Avoirdupois manor. Their guards will bring it inside.\\"");
+    EmitIn(\$actor."base:environment", "A dockworker explains to "+Describe(\$actor)+", \\"Just put it on the ground outside the Avoirdupois manor. Their guards will bring it inside.\\"", \$actor);
+    \$item."base:environment" = \$actor;
+    \$delay(0.1, TRUE, "301b");
+    if(\$item."base:environment" != \$actor) \{
+      Slay(\$item);
+    \} else \{
+      \$actor."merry:inherit:act:enter%wine_collection" = nil;
+      \$actor."merry:inherit:act:enter%wine_delivery" = \$\{Ironclaw:Lib:Quests:Miniquests:Gus:Wine Collection\};
+      \$actor."quest:miniquests"["deliver gus wines"]["item"] = \$item;
+      \$actor."quest:miniquests"["deliver gus wines"]["description"] = "Deliver the shipping crate to the Avoridupois manor.";
+      \$actor."quest:miniquests"["deliver gus wines"]["state"] = "deliver shipment";
+      \$actor."quest:miniquests"["deliver gus wines"]["expires"] = time()+60*60*24*7*2;
+      \$id = random(1000000);
+      \$actor."quest:miniquests"["deliver gus wines"]["id"] = \$id;
+      /* Give them two weeks to deliver the shipment */
+      \$delay(60*60*24*7*2, TRUE, "f34a");
+      if(\$actor."quest:miniquests"
+      \&\& \$actor."quest:miniquests"["deliver gus wines"]
+      \&\& \$actor."quest:miniquests"["deliver gus wines"]["id"] == \$id
+      \&\& \$actor."quest:miniquests"["deliver gus wines"]["state"] == "deliver shipment") \{
+        \$actor."quest:miniquests"["deliver gus wines"] = nil;
+        \$actor."merry:inherit:act:enter%wine_delivery" = nil;
+      \}
+    \}
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act:enter%wine_delivery">
+         X[M] /* Entering a room. Is it the one to collect the delivery from? */
+if(\$dest \&\& NRefOb(\$dest) == nil /* defunct */) \{
+  /* Sanity check */
+  if(!\$actor."quest:miniquests"
+  \|\| !\$actor."quest:miniquests"["deliver gus wines"]) \{
+    /* Something went wrong. Clear this script */
+    \$actor."merry:inherit:act:enter%wine_delivery" = nil;
+    return TRUE;
+  \}
+
+  \$delay(3, TRUE, "463a");
+  if(\$actor."base:environment" == nil /* defunct */) \{
+    /* Do they have their crate with them? */
+    \$item = \$actor."quest:miniquests"["deliver gus wines"]["item"];
+    \$found = nil;
+    \$tmp = \$item;
+    while(\$tmp = \$tmp."base:environment") \{
+      if(\$tmp == \$actor) \{
+        \$found = TRUE;
+        continue;
+      \}
+    \}
+    EmitTo(\$actor, "An Avoirdupois guard spots you, \\"Ah, here dropping off the wine?\\"");
+    EmitIn(\$actor."base:environment", "An Avoirdupois guard spots "+Describe(\$actor)+", \\"Ah, here dropping off the wine?\\"", \$actor);
+    EmitTo(\$actor, "The guard takes "+Describe(\$item, nil, \$actor)+" from you.");
+    EmitIn(\$actor."base:environment", "The guard takes "+Describe(\$item)+".", \$actor);
+    EmitIn(\$actor."base:environment", "The guard inspects "+Describe(\$item, nil, nil, STYLE_NONPOSS)+" carefully.");
+
+    /* Pay them */
+    \$payment = \$actor."quest:miniquests"["deliver gus wines"]["payment"];
+    if(\$payment) \{
+      EmitTo(\$actor, "The guard hands you "+Call(\$\{Ironclaw:Lib:Quests:Autoquests:miniquests\}, "pay_quester", \$amount: \$payment, \$actor: \$actor)+".");
+      EmitIn(\$actor."base:environment", "The guard hands some coins to "+Describe(\$actor)+".", \$actor);
+    \}
+
+    /* Clear the quest */
+    Slay(\$item);
+    \$actor."quest:miniquests"["deliver gus wines"] = nil;
+    \$actor."merry:inherit:act:enter%wine_delivery" = nil;
+    \$actor."miniquest:completed:gus:wine collection" = time();
+  \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:give_quest">
+         X[M] /* Checking if this PC can give quests */
+\$az = \$\{Chatters:AE:az:azrael\};
+\$this_library = \$\{Ironclaw:Lib:Quests:Miniquests:Gus:Wine Collection\};
+\$payment = 400;
+if(\$state == "check_valid") \{
+return \$actor;
+  /* Is \$actor a valid target for \$quest_giver to give a quest to? */
+  if(\$quest_giver == \$actor) return nil;
+  if(\$actor."miniquest:in progress:gus:wine collection") return nil;
+  if(\$actor."miniquest:completed:gus:wine collection"+60*60*24*7 \> time()) return nil;
+  /* Make sure they aren't busy */
+  if(ironclaw::busy_check(\$character: \$actor)) return nil;
+  return \$actor;
+\} else if(\$state == "run_quest") \{
+  /* Here's the start of the quest (usually where the PC gets asked if they want to accept the quest) */
+  EmitTo(\$az, "Offering deliver wine for Gus quest to "+dump_value(\$actor));
+  \$payment = Call(\$\{Ironclaw:Lib:Quests:Autoquests:miniquests\}, "questpayment", \$amount: \$payment);
+  EmitTo(\$actor, "A young urchin spots you.");
+  EmitIn(\$actor."base:environment", "A young urchin spots "+Describe(\$actor)+".", \$actor);
+  EmitIn(\$actor."base:environment", "The urchin says, \\"Eh! Youse looks like you'd be a good'un to do a delivery!\\"");
+  EmitIn(\$actor."base:environment", "The urchin explains, \\""+Str(\$quest_giver."skotos:playercapname")+" is looking for someone to do a delivery. Find "+\$quest_giver."base:objective"+" and "+\$quest_giver."base:pronoun"+"'ll tell you what to do.\\"");
+  if(\$payment)
+    EmitIn(\$actor."base:environment", "The urchin mentions, \\"I reckon it'll pay about "+ironclaw::describe_money(\$amount: \$payment)+". Don't forget to say that I sent you!\\"");
+
+  interaction::question(\$question: "Do you wish to accept this quest?", \$expires: 60, \$env: FALSE, \$yes_ob: \$this_library, \$expire_ob: \$this_library, \$no_ob: \$this_library, \$yes_fun: "give_quest", \$no_fun: "give_quest", \$expire_fun: "give_quest", \$par: (["quest_giver":\$quest_giver]));
+  return TRUE;
+\} else if(\$imperative == "@yes") \{
+  EmitIn(\$actor."base:environment", "The urchin grins, \\"Great! Go find "+Str(\$par["quest_giver"]."skotos:playercapname")+", and he'll tell you what to do!\\"");
+
+  /* Now save the quest details */
+  \$id = random(1000000);
+  \$payment = Call(\$\{Ironclaw:Lib:Quests:Autoquests:miniquests\}, "questpayment", \$amount: \$payment);
+  if(!\$actor."quest:miniquests") \$actor."quest:miniquests" = ([ ]);
+  \$actor."quest:miniquests"["deliver gus wines"] = ([
+    "description":"Go see "+Str(\$par["quest_giver"]."skotos:playercapname")+" about a delivery.",
+    "name":"Deliver wine",
+    "id":\$id,
+    "reward": \$payment ? ironclaw::describe_money(\$amount: \$payment) : "Gratitude",
+    "payment": \$payment,
+    "state":"visit questgiver",
+    "expires":time()+60*60*24*7*2,
+  ]);
+  /* Has this quest expired? Give it two weeks */
+  \$delay(60*60*24*7*2, TRUE, "9b14");
+  if(\$actor."quest:miniquests"
+  \&\& \$actor."quest:miniquests"["deliver gus wines"]
+  \&\& \$actor."quest:miniquests"["deliver gus wines"]["id"] == \$id
+  \&\& \$actor."quest:miniquests"["deliver gus wines"]["state"] == "visit questgiver") \{
+    \$actor."quest:miniquests"["deliver gus wines"] = nil;
+  \}
+  return TRUE;
+\} else if(\$imperative == "@no") \{
+  EmitTo(\$actor, "You send the urchin on his way.");
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" sends the urchin on his way.", \$actor);
+  return TRUE;
+\} else if(\$expire_fun == "give_quest") \{
+  /* \$actor didn't answer about the quest, and the offer expired */
+  EmitTo(\$actor, "After waiting for a response, the urchin figures you can't help, and heads off.");
+  if(\$actor."base:environment")
+    EmitIn(\$actor."base:environment", "After waiting for a response, the urchin figures "+Describe(\$actor)+" can't help, and heads off.");
+  return TRUE;
+\}
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:miniquest:wine collection">
+         X[M] \$payment = 400;
+
+if(!\$evoke) \{
+  EmitTo(\$actor, "Command is: @miniquests wine collection 'NAME");
+  EmitTo(\$actor, "Where the name is the PC that should collect the shipment");
+  return FALSE;
+\}
+
+/* Is this a valid name? */
+\$name = ironclaw::text_clean(\$string: \$evoke, \$type: "no punctuation");
+\$target = Get(UDat::, "bodies:" + \$name);
+
+if(!\$target) \{
+  EmitTo(\$actor, "Unknown PC");
+  EmitTo(\$actor, "Command is: @miniquests wine collection 'NAME");
+  EmitTo(\$actor, "Where the name is the PC that should collect the shipment");
+  return FALSE;
+\}
+
+if(\$target == \$actor) \{
+  EmitTo(\$actor, "You can't send yourself on this mission.");
+  return FALSE;
+\}
+
+if(!\$target."quest:miniquests") \$target."quest:miniquests" = ([ ]);
+
+/* Are they already doing this quest? */
+if(\$target."quest:miniquests"["deliver gus wines"]
+\&\& \$target."quest:miniquests"["deliver gus wines"]["state"] != "visit questgiver") \{
+  EmitTo(\$actor, capitalize(\$name)+" is already tasked with delivering a shipment of wine.");
+  return FALSE;
+\}
+
+if(Int(\$target."miniquest:completed:gus:wine collection")+60*60*24*7 \> time() ) \{
+  EmitTo(\$actor, capitalize(\$name)+" has already recently collected a shipment of wine for you.");
+  return FALSE;
+\}
+
+EmitTo(\$actor, capitalize(\$name)+" can now collect a shipment of wine for delivery to the Avoirdupois manor.");
+
+/* Save quest info */
+if(!\$target."quest:miniquests"["deliver gus wines"]) \{
+  \$payment = Call(\$\{Ironclaw:Lib:Quests:Autoquests:miniquests\}, "questpayment", \$amount: \$payment);
+  \$target."quest:miniquests"["deliver gus wines"] = ([
+    "name":"Deliver wine",
+    "reward": \$payment ? ironclaw::describe_money(\$amount: \$payment) : "Gratitude",
+    "payment": \$payment,
+  ]);
+\}
+\$target."quest:miniquests"["deliver gus wines"]["description"] = "Go to pier four, to collect a shipment of wines.";
+\$target."quest:miniquests"["deliver gus wines"]["state"] = "collect shipment";
+\$target."quest:miniquests"["deliver gus wines"]["expires"] = time()+60*60*24*7*2;
+\$id = random(1000000);
+\$target."quest:miniquests"["deliver gus wines"]["id"] = \$id;
+
+\$target."merry:inherit:act:enter%wine_collection" = \$\{Ironclaw:Lib:Quests:Miniquests:Gus:Wine Collection\};
+
+/* Give them two weeks to collect the shipment */
+\$delay(60*60*24*7*2, TRUE, "7610");
+if(\$target."quest:miniquests"
+\&\& \$target."quest:miniquests"["deliver gus wines"]
+\&\& \$target."quest:miniquests"["deliver gus wines"]["id"] == \$id
+\&\& \$target."quest:miniquests"["deliver gus wines"]["state"] == "collect shipment") \{
+  \$target."quest:miniquests"["deliver gus wines"] = nil;
+  \$target."merry:inherit:act:enter%wine_collection" = nil;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:miniquest:wine stealing">
+         X[M] EmitTo(\$actor, "Sorry, stealing from the shipping crates isn't yet coded.");
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1335682345, "tonyd", "E", 1335687214, "tonyd", "P", 1335690321, "tonyd", "P", 1335690385, "tonyd", "P", 1335690410, "tonyd", "P", 1335690505, "tonyd", "P", 1335690516, "tonyd", "P", 1335745245, "meandmine", "E", 1335745426, "meandmine", "E", 1335766276, "tonyd", "P", 1335766310, "tonyd", "P", 1335766380, "tonyd", "P", 1335766418, "tonyd", "P", 1335766435, "tonyd", "P", 1335766453, "tonyd", "P", 1335766525, "tonyd", "P", 1335767775, "tonyd", "P", 1335767930, "tonyd", "P", 1335767958, "tonyd", "P", 1335768012, "tonyd", "P", 1335768034, "tonyd", "P", 1335768041, "tonyd", "P", 1335783003, "tonyd", "P", 1335783039, "tonyd", "P", 1335783081, "tonyd", "P", 1335783114, "tonyd", "P", 1335783181, "tonyd", "P", 1335783412, "tonyd", "P", 1335783564, "tonyd", "P", 1335783660, "tonyd", "P", 1335783673, "tonyd", "P", 1335783689, "tonyd", "P", 1335783782, "tonyd", "P", 1335783862, "tonyd", "P", 1335783981, "tonyd", "P", 1335784136, "tonyd", "P", 1335784206, "tonyd", "P", 1335784373, "tonyd", "P", 1335784904, "tonyd", "P", 1335784925, "tonyd", "P", 1335785012, "tonyd", "P", 1335785048, "tonyd", "P", 1335785065, "tonyd", "P", 1335785132, "tonyd", "P", 1335785303, "tonyd", "P", 1335785348, "tonyd", "P", 1335785353, "tonyd", "P", 1335785366, "tonyd", "P", 1335785512, "tonyd", "P", 1335785558, "tonyd", "P", 1335785641, "tonyd", "P", 1335785668, "tonyd", "P", 1335785717, "tonyd", "P", 1335785747, "tonyd", "P", 1335785800, "tonyd", "P", 1335785826, "tonyd", "P", 1335785969, "tonyd", "P", 1335786045, "tonyd", "P", 1336028856, "tonyd", "P", 1336028901, "tonyd", "P", 1336028929, "tonyd", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

@@ -1,0 +1,151 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Food:UrFood)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="hunk"/>
+            <Base:SName sname="chunk"/>
+            <Base:SName sname="meat"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="chunks"/>
+            <Base:PName pname="hunks"/>
+            <Base:PName pname="meats"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="pheasant"/>
+          <Base:Adjective adjective="roasted"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="NEW">empty</Base:Description>
+          <Base:Description type="brief">
+             $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="examine">
+             $(this.trait:examine){? | $(this.trait:eaten) | Someone appears to have <eaten what="$(this)"/>it.}
+          </Base:Description>
+          <Base:Description type="look">
+             $(this.trait:look){? | $(this.trait:eaten) | Someone appears to have <eaten what="$(this)"/>it.}
+          </Base:Description>
+          <Base:Description type="new">empty</Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "chunk of freshly-killed pheasant"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "A sizable hunk of freshly killed pheasant. The meat looks to be very lean and likely needs to be handled with much delicacy when cooked."
+      </Core:Property>
+      <Core:Property property="export:trait:look">
+         "A sizable hunk of freshly killed pheasant."
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         50
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "the outdoors with the faint scent of blood"
+      </Core:Property>
+      <Core:Property property="export:trait:taste">
+         "unique and mildly gamey"
+      </Core:Property>
+      <Core:Property property="merry:react-post:roast-dob">
+         X[M] /* check if the meat is roasted already */
+if(\$this."trait:brief" == "roasted chunk of pheasant") \{
+   EmitTo(\$actor, "The pheasant is already roasted."); 
+   return FALSE;
+   \}
+
+/* check if fire is present and used */
+if(!\$using) \{
+ EmitTo(\$actor, "You need some manner of fire to roast the meat by.");
+ return FALSE;
+\}
+if(sizeof(\$using) != 1) \{
+ EmitTo(\$actor, "One fire is enough to cook the meat, silly.");
+ return FALSE;
+\}
+
+\$light = (\$using[0]);
+if(NRefDetail(\$light) != "fire" \&\& NRefOb(\$light)."base:urparent" != \$\{IronClaw:Props:Lighting:Source:Misc:Bonfire\} \&\& NRefOb(\$light)."base:urparent" != \$\{Ironclaw:Props:Camping:Campfire\}) \{
+if(sizeof(\$using) != 1) return TRUE;
+   EmitTo(\$actor, "You need some manner of fire to roast this meat with.");
+   return FALSE;
+   \}
+
+/* emit the roasting */
+ EmitTo(\$actor, Describe(\$this, nil, \$actor)+" slowly roasts over the fire, sending wafts of mouthwatering scents into the air.");
+ EmitIn(\$actor."base:environment", Describe(\$this)+" slowly roasts over the fire, sending wafts of mouthwatering scents into the air. "+ Describe(\$actor)+" gradually turns the meat to allow the fire to lick all sides of it.", \$actor);
+
+/* roast the meat */
+\$this."trait:brief" = "roasted chunk of pheasant";
+\$this."trait:look" = "A sizable chunk of carefully roasted pheasant, dripping with juice.";
+\$this."trait:examine" = "A thick chunk of carefully roasted pheasant, moderately seasoned and carefully roasted. Mouthwatering juices ooze from the exterior, beckoning your mouth to partake.";
+\$this."trait:smell" = "smoke, mild spices, and juicy bird";
+\$this."trait:taste" = "somewhat similar to chicken, but with a more unique and gamey flavor. The utilized spices work well with the roasting method, complimenting the bird rather than detracting from the overall taste. With each bite, warm delectable juices swim into your mouth to harmoniously mingle with the amazingly tender meat";
+
+
+if(\$this."base:environment" != \$actor) \{
+ EmitTo(\$actor, Describe(\$this, nil, \$actor)+" slips out of your hands, and onto the ground. Oops.");
+ EmitIn(\$actor."base:environment", Describe(\$this)+" slips out of "+Describe(\$actor)+"'s hands, and onto the ground. Oops.", \$actor);
+ Slay(\$this);
+ return FALSE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1264611636, "balkaar", "E", 1264611868, "balkaar", "E", 1264611877, "balkaar", "E", 1264611978, "balkaar", "E", 1264612017, "balkaar", "E", 1264612589, "balkaar", "E", 1264612609, "balkaar", "E", 1264614011, "balkaar", "E", 1264614044, "balkaar", "E", 1264614053, "balkaar", "E", 1264614088, "balkaar", "E", 1264614096, "balkaar", "E", 1264614241, "balkaar", "E", 1264614249, "balkaar", "E", 1264614275, "balkaar", "E", 1264614285, "balkaar", "E", 1264614378, "balkaar", "E", 1264614389, "balkaar", "E", 1264616169, "balkaar", "E", 1264616372, "balkaar", "E", 1264616379, "balkaar", "E", 1264616381, "balkaar", "E", 1264616393, "balkaar", "E", 1264616506, "balkaar", "E", 1264616881, "balkaar", "E", 1264617099, "balkaar", "E", 1264617349, "balkaar", "E", 1264617392, "balkaar", "E", 1272780976, "slurpeeslurp", "E", 1272784672, "slurpeeslurp", "E", 1373234390, "jominey", "E", 1417790380, "slurpeeslurp", "E", 1417790409, "slurpeeslurp", "K", 1417790544, "slurpeeslurp", "E", 1417790994, "slurpeeslurp", "E", 1417792807, "slurpeeslurp", "K", 1417792828, "slurpeeslurp", "K", 1417877775, "slurpeeslurp", "R", 1508191999, "jominey", "E", 1510197273, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:brief">
+         "chunk of freshly killed pheasant"
+      </Core:Property>
+      <Core:Property property="trait:examine">
+         "A sizable hunk of freshly killed pheasant. The meat looks to be very lean and likely needs to be handled with much delicacy when cooked."
+      </Core:Property>
+      <Core:Property property="trait:look">
+         "A sizable hunk of freshly killed pheasant."
+      </Core:Property>
+      <Core:Property property="trait:smell">
+         "the outdoors with the faint scent of blood"
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

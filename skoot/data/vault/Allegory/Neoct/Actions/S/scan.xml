@@ -1,0 +1,299 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="SkotOS">
+  <SkotOS:MerAcHa action_id="scan">
+    <Core:PCProperties>
+      <Core:Property property="directions">
+         ([ "down":(\{  \}), "east":(\{ "northeast", "east", "southeast" \}), "north":(\{ "northwest", "north", "northeast" \}), "northeast":(\{ "north", "northeast", "east" \}), "northwest":(\{ "west", "northwest", "north" \}), "south":(\{ "southeast", "south", "southwest" \}), "southeast":(\{ "east", "southeast", "south" \}), "southwest":(\{ "south", "southwest", "west" \}), "up":(\{  \}), "west":(\{ "southwest", "west", "northwest" \}) ])
+      </Core:Property>
+      <Core:Property property="merry:global-post:action">
+         X[M] int perception, level, i, j, k;
+string detail;
+string * far;
+mixed* rooms;
+object * people;
+object * peopleMaster;
+mapping peopleMap;
+int * roomsIndices;
+mapping roomsMap;
+object * firstlevel;
+object * secondlevel;
+object * thirdlevel;
+
+firstlevel = (\{ \});
+secondlevel = (\{ \});
+thirdlevel = (\{ \});
+
+if(\$dob \&\& sizeof(\$dob) == 1) \{
+    detail = NRefDetail(\$dob[0]);
+    far = Get(\$actor."base:environment", "details:" + detail + ":exit:directions");
+\} else \{
+    return FALSE;
+\}
+
+perception = Int(\$actor."trait:perception");
+if(perception \<= 4) \{
+    level = 1;
+\} else if(perception \> 4 \&\& perception \<= 8) \{
+    level = 2;
+\} else if(perception \> 8) \{
+    level = 3;
+\}
+
+roomsMap = ::scan_direction(\$room: \$actor."base:environment", \$spread: level, \$far: far);
+roomsIndices = map_indices(roomsMap);
+peopleMap = ([ ]);
+peopleMaster = (\{ \});
+for(i = 0; i \< sizeof(roomsIndices); i++) \{
+    rooms = roomsMap[roomsIndices[i]];
+    for(j = 0; j \< sizeof(rooms); j++) \{
+        if(NRefOb(rooms[j])."base:inventory" \&\& (NRefOb(rooms[j])."trait:outside" \|\| i == 0)) \{
+            \$inv = NRefOb(rooms[j])."base:inventory";
+            for(k = 0; k \< sizeof(\$inv); k++) \{
+                if(\$inv[k]."base:volition" == 1 \|\| \$inv[k]."combat:fightable" \&\& !\$inv[k]."stealth:sneaking" \&\& !\$inv[k].shadow) \{
+                    peopleMap[\$inv[k]] = \$inv[k]."base:environment";
+                \}
+            \}
+            people = map_indices(peopleMap) - peopleMaster;
+            peopleMaster += people;
+            if(sizeof(people) == 1 \|\| sizeof(people) \>= 1) \{
+                if(i == 0) \{
+                    firstlevel += people;
+                \}
+                if(i == 1) \{
+                    secondlevel += people;
+                \}
+                if(i == 2) \{
+                    thirdlevel += people;
+                \}
+            \}
+        \}
+    \}
+\}
+
+if(sizeof(firstlevel)) \{
+    EmitTo(\$actor, "A short distance away, you can see " + Describe(firstlevel) + ".");
+\}
+
+if(sizeof(secondlevel)) \{
+    EmitTo(\$actor, "A little ways off, you can see " + Describe(secondlevel) + ".");
+\}
+
+if(sizeof(thirdlevel)) \{
+    EmitTo(\$actor, "Further in the distance, you can make out " + Describe(thirdlevel) + ".");
+\}
+
+if(!sizeof(peopleMaster)) \{
+    EmitTo(\$actor, "You do not see anyone in that direction.");
+\}
+
+\$actor."combat:scanning:targets" = peopleMap;
+\$actor."combat:scanning" = 1;
+
+\$delay(10, FALSE, "803d");
+
+\$actor."combat:scanning:targets" = nil;
+\$actor."combat:scanning" = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:global-pre:action">
+         X[M] if(\$actor."combat:scanning") \{
+    EmitTo(\$actor, "You are already busy scanning for targets.");
+    return FALSE;
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_directions">
+         X[M] /* \$dir is an array of cardinal direction. Return array of detail names for directions. */
+/* \$env is room we're checking */
+
+string * details;
+string * exits;
+string * found;
+int i, j;
+
+/* EmitTo(\$actor, "ROOM IS: " + dump_value(\$env));
+EmitTo(\$actor, "LOOKING FOR DETAILS FOR EXITS: " + dump_value(\$dir)); */
+
+found = (\{ \});
+details = \$env."base:details";
+
+for(i = 0; i \< sizeof(\$dir); i++) \{
+    for(j = 0; j \< sizeof(details); j++) \{
+        exits = Get(\$env, "details:" + details[j] + ":exit:directions");
+        if(member(\$dir[i], exits)) found += (\{ details[j] \});
+    \}
+\}
+
+/* EmitTo(\$actor, "FOUND DETAILS: " + dump_value(found)); */
+
+return found;
+      </Core:Property>
+      <Core:Property property="merry:lib:scan">
+         X[M] /* \$far is direction detail we are scanning */
+/* \$env is environment of detail we are scanning */
+/* \$level is number of rooms away we are scanning */
+
+if(Get(\$env, "details:" +\$far+ ":exit:dest")) \{
+    \$scanspot = NRefOb(Get(\$env, "details:" +\$far+ ":exit:dest"));
+\} else \{
+    \$scanspot = "noexit";
+\}
+
+if(Get(\$env, "details:" +\$far+ ":exit:door")) \{
+    \$door = 1;
+\} else \{
+    \$door = 0;
+    \$nosee = 0;
+\}
+
+if(\$door == 1) \{
+    if(Get(\$env, "details:" +\$far+ ":exit:closed")) \{
+        \$nosee = 1;
+    \} else \{
+        \$nosee = 0;
+    \}
+\}
+
+if(\$scanspot != "noexit") \{
+    \$brightness = \$scanspot."base:intrinsicluminosity";
+
+    if(\$level == 2 \&\& \$brightness \< 5.0) \{
+        \$nosee = 1;
+    \}
+
+    if(\$level == 3 \&\& \$brightness \< 10.0) \{
+        \$nosee = 1;
+    \}
+\}
+
+/* EmitTo(\$actor, "NOSEE " + Str(\$nosee) + " : SCANSPOT " + Str(\$scanspot)); */
+
+if(\$nosee \|\| \$scanspot == "noexit") return FALSE;
+
+return TRUE;
+
+if(\$nosee != 1 \&\& \$scanspot != "noexit") \{
+    \$people = (\{ \});
+    if(\$scanspot."base:inventory") \{
+        \$inv = \$scanspot."base:inventory";
+        for(\$i = 0; \$i \< sizeof(\$inv); \$i++) \{
+            if(\$inv[\$i]."base:volition" == 1 \|\| \$inv[\$i]."combat:fightable" \&\& !\$inv[\$i]."stealth:sneaking" \&\& !\$inv[\$i].shadow) \{
+                \$people += (\{ \$inv[\$i] \});
+            \}
+        \}
+        if(sizeof(\$people) == 1 \|\| sizeof(\$people) \>= 1) \{
+            return \$people;
+        \}
+    \}
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:scan_direction">
+         X[M] NRef dest;
+
+if (!\$spread) \{
+    \$nospread = TRUE;
+    \$spread = 1;
+\} else \{
+    \$nospread = nil;
+\}
+
+if (!\$room) \{
+    error("Missing \$room argument in call to common::exits()");
+\}
+
+\$exits = ([ nil : nil ]);
+\$path  = ([ \$room : TRUE ]);
+
+\$env = \$room;
+\$directions = \$far;
+
+\$queue = ([ 1 : (\{ \$room \}) ]);
+
+for (\$x = 1; \$x \<= \$spread; \$x++) \{
+  while(\$queue[\$x] \&\& sizeof(\$queue[\$x])) \{
+    \$env       = \$queue[\$x][0];
+    \$queue[\$x] = \$queue[\$x][1..];
+    \$inv       = (\$x == 1) ? ::get_directions(\$dir: \$directions, \$env: \$env) : ::get_directions(\$dir: Get(\$this, "directions")[\$far[0]], \$env: \$env);
+    \$invx      = sizeof(\$inv);
+
+    for (\$i = 0; \$i \< \$invx; \$i++) \{
+      if((\$x == 1 \|\| (\$x \> 1 \&\& \$env."trait:outside")) \&\& ::scan(\$env: \$env, \$far: \$inv[\$i])) \{
+          dest = Get(\$env, "details:" + \$inv[\$i] + ":exit:dest");
+      \}
+      if (dest) \{
+        \$newroom = NRefOb(dest);
+        if (\$newroom \&\& !\$path[\$newroom]) \{
+          if (\$queue[\$x+1]) \{
+            \$queue[\$x+1] += (\{ \$newroom \});
+            \$exits[\$x]   += (\{ dest \});
+          \} else \{
+            \$queue += ([ \$x+1 : (\{ \$newroom \}) ]);
+            \$exits += ([ \$x   : (\{ dest \}) ]);
+          \}
+          \$path[\$newroom] = TRUE;
+        \}
+      \}
+    \}
+  \}
+\}
+
+\$exits -= (\{ nil \});
+
+return \$nospread ? \$exits[1] : \$exits;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1567892089, "jominey", "E", 1567954388, "jominey", "E", 1567954509, "jominey", "E", 1567954840, "jominey", "E", 1572315498, "jominey", "E", 1589376292, "jominey", "E", 1589376343, "jominey", "E", 1589376574, "jominey", "E", 1589376595, "jominey", "E", 1595988910, "jominey", "E", 1595988930, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="zbackup:merry:global-post:action">
+         X[M] if(\$dob \&\& sizeof(\$dob) == 1) \{
+    \$far = NRefDetail(\$dob[0]);
+\} else \{
+    return FALSE;
+\}
+
+\$env = NRefOb(\$actor."base:environment");
+
+if(Get(\$env, "details:" +\$far+ ":exit:dest")) \{
+    \$scanspot = NRefOb(Get(\$env, "details:" +\$far+ ":exit:dest"));
+\} else \{
+    \$scanspot = "noexit";
+\}
+
+if(Get(\$env, "details:" +\$far+ ":exit:door")) \{
+    \$door = 1;
+\} else \{
+    \$door = 0;
+    \$nosee = 0;
+\}
+
+if(\$door == 1) \{
+    if(Get(\$env, "details:" +\$far+ ":exit:closed")) \{
+        \$nosee = 1;
+    \} else \{
+        \$nosee = 0;
+    \}
+\}
+
+if(\$nosee != 1 \&\& \$scanspot != "noexit") \{
+    \$people = (\{ \});
+    if(\$scanspot."base:inventory") \{
+        \$inv = \$scanspot."base:inventory";
+        for(\$i = 0; \$i \< sizeof(\$inv); \$i++) \{
+            if(\$inv[\$i]."base:volition" == 1 \|\| \$inv[\$i]."combat:fightable") \{
+                \$people += (\{ \$inv[\$i] \});
+            \}
+        \}
+        if(sizeof(\$people) == 1 \|\| sizeof(\$people) \>= 1) \{
+            EmitTo(\$actor, "You can spot " +Describe(\$people, nil, \$actor)+ ".");
+        \} else \{
+            EmitTo(\$actor, "You see nobody in that direction.");
+        \}
+    \}
+\}
+return FALSE;
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

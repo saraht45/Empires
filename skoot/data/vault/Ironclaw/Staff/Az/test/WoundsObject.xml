@@ -1,0 +1,162 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="object"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="objects"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="wounding"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             wounding object
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:lib:show_wound">
+         X[M] /* Displays a wound on a PC */
+string output;
+output = "";
+
+/* Expects \$location, \$looker and \$level */
+if(!\$location \|\| !\$looker \|\| !\$level) return output;
+
+\$pc = NRefOb(\$location);
+\$detail = NRefDetail(\$location);
+
+EmitTo(\$pc, "Checking for a wound on your "+\$detail+".");
+
+/* Check if that body part already has an injury */
+if(!\$pc."combat:injuries" \|\| !\$pc."combat:injuries"[\$detail]) return output;
+
+\$info = \$pc."combat:injuries"[\$detail];
+
+output = Describe(\$location, \$looker, \$looker)+" is ";
+if(Int(\$info["amount"]) \>= 7) \{
+    output += "seriously injured";
+\} else if(Int(\$info["amount"]) \>= 5) \{
+    output += "badly injured";
+\} else if(Int(\$info["amount"]) \>= 3) \{
+    output += "injured";
+\} else \{
+    output += "slightly injured";
+\}
+output += ".";
+
+return output;
+
+if(!\$pc."combat:injuries"[\$location]) \$pc."combat:injuries"[\$location] = ([ ]);
+if(!\$pc."combat:injuries"[\$location]["treatment_needed"]) \$pc."combat:injuries"[\$location]["treatment_needed"] = ([ ]);
+if(!\$pc."combat:injuries"[\$location]["treatment_given"]) \$pc."combat:injuries"[\$location]["treatment_given"] = ([ ]);
+
+/* Is this the largest damage done so far? */
+if(!\$pc."combat:injuries"[\$location]["amount"] \|\| \$pc."combat:injuries"[\$location]["amount"] \< \$amount) \{
+  /* This wound increases the damage to this location */
+  \$pc."combat:injuries"[\$location]["amount"] = \$amount;
+\}
+
+/* Is this the largest damage of this type done so far? */
+if(!\$pc."combat:injuries"[\$location][\$woundtype]) \$pc."combat:injuries"[\$location][\$woundtype] = ([ ]);
+if(!\$pc."combat:injuries"[\$location][\$woundtype]["amount"]
+\|\| !\$pc."combat:injuries"[\$location][\$woundtype]["amount"] \< \$amount) \{
+  /* This wound increases the damage to this location */
+  \$pc."combat:injuries"[\$location][\$woundtype]["amount"] = \$amount;
+
+  /* Since we're increasing the damage, we also need to add the description of the wound values */
+  \$pc."combat:injuries"[\$location][\$woundtype]["description"] = \$amount;
+  \$pc."combat:injuries"[\$location][\$woundtype]["description_level"] = \$amount;
+
+  /* And we need to add the adjective */
+  /* NOT FINISHED YET - This should get the right adjective based on the type of injury */
+  \$pc."combat:injuries"[\$location][\$woundtype]["adjective"] = "burnt";
+  if(!\$pc."combat:injuries"[\$location]["adjectives"]) \$pc."combat:injuries"[\$location]["adjectives"] = (\{ \});
+  \$pc."combat:injuries"[\$location]["adjectives"] \|= (\{ "burnt" \});
+\}
+
+/* If this body part had been treated, we need to remove that so it gets treated again */
+switch(\$woundtype) \{
+  case "burn":
+    \$pc."combat:injuries"[\$location]["treatment_needed"] = "burn";
+    \$pc."combat:injuries"[\$location]["treatment_given"] -= (\{ "burn_ointment" \});
+    break;
+  default:
+    break;
+\}
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:inspect-iob">
+         X[M] if(!\$dob) return TRUE;
+EmitTo(\$actor, "Trying to check a wound");
+
+EmitTo(\$actor, Call(\$\{Ironclaw:Staff:Az:test:WoundsLib\}, "show_wound", \$location: \$dob[0], \$looker: \$actor, \$level: "look"));
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:poke-using">
+         X[M] if(!\$dob) return TRUE;
+
+/*
+EmitTo(\$actor, dump_value(args));
+EmitTo(\$actor, "Trying to give wound");
+*/
+
+if(!\$(raw-evoke)) \{
+  EmitTo(\$actor, "Command is: poke \<body part\> using wounding object 'injury_type amount");
+  EmitTo(\$actor, "e.g. poke my army using my wounding object 'cut 3");
+  return FALSE;
+\}
+
+\$vars = explode(\$(raw-evoke), " ");
+
+Call(\$\{Ironclaw:Staff:Az:test:WoundsLib\}, "set_wound", \$location: \$dob[0], \$woundtype: \$vars[0], \$amount: Int(\$vars[1]));
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1350785306, "tonyd", "E", 1350785322, "tonyd", "E", 1350785326, "tonyd", "E", 1350785337, "tonyd", "E", 1350785377, "tonyd", "E", 1350785491, "tonyd", "P", 1350874409, "tonyd", "P", 1350874543, "tonyd", "P", 1350874555, "tonyd", "P", 1350874573, "tonyd", "P", 1350973630, "tonyd", "P", 1350973737, "tonyd", "P", 1350973773, "tonyd", "P", 1350973788, "tonyd", "P", 1350975140, "tonyd", "P", 1350975155, "tonyd", "P", 1350975259, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

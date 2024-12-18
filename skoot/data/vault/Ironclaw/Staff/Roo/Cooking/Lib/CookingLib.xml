@@ -1,0 +1,343 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:chop_food">
+         X[M] string name, cat, recipe;
+int skillLevel, i, j, k, quantity;
+mixed* tools, output;
+mapping recipeMap;
+object newob, food;
+
+\$db = \$\{Ironclaw:Staff:Roo:Cooking:DB:ChoppingDB\};
+\$propmap = copy(\$db."*"); 
+\$propmap2 = map_indices(\$propmap) - (\{ "revisions" \});
+skillLevel = Int(\$actor."skill:career:cook");
+
+/* Valid inputs are based on base ingredient's name and category. */
+name = Str(NRefOb(\$dob[0])."trait:name");
+cat = Str(NRefOb(\$dob[0])."trait:category");
+
+food = NRefOb(\$dob[0]);
+
+if(\$(into:words)) \{
+    recipe = replace_strings(implode(\$(into:words), " "), "\\"", "");
+
+    for(i = 0; i \< skillLevel; i++) \{
+        \$temp = "alteration:knowledge:chopping-" + name + ":cook:" + Str(i);
+        \$temp2 = "alteration:knowledge:chopping-" + cat + ":cook:" + Str(i);
+
+        if(member(\$temp, \$propmap2) \&\& \$propmap[\$temp][recipe]) \{
+            recipeMap = \$propmap[\$temp][recipe];
+        \} else if(member(\$temp2, \$propmap2) \&\& \$propmap[\$temp2][recipe]) \{
+            recipeMap = \$propmap[\$temp2][recipe];
+        \}
+
+        if(recipeMap) \{
+            food."trait:chopped" = recipe;
+            food."trait:chopped:desc" = recipeMap["desc"];
+            
+            if(food."trait:chopped:ur") \{
+                /* Transfer all trait:* properties */
+                \$traitMap= copy(food."base:urparent"."*");
+                \$traitIndices = map_indices(\$traitMap);
+                for(j = 0; j \< sizeof(\$traitIndices); j++) \{
+                    if(strlen(\$traitIndices[j]) \>= 12 \&\& \$traitIndices[j][0..12] == "export:trait:") \{
+                        \$trait = replace_strings(\$traitIndices[j], "export:", "");
+                        \$value = Get(food, \$trait);
+                        Set(food, \$trait, \$value);
+                    \}
+                \}
+
+                /* Transfer snames and pnames */
+                \$snames = food."base:urparent"."details:default:snames:local";
+                for(j = 0; j \< sizeof(\$snames); j++) \{
+                    Set(food, "details:default:sname:" + \$snames[j], TRUE);
+                \}
+
+                \$pnames = food."base:urparent"."details:default:pnames:local";
+                for(j = 0; j \< sizeof(\$pnames); j++) \{
+                    Set(food, "details:default:pname:" + \$pnames[j], TRUE);
+                \}
+
+                food."base:urparent" = food."trait:chopped:ur";
+            \}
+
+            EmitTo(\$actor, "You chop " + Describe(food, nil, nil, STYLE_NONPOSS) + ".");
+            EmitIn(\$actor."base:environment", Describe(\$actor) + " chops " + Describe(food, nil, nil, STYLE_NONPOSS) + ".");
+            
+            return FALSE;
+        \}
+    \} 
+
+    EmitTo(\$actor, "That is not a valid input for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + ".");
+\}
+
+output = (\{ \});
+for(i = 0; i \< skillLevel; i++) \{
+    \$temp = "alteration:knowledge:chopping-" + name + ":cook:" + Str(i);
+    \$temp2 = "alteration:knowledge:chopping-" + cat + ":cook:" + Str(i);
+    if(member(\$temp, \$propmap2)) output += map_indices(\$propmap[\$temp]);
+    if(member(\$temp2, \$propmap2)) output += map_indices(\$propmap[\$temp2]);
+\}
+
+if(sizeof(output)) \{
+    EmitTo(\$actor, "Valid options for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " are: \\"" + implode(output, "\\" \\"") + "\\"");
+\} else \{
+    EmitTo(\$actor, "You have no valid options for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + ".");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:cook_food">
+         X[M] string name, cat, recipe;
+int skillLevel, i, j, k, quantity;
+mixed* tools, output;
+mapping recipeMap;
+object newob, food;
+
+\$db = \$\{Ironclaw:Staff:Roo:Cooking:DB:CookingDB\};
+\$propmap = copy(\$db."*"); 
+\$propmap2 = map_indices(\$propmap) - (\{ "revisions" \});
+skillLevel = Int(\$actor."skill:career:cook");
+
+/* Valid inputs are based on base ingredient's name and category. */
+name = Str(NRefOb(\$dob[0])."trait:name");
+cat = Str(NRefOb(\$dob[0])."trait:category");
+
+food = NRefOb(\$dob[0]);
+
+if(\$(into:words)) \{
+    recipe = replace_strings(implode(\$(into:words), " "), "\\"", "");
+
+    for(i = 0; i \< skillLevel; i++) \{
+        \$temp = "alteration:knowledge:cooking-" + name + ":cook:" + Str(i);
+        \$temp2 = "alteration:knowledge:cooking-" + cat + ":cook:" + Str(i);
+
+        if(member(\$temp, \$propmap2) \&\& \$propmap[\$temp][recipe]) \{
+            recipeMap = \$propmap[\$temp][recipe];
+        \} else if(member(\$temp2, \$propmap2) \&\& \$propmap[\$temp2][recipe]) \{
+            recipeMap = \$propmap[\$temp2][recipe];
+        \}
+
+        if(recipeMap) \{
+            /* Make sure have all ingredients */
+
+            if(recipeMap["tools"]) \{
+                tools = recipeMap["tools"];
+            \}
+
+            \$scent = Get(food, "trait:" + recipe + ":scent");
+            \$taste = Get(food, "trait:" + recipe + ":taste");
+            \$look = Get(food, "trait:" + recipe + ":look");
+
+            if(recipeMap["newobject"]) \{
+                newob = Spawn(recipeMap["newobject"]);
+                newob."base:environment" = \$actor;
+                food = newob;
+            \} else \{
+                food."trait:cooked" = recipe;
+            \}
+
+            Set(food, "trait:scent", \$scent);
+            Set(food, "trait:taste", \$taste);
+            Set(food, "trait:look", \$look);
+
+            EmitTo(\$actor, "You cook " + Describe(food, nil, nil, STYLE_NONPOSS) + ".");
+            EmitIn(\$actor."base:environment", Describe(\$actor) + " cooks " + Describe(food, nil, nil, STYLE_NONPOSS) + ".");
+            
+            return FALSE;
+        \}
+    \} 
+
+    EmitTo(\$actor, "That is not a valid input for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + ".");
+\}
+
+output = (\{ \});
+for(i = 0; i \< skillLevel; i++) \{
+    \$temp = "alteration:knowledge:cooking-" + name + ":cook:" + Str(i);
+    \$temp2 = "alteration:knowledge:cooking-" + cat + ":cook:" + Str(i);
+    if(member(\$temp, \$propmap2)) output += map_indices(\$propmap[\$temp]);
+    if(member(\$temp2, \$propmap2)) output += map_indices(\$propmap[\$temp2]);
+\}
+
+if(sizeof(output)) \{
+    EmitTo(\$actor, "Valid options for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " are: \\"" + implode(output, "\\" \\"") + "\\"");
+\} else \{
+    EmitTo(\$actor, "You have no valid options for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + ".");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:peel_food">
+         X[M] /* Add emits to describe skill of person doing the peeling */
+/* Add quality checks */
+
+object food;
+
+food = NRefOb(\$dob[0]);
+food."trait:peeled" = 1;
+food."details:default:adjective:peeled" = TRUE;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:prepare_food">
+         X[M] string name, cat, recipe;
+int skillLevel, i, j, k, quantity;
+mixed* ingredientsHeld, ingredients, output, ingredientsHeld2, found;
+mapping recipeMap, foundMap;
+object newob;
+
+\$db = \$\{Ironclaw:Staff:Roo:Cooking:DB:PreparingDB\};
+\$propmap = copy(\$db."*"); 
+\$propmap2 = map_indices(\$propmap) - (\{ "revisions" \});
+skillLevel = Int(\$actor."skill:career:cook");
+
+/* Valid inputs are based on base ingredient's name and category. */
+name = Str(NRefOb(\$dob[0])."trait:name");
+cat = Str(NRefOb(\$dob[0])."trait:category");
+
+ingredientsHeld = (\{ \});
+for(i = 0; i \< sizeof(\$dob); i++) \{
+    if(NRefOb(\$dob[i])."sys:shared:consumable:vessel" \&\& (NRefOb(\$dob[i])."base:inventory" \&\& sizeof(NRefOb(\$dob[i])."base:inventory"))) \{
+        ingredientsHeld += (\{ NRefOb(\$dob[i])."base:inventory"[0] \});
+    \} else \{
+        ingredientsHeld += (\{ NRefOb(\$dob[i]) \});
+    \}
+\}
+ingredientsHeld2 = copy(ingredientsHeld);
+
+if(\$(into:words)) \{
+    recipe = replace_strings(implode(\$(into:words), " "), "\\"", "");
+
+    for(i = 0; i \< skillLevel; i++) \{
+        \$temp = "alteration:knowledge:preparing-" + name + ":cook:" + Str(i);
+        \$temp2 = "alteration:knowledge:preparing-" + cat + ":cook:" + Str(i);
+
+        if(member(\$temp, \$propmap2) \&\& \$propmap[\$temp][recipe]) \{
+            recipeMap = \$propmap[\$temp][recipe];
+        \} else if(member(\$temp2, \$propmap2) \&\& \$propmap[\$temp][recipe]) \{
+            recipeMap = \$propmap[\$temp2][recipe];
+        \}
+
+
+        if(recipeMap) \{
+            /* Make sure have all ingredients */
+
+            ingredients = map_indices(recipeMap["ingredients"]);
+            foundMap = ([ ]);
+            for(j = 0; j \< sizeof(ingredients); j++) \{
+
+                found = (\{ \});
+                for(k = 0; k \< sizeof(ingredientsHeld); k++) \{
+                    if(ingredientsHeld[k]."trait:name" == ingredients[j] \|\| ingredientsHeld[k]."trait:category" == ingredients[j]) \{
+                        /* There is a match */
+                        found += (\{ ingredientsHeld[k] \});
+
+                        /* Remove from list of ingredients so we don't try to reuse. */
+                        ingredientsHeld2 -= (\{ ingredientsHeld[k] \});
+                    \}
+                \}
+
+                /* How much of this ingredient do we need? */
+                quantity = Int(recipeMap["ingredients"][ingredients[j]][0]);
+
+                \$q = 0.0;
+                \$liquid = 0;
+                /* We have to make sure we have enough of this ingredient. We have to handle drinks a bit differently so extra code is needed. */
+                for(k = 0; k \< sizeof(found); k++) \{
+                    /* If it's a drink, make note of how much we're trying to use. */
+                    if(found[k]."sys:shared:consumable:liquid") \{
+                        \$q += found[k]."base:actualmass";
+                        \$liquid++;
+                    \} else \{
+                        \$q += 1.0;
+                    \}
+                \}
+
+                /* If the ingredients we've found don't match (i.e. a drink and non-drink), throw an error. */
+                if(\$liquid \&\& \$liquid != sizeof(found)) \{
+                    EmitTo(\$actor, "You cannot mix " + Describe(found) + " together.");
+                    return FALSE;
+		\}
+
+                /* Now check if we have the quantity required. It's okay if we have more liquid than needed. */
+                if(\$q \< Flt(quantity)) \{
+                    EmitTo(\$actor, recipeMap["ingredients"][ingredients[j]][1]);
+                    return FALSE;
+                \} else if(\$q \> Flt(quantity) \&\& !\$liquid) \{
+                    EmitTo(\$actor, "You are trying to use too much " + Str(ingredients[j]) + ".");
+                    return FALSE;
+                \}
+
+                /* Make note of the objects we've associated with this ingredient. */
+                foundMap[ingredients[j]] = found;
+
+            \}
+
+
+            /* Did we target more ingredients than are needed? */
+            if(sizeof(ingredientsHeld2) \&\& sizeof(ingredientsHeld2) \> 0) \{
+                EmitTo(\$actor, Describe(ingredientsHeld2) + " are not necessary for this recipe.");
+                return FALSE;
+            \}
+
+            /* Our ingredients are a match! Now deduct. */
+            \$indices = map_indices(foundMap);
+            for(j = 0; j \< sizeof(\$indices); j++) \{
+                \$ingredientsToSlay = foundMap[\$indices[j]];
+                \$quantityToSlay = recipeMap["ingredients"][\$indices[j]][0];
+          
+                if(\$ingredientsToSlay[0]."sys:shared:consumable:liquid") \{
+                    for(k = 0; k \< sizeof(\$ingredientsToSlay) \&\& \$quantityToSlay \> 0; k++) \{
+                        if(\$ingredientsToSlay[k]."base:actualmass" \> Flt(\$quantityToSlay)) \{
+                            \$ingredientsToSlay[k]."base:intrinsicmass" = \$ingredientsToSlay[k]."base:intrinsicmass" - Flt(\$quantityToSlay);
+                            \$quantityToSlay = 0;
+                        \} else \{
+                            \$quantityToSlay -= \$ingredientsToSlay[k]."base:actualmass";
+                            Slay(\$ingredientsToSlay[k]);
+                        \}
+                    \}
+                \} else \{
+                    for(k = 0; k \< sizeof(\$ingredientsToSlay); k++) \{
+                         Slay(\$ingredientsToSlay[k]); 
+                    \}
+                \}
+            \}
+
+
+            newob = Spawn(recipeMap["newobject"]);
+            newob."base:environment" = \$actor;
+
+            EmitTo(\$actor, "You prepare " + Describe(newob, nil, nil, STYLE_NONPOSS) + ".");
+            EmitIn(\$actor."base:environment", Describe(\$actor) + " prepares " + Describe(newob, nil, nil, STYLE_NONPOSS) + ".");
+            
+            return FALSE;
+        \}
+    \} 
+
+    EmitTo(\$actor, "That is not a valid input for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + ".");
+\}
+    output = (\{ \});
+    for(i = 0; i \< skillLevel; i++) \{
+        \$temp = "alteration:knowledge:preparing-" + name + ":cook:" + Str(i);
+        \$temp2 = "alteration:knowledge:preparing-" + cat + ":cook:" + Str(i);
+        if(member(\$temp, \$propmap2)) output += map_indices(\$propmap[\$temp]);
+        if(member(\$temp2, \$propmap2)) output += map_indices(\$propmap[\$temp]);
+    \}
+
+if(sizeof(output)) \{
+    EmitTo(\$actor, "Valid options for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + " are: \\"" + implode(output, "\\" \\"") + "\\"");
+\} else \{
+    EmitTo(\$actor, "You have no valid options for " + Describe(NRefOb(\$dob[0]), nil, \$actor) + ".");
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052088, "-", "SYNC", 1221752477, "???", "R", 1339731766, "jominey", "E", 1339731786, "jominey", "E", 1339731813, "jominey", "E", 1339731917, "jominey", "E", 1339732678, "jominey", "E", 1339732873, "jominey", "E", 1339732936, "jominey", "E", 1339733589, "jominey", "E", 1339733717, "jominey", "E", 1339733767, "jominey", "E", 1339733900, "jominey", "E", 1339733976, "jominey", "E", 1339886288, "jominey", "E", 1339886433, "jominey", "E", 1339886482, "jominey", "E", 1339886530, "jominey", "E", 1339886749, "jominey", "E", 1339886809, "jominey", "E", 1339886998, "jominey", "E", 1339887050, "jominey", "E", 1339887100, "jominey", "E", 1339887836, "jominey", "E", 1339887931, "jominey", "E", 1339891277, "jominey", "E", 1339891326, "jominey", "E", 1339891389, "jominey", "E", 1339893175, "jominey", "E", 1339893299, "jominey", "E", 1339893404, "jominey", "E", 1339893487, "jominey", "E", 1339893701, "jominey", "E", 1339894006, "jominey", "E", 1339894064, "jominey", "E", 1339894268, "jominey", "E", 1339894340, "jominey", "E", 1339894481, "jominey", "E", 1339894580, "jominey", "E", 1339894650, "jominey", "E", 1339894701, "jominey", "E", 1339894774, "jominey", "E", 1339894887, "jominey", "E", 1339894933, "jominey", "E", 1339894934, "jominey", "E", 1339894988, "jominey", "E", 1339895090, "jominey", "E", 1339896255, "jominey", "E", 1339896381, "jominey", "E", 1339905137, "jominey", "E", 1339905493, "jominey", "E", 1339905519, "jominey", "E", 1339907806, "jominey", "E", 1339908048, "jominey", "E", 1339977941, "jominey", "E", 1339980777, "jominey", "E", 1339980886, "jominey", "E", 1339980992, "jominey", "E", 1339986015, "jominey", "E", 1339986201, "jominey", "E", 1339986321, "jominey", "E", 1339986404, "jominey", "E", 1339986436, "jominey", "E", 1339986539, "jominey", "E", 1339986642, "jominey", "E", 1339988154, "jominey", "E", 1339988264, "jominey", "E", 1340046120, "jominey", "E", 1340076226, "jominey", "E", 1340076554, "jominey", "E", 1340076588, "jominey", "E", 1340076833, "jominey", "E", 1340077557, "jominey", "E", 1340077628, "jominey", "E", 1340077688, "jominey", "E", 1340077924, "jominey", "E", 1340078000, "jominey", "E", 1340078098, "jominey", "E", 1340078222, "jominey", "E", 1340078279, "jominey", "E", 1340078372, "jominey", "E", 1340078563, "jominey", "E", 1340078620, "jominey", "E", 1340078647, "jominey", "E", 1340078755, "jominey", "E", 1340078805, "jominey", "E", 1340078881, "jominey", "E", 1340580761, "jominey", "E", 1340580842, "jominey", "E", 1340580929, "jominey", "E", 1340581062, "jominey", "E", 1340581140, "jominey", "E", 1340581545, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

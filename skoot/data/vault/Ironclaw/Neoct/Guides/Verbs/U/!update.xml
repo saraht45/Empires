@@ -1,0 +1,94 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="!update" second="update" third="updates" evoke="required" audible="false" private="true" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="database">
+         \<Ironclaw:Lib:Staff:Notes\>
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /* writes an update note to the staff notes list */
+string message;
+int counter;
+\$db = this.database;
+if(!\$db) \{
+  EmitTo(\$actor, "No database set. Please set the property \\"database\\" in "+name(this)+" to point to a propcontainer.");
+  return FALSE;
+\}
+
+/* send to the TAS (or other) chatline */
+
+/* what number message is this? */
+if(!\$db.id) \$db.id = random(1000);
+if(!\$db.counter) \{
+  \$db.counter = 1;
+  counter = 1;
+\} else \{
+  counter = \$db.counter;
+\}
+while(Get(\$db, Str(counter))) \{
+  \$db.counter = counter;
+  counter++;
+\}
+
+/* format the message */
+message = short_time(time())+" "+Describe(\$actor)+", "+\$evoke;
+EmitTo(\$actor, message);
+
+/* add the message to the database */
+Set(\$db, Str(counter), message);
+\$db.counter++;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:display_updates">
+         X[M] /* displays any updates this person hasn't yet seen */
+int counter, target;
+string message;
+if(!\$actor) return TRUE;
+\$db = this.database;
+if(!\$db) \{
+  EmitTo(\$actor, "No database set. Please set the property \\"database\\" in "+name(this)+" to point to a propcontainer.");
+  return FALSE;
+\}
+
+/* Is there something to read? */
+if(!\$db.id \|\| !\$db.counter)
+  return TRUE;
+
+/* where do we start? */
+if(\$actor."updatetracker:id" == \$db.id) \{
+  /* we don't need to reset the counter */
+  if(\$actor."updatetracker:counter" \>= \$db.counter) \{
+    /* we have already read all the notes */
+    return TRUE;
+  \}
+\} else \{
+  /* need to reset things */
+  \$actor."updatetracker:id" = \$db.id;
+  \$actor."updatetracker:counter" = 0;
+\}
+
+/* display the messages */
+EmitTo(\$actor, "\\n");
+EmitTo(\$actor, "Update Notes:");
+counter = \$actor."updatetracker:counter";
+target = \$db.counter;
+while (counter \< target) \{
+  if(message = Get(\$db, Str(counter)))
+    EmitTo(\$actor, Str(message));
+  counter++;
+\}
+EmitTo(\$actor, "\\n");
+/* set the new counter in the player's body */
+\$actor."updatetracker:counter" = counter;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1197243487, "tonyd", "E", 1197243569, "tonyd", "P", 1197243578, "tonyd", "P", 1197243615, "tonyd", "P", 1197243772, "tonyd", "P", 1197243864, "tonyd", "P", 1197244016, "tonyd", "P", 1197244093, "tonyd", "P", 1197244241, "tonyd", "P", 1197244316, "tonyd", "P", 1197244497, "tonyd", "P", 1197244580, "tonyd", "P", 1197246056, "tonyd", "P", 1197246278, "tonyd", "P", 1197246348, "tonyd", "P", 1197246949, "tonyd", "P", 1197246985, "tonyd", "P", 1197247161, "tonyd", "P", 1197248125, "tonyd", "P", 1197248643, "tonyd", "R", 1197324730, "tonyd", "E", 1218158011, "morwenlorelie", "E", 1218158028, "morwenlorelie", "E", 1309202177, "tunk_bodin", "R" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

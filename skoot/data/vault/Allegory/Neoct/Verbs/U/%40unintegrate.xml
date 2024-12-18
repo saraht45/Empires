@@ -1,0 +1,113 @@
+<object clone="/usr/SkotOS/obj/verb" owner="jominey">
+  <Socials:Verb imp="@unintegrate" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="dob" direct="true" single="true" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] object item, room;
+string id, result;
+mapping propertiesMap;
+mixed* properties;
+int i;
+
+room = \$actor."base:environment";
+
+if(\$evoke) \{
+    if(lower_case(replace_strings(\$evoke, "\\"", "", ".", "")) == "all") \{
+        propertiesMap = copy(room."*");
+        properties = map_indices(propertiesMap);
+        \$things = (\{ \});
+        for(i = 0; i \< sizeof(properties); i++) \{
+            if(contains(properties[i], "owner:integration:") \&\& 
+               !contains(properties[i], ":integrated-by")) \{
+                \$tempID = properties[i];
+                \$tempOb = Get(room, \$tempID);
+
+                Set(room, \$tempID, nil);
+                Set(room, \$tempID + ":integrated-by", nil);
+                Set(\$tempOb, "base:integration", nil);
+                Set(\$tempOb, "base:immobile", FALSE);
+
+                \$things += (\{ \});
+            \}
+        \}
+
+        if(sizeof(\$things)) \{
+            EmitTo(\$actor, "You unintegrate " + Describe(\$things) + " from " + Describe(room) + ".");
+        \} else \{
+            EmitTo(\$actor, "No objects are integrated here.");
+        \}
+
+        return FALSE;
+    \}
+\}
+
+if(room.homeowner != \$actor \&\& !(room.guildowner \&\& room.guildowner == \$actor.guild)) \{
+    EmitTo(\$actor, "You cannot unintegrate anything here as you do not own the location.");
+    return FALSE;
+\}
+
+if(!\$dob \|\| !sizeof(\$dob)) \{
+    propertiesMap = copy(room."*");
+    properties = map_indices(propertiesMap);
+    result = "";
+
+    for(i = 0; i \< sizeof(properties); i++) \{
+        if(contains(properties[i], "owner:integration:") \&\& !contains(properties[i], ":integrated-by")) \{
+            \$tempID = properties[i];
+            \$tempOb = Get(room, \$tempID);
+
+            \$name = explode(Describe(\$tempOb), " ");
+            \$name = \$name[sizeof(\$name)-1];
+            
+            result += UnSAM(ParseXML("- \<acmd cmd='@unintegrate " + \$name + "'\>" + Describe(\$tempOb) + "\</acmd\>")) + "\\n";
+
+        \}
+    \}
+
+    if(result == "") \{
+        EmitTo(\$actor, "No objects are integrated here.");
+    \} else \{
+        result = "The following objects are integrated here:\\n" + result;
+        EmitTo(\$actor, result);
+    \}
+
+    return FALSE;
+\}
+
+item = NRefOb(\$dob[0]);
+
+if(!item."base:integration") \{
+    EmitTo(\$actor, Describe(item) + " is not integrated here.");
+    return FALSE;
+\}
+
+id = item."base:integration";
+
+if(!Get(room, id + ":integrated-by")) \{
+    EmitTo(\$actor, "You cannot unintegrate " + Describe(item) + ".");
+    return FALSE;
+\}
+
+Set(room, id, nil);
+Set(room, id + ":integrated-by", nil);
+Set(item, "base:integration", nil);
+Set(item, "base:immobile", FALSE);
+
+EmitTo(\$actor, "You unintegrate " + Describe(item) + " from " + Describe(room) + ".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1574398432, "jominey", "E", 1574398457, "jominey", "E", 1574398468, "jominey", "E", 1574398746, "jominey", "E", 1574398957, "jominey", "E", 1574398979, "jominey", "E", 1574399011, "jominey", "E", 1574399133, "jominey", "E", 1574399217, "jominey", "E", 1574399604, "jominey", "E", 1574399658, "jominey", "E", 1574399814, "jominey", "E", 1574399850, "jominey", "E", 1574399891, "jominey", "E", 1574399915, "jominey", "E", 1574400148, "jominey", "E", 1574400170, "jominey", "E", 1574400213, "jominey", "E", 1574400834, "jominey", "E", 1574400987, "jominey", "E", 1574401125, "jominey", "E", 1574401165, "jominey", "E", 1574401198, "jominey", "E", 1574401248, "jominey", "E", 1574401372, "jominey", "E", 1574401423, "jominey", "E", 1574401542, "jominey", "E", 1574401590, "jominey", "E", 1574401610, "jominey", "E", 1574401637, "jominey", "E", 1574401684, "jominey", "E", 1579746233, "jominey", "E", 1579746283, "jominey", "E", 1582497159, "jominey", "E", 1606095430, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

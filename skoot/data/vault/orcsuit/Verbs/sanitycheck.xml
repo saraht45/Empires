@@ -1,0 +1,799 @@
+<object clone="/usr/SkotOS/obj/verb" owner="orcsuit">
+  <Socials:Verb imp="+sanitycheck" evoke="optional" default-role="what" audible="false" private="false" secret="true" obscured="false" target-abstracts="true" disabled="false" ooc="false" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects>
+      <Socials:SocialObject role="how" direct="false" single="false" raw="true" requirement="optional" distance="far">
+        <Socials:SocObPreps>
+          <Socials:SocObPrep prep="with"/>
+          <Socials:SocObPrep prep="in"/>
+          <Socials:SocObPrep prep="by"/>
+          <Socials:SocObPrep prep="at"/>
+          <Socials:SocObPrep prep="for"/>
+        </Socials:SocObPreps>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+      <Socials:SocialObject role="what" direct="true" single="true" raw="false" requirement="optional" distance="far">
+        <Socials:SocObPreps/>
+        <Socials:SocObFilters/>
+      </Socials:SocialObject>
+    </Socials:SocialObjects>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] /*  
+** D=Does various sanity checking on an object.  
+**  
+** Arguments:  
+**  
+**  \$actor - Who to send info to.  
+**  \$what - Object to be checked. May be an NRef.  
+**  \$(raw-evoke) - A string to use to get the object, if \$what is not used.  
+**  \$(how:words) - A string array used to determine flags.  
+*/  
+  
+string emit, targetdet, catcherrormsg, returnerrormsg, syntaxmsg, obtype, *oflagnames;  
+object targetob;  
+int i, j, n, o, flagvalue;  
+mixed targetfull, catchvalue, returnvalue, enteredflags, urtype;  
+mapping defaultoflags;  
+  
+if( typeof(\$actor) != T_OBJECT \|\| !sscanf(ur_name(\$actor), "/base/obj/thing#%*d") )  
+ error("sanity checker needs \$actor as a (non-NRef) world object to work with");  
+  
+syntaxmsg = "Pick either a target in your environment, or an object name surrounded by quotes; add flags if desired.\\nSyntax:\\n +sanitycheck [\<target\>] [with \<flags\>] [\\"object:name\\"]\\nExamples:\\n +sanitycheck my sword\\n +sanitycheck my sword with nohidden\\n +sanitycheck \\"MyGame:Props:sword\\"\\n +sanitycheck with nohidden \\"MyGame:Props:sword\\"";  
+  
+/*We assume \$flags is not passed, and so we initialize it empty.  
+**If we were going to let \$flags get passed to this function somehow, we'd  
+**need to check every value of \$flags.*/  
+\$flags = ([ ]);  
+\$oflags = ([ ]);  
+oflagnames = (\{ "info", "progress", "explain" \});  
+defaultoflags = ([ "info":6, "progress":2, "explain":6 ]);  
+enteredflags = \$(how:words);  
+if(typeof(enteredflags) == T_ARRAY)  
+\{  
+ n=sizeof(enteredflags);  
+ for(i=0;i\<n;i++)  
+ \{  
+  if(typeof(enteredflags[i]) == T_STRING)  
+  \{  
+   switch(enteredflags[i])  
+   \{  
+   case "help":  
+    EmitTo(\$actor, syntaxmsg);  
+    return nil;  
+   case "flags":  
+    EmitTo(\$actor, "Flags are still in development; ones in develpment include nohidden, item, xitem, room, xroom, body, xbody, info:#, progress:#, and explain:#. (Substitue a number 1-8 for #; a higher # means more detailed reports.)");  
+    return nil;  
+   case "nohidden":  
+    \$flags["nohidden"] = 100;  
+    break;  
+   case "item":  
+    \$flags["item"] = 100;  
+    break;  
+   case "xitem":  
+    \$flags["item"] = -100;  
+    break;  
+   case "room":  
+    \$flags["room"] = 100;  
+    break;  
+   case "xroom":  
+    \$flags["room"] = -100;  
+    break;  
+   case "body":  
+    \$flags["body"] = 100;  
+    break;  
+   case "xbody":  
+    \$flags["body"] = -100;  
+    break;  
+   default:  
+    if( sscanf(enteredflags[i], "%s:%d", emit, flagvalue) )  
+    \{  
+     for(j=0;j\<3;j++)  
+     \{  
+      if(emit==oflagnames[j])  
+       \$oflags[emit] = flagvalue;  
+     \}  
+    \}  
+    break;  
+   \}/*end switch flag*/  
+  \}/*end if flag is a string*/  
+ \}/*end for each flag*/  
+\}/*end if flags passed in raw-evoke*/  
+  
+for(i=0;i\<3;i++)  
+\{  
+ returnvalue = \$oflags[oflagnames[i]];  
+ if(typeof(returnvalue) != T_INT \|\| returnvalue\<1)  
+  \$oflags[oflagnames[i]] = defaultoflags[oflagnames[i]];  
+\}  
+  
+/*See if we're getting our target from the environment*/  
+if(typeof(\$what) == T_ARRAY \&\& sizeof(\$what))  
+ targetfull = \$what[0];  
+else  
+ targetfull = \$what;  
+  
+/*If we've got something in the environment, we don't need an evoke*/  
+if( targetfull \&\& \$(raw-evoke) )  
+\{  
+ EmitTo(\$actor, PRE(syntaxmsg)+"\\nUnable to check: You can't choose an object in your environment and include an evoke.");  
+ return nil;  
+\}  
+  
+if(typeof(targetfull) !=T_OBJECT)  
+\{  
+ if(typeof( \$(raw-evoke) ) == T_STRING)  
+ \{  
+  targetfull = Obj( \$(raw-evoke) );  
+  if(!targetfull)  
+  \{  
+   if( strlen( \$(raw-evoke) ) )  
+    EmitTo(\$actor, "Unable to check: "+dump_value( \$(raw-evoke) ) + " is not an object.");  
+   else  
+    EmitTo(\$actor, "Unable to check: You entered a blank string ( \\"\\" ) for the object name.");  
+   return nil;  
+  \}  
+ \}  
+ else  
+ \{  
+  EmitTo(\$actor, PRE(syntaxmsg)+"\\nUnable to check: No object selected.");  
+  return nil;  
+ \}  
+\}  
+  
+  
+/*We do these checks because NRefOb doesn't like some kinds of objects;  
+**if the checks evaluate TRUE, it's an NRef.*/  
+catchvalue = catch( urtype = ur_name(targetfull) );  
+  
+if(catchvalue)  
+\{  
+ EmitTo(\$actor, "An error occured while trying to get the ur_name of the target object. Which means either this checker or that object is seriously messed up, or that object's just plain wierd. This is something to alert someone in charge about, as it should never happen. Here's the error that got thrown:\\n"+dump_value(catchvalue));  
+ return 0;  
+\}  
+  
+catch\{  
+ if(typeof(urtype) == T_STRING)  
+ \{  
+  if( sscanf(urtype, "%s#%*d", urtype) )  
+  \{  
+   switch(urtype)  
+   \{  
+   case "/base/data/nref": /*NRef*/  
+    obtype = "thing";  
+    targetob = NRefOb(targetfull);  
+    targetdet = NRefDetail(targetfull);  
+    break;  
+   case "/base/obj/thing": /*World object, ie base:thing*/  
+    obtype = "thing";  
+    targetob = targetfull;  
+    break;  
+   default:  
+    obtype = "unknown";  
+   \}  
+  \}  
+  else  
+  \{  
+   obtype = "unknown";  
+  \}  
+ \}  
+ else  
+ \{  
+  EmitTo(\$actor, "Umm... what kind of object is that? It's not only unfamiliar to this checker, but it's structure breaks from known pattern. This is something to alert someone in charge about, to either let this checker anticipate such things, or to let the engineering staff know about a (potentially) serious problem. Here's the object's ur_name():\\n"+dump_value(urtype));  
+  EmitTo(\$actor, "And here's it's name():"+dump_value(name(targetfull)));  
+  return nil;  
+ \}  
+\}: \{  
+ EmitTo(\$actor, "An unanticipated error occured when attempting to analyze the ur_name() of the object. The checker needs to be fixed to handle the situation better, and/or there may be something seriously wrong.");  
+ EmitTo(\$actor, "ur_name: "+dump_value(ur_name(targetfull)));  
+ EmitTo(\$actor, "value being analyzed: "+dump_value(urtype));  
+ return nil;  
+\}  
+  
+/*The emit is what gets displayed to \$actor*/  
+emit = "Sanity check results for: ";  
+urtype = Str(ur_name(targetfull));  
+  
+/*Let's make sure name() doesn't cause problems*/  
+catchvalue = catch(returnvalue = name(targetfull));  
+  
+  
+/*For clarity, let's get the object name of this thing.*/  
+  
+if(catchvalue \|\| typeof(returnvalue) != T_STRING \|\| urtype == returnvalue)  
+ emit+=returnvalue;  
+else  
+ emit+=Str(name(targetob))+" ("+returnvalue+")";  
+  
+emit+="\\nUsing flags: "+dump_value(\$flags)+" "+dump_value(\$oflags);  
+  
+if(catchvalue)  
+\{  
+ emit+="\\nGetting the name() of that object somehow failed. Which shouldn't happen. Here's the error message:\\n"+dump_value(catchvalue);  
+ obtype = "unknown";  
+\}  
+  
+EmitTo(\$actor, emit);  
+  
+if(!obtype \|\| obtype == "unknown")  
+\{  
+ EmitTo(\$actor, "The object is too unusual for the checker to do anything with at this time. Exiting.");  
+ return nil;  
+\}  
+  
+catcherrormsg = "Whups! That profile script doesn't exist, or threw an error and didn't catch it. This is bad. The sanity checker should check for errors, not cause them. Let this be known to the people in charge. Here's the appropriate error message (if it didn't get messed up):\\n";  
+returnerrormsg = "Whups! That profile script returned a bad value. This is bad. Sanity checker profiles should only return strings. Let this be known to the people in charge. Here's what it did return:\\n";  
+emit="";  
+  
+if(obtype == "thing")  
+\{  
+ if(\$oflags["progress"] \>= 3)  
+  emit+="+Begin World Object (Base:Thing) checks.\\n";  
+ catchvalue = catch( returnvalue = Call(this, "profile-basething", \$targetob: targetob, \$targetdet: targetdet) );  
+ if(typeof(catchvalue) == T_STRING)  
+  emit=catcherrormsg+catchvalue;  
+ else  
+ \{  
+  if(typeof(returnvalue) == T_STRING)  
+   emit=returnvalue;  
+  else  
+   emit=returnerrormsg+dump_value(returnvalue);  
+ \}  
+\}  
+  
+if(obtype == "verb")  
+\{  
+ if(\$oflags["progress"] \>= 3)  
+  emit+="+Begin verb object checks.\\n";  
+ emit+="Sorry, there's no verb checks yet.";  
+\}  
+  
+if(obtype == "action")  
+\{  
+ if(\$oflags["progress"] \>= 3)  
+  emit+="+Begin action object checks.\\n";  
+ emit+="Sorry, there's no action checks yet.";  
+\}  
+  
+if(obtype == "propc")  
+\{  
+ if(\$oflags["progress"] \>= 3)  
+  emit+="+Begin propcontainer object checks.\\n";  
+ emit+="Sorry, there's no propcontainer checks yet.";  
+\}  
+  
+if(\$oflags["info"] \>= 7)  
+ emit+="\\nNote that some aspects of objects are inherited from UrParents.";  
+if(\$oflags["progress"] \>= 2)  
+ emit+="\\nSanity check complete.";  
+  
+EmitTo(\$actor, emit);  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:profile-basething">
+         X[M] /*  
+** D=Sanity check for all Base:Thing objects.  
+**  
+** Arguments:  
+**  
+**  \$targetob - Object to be checked. Must be a pure object (not an NRef).  
+**  \$targetdet - An optional string detail to focus on.  
+**  \$flags - a mapping detailing what focuses the test should have.  
+**  \$oflags - a mapping detailing how much detail goes into the test report.  
+**  
+** Returns:  
+**  A string with the results of the checking.  
+**  
+** Should cover a lot of things, including everything in the base:* and  
+** details:* namespaces. Other namespaces, like trait:* should be covered in  
+** seperate sanity check profiles.  
+*/  
+  
+string emit, *dflags, *ind, curdet, *primedetails, *exitdetails, *badsnamesdetails, *nosnamesdetails, *noadjectivesdetails, *badadjectivesdetails, *hiddendetails, baddescriptions;  
+int i, j, n, o, flagbadsnames, flagbadadjectives, flagnopnamesnames, flagshowprimedetails, listlimit, flagignorehidden;  
+mixed details, *badvalues, currentsnames, currentadjectives, currentpname, catchvalue, returnvalue;  
+mapping flags, oflags, allsnames, alladjectives, badsnames, badadjectives, nopnamesnames;  
+  
+if(typeof(\$targetob) !=T_OBJECT \|\| \$targetob != NRefOb(\$targetob))  
+ return "Error in sanity check profile for world objects: \$targetob is not a pure object.";  
+  
+if(typeof(\$targetdet) != T_NIL \&\& typeof(\$targetdet) != T_STRING)  
+ return "Error in sanity check profile for world objects: \$targetdet is not nil or a string.";  
+  
+flags = ([ ]);  
+dflags = (\{ "body", "item", "room", "nohidden" \});  
+oflags = ([ "info":6, "progress":2, "explain":6 ]);  
+ind = (\{ "info", "progress", "explain" \});  
+  
+n=4;  
+for(i=0;i\<n;i++)  
+ flags[dflags[i]] = 0;  
+  
+if(typeof(\$flags)==T_MAPPING)  
+\{  
+ for(i=0;i\<n;i++)  
+ \{  
+  if(typeof(\$flags[dflags[i]]) \<= T_INT) /*No arrays or mappings allowed*/  
+   flags[dflags[i]] = Int(\$flags[dflags[i]]);  
+ \}  
+\}  
+  
+  
+if(typeof(\$oflags)==T_MAPPING)  
+\{  
+ n=3;  
+ for(i=0;i\<n;i++)  
+ \{  
+  if(typeof(\$oflags[ind[i]]) \<= T_INT \&\& Int(\$oflags[ind[i]])\>0) /*No arrays or mappings allowed*/  
+   flags[ind[i]] = Int(\$oflags[ind[i]]);  
+ \}  
+\}  
+  
+emit="";  
+if(oflags["progress"]\>=4)  
+ emit="Start Base:Thing sanity checking";  
+if(oflags["info"] \>=8)  
+ emit+=(\$actor, "\\nFlags: "+dump_value(flags));  
+details = \$targetob."base:details";  
+listlimit = 10;  
+flags = ([ ]);  
+  
+if(typeof(details) != T_ARRAY)  
+\{  
+ emit += "\\nThat's wierd. The sanity checker thought that the target object was a World Object (Base:Thing) object, but it doesn't have a (valid) 'base:details' derived property.";  
+ emit += "\\ntypeof(targetob.\\"base:details\\") = "+dump_value(typeof(details));  
+ emit += "\\nvalue of targetob.\\"base:details\\" = "+dump_value(details);  
+\}  
+else  
+\{  
+ badvalues = (\{ \});  
+ primedetails = (\{ \});  
+ exitdetails = (\{ \});  
+ badsnamesdetails = (\{ \});  
+ badadjectivesdetails = (\{ \});  
+ nosnamesdetails = (\{ \});  
+ noadjectivesdetails = (\{ \});  
+ hiddendetails = (\{ \});  
+ allsnames = ([ ]);  
+ alladjectives = ([ ]);  
+ badsnames = ([ ]);  
+ badadjectives = ([ ]);  
+ nopnamesnames = ([ ]);  
+ baddescriptions = "";  
+  
+ n=sizeof(details);  
+ /*Loop through each detail (if we have any), doing the following:  
+ **Sort each one into appropriate catagories: Invalid, prime, exit...  
+ **Get the full list of snames and adjectives for all details.  
+ **Check each sname and adjective to see if it's valid.  
+ */  
+ for(i=0;i\<n;i++)  
+ \{  
+  if(typeof(details[i]) != T_STRING \|\| !strlen(details[i]))  
+   badvalues += (\{ details[i] \});  
+  else if(Get(\$targetob, "details:"+details[i]+":hidden") \&\& flags["nohidden"])  
+   hiddendetails += (\{ details[i] \});  
+  else  
+  \{  
+   curdet = details[i];  
+   if(Get(\$targetob, "details:"+curdet+":prime"))  
+    primedetails += (\{ curdet \});  
+   if(Get(\$targetob, "details:"+curdet+":exit:destination"))  
+    exitdetails += (\{ curdet \});  
+  
+   currentsnames = Get(\$targetob, "details:"+curdet+":snames");  
+   badsnames[curdet] = (\{ \});  
+   badadjectives[curdet] = (\{ \});  
+   nopnamesnames[curdet] = (\{ \});  
+   if(typeof(currentsnames) != T_ARRAY)  
+    badsnamesdetails += (\{ curdet \});  
+   else  
+   \{  
+    allsnames[curdet] = currentsnames;  
+    o=sizeof(currentsnames);  
+    if(!o \&\& oflags["info"] \>= 7)  
+     nosnamesdetails += (\{ curdet \});  
+    if(oflags["info"] \>= 5)  
+    \{  
+     for(j=0;j\<o;j++)  
+     \{  
+      if(typeof(currentsnames[j]) != T_STRING \|\|              /*is string?*/  
+         currentsnames[j] != lower_case(currentsnames[j]) \|\| /*lowercased?*/  
+         currentsnames[j] != strip(currentsnames[j]) \|\|/*start/end spaces?*/  
+         sscanf(currentsnames[j], "%*s %*s") ) /*non-start/non-end spaces?*/  
+      \{  
+       flagbadsnames = 1;  
+       badsnames[curdet] += (\{ currentsnames[j] \});  
+      \}/*end if sname is invalid*/  
+      /*This is cut out until we get pname access support.  
+      else  
+      \{  
+       currentpname = Get(\$targetob, "details:"+curdet+":sname:"+currentsnames[j]);  
+       if(typeof(currentpname) == T_STRING)  
+       \{  
+        if(currentpname != lower_case(currentpname) \|\| /*lowercased?*  
+           currentpname != strip(currentpname) \|\|/*start/end spaces?*  
+           sscanf(currentpname, "%*s %*s") ) /*non-start/non-end spaces?*  
+        \{  
+         flagbadsnames = 1;  
+         badsnames[curdet] += (\{ currentsnames[j] \});  
+        \}/*end if pname is bad*  
+       \}/*end if pname is exists*  
+         
+       else  
+       \{  
+        flagnopnamesnames = 1;  
+        nopnamesnames[curdet] += (\{ currentsnames[j] \});  
+       \}/*end if else pname is exists*  
+      \}/*end if else sname is invalid*  
+      Be sure to get those / back at the end of those comments when restoring*/  
+     \}/*end for each currentsnames*/  
+    \}/*end if flagcheck*/  
+   \}/*end if else snames for detail is array*/  
+  
+   currentadjectives = Get(\$targetob, "details:"+curdet+":adjectives");  
+   badadjectives[curdet] = (\{ \});  
+   if(typeof(currentadjectives) != T_ARRAY)  
+    badadjectivesdetails += (\{ curdet \});  
+   else  
+   \{  
+    alladjectives[curdet] = currentadjectives;  
+    o=sizeof(currentadjectives);  
+    if(!o \&\& oflags["info"] \>= 7)  
+     noadjectivesdetails += (\{ curdet \});  
+    if(oflags["info"] \>= 5)  
+    \{  
+     for(j=0;j\<o;j++)  
+     \{  
+      if(typeof(currentadjectives[j]) != T_STRING \|\|              /*is string?*/  
+         currentadjectives[j] != lower_case(currentadjectives[j]) \|\| /*lowercased?*/  
+         currentadjectives[j] != strip(currentadjectives[j]) \|\|/*start/end spaces?*/  
+         sscanf(currentadjectives[j], "%*s %*s") ) /*non-start/non-end spaces?*/  
+      \{  
+       flagbadadjectives = 1;  
+       badadjectives[curdet] += (\{ currentadjectives[j] \});  
+      \}/*end if bad adjective*/  
+     \}/*end for each adjective*/  
+    \}/*end if flagcheck*/  
+   \}/*end if else adjectives for detail is array*/  
+  
+   /*Only description we check for now is the brief*/  
+   if(oflags["info"] \>=3)  
+   \{  
+    catchvalue = catch( returnvalue = Describe(NewNRef(\$targetob, curdet)) );  
+    if(typeof(catchvalue) == T_STRING)  
+     baddescriptions +="\\n# "+curdet+" : Error thrown by Describe(); error likely can be found in the brief.\\n** Error is: "+catchvalue;  
+    else  
+    \{  
+     if(oflags["info"] \>=5 \&\& (typeof(returnvalue) != T_STRING \|\| !strlen(returnvalue)))  
+     \{  
+      baddescriptions += "\\n* "+curdet+" : No description - Describe() did not return a (non-empty) descrption.";  
+      if(oflags["explain"] \>=5)  
+       emit+=" Check the brief description of the detail, and any code or properties referenced within.";  
+     \}  
+     else if (oflags["info"] \>=6 \&\& returnvalue == "a NEW detail")  
+     \{  
+      baddescriptions += "\\n* "+curdet+" : The description is \\"a NEW detail\\".";  
+      if (oflags["explain"] \>=6)  
+       emit+=" Meaning that this description was created in WOE but has not been given a new value. It should either be given a new value or deleted.";  
+     \}  
+    \}  
+   \}  
+  
+  \}/*end if else typeof(details[i]) != T_STRING*/  
+ \}/*end for each details*/  
+  
+ if(!n \&\& oflags["info"]\>=5)  
+ \{  
+  /*This base:thing doesn't have details*/  
+  emit+="\\n\\nIt appears that the target object, a World Object, doesn't have any details.";  
+  if(oflags["explain"] \>=7)  
+   emit+="\\nDetails are necessary for proper interaction in the game environment, and World Objects are generally meant to be interacted wtih.";  
+  if(oflags["explain"] \>=6)  
+  \{  
+   emit+="\\nIf this object is meant to be within the game environment (or is meant to have UrChildren that are meant to be), it should probably get some details (unless its UrChildren have the appropriate details). Starting with a prime detail (likely with the id 'default'), and some descriptions (like 'brief', 'look').";  
+   emit+="\\nIf this object (or any children) isn't meant to be within the game environment (like if it's a lib or a db), it should probably be a Property Container, not a Base:Thing. Slightly easier on the system that way, and less chance of it accidently getting +summoned and +slain.";  
+  \}  
+ \}  
+  
+ details -= badvalues;  
+ n=sizeof(badvalues);  
+ if(n \&\& oflags["info"]\>=4)  
+ \{  
+  emit+="\\n\\nThe target object's 'base:details' array had some invalid (non-string or empty string) values. Here's their types and values:";  
+  for(i=0;i\<n;i++)  
+  \{  
+   emit+="\\n* "+dump_value(typeof(badvalues[i]))+" - "+dump_value(badvalues[i]);  
+  \}/*end for sizeof(badvalues)*/  
+ \}/*end if sizeof(badvalues) \&\& flagcheck*/  
+  
+ if( oflags["info"]\>=6 \&\& member("new", details) )  
+ \{  
+  emit+="\\n\\nThe target object has a detail with the id \\"new\\".";  
+  if(oflags["explain"] \>= 6)  
+   emit+= " This likely means that the detail was created in WOE and not properly set. It should be given a new ID or deleted.";  
+ \}  
+   
+ details -= hiddendetails;  
+  
+ n=sizeof(primedetails);  
+ if(n \&\& oflags["info"]\>=5)  
+ \{  
+  if( oflags["info"]\>=6 \&\& !member("default", primedetails) )  
+  \{  
+   emit+="\\n\\nPrime details present, but none with the id 'default'.";  
+   if(oflags["explain"] \>=4)  
+   \{  
+    emit+="\\nSuch an id is not necessary; it's purely a common convention. ";  
+    emit+="However, many scripts (perhaps erroneously) assume that the 'default' detail is the same thing as the prime detail, simply because the easy way to get 'the prime detail(s) was largely unknown (until now); I found out from Nino that \$object.\\"base:prime-detail:outside\\" will get the outside prime detail in an object (and will work appropriately for other faces), and as of this writing endeavoring to spread the word. :)";  
+    emit+="The situation of scripts referring to the default detail is sad because the concept of 'faces' is promising, but all these \\"objects only have one prime detail and its id is 'default'\\" scripts don't support prime details with faces. Or support objects with different prime details that get hidden, for that matter.";  
+   \}  
+   flagshowprimedetails = 1;  
+  \}/*end if no prime detail with id 'default'*/  
+  if(n\>1)  
+  \{  
+   emit+="\\nMore than one prime detail.";  
+   if(oflags["explain"] \>=5)  
+    emit+="This usually isn't intentional, unless using faces.\\nThis may cause issues when scripts expect only one prime detail, especially if they assume that prime detail to have the id 'default', in which case they will (perhaps erroneously) ignore them.";  
+   flagshowprimedetails = 1;  
+  \}/*end if sizeof(primedetails)\>1*/  
+  if(oflags["info"] \>= 8)  
+   emit+="\\nDebug: flags[\\"room\\"] = "+dump_value(flags["room"]);  
+  if(/*flags["room"] \>= 0 \&\& */!\$targetob."base:prime-detail:inside" \|\| typeof(\$targetob."base:prime-detail:inside") != T_STRING)  
+  \{  
+   emit+="\\nNo prime detail for inside face.";  
+   if(oflags["explain"] \>= 5)  
+   \{  
+    emit+="\\nThe object has prime detail(s), but each of those is explicitly assigned a face other than 'inside'. Meaning to anyone inside it, it may as well have no prime detail.\\nA prime detail viewable from the inside is ";  
+    if(flags["room"])  
+     "essential for room-type objects.";  
+    else  
+     "generally only important for room-type objects";  
+   \}  
+   flagshowprimedetails = 1;  
+  \}  
+  if( /*(flags["body"]\>=0 \|\| flags["item"]\>=0) \&\&*/ !\$targetob."base:prime-detail:outside" \|\| typeof(\$targetob."base:prime-detail:outside") != T_STRING)  
+  \{  
+   emit+="\\nNo prime detail for outside face.";  
+   if(oflags["explain"] \>=5)  
+    emit+="\\nThe object has prime detail(s), but each of those is explicitly assigned a face other than 'outside'. Meaning to anyone not inside it, it may as well have no prime detail.\\nThis is important not only for everyday items and characters, but also for calls to Describe().";  
+   flagshowprimedetails =1;  
+  \}  
+  if(flagshowprimedetails)  
+  \{  
+   emit+="\\n*Prime details ( Face )";  
+   for(i=0;i\<n;i++)  
+    emit+="\\n * "+dump_value(primedetails[i])+"  ( "+dump_value(Get(\$targetob, "details:"+primedetails[i]+":face"))+" )";  
+  \}  
+ \}/*end if sizeof(primedetails)*/  
+ else  
+ \{  
+  emit+="\\nThe target object does not have any prime details. It probably should have one, along with some descriptions like brief and look.";  
+ \}/*end if else sizeof(primedetails)*/  
+  
+ if(flagbadsnames)  
+ \{  
+  emit+="\\n\\nBad snames detected. Detail IDs and offending snames:";  
+  ind = map_indices(badsnames);  
+  n=sizeof(ind);  
+  for(i=0;i\<n;i++)  
+  \{  
+   curdet = ind[i];  
+   o=sizeof(badsnames[curdet]);  
+   if(o)  
+   \{  
+    emit+="\\n* Detail: "+curdet;  
+    for(j=0;j\<o;j++)  
+    \{  
+     emit+="\\n** "+dump_value(badsnames[curdet][j]);  
+     /*This is for when pnames are accessible  
+     if(typeof(badsnames[curdet][j]) == T_STRING)  
+      emit+=dump_value(Get(\$targetob, "details:"+curdet+":sname:"+badsnames[curdet][j]));  
+     else  
+      emit+= "[sname is not a string]";  
+     */  
+     if(oflags["explain"] \>=6 \&\& typeof(badsnames[curdet][j]) == T_STRING \&\& badsnames[curdet][j] == "singular name")  
+      emit+="\\n*** The sname/pname pair \\"singular name/plural name\\" is created when creating a new one in WOE.";  
+    \}/*end for each bad sname/pname*/  
+   \}/*end if detail has badness*/  
+  \}/*end for each detail*/  
+  if(oflags["explain"] \>=6)  
+  \{  
+   emit+="\\nSnames and pnames should be lowercase strings with no spaces (or other wierd characters, for that matter, though no check is made for those at the moment).";  
+   if(oflags["info"] \>=7)  
+    emit+="\\nNote that pnames cannot be checked in Merry, and so are not checked by this script.";  
+  \}  
+ \}/*end if flag:badsnames*/  
+  
+ if(flagbadadjectives)  
+ \{  
+  emit+="\\n\\nBad adjectives detected. Detail IDs and offending adjectives:";  
+  ind = map_indices(badadjectives);  
+  n=sizeof(ind);  
+  for(i=0;i\<n;i++)  
+  \{  
+   curdet = ind[i];  
+   o=sizeof(badadjectives[curdet]);  
+   if(o)  
+   \{  
+    emit+="\\n*Detail: "+curdet;  
+    for(j=0;j\<o;j++)  
+    \{  
+     emit+="\\n** "+dump_value(badadjectives[curdet][j]);  
+     if(oflags["explain"] \>=6 \&\& typeof(badadjectives[curdet][j]) == T_STRING \&\& badadjectives[curdet][j] == "NEW")  
+      emit+="\\n*** The adjective \\"NEW\\" is created when creating a new adjective in WOE and not changing it.";  
+    \}  
+   \}/*end if detail has bad adjectives*/  
+  \}/*end for each detail*/  
+  if(oflags["explain"] \>=6)  
+   emit+="\\nAdjectives should be lowercase strings with no spaces (or other wierd characters, for that matter, though no check is made for those at the moment).";  
+ \}/*end if flag:badadjectives*/  
+  
+ n=sizeof(nosnamesdetails);  
+ if(n)  
+ \{  
+  emit+="\\n\\nDetails without snames.";  
+  emit+="\\n* "+implode(nosnamesdetails, ", ");  
+  if(oflags["explain"] \>=6)  
+   emit+="Snames are required for interaction. However, they may be missing from details where only some UrChildren have a particular detail, but their UrParent defines certain properties of that detail.";  
+ \}  
+  
+ n=sizeof(noadjectivesdetails);  
+ if(n)  
+ \{  
+  emit+="\\n\\nDetails detected without adjectives. Adjectives are not required for interaction, but should be added where appropriate. For non-prime details, adjectives equal to some of the prime detail's snames are usually good.";  
+  if(n\<listlimit)  
+  \{  
+   for(i=0;i\<n;i++)  
+    emit+="\\n* "+noadjectivesdetails[i];  
+  \}  
+  else  
+   emit+="\\n* "+implode(noadjectivesdetails, ", ");  
+ \}  
+  
+ if(strlen(baddescriptions))  
+ \{  
+  emit+="\\n\\nThere appear to be bad descriptions: Details with problems:"+baddescriptions;  
+  if(oflags["explain"] \>=6)  
+   emit+="\\nNote: Descriptions use SAM, which means they change depending on the situation, or what properties are in the object. They can even run code and cause errors.";  
+ \}  
+  
+\}/*end if else typeof(details) == T_ARRAY*/  
+  
+if(oflags["progress"] \>=4)  
+ emit+="\\nEnd Base:Thing sanity checking";  
+return emit;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1082871039, "orcsuit", "E", 1082879574, "orcsuit", "E", 1082880325, "orcsuit", "E", 1082880609, "orcsuit", "E", 1082880974, "orcsuit", "E", 1082881121, "orcsuit", "E", 1082881516, "orcsuit", "E", 1082882066, "orcsuit", "E", 1082882479, "orcsuit", "E", 1082882571, "orcsuit", "E", 1082882889, "orcsuit", "E", 1082883049, "orcsuit", "E", 1082883168, "orcsuit", "E", 1082883553, "orcsuit", "E", 1082883998, "orcsuit", "E", 1082890217, "orcsuit", "E", 1082890368, "orcsuit", "E", 1082890542, "orcsuit", "E", 1082890640, "orcsuit", "E", 1082890650, "orcsuit", "E", 1082891066, "orcsuit", "E", 1082916933, "orcsuit", "E", 1082917396, "orcsuit", "E", 1082918245, "orcsuit", "E", 1082918413, "orcsuit", "E", 1082918715, "orcsuit", "E", 1082920890, "orcsuit", "E", 1082921284, "orcsuit", "E", 1082921437, "orcsuit", "E", 1082927153, "orcsuit", "E", 1082928581, "orcsuit", "E", 1082932906, "orcsuit", "E", 1082933027, "orcsuit", "E", 1082934162, "orcsuit", "E", 1082934463, "orcsuit", "E", 1082935532, "orcsuit", "E", 1082936069, "orcsuit", "E", 1083017767, "orcsuit", "E", 1083018488, "orcsuit", "E", 1083019330, "orcsuit", "E", 1083020968, "orcsuit", "E", 1083021272, "orcsuit", "E", 1083037511, "orcsuit", "E", 1083041435, "orcsuit", "E", 1083041454, "orcsuit", "E", 1083041473, "orcsuit", "E", 1083041502, "orcsuit", "E", 1083041511, "orcsuit", "E", 1083041530, "orcsuit", "E", 1083041848, "orcsuit", "E", 1083058988, "orcsuit", "E", 1083059216, "orcsuit", "E", 1083059451, "orcsuit", "E", 1083059540, "orcsuit", "E", 1083059789, "orcsuit", "E", 1083060207, "orcsuit", "E", 1083060505, "orcsuit", "E", 1083061939, "orcsuit", "E", 1083064881, "orcsuit", "E", 1083110809, "orcsuit", "E", 1083116476, "orcsuit", "E", 1083117047, "orcsuit", "E", 1083155774, "orcsuit", "E", 1083211415, "orcsuit", "E", 1083229397, "orcsuit", "E", 1083230446, "orcsuit", "E", 1083230782, "orcsuit", "E", 1083231457, "orcsuit", "E", 1083231721, "orcsuit", "E", 1083231951, "orcsuit", "E", 1083272820, "orcsuit", "E", 1083456258, "orcsuit", "E", 1083458930, "orcsuit", "E", 1083477929, "orcsuit", "E", 1083479490, "orcsuit", "E", 1083479711, "orcsuit", "E", 1083480664, "orcsuit", "E", 1083481134, "orcsuit", "E", 1083481471, "orcsuit", "E", 1083481691, "orcsuit", "E", 1083481936, "orcsuit", "E", 1083482460, "orcsuit", "E", 1083482509, "orcsuit", "E", 1083482732, "orcsuit", "E", 1083483310, "orcsuit", "E", 1083483481, "orcsuit", "E", 1083488612, "orcsuit", "E", 1083491899, "orcsuit", "X", 1126060427, "orcsuit", "E", 1265257904, "orcsuit", "X" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes>
+      <Notes:Category cat="QA" catstate="Open">
+        <Notes:Note ix="1083272782" state="Open" user="orcsuit">
+           This is a 'sanity checker', which checks things for common errors or things
+ gone wrong.
+I expect this checking to grow over time, and adding special bits of code for
+ different custom systems would be good, as it'd let people unfamiliar with
+ those systems to quickly get an idea if they did things right, or quickly
+ assess what might be wrong when something unexpected happens.
+The rules of the Sanity Checker, that should be applied to all modules for it:
+ Assume nothing.
+  That means for every single property accessed, don't assume it is not nil,
+  and don't assume it is the correct type. And if it has subelements, as
+  arrays and mappings do, verify each and every one of those.
+ Catch errors anywhere they might occur.
+  Any time a function is called where the code is unknown, put it in a
+  catch, and make sure proper information is given if it fails. This
+  includes calls to outside verification scripts, and calls that might
+  trigger other code running, like Describe() - it accesses SAM, which
+  might have errors or have inline Merry with errors.
+ Change nothing without explicit permission.
+  This is a checker, not a fixer. First, the fixing might not be wanted.
+  Do not assume it is wanted, or that a particular fix is the right fix.
+  (See Rule #1). Perhaps support can be designed for a flag to 'fix common
+  errors', or flags to fix a particular area ('fixdescriptions')
+  once found; that may come later.
+  There's no feasible way to be sure that nothing is changed; calling
+  Describe() will do descriptions, which will run SAM bits, which may run
+  Merry bits, either of which might do stuff. The worst would be if some
+  of those use or mess with the thread variables used by the sanity checker;
+  for that reason, each call should get its own version of the $(vars.)
+Checking Flags:
+ The $(flags) property is a mapping of settable flags. These are pretty much
+  settings about what kind of checking to do, like whether or not the object
+  is a room. Is such-and-such object a room, though? We can't always be sure if
+  the system isn't explicitly told. So the system guesses, based on what
+  properties it has and what values are set.  It can't be sure though; just
+  have different degrees of sureness, based on different checks.  Therefore,
+  the different flags are more than true/false, there's also the
+  'maybe' state, and there's also gradients for 'I think it's this, but not
+  sure.' Basically, postive means yes, negative means no, and 0 means
+  unknown. Individual checking functions can either just use the +/-/0 of
+  of the flag, or can base output depending on how sure it is.
+ If the sanity checker does tests to determine what sort of object an object
+  is, it should permutate the values only slightly; thus never becoming
+  totally sure based on a lot of circumstantial evidence (remember, assume
+  nothing). If the user enters a particular flag, though, the flag value
+  should be set very high (100, or -100 if the flag string is prefaced by
+  a - sign).
+ Some user-set flags wouldn't make sense in such gradients - such as the
+  flag to ignore details. Either they're being ignored or they're not. So a
+  value of 1 or 100 will suffice. It still is put in $(flags), as it modifies
+  what tests are done.
+ Some things that are treated as flags for command entry are not put in
+  $(flags), but get their own property. These include things that do not
+  modify the tests done, but modify the output.
+Output flags:
+ Similar to Checking Flags, but rather than modifying what groups of checks
+  are done, these modify how much detail is put into the reports, and go in
+  $(oflags.) These are good things to yoink from $(actor) properties, or even a
+  central db tied to account names (so Joe Coder can always have certain
+  prefs wherever he is, unless he has a more-local override).
+  Ones ones that I can think of, that I want to support are:
+ Infolevel; it's an integer 1-8, and it's basically the user's tolerance for
+  extra data. For each bit of information, the checker might determine how
+  important that info is; people with low tolerances will only get the most
+  important info. I'm basing this on the LFC priority levels:
+   8: BLABBER - Could be anything, possibly debug info or random sillyness.
+   7: COMMENT - Random comments on the topic, like tips or suggestions.
+   6: NOTICE - Info about things done wrong, but not necessarily a real
+       problem.
+   5: WARNING - The normal stuff this checks for. General things messed up.
+   4: ERROR - An error was caught while doing the tests. Usually means the
+       checker didn't anticipate that specific error.
+   3: SEVERE - A bad error was caught somewhere, or there's something
+       detrimental to customer experience and in need of attention.
+   2: CRITICAL - Very destructive or data-corrupting things happening.
+   1: PANIC - The server's on fire, hackers have broken in, and/or
+       confidential customer data is getting shared.
+  Priority 6 is the default. I doubt this checker will ever be robust enough
+   to be good at detecting priority 1 things. But it's there if ever needed.
+   I think that if this checker is ever made real robust, things that cause
+   priority 1 or 2 might file TAS thingies automatically, as they'll likely
+   be things that require immidiate attention of high-up staffers, and TAS
+   may send email alerts as well. Will need an internal tracking system if
+   that's done, so that the checker detecting the same error doesn't cause
+   multiple filings. Maybe a 'last item for each queue' property, and have
+   the system see if that item's still open when going to add stuff.
+  Any trouble loading up the checker itself will always be spit out.
+ Progresslevel: An integer value, 1-8 or whatever. The amount of detail that
+  is given on the checker's progress.
+  1 - Begin of check, object name, flags
+  2 - End of check.
+  3 - Pre- and post-calls to individual profile modules.
+  4 - Important stuff in individual modules, most likely just start/stop.
+  5 - Semi-important; the different sections of a module.
+  6 - Getting into the little stuff.
+  7 - Every logial element.
+  8 - A blurb every single place it can be stuck in.
+  Default is 2; 'debug:1' in $(actor) triggers 4; 'debug:2' triggers 6.
+  Assuming that the value to use is not stated explicitly elsewhere. The things
+  beyond 3 or 4 I don't plan to implement with regularity; just when I find
+  them useful for debugging something.
+ Explainationlevel: An integer value, 1-8 or whatever again. Basically, it's
+  how much explaination for 'why X is wrong' to give out; someone new might
+  not know why snames with spaces are bad, or how NEW details come about.
+  On the other hand, experienced people might not know the real obscure
+  stuff, or may be unfamiliar with some systems. 1 is no info, 2 only gives the
+  truly obscure info out, so on. I need to think before chopping this up.
+  Default to showing stuff that's not common or semi-common stuff in world
+  objects, and not showing stuff that should be obvious to someone just reading
+  the error and having passing familiarity with the object, though I expect
+  many who are experienced will want a lower tolerance.
+Conventions:
+ When itemizing problems, preface each item with "* ". Use additional *'s
+  for indentation. Table headers might use a single "*".
+ When displaying an error in the sanity checker, preface it with "# ".
+Future Feature Thoughts:
+ Would be cool to have an option for the stuff found to go somewhere, like
+ the log feed channel or into a property of the actor for later review.
+Random notes:
+ Do a check for property* properties (+stat needs property:*, +setp doesn't)
+ Do a check for foo, bar, foo:bar, foobar, and test properties.
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Socials:Verb>
+</object>

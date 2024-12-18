@@ -1,0 +1,171 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="2" density="1.5"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="2" maxweight="50"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="cocoon"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="cocoons"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="NEW">empty</Base:Description>
+          <Base:Description type="brief">cocoon</Base:Description>
+          <Base:Description type="examine">
+             Firm, thin strands of spider silk build up the oval body of the vast cocoon.
+          </Base:Description>
+          <Base:Description type="look">
+             A vast, oval cocoon made from thin white thread-like strands.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:cocoon:quantity">
+         5
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] /* make sure the cocoon is full of eggs */
+\$delay(15, TRUE, "3b54");
+::restock_eggs();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:restock_eggs">
+         X[M] /* restock eggs here */
+
+/* are they already restocking? */
+if(\$this."eggs:restocking") return TRUE;
+
+/* spawn up to 4 eggs */
+while(sizeof(Match(\$this, "egg", \$this, "large")) \< 4) \{
+ \$this."eggs:restocking" = 1;
+ /* wait 3 days between restocking */
+ \$delay(3*24*60*60, TRUE, "6a7a");
+ if(!\$this."base:environment")
+  return TRUE;
+ \$spider = Match(\$this."base:environment", "spider", \$this."base:environment", "giant");
+ if(sizeof(\$spider)) \{
+  \$egg = Spawn(\$\{Ironclaw:Props:Plot:Spider:Egg\});
+  \$egg."trait:startlocation" = \$this;
+  \$egg."base:environment" = \$this;
+  \$delay(5, TRUE, "c435");
+  if(\$egg."base:environment" != \$this) \{
+   Slay(\$egg);
+  \} else \{
+   \$spider = \$spider[0];
+   if(\$spider) \{
+    EmitIn(\$this."base:environment", Describe(\$spider)+" lays an egg, and wraps it in the cocoon.");
+   \}
+  \}
+ \}
+ \$this."eggs:restocking" = nil;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:pull-dob">
+         X[M] /* How much spidersilk is in the cocoon right now? */
+\$quantity = Int(\$this."cocoon:quantity");
+
+/* If there is none, don't let character gather more */
+if(\$quantity \<= 0) \{
+    EmitTo(\$actor, "There is not enough spidersilk to gather right now.");
+    return FALSE;
+\}
+
+\$spawn = Spawn(\$\{Ironclaw:Props:Plot:Sylph:SpiderSilk\});      
+\$spawn."trait:variation" = \$this."trait:variation"; 
+\$spawn."base:environment" = \$actor; 
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " pulls a strand of spidersilk from " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ ".", \$actor);      
+EmitTo(\$actor, "You pull a stand of spidersilk from " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ ".");
+
+/* Decrement the spidersilk counter */
+\$this."cocoon:quantity" = \$quantity - 1;
+
+/* Add another strand of spidersilk one day from now */
+\$delay((60*60*24), TRUE, "3e72");
+\$this."cocoon:quantity" = Int(\$this."cocoon:quantity") + 1;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:pull-iob">
+         X[M] /* How much spidersilk is in the cocoon right now? */
+\$quantity = Int(\$this."cocoon:quantity");
+
+/* If there is none, don't let character gather more */
+if(\$quantity \<= 0) \{
+    EmitTo(\$actor, "There is not enough spidersilk to gather right now.");
+    return FALSE;
+\}
+
+\$spawn = Spawn(\$\{Ironclaw:Props:Plot:Sylph:SpiderSilk\});      
+\$spawn."trait:variation" = \$this."trait:variation"; 
+\$spawn."base:environment" = \$actor; 
+EmitIn(\$actor."base:environment", Describe(\$actor)+ " pulls a strand of spidersilk from " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ ".", \$actor);      
+EmitTo(\$actor, "You pull a stand of spidersilk from " +Describe(\$this, nil, nil, STYLE_NONPOSS)+ ".");
+
+/* Decrement the spidersilk counter */
+\$this."cocoon:quantity" = \$quantity - 1;
+
+/* Add another strand of spidersilk one day from now */
+\$delay((60*60*24), TRUE, "273a");
+\$this."cocoon:quantity" = Int(\$this."cocoon:quantity") + 1;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:take-from%restock_eggs">
+         X[M] /* restock any stolen eggs */
+::restock_eggs();
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:take-from%restock_eggs">
+         X[M] /* can't take an egg while there's a spider in the room */
+\$spider = Match(\$this."base:environment", "spider", \$this."base:environment", "giant");
+if(sizeof(\$spider)) \{
+ Social(NRefOb(\$spider[0]), "hiss", nil, nil, "at", NewNRef(\$actor, "default"));
+ return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1250949160, "tonyd", "E", 1250949186, "tonyd", "E", 1250949206, "tonyd", "E", 1250949218, "tonyd", "E", 1250949713, "tonyd", "E", 1250949871, "tonyd", "E", 1250949971, "tonyd", "P", 1250950062, "tonyd", "P", 1250950197, "tonyd", "P", 1250950278, "tonyd", "P", 1250950301, "tonyd", "P", 1250950359, "tonyd", "P", 1250950424, "tonyd", "P", 1250950535, "tonyd", "P", 1250950647, "tonyd", "P", 1250950769, "tonyd", "P", 1250951245, "tonyd", "P", 1250951863, "tonyd", "P", 1250953143, "tonyd", "P", 1250953256, "tonyd", "P", 1250953337, "tonyd", "P", 1250953470, "tonyd", "P", 1250953701, "tonyd", "P", 1250954887, "tonyd", "P", 1250955967, "tonyd", "P", 1250956063, "tonyd", "P", 1250956306, "tonyd", "P", 1250956371, "tonyd", "P", 1250956427, "tonyd", "P", 1250956470, "tonyd", "P", 1251148422, "balkaar", "E", 1251148921, "balkaar", "E", 1251509215, "tonyd", "E", 1251509250, "tonyd", "E", 1251509283, "tonyd", "E", 1251509333, "tonyd", "E", 1251509395, "tonyd", "E", 1251509421, "tonyd", "E", 1269026974, "slurpeeslurp", "E", 1269027061, "slurpeeslurp", "E", 1269027122, "slurpeeslurp", "E", 1269027186, "slurpeeslurp", "E", 1269480954, "jominey", "E", 1269481138, "jominey", "E", 1269481203, "jominey", "E", 1269481235, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

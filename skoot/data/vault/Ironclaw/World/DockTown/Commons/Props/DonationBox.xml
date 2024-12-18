@@ -1,0 +1,328 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1000" maxweight="1000"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="box"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="boxes"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="donation"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             large alder donation box
+          </Base:Description>
+          <Base:Description type="examine">
+             A large alder box placed by the Church which is designed to hold donations for the poor and needy. The lid has been engraved with the words, "This box belongs to the poor of the city. Please donate alms for the less fortunate."
+          </Base:Description>
+          <Base:Description type="look">
+             A large alder box designed for storing donations.
+          </Base:Description>
+          <Base:Description type="writing">
+             The donation box lid is engraved with the words, ""This box belongs to the poor of the city. Please donate alms for the less fortunate."
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+      <Base:Detail id="lid" prime="false" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="lid"/>
+            <Base:SName sname="engraving"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="lids"/>
+            <Base:PName pname="engravings"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="engraved"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             the donation box lid
+          </Base:Description>
+          <Base:Description type="examine">
+             The donation box lid, engraved with the words, ""This box belongs to the poor of the city. Please donate alms for the less fortunate."
+          </Base:Description>
+          <Base:Description type="look">
+             The donation box lid has been engraved with the words, "This box belongs to the poor of the city. Please donate alms for the less fortunate."
+          </Base:Description>
+          <Base:Description type="writing">
+             The donation box lid has been engraved with the words, "This box belongs to the poor of the city. Please donate alms for the less fortunate."
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="database">
+         \<Ironclaw:Lib:Staff:Donations\>
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] /* if a loop is already running, stop it - shouldn't happen since this is a start script, but good to check anyway */ 
+if( \$this."my_loop:identifier" ) Call( this, "stop_my_loop" ); 
+ 
+/* start the loop */ 
+\$this."my_loop:identifier" = Every( "my_loop", 3600 ); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:stop_my_loop">
+         X[M] EmitTo( nil /* defunct */, "Stopping loop!" ); 
+if( !\$this."my_loop:identifier" )\{ 
+EmitTo( nil /* defunct */, "Whoops! No loop found!" ); 
+return FALSE; 
+\} 
+Stop( \$this."my_loop:identifier" ); 
+\$this."my_loop:identifier" = nil; 
+EmitTo( nil /* defunct */, "Done!" ); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:prod-dob">
+         X[M] /* displays any updates this person hasn't yet seen */   
+int counter, target;   
+string message, body;   
+/* Only work for staffers */ 
+body = Describe(\$actor); 
+if (sizeof(explode(body, " ")) \>= 2 \&\& contains(body, "Story")) \{ 
+if(!\$actor) return TRUE;   
+\$db = this.database;   
+if(!\$db) \{   
+  EmitTo(\$actor, "No database set. Please set the property \\"database\\" in "+name(this)+" to point to a propcontainer.");   
+  return FALSE;   
+\}   
+   
+/* DONATIONS */   
+/* Is there something to read? */   
+if(!\$db.id \|\| !\$db.counter \|\| !\$db.counter2)   
+  return TRUE;   
+   
+/* where do we start? */   
+if(\$actor."donatetracker:id" == \$db.id) \{   
+  /* we don't need to reset the counter */   
+  if(\$actor."donatetracker:counter" \>= \$db.counter \&\& \$actor."donatetracker:counter2" \>= \$db.counter2) \{   
+    /* we have already read all the notes */   
+EmitTo(\$actor, "Nothing new has been donated or retrieved.");   
+    return TRUE;   
+  \}   
+\} else \{   
+  /* need to reset things */   
+  \$actor."donatetracker:id" = \$db.id;   
+  \$actor."donatetracker:counter" = 0;  
+  \$actor."donatetracker:counter2" = 0;   
+\}   
+   
+/* display the messages */   
+EmitTo(\$actor, "\\n");   
+EmitTo(\$actor, "Donated Items:");   
+counter = \$actor."donatetracker:counter";   
+target = \$db.counter;   
+while (counter \< target) \{   
+  if(message = Get(\$db, "donated"+Str(counter)))   
+    EmitTo(\$actor, Str(message));   
+  counter++;   
+\}   
+EmitTo(\$actor, "\\n");   
+/* set the new counter in the player's body */   
+\$actor."donatetracker:counter" = counter;    
+   
+/* RETRIEVALS */    
+   
+/* display the messages */   
+EmitTo(\$actor, "\\n");   
+EmitTo(\$actor, "Retrieved Items:");   
+counter = \$actor."donatetracker:counter2";   
+target = \$db.counter2;   
+while (counter \< target) \{   
+  if(message = Get(\$db, "retrieves"+Str(counter)))   
+    EmitTo(\$actor, Str(message));   
+  counter++;   
+\}   
+EmitTo(\$actor, "\\n");   
+/* set the new counter in the player's body */   
+\$actor."donatetracker:counter2" = counter;   
+\} 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:put-where">
+         X[M] /* tracks the donation box */             
+string items;             
+int counter;             
+\$db = this.database;             
+if(!\$db) \{             
+  EmitTo(\$actor, "No database set. Please set the property \\"database\\" in "+name(this)+" to point to a propcontainer.");             
+  return FALSE;             
+\}             
+if(!\$db.id) \{ \$db.id = random(1000); \}             
+if(!\$db.counter) \{             
+  \$db.counter = 1;             
+  counter = 1;             
+\} else \{             
+  counter = \$db.counter;             
+\}             
+while(Get(\$db, Str(counter))) \{             
+  \$db.counter = counter;             
+  counter++;             
+\}             
+\$info = short_time(time())+" "+Describe(\$actor)+" donated the following: ";            
+\$sz = sizeof(\$what);            
+for (\$i = 0; \$i \< \$sz; \$i++) \{            
+\$info += Describe(\$what[\$i], nil, nil, STYLE_NONPOSS);            
+\$temp = \$i + 1;           
+if(\$sz == \$temp) \{            
+\$info += ".";            
+\} else \{            
+\$info += ", ";            
+\}            
+\}            
+Set(\$db, "donated"+Str(counter), \$info);            
+\$db.counter++;            
+            
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:take-from">
+         X[M] /* tracks the donation box */           
+string items;           
+int counter2;           
+\$db = this.database;           
+if(!\$db) \{           
+  EmitTo(\$actor, "No database set. Please set the property \\"database\\" in "+name(this)+" to point to a propcontainer.");           
+  return FALSE;           
+\}           
+     
+/* odd code via the take verb actually hides multiple actions for each item taken */     
+/* an attempt to void that in the db tracking */     
+if(\$actor.donationbox) \{     
+return FALSE;     
+\}     
+Set(\$actor, "donationbox", time());     
+     
+if(!\$db.id) \{ \$db.id = random(1000); \}           
+if(!\$db.counter2) \{           
+  \$db.counter2 = 1;           
+  counter2 = 1;           
+\} else \{           
+  counter2 = \$db.counter2;           
+\}           
+while(Get(\$db, Str(counter2))) \{           
+  \$db.counter2 = counter2;           
+  counter2++;           
+\}           
+\$info = short_time(time())+" "+Describe(\$actor)+" retrieved the following: ";          
+\$sz = sizeof(\$what);          
+for (\$i = 0; \$i \< \$sz; \$i++) \{          
+\$info += Describe(\$what[\$i], nil, nil, STYLE_NONPOSS);          
+\$temp = \$i + 1;         
+if(\$sz == \$temp) \{          
+\$info += ".";          
+\} else \{          
+\$info += ", ";          
+\}          
+\}          
+Set(\$db, "retrieves"+Str(counter2), \$info);          
+\$db.counter2++;         
+/* reset due to wonky take verb code */     
+\$delay(1, TRUE, "6497");     
+Set(\$actor, "donationbox", nil);     
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:poke-dob">
+         X[M] /* if a loop is already running, stop it - shouldn't happen since this is a start script, but good to check anyway */ 
+if( \$this."my_loop:identifier" ) Call( this, "stop_my_loop" ); 
+ 
+/* start the loop */ 
+\$this."my_loop:identifier" = Every( "my_loop", 3600 ); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:read-iob">
+         X[M] \$delay(2, TRUE, "030f");               
+EmitTo( \$actor, "The donation box lid is engraved with the motto 'Gratia of deus vigilo per nos'.");
+      </Core:Property>
+      <Core:Property property="merry:timer:my_loop">
+         X[M] \$things = \$this."base:inventory"; 
+for(\$counter = 0; \$counter \< sizeof(\$things); \$counter++) 
+\{ 
+  \$delay(0.5, TRUE, "f3cd"); 
+  if(!(\$things[\$counter]."base:volition") \&\& !(\$things[\$counter]."base:integration") \&\& !(\$things[\$counter]."base:immobile") \&\& !(\$things[\$counter]."trait:nottrash")) 
+  \{ 
+    if((\$things[\$counter]."misc:lastdropped" \&\& ((time()-Int(\$things[\$counter]."misc:lastdropped")) \> 172800)) \|\| \$things[\$counter]."trait:trash") \{ 
+      Slay(\$things[\$counter]); 
+    \} 
+  \} 
+\} 
+return TRUE; 
+ 
+/* 
+object *things; 
+int counter; 
+ 
+things = \$this."base:inventory"; 
+if(sizeof(things)) 
+\{ 
+  for(counter = 0; counter \< sizeof(things); counter++) 
+  \{ 
+    if(!(things[counter]."base:volition") \&\& !(things[counter]."base:integration") \&\& !(things[counter]."base:immobile") \&\& (things[counter]."misc:lastdropped") \&\& !(things[counter]."trait:nottrash")) 
+    \{ 
+      if((time()-Int(things[counter]."misc:lastdropped")) \> 30) 
+      \{ 
+        things[counter]."base:environment" = \$\{IronClaw:Rooms:Docktown:Central:Commons:Items:DonationBox\}; 
+      \} 
+    \} 
+  \} 
+\} 
+return TRUE; 
+*/
+      </Core:Property>
+      <Core:Property property="my_loop:identifier">
+         "d689f6b0a541c0423f63140c181aa364"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1107209474, "zwoc", "E", 1110072887, "tonyd", "E", 1110072909, "tonyd", "E", 1110073468, "tonyd", "X", 1110074016, "tonyd", "X", 1110074060, "tonyd", "E", 1110074802, "tonyd", "X", 1110074951, "tonyd", "E", 1110075104, "tonyd", "E", 1110075121, "tonyd", "E", 1110075159, "tonyd", "E", 1110075240, "tonyd", "E", 1110075325, "tonyd", "E", 1110075361, "tonyd", "E", 1110385052, "tunk_bodin", "X", 1110385112, "tunk_bodin", "X", 1110385124, "tunk_bodin", "X", 1110427196, "tunk_bodin", "X", 1110521398, "tonyd", "X", 1136229308, "tunk_bodin", "S", 1136435189, "tonyd", "S", 1137214686, "tonyd", "P", 1137214730, "tonyd", "P", 1137214758, "tonyd", "P", 1137214819, "tonyd", "P", 1137214841, "tonyd", "P", 1137215379, "tonyd", "P", 1137215543, "tonyd", "P", 1137215681, "tonyd", "P", 1291605877, "tunk_bodin", "X", 1307224543, "tunk_bodin", "R", 1357758266, "lidiab", "E", 1357758805, "lidiab", "E", 1357771788, "lidiab", "E", 1357771889, "lidiab", "E", 1397742205, "slurpeeslurp", "K", 1399213466, "slurpeeslurp", "E", 1617857075, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:smells:lastchecked">
+         1556841490
+      </Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

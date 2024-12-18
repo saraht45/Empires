@@ -1,0 +1,133 @@
+<object clone="/usr/SkotOS/obj/verb" owner="orcsuit">
+  <Socials:Verb imp="+vplist" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="true">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="log:creator">
+         "Orcsuit"
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /*
+ * D=+vplist to list vp's or add a vp to the list
+ */
+
+mapping e;
+object *n, vp;
+int i, sz;
+string *temp, history;
+
+if (!\$line \|\| \$line == "short") \{
+    n        = this.vps;
+    sz       = sizeof(n);
+    \$content = (\{ (\{ "Name", "Woename", "Lounge", "Purpose"\}) \});
+
+    for (i = 0; i \< sz; i++) \{
+        vp = n[i];
+        temp = (\{ \});
+        temp += (\{ Describe(vp) \});
+        temp += (\{ name(vp) \});
+        temp += (\{ (vp."base:environment" == \$\{Ironclaw:Backstage:OLD:VPLounge\} ? "*" : "") \});
+        temp += (\{ Str(vp."vp:purpose") \});
+        \$content += (\{ temp \});
+    \}
+
+    \$ignoreseparator = "top bottom left right";
+    ascii::table(\$displayTo: \$actor);
+    return FALSE;
+\}
+
+if (\$line=="full") \{
+    n        = this.vps;
+    sz       = sizeof(n);
+    \$content = (\{ (\{ "Name", "Woename", "Lounge", "Purpose", "Personality", "History"\}) \});
+
+    for (i = 0; i \< sz; i++) \{
+        vp = n[i];
+        temp  = (\{ \});
+        temp += (\{ Describe(vp) \});
+        temp += (\{ name(vp) \});
+        temp += (\{ (vp."base:environment" == \$\{Ironclaw:Backstage:OLD:VPLounge\} ? "*" : "") \});
+        temp += (\{ Str(vp."vp:purpose") \});
+        temp += (\{ Str(vp."vp:personality") \});
+        catch( history  = (typeof(vp."vp:history")==T_ARRAY?implode(vp."vp:history","\\n                                                      \|        \|         \|             \| "):Str(vp."vp:history")) );
+        if (!history) history = dump_value(vp."vp:history");
+        temp += (\{ history \});
+        \$content += (\{ temp \});
+    \}
+
+    \$ignoreseparator = "top bottom left right";
+    ascii::table(\$displayTo: \$actor);
+    return FALSE;
+\}
+
+if (\$line[0] == '+') \{
+    \$line = strip(\$line[1..]);
+
+    if (\$line[0] == '+') \{
+        \$doit = TRUE;
+        \$line = \$line[1..];
+    \}
+    EmitTo(\$actor, dump_value( (\{\$here, \$line, \$actor\}) ));
+    n = Match(\$actor."base:environment", \$line, \$actor);
+    if (sizeof(n) \> 1) \{
+        EmitTo(\$actor, "You must choose one of "+Describe(n, nil, \$actor));
+        return 0;
+    \}
+    if(sizeof(n) == 1) \{
+        vp = NRefOb(n[0]);
+    \} else \{
+        vp = ascii_to_mixed("\<"+\$line+"\>");
+    \}
+    if (member(vp, this.vps)) \{
+        EmitTo(\$actor, "That vp is already in the list.");
+        return FALSE;
+    \}
+
+    this.vps += (\{ vp \});
+    EmitTo(\$actor, Describe(vp) + " (" + name(vp) + ") stored.");
+    return FALSE;
+\} else if (\$line[0] == '-') \{
+    \$line = \$line[1..];
+        n = Match(\$actor."base:environment", \$line, \$actor);
+    if (sizeof(n) \> 1) \{
+        EmitTo(\$actor, "You must choose one of "+Describe(n, nil, \$actor));
+        return 0;
+    \}
+    if(sizeof(n) == 1) \{
+        vp = NRefOb(n[0]);
+    \} else \{
+      vp = ascii_to_mixed("\<"+strip(\$line)+"\>");
+    \}
+    if (!member(vp, this.vps)) \{
+        EmitTo(\$actor, "vp "+name(vp)+" not found in list.");
+        return FALSE;
+    \}
+    this.vps -= (\{ vp \});
+    EmitTo(\$actor, "Removed vp "+name(vp));
+    return FALSE;
+\}
+
+EmitTo(\$actor, "Eventually a search function would be nice, and maybe grouping by category or location, or just sorting by name.  and decent error handling.  But not now.  For now, use +vplist to list vp's, or +vplist +woe:name to add an vp, or +vplist -woe:name to remove one.");
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1267530943, "orcsuit", "E", 1267531007, "orcsuit", "E", 1267531092, "orcsuit", "E", 1267531257, "orcsuit", "E", 1267531296, "orcsuit", "E", 1267531329, "orcsuit", "E", 1267531354, "orcsuit", "E", 1267540034, "orcsuit", "E", 1267541723, "orcsuit", "E", 1267541789, "orcsuit", "E", 1267541995, "orcsuit", "P", 1267542079, "orcsuit", "P", 1267542204, "orcsuit", "P", 1267542373, "orcsuit", "P", 1267542486, "orcsuit", "P", 1267542538, "orcsuit", "P", 1267542626, "orcsuit", "P", 1267542732, "orcsuit", "P", 1267542977, "orcsuit", "P", 1267543056, "orcsuit", "P", 1267543230, "orcsuit", "P", 1267543267, "orcsuit", "P", 1267543406, "orcsuit", "P", 1267543512, "orcsuit", "P", 1267543715, "orcsuit", "P", 1267543795, "orcsuit", "P", 1267578029, "orcsuit", "E", 1267578065, "orcsuit", "E", 1267578097, "orcsuit", "E", 1267578123, "orcsuit", "E", 1267578379, "orcsuit", "E", 1267578761, "orcsuit", "E", 1267591067, "orcsuit", "P", 1267591211, "orcsuit", "P", 1267591307, "orcsuit", "P", 1267591433, "orcsuit", "P", 1267591470, "orcsuit", "P", 1267689128, "orcsuit", "R", 1267689228, "orcsuit", "E", 1267696770, "orcsuit", "E", 1267696940, "orcsuit", "P", 1267697032, "orcsuit", "P", 1267697097, "orcsuit", "P", 1267700446, "orcsuit", "P", 1267701276, "orcsuit", "P", 1267701306, "orcsuit", "P", 1267718436, "orcsuit", "P", 1267718852, "orcsuit", "P" \})
+      </Core:Property>
+      <Core:Property property="vps">
+         (\{ \<Ironclaw:NPCs:Misc:DistraughtFarmer\>, nil, \<Chatters:AE:se:semele\> \})
+      </Core:Property>
+      <Core:Property property="{author}">
+         "James Sanders"
+      </Core:Property>
+      <Core:Property property="{email}">
+         "orcishspacesuit@gmail.com"
+      </Core:Property>
+      <Core:Property property="{rev}">1</Core:Property>
+      <Core:Property property="{sub_rev_stamp}">
+         1267530913
+      </Core:Property>
+      <Core:Property property="{sub_rev}">1</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

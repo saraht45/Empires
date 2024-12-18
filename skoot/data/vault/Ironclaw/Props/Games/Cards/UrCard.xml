@@ -1,0 +1,346 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="card"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="cards"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="individual"/>
+          <Base:Adjective adjective="single"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? equal | $(looker) | $(this.base:environment) |$[Call($this, "describecard")]|{? | $(this.revealed) |$[Call($this, "describecard")]|card}}
+          </Base:Description>
+          <Base:Description type="look">
+             A playing card{? | $(this.revealed) |, revealed to be $[Call($this, "describecard")]. $[Call($this, "describecardfront")]|{? equal | $(looker) | $(this.base:environment) |. You can see that it is the $[Call($this, "describecard")]. $[Call($this, "describecardfront")]|. $[Call($this, "describecardback")]}}
+{? equal | $(looker) | $(this.base:environment) |{? | $(this.revealed) |You are displaying this card to the other players.|You are concealing this card from the other players.}}
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:playingcard">1</Core:Property>
+      <Core:Property property="merry:lib:describecard">
+         X[M] object deck;
+string suit, output;
+int number;
+if(!\$card) \$card = \$this;
+if(!\$value) \$value = \$card.card;
+suit = upper_case(\$value[0..0]);
+number = Int(\$value[1..strlen(\$value)-1]);
+if(\$card.deck)
+  deck = \$card.deck;
+if(deck \&\& Get(deck, "name:"+lower_case(\$value)))
+  return Get(deck, "name:"+lower_case(\$value));
+if(deck \&\& deck.suits \&\& deck.suits[suit]) \{
+  output = "";
+  if(deck.suits_prefix) output = deck.suits_prefix;
+  output += deck.suits[suit];
+  if(deck.suits_suffix) output += deck.suits_suffix;
+\} else \{
+  switch(suit) \{
+    case "H":
+      output = " of hearts";
+      break;
+    case "D":
+      output = " of diamonds";
+      break;
+    case "C":
+      output = " of clubs";
+      break;
+    case "S":
+      output = " of spades";
+      break;
+    case "J":
+      if(number == 1) return "first joker";
+      if(number == 2) return "second joker";
+      return "joker";
+      break;
+    default:
+      output = " of some unknown suit";
+      break;
+  \}
+\}
+if(deck \&\& deck.names \&\& deck.names[number]) \{
+  output = deck.names[number]+output;
+\} else \{
+  if(number == 1) \{
+    output = "ace"+output;
+  \} else if(number == 11) \{
+    output = "jack"+output;
+  \} else if(number == 12) \{
+    output = "queen"+output;
+  \} else if(number == 13) \{
+    output = "king"+output;
+  \} else \{
+    output = desc_cardinal(number)+output;
+  \}
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:describecardback">
+         X[M] /* describe the back of the card */  
+if(\$this.deck \&\& \$this.deck.cardback) return UnSAM(ParseXML(\$this.deck.cardback));  
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:describecardfront">
+         X[M] /* describe the front of the card */  
+if(\$this.deck \&\& Get(\$this.deck, "description:"+\$this.card))  
+  return UnSAM(ParseXML(Get(\$this.deck, "description:"+\$this.card)));  
+if(\$this.deck \&\& \$this.deck.cardfront) return UnSAM(ParseXML(\$this.deck.cardfront));  
+return nil;
+      </Core:Property>
+      <Core:Property property="merry:lib:scancards">
+         X[M] int number, i, sz, j, j_sz, *card_listings;
+string suit, output;
+object deck;
+mapping cards, map;
+if(!\$dob) return FALSE;
+
+/* mark the player as scanning their cards */
+\$actor."cards:scanning" = time();
+
+EmitTo(\$actor, "You quickly glance over the cards.");
+
+/* gather a list of playing cards */
+cards = ([ ]);
+sz = sizeof(\$dob);
+for(i=0;i\<sz;i++)\{
+  if(NRefOb(\$dob[i]).playingcard \&\& NRefOb(\$dob[i]).card \&\& NRefOb(\$dob[i])."base:environment" == \$actor)\{
+    if(!deck \&\& NRefOb(\$dob[i]).deck);
+      deck = NRefOb(\$dob[i]).deck;
+    suit = upper_case(NRefOb(\$dob[i]).card[0..0]);
+    number = Int(NRefOb(\$dob[i]).card[1..strlen(NRefOb(\$dob[i]).card)-1]);
+    if(!cards[suit]) \{
+      /* create this suit */
+      cards[suit] = ([ ]);
+    \}
+    cards[suit][number] = (\{ NRefOb(\$dob[i]), i+1 \});
+  \}
+\}
+
+/* list the cards */
+/* list in deck order */
+if(!deck) deck = \$\{Ironclaw:Props:Games:Cards:Decks:Default\};
+if(deck.order) sz = sizeof(deck.order);
+for(i=0;i\<sz;i++)\{
+  if(cards[upper_case(deck.order[i])]) \{
+    map = cards[upper_case(deck.order[i])];
+    card_listings = map_indices(map);
+    j_sz = sizeof(card_listings);
+    for(j=0;j\<j_sz;j++)\{
+      number = map[card_listings[j]][1];
+      output = Str(number);
+      if(number \< 10) output += " ";
+      output += "- ";
+      if(map[card_listings[j]][0]."card:name") \{
+        output += map[card_listings[j]][0]."card:name";
+      \} else \{
+        output += Describe(NewNRef(map[card_listings[j]][0], "default"));
+      \}
+      if(map[card_listings[j]][0].revealed) output += "*";
+      EmitTo(\$actor, output);
+    \}
+    cards[upper_case(deck.order[i])] = nil;
+  \}
+\}
+/* list any remaining decks in alphabetical order */
+while(sizeof(map_indices(cards))) \{
+  map = cards[map_indices(cards)[0]];
+  card_listings = map_indices(map);
+  j_sz = sizeof(card_listings);
+  for(j=0;j\<j_sz;j++)\{
+    number = map[card_listings[j]][1];
+    output = Str(number);
+    if(number \< 10) output += " ";
+    output += "- ";
+    if(map[card_listings[j]][0]."card:name") \{
+      output += map[card_listings[j]][0]."card:name";
+    \} else \{
+      output += Describe(NewNRef(map[card_listings[j]][0], "default"));
+    \}
+    if(map[card_listings[j]][0].revealed) output += "*";
+    EmitTo(\$actor, output);
+  \}
+  cards[map_indices(cards)[0]] = nil;
+\}
+/* after a second, let them scan again */
+\$delay(1, FALSE, "f0ae");
+\$actor."cards:scanning" = nil;
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:place-what">
+         X[M] /* place the card on top of or under another deck of cards */  
+  
+/* are we placing in a deck? */  
+if(!\$where) return TRUE;  
+if(!NRefOb(\$where[0]).carddeck) return TRUE;  
+\$deck = NRefOb(\$where[0]);  
+  
+if(\$(where:preposition) == "on") \{  
+  \$deck.topcards = copy(\$deck.topcards);  
+  \$deck.topcards += (\{ \$this \});  
+  \$this."base:environment" = nil;  
+  \$this.revealed = nil;  
+\} else if(\$(where:preposition) == "under") \{  
+  \$deck.bottomcards = copy(\$deck.bottomcards);  
+  \$deck.bottomcards += (\{ \$this \});  
+  \$this."base:environment" = nil;  
+  \$this.revealed = nil;  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:shuffle-dob">
+         X[M] /* shuffle this card into the deck */  
+  
+if(!\$iob) return TRUE;  
+if(!NRefOb(\$iob[0]).carddeck) return TRUE;  
+  
+\$deck = NRefOb(\$iob[0]);  
+\$deck.mixedcards = copy(\$deck.mixedcards);  
+\$deck.mixedcards += (\{ \$this \});  
+  
+\$this."base:environment" = nil;  
+\$this.revealed = nil;  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:conceal-dob">
+         X[M] int i, sz;  
+string *words;  
+  
+if(\$this."base:environment" != \$actor \&\& \$this."base:environment" != \$actor."base:environment") \{  
+  EmitTo(\$actor, "You must be holding a card to conceal it.");  
+  return FALSE;  
+\}  
+if(\$this.revealed) \{  
+  EmitTo(\$actor, "You conceal "+Describe(\$this, nil, \$actor)+".");  
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" conceals "+Describe(\$this, \$actor)+".", \$actor);  
+  \$this.revealed = nil;  
+  
+  /* unset names */  
+  words = explode(\$this."card:name", " ");  
+  sz = sizeof(words);  
+  for(i=0;i\<sz;i++)\{  
+    if(sscanf(words[i], "%ss", \$tmp) == 1)  
+      Set(\$this, "details:default:sname:"+\$tmp, nil);  
+    if(sscanf(words[i], "%ses", \$tmp) == 1)  
+      Set(\$this, "details:default:sname:"+\$tmp, nil);  
+    Set(\$this, "details:default:sname:"+words[i], nil);  
+    Set(\$this, "details:default:pname:"+words[i], nil);  
+    Set(\$this, "details:default:pname:"+words[i]+"s", nil);  
+    Set(\$this, "details:default:pname:"+words[i]+"es", nil);  
+    Set(\$this, "details:default:adjective:"+words[i], nil);  
+  \}  
+  
+  return FALSE;  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:reveal-dob">
+         X[M] int i, sz;  
+string *words;  
+if(\$this."base:environment" != \$actor \&\& \$this."base:environment" != \$actor."base:environment") \{  
+  EmitTo(\$actor, "You must be holding a card to reveal it.");  
+  return FALSE;  
+\}  
+if(!\$this.revealed) \{  
+  \$before2 = "your card";  
+\} else \{  
+  \$before2 = Describe(\$this, nil, \$actor);  
+\}  
+\$before3 = Describe(\$this, \$actor);  
+\$this.revealed = TRUE;  
+  
+EmitTo(\$actor, "You reveal "+\$before2+" to be "+Describe(\$this, nil, \$actor, STYLE_NONPOSS)+".");  
+EmitIn(\$actor."base:environment", Describe(\$actor)+" reveals "+\$before3+" to be "+Describe(\$this, \$actor, nil, STYLE_NONPOSS)+".", \$actor);  
+  
+/* set names */  
+words = explode(\$this."card:name", " ");  
+sz = sizeof(words);  
+for(i=0;i\<sz;i++)\{  
+  if(sscanf(words[i], "%ss", \$tmp) == 1)  
+    Set(\$this, "details:default:sname:"+\$tmp, TRUE);  
+  if(sscanf(words[i], "%ses", \$tmp) == 1)  
+    Set(\$this, "details:default:sname:"+\$tmp, TRUE);  
+  Set(\$this, "details:default:sname:"+words[i], TRUE);  
+  Set(\$this, "details:default:pname:"+words[i], TRUE);  
+  Set(\$this, "details:default:pname:"+words[i]+"s", TRUE);  
+  Set(\$this, "details:default:pname:"+words[i]+"es", TRUE);  
+  Set(\$this, "details:default:adjective:"+words[i], TRUE);  
+\}  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react:scan-dob">
+         X[M] /* list the playing cards */
+
+/* check the player isn't marked as scanning when they're not */
+/* this is a hack in case the scancards crashes and doesn't unset their scanning variable */
+if(\$actor."cards:scanning" \&\& \$actor."cards:scanning" + 30 \< time()) \{
+  EmitTo(\$\{Chatters:AE:az:azrael\}, "Unsetting card scanning property for "+Describe(\$actor));
+  \$actor."cards:scanning" = nil;
+\}
+
+/* don't list the cards if they are already scanning */
+if(\$actor."cards:scanning") return FALSE;
+
+Call(\$\{Ironclaw:Props:Games:Cards:UrCard\}, "scancards", \$dob: \$dob);
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:card">
+         X[M] /* name the card */  
+if(\$(hook-property) == "card")  
+  \$this."card:name" = Call(\$this, "describecard", \$card: \$this, \$value: \$this.card);  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1165999149, "tonyd", "E", 1165999167, "tonyd", "E", 1165999179, "tonyd", "E", 1165999248, "tonyd", "E", 1165999324, "tonyd", "E", 1165999428, "tonyd", "E", 1165999440, "tonyd", "E", 1166002879, "tonyd", "E", 1166002966, "tonyd", "E", 1166003214, "tonyd", "E", 1166003261, "tonyd", "E", 1166003289, "tonyd", "P", 1166003308, "tonyd", "P", 1166003371, "tonyd", "P", 1166003391, "tonyd", "P", 1166003709, "tonyd", "P", 1166003750, "tonyd", "P", 1166003773, "tonyd", "P", 1166003813, "tonyd", "P", 1166003830, "tonyd", "P", 1166003865, "tonyd", "P", 1166003881, "tonyd", "P", 1166004129, "tonyd", "P", 1166004156, "tonyd", "P", 1166004177, "tonyd", "P", 1166005297, "tonyd", "P", 1166005522, "tonyd", "E", 1166005579, "tonyd", "E", 1166005643, "tonyd", "E", 1166005781, "tonyd", "E", 1166005875, "tonyd", "P", 1166049616, "tonyd", "P", 1166059846, "tonyd", "P", 1166312770, "tonyd", "E", 1166312796, "tonyd", "P", 1166312812, "tonyd", "P", 1166312894, "tonyd", "E", 1166313080, "tonyd", "P", 1166313391, "tonyd", "P", 1166314102, "tonyd", "P", 1166314164, "tonyd", "P", 1166314185, "tonyd", "P", 1166314257, "tonyd", "P", 1166314284, "tonyd", "P", 1166314303, "tonyd", "P", 1166314314, "tonyd", "P", 1166314336, "tonyd", "P", 1166314389, "tonyd", "P", 1166314570, "tonyd", "P", 1166314633, "tonyd", "P", 1166314864, "tonyd", "P", 1166314910, "tonyd", "P", 1166316394, "tonyd", "P", 1166317630, "tonyd", "P", 1166317718, "tonyd", "P", 1166317882, "tonyd", "P", 1166317907, "tonyd", "P", 1166317923, "tonyd", "P", 1166317953, "tonyd", "P", 1166318079, "tonyd", "P", 1166318101, "tonyd", "P", 1166318118, "tonyd", "P", 1166318184, "tonyd", "P", 1166318211, "tonyd", "P", 1166318252, "tonyd", "P", 1166318497, "tonyd", "P", 1166318524, "tonyd", "P", 1166318554, "tonyd", "P", 1166318584, "tonyd", "P", 1166318652, "tonyd", "P", 1166318943, "tonyd", "P", 1166319042, "tonyd", "P", 1166319204, "tonyd", "P", 1166319237, "tonyd", "P", 1166319337, "tonyd", "P", 1166319362, "tonyd", "P", 1166319656, "tonyd", "P", 1166319747, "tonyd", "P", 1166319818, "tonyd", "P", 1166319892, "tonyd", "P", 1166320063, "tonyd", "P", 1166320095, "tonyd", "P", 1166320150, "tonyd", "P", 1166320241, "tonyd", "P", 1166320294, "tonyd", "P", 1166320376, "tonyd", "P", 1166321132, "tonyd", "P", 1166321194, "tonyd", "P", 1166321280, "tonyd", "P", 1166321299, "tonyd", "P", 1166321313, "tonyd", "P", 1166321328, "tonyd", "P", 1166321341, "tonyd", "P", 1166321353, "tonyd", "P", 1166321372, "tonyd", "P", 1166321395, "tonyd", "P", 1166321468, "tonyd", "P", 1166321498, "tonyd", "P", 1166321697, "tonyd", "P", 1166321715, "tonyd", "P", 1166321733, "tonyd", "P", 1166321805, "tonyd", "P", 1166321834, "tonyd", "P", 1166321964, "tonyd", "P", 1166322349, "tonyd", "P", 1166322574, "tonyd", "P", 1166322594, "tonyd", "P", 1166322851, "tonyd", "P", 1166322934, "tonyd", "P", 1166322945, "tonyd", "P", 1166323380, "tonyd", "P", 1166323423, "tonyd", "P", 1166323479, "tonyd", "P", 1166323595, "tonyd", "P", 1166323632, "tonyd", "P", 1166323675, "tonyd", "P", 1166323702, "tonyd", "P", 1166323709, "tonyd", "P", 1166323793, "tonyd", "P", 1166325247, "tonyd", "P", 1166325296, "tonyd", "P", 1166325360, "tonyd", "P", 1166325373, "tonyd", "P", 1166325398, "tonyd", "P", 1166325433, "tonyd", "P", 1166325455, "tonyd", "P", 1166325473, "tonyd", "P", 1166325492, "tonyd", "P", 1166325503, "tonyd", "P", 1166325603, "tonyd", "P", 1166325651, "tonyd", "P", 1166325668, "tonyd", "P", 1166325724, "tonyd", "P", 1166325743, "tonyd", "P", 1166325881, "tonyd", "P", 1166326149, "tonyd", "P", 1166326569, "tonyd", "P", 1166326602, "tonyd", "P", 1166326850, "tonyd", "P", 1166326924, "tonyd", "P", 1166326937, "tonyd", "P", 1166344230, "tonyd", "P", 1166344604, "tonyd", "P", 1166344649, "tonyd", "P", 1166344671, "tonyd", "P", 1166344734, "tonyd", "P", 1166344818, "tonyd", "P", 1166356884, "tonyd", "P", 1166357068, "tonyd", "P", 1166357081, "tonyd", "P", 1166357119, "tonyd", "P", 1166357171, "tonyd", "P", 1166357195, "tonyd", "P", 1166357285, "tonyd", "P", 1166357396, "tonyd", "P", 1166357509, "tonyd", "P", 1166357517, "tonyd", "P", 1166413028, "tonyd", "P", 1166413081, "tonyd", "P", 1171092918, "thyenehyas", "X", 1176123134, "tonyd", "X", 1176123187, "tonyd", "R", 1176123621, "tonyd", "E", 1176125171, "tonyd", "E", 1176125372, "tonyd", "P", 1176125477, "tonyd", "P", 1176125525, "tonyd", "P", 1176125549, "tonyd", "P", 1176125679, "tonyd", "P", 1176125744, "tonyd", "P", 1176125814, "tonyd", "P", 1176288228, "tonyd", "P", 1176288372, "tonyd", "P", 1176288502, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

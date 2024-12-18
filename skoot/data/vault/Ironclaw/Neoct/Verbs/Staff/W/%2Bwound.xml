@@ -1,0 +1,120 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+wound" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="true" raw_verb="false">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] mixed* input;
+
+\$help = "Syntax:\\n" +
+        "+wound \\"charName detail woundType woundSeverity combatDamage\\"\\n" +
+        "charName = name of character you're wounding\\n" +
+        "detail = detail of charName that you want to wound (detail name, not brief)\\n" +
+        "woundType = bruise, cut, lash\\n" +
+        "woundSeverity = slightly, badly, deeply, seriously\\n" +
+        "+wound \\"bob toe bruise deeply 4\\"";
+
+if(!\$evoke) \{
+    EmitTo(\$actor, \$help);
+    return FALSE;
+\}
+
+input = explode(replace_strings(\$evoke, "\\"", ""), " ");
+
+if(!sizeof(input)) \{
+    EmitTo(\$actor, \$help);
+    return FALSE;
+\}
+
+if(sizeof(input) != 5) \{
+    EmitTo(\$actor, \$help);
+    return FALSE;
+\}
+
+\$name = input[0];
+\$victim = common::lookup(\$name: \$name);
+if(!\$victim) \{
+    EmitTo(\$actor, "Could not locate character " + Str(\$name) + "!");
+    return FALSE;
+\}
+
+\$detail = input[1];
+
+if(!member(\$detail, \$victim."base:details")) \{
+    EmitTo(\$actor, "Invalid detail. Valid details include: " + replace_strings(dump_value(\$victim."base:details"), "(\{", "", "\})", ""));
+    return FALSE;
+\}
+
+if(Get(\$victim, "details:" + \$detail + ":hidden")) \{
+    EmitTo(\$actor, "That detail is hidden on " + Describe(\$victim) + ". Choose a new detail.");
+    return FALSE;
+\}
+
+\$woundType = input[2];
+
+if(\$woundType != "bruise" \&\& \$woundType != "cut" \&\& \$woundType != "lash") \{
+    EmitTo(\$actor, "Invalid wound type. Valid wound types include: \\"bruise\\", \\"cut\\", \\"lash\\"");
+    return FALSE;
+\}
+
+switch(\$woundType) \{
+    case "bruise":
+        \$weapon = \$\{Allegory:Lib:Combat:Weapons:Punch\};
+        break;
+    case "default":
+        \$weapon = \$\{Allegory:Lib:Combat:Weapons:Punch\};
+        break;
+\}
+
+\$action0 = "attack";
+\$action1 = "hurt";
+\$action2 = input[3];
+
+if(\$action2 != "slightly" \&\& \$action2 != "badly" \&\& \$action2 != "seriously" \&\& \$action2 != "deeply") \{
+    EmitTo(\$actor, "Invalid wound descriptor. Valid wound descriptors include: \\"slightly\\", \\"badly\\", \\"seriously\\", \\"deeply\\"");
+    return FALSE;
+\}
+
+\$action3 = Int(input[4]);
+\$action4 = \$weapon;
+
+EmitTo(\$actor, "Wounding " + Describe(\$victim) + "..."); 
+
+Call(\$\{Allegory:Lib:Combat:New:hitdescription\}, "describe_hit", \$attacker: \$actor, \$action: (\{ \$action0, \$action1, \$action2, \$action3, ([ "injury":"injure", "lib":\$this ]) \}), \$hitlocation: NewNRef(\$victim, \$detail), \$victim: \$victim);
+
+\$injurylevel = Call(\$\{Allegory:Lib:Combat:New:Combat\}, "get_injury_level", \$actor: \$victim);
+
+\$delay(0.1, FALSE, "3db0");
+EmitTo(\$actor, "Hit Points: " + Str(Int(\$victim."combat:damage")) + "/" + Str(Int(\$victim."trait:body") + 3));
+
+if(\$injurylevel == 3) \{
+    /* risking long term injuries */
+    EmitTo(\$actor, "Injury level: 3. Risking long term injuries if continue.");
+\} else if(\$injurylevel == 4) \{
+    EmitTo(\$actor, "Injury level: 4. Risking long term injuries if continue.");
+\} else if(\$injurylevel \> 4) \{
+    /* can't keep risking more. Truly lost the fight */
+    EmitTo(\$actor, "Injury level: Greater than 4. Cannot continue fighting.");
+\} else \{
+    EmitTo(\$actor, "Injury level: " + Str(\$injurylevel));
+\}
+
+EmitTo(\$actor, "Done!");
+      </Core:Property>
+      <Core:Property property="merry:lib:injure">
+         X[M] mapping output;    
+
+\$desc2 = TAG("You receive a " + replace_strings(\$action2, "ly", "") + " " + \$woundType + " on " + Describe(NewNRef(\$victim, \$detail), nil, \$actor) + ".", "imp");     
+    
+output = ([ "desc":nil, "longdesc":nil, "desc1":nil, "desc2":\$desc2, "desc3":nil, "extras":([ ]) ]);    
+return output;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1282105510, "jominey", "R", 1282105529, "jominey", "R", 1282107384, "jominey", "E", 1283028488, "jominey", "E", 1283028528, "jominey", "E", 1283028557, "jominey", "E", 1283028598, "jominey", "E", 1283028632, "jominey", "E", 1283028883, "jominey", "E", 1283028926, "jominey", "E", 1283029525, "jominey", "E", 1283029555, "jominey", "E", 1283029675, "jominey", "E", 1283029888, "jominey", "E", 1283030045, "jominey", "E", 1283030395, "jominey", "E", 1283030536, "jominey", "E", 1283035531, "jominey", "E", 1283035598, "jominey", "E", 1284668336, "jominey", "E", 1307137919, "jominey", "E", 1307139566, "jominey", "E", 1307139674, "jominey", "E", 1307139724, "jominey", "E", 1307139975, "jominey", "E", 1307140030, "jominey", "E", 1307140120, "jominey", "E", 1307140143, "jominey", "E", 1307140192, "jominey", "E", 1307140281, "jominey", "E", 1307140420, "jominey", "E", 1307140583, "jominey", "E", 1307140631, "jominey", "E", 1703184623, "annemairi", "E", 1703184860, "annemairi", "E" \})
+      </Core:Property>
+      <Core:Property property="theatre:id">"IC"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

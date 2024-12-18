@@ -1,0 +1,143 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="build" second="build" third="builds" evoke="optional" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="true">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:act:enter">
+         X[M] EmitTo(\$actor, "You stop construction on " + Describe(\$actor."temp:build:object") + ".");
+
+Call(\$this, "stop_timer");
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] int i, skill;
+mapping trapTypesMap;
+mixed* trapTypes;
+mixed* valid;
+object env;
+mixed* inventory;
+
+if(\$actor."base:environment".area != "outlands") \{
+    EmitTo(\$actor, "You are not in a suitable area to build any traps.");
+    return FALSE;
+\}
+
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+  EmitTo(\$actor, "You are already busy " + \$message + ".");
+  return FALSE;
+\}
+
+trapTypesMap = Get(\$\{Allegory:Props:Trapping:UrTrap\}, "trait:traptypes");
+trapTypes = map_indices(trapTypesMap);
+
+skill = Int(\$actor."skill:hunting:trapping");
+
+if(!\$line) \{
+    valid = (\{ \});
+    for(i = 0; i \< sizeof(trapTypes); i++) \{
+        if(skill \>= trapTypesMap[trapTypes[i]][0]) \{
+            valid += (\{ trapTypes[i] \});
+        \}
+    \}
+
+    if(sizeof(valid)) \{
+        EmitTo(\$actor, "You can build the following traps: \\"" + implode(valid, "\\"  \\"") + "\\"");
+    \} else \{
+        EmitTo(\$actor, "You do not know how to build any traps.");
+    \}
+    return FALSE;
+\}
+
+if(!trapTypesMap[\$line]) \{
+    EmitTo(\$actor, "That is not a valid trap type.");
+    return FALSE;
+\}
+
+if(skill \< trapTypesMap[\$line][0]) \{
+    EmitTo(\$actor, "You are not skilled enough to build that trap.");
+    return FALSE;
+\}
+
+env = \$actor."base:environment";
+
+/* Make sure there isn't already a trap here */
+inventory = env."base:inventory";
+for(i = 0; i \< sizeof(inventory); i++) \{
+    if(Str(inventory[i]."trait:objecttype") == "trap") \{
+        EmitTo(\$actor, "There is already a trap here.");
+        return FALSE;
+    \}
+
+    if(contains(Str(inventory[i]."busy:action"), "building")) \{
+        EmitTo(\$actor, Describe(inventory[i]) + " is already " + Str(inventory[i]."busy:action") + ".");
+        return FALSE;
+    \}
+\}
+
+if(Int(\$actor."effect:energy:severity") \> 92) \{
+    EmitTo(\$actor, "You are too tired to build any traps right now.");
+    return FALSE;
+\}
+
+\$trapOb = trapTypesMap[\$line][1];
+
+Set(\$actor, "temp:build:object", \$trapOb);
+Set(\$actor, "merry:inherit:lib:start_timer", \$this);
+Set(\$actor, "merry:inherit:lib:stop_timer", \$this);
+Set(\$actor, "merry:inherit:timer:finish", \$this);
+Set(\$actor, "merry:inherit:act:enter", \$this);
+
+Call(\$actor, "start_timer");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:start_timer">
+         X[M] EmitTo(\$actor, "You begin to search the surrounding area for supplies to use to build " + Describe(\$actor."temp:build:object") + ".");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " begins to search the surrounding area for supplies.", \$actor);
+\$this."timer:id" = In("finish", 150);
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "building " + Describe(\$actor."temp:build:object"));
+\$actor."busy:id" = \$id;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:stop_timer">
+         X[M] if(\$this."timer:id") \{
+    Stop(\$this."timer:id");
+    \$this."timer:id" = nil;
+\}
+
+Set(\$this, "temp:build:object", nil);
+Set(\$this, "merry:inherit:lib:start_timer", nil);
+Set(\$this, "merry:inherit:lib:stop_timer", nil);
+Set(\$this, "merry:inherit:timer:finish", nil);
+Set(\$this, "merry:inherit:act:enter", nil);
+Set(\$this, "busy:id", nil);
+Set(\$this, "busy:action", nil);
+
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:timer:finish">
+         X[M] EmitTo(\$this, "You complete construction on " + Describe(\$this."temp:build:object") + ".");
+EmitIn(\$this."base:environment", Describe(\$this) + " completes construction on " + Describe(\$this."temp:build:object") + ".", \$this);
+
+Call(\$\{Allegory:Props:Trapping:UrTrap\}, "build_trap", \$trapOb: \$this."temp:build:object", \$actor: \$this);
+
+::stop_timer();
+
+if(!\$this."crafting:override") \{
+    status::change_status(\$char: \$this, \$type: "energy", \$amount: 8);
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1598107138, "jominey", "E", 1598109686, "jominey", "E", 1598109727, "jominey", "E", 1598109749, "jominey", "E", 1598109853, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

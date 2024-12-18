@@ -1,0 +1,150 @@
+<object clone="/base/obj/thing" owner="necate">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.5" density="1.2"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="true"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="potion"/>
+            <Base:SName sname="vial"/>
+            <Base:SName sname="dye"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="dyes"/>
+            <Base:PName pname="potions"/>
+            <Base:PName pname="vials"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="dust"/>
+          <Base:Adjective adjective="fur"/>
+          <Base:Adjective adjective="glass"/>
+          <Base:Adjective adjective="liquid"/>
+          <Base:Adjective adjective="smugs"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) fur dye
+          </Base:Description>
+          <Base:Description type="look">
+             This is a small glass vial. It appears to be covered in smugs and dust, and it contains some $(this.trait:color) liquid.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:nip:item:cost">
+         600
+      </Core:Property>
+      <Core:Property property="export:sys:exposure:fire:destroy:fire-emit">
+         "It burns!"
+      </Core:Property>
+      <Core:Property property="export:trait:color">
+         "bright blue"
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "furdye"
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         5
+      </Core:Property>
+      <Core:Property property="export:trait:trash">1</Core:Property>
+      <Core:Property property="merry:react-post:drink-what">
+         X[M] \$this."trait:quantity"--;
+EmitTo(\$actor, "You feel hair growing along the length of your tongue.");
+EmitIn(\$actor."base:environment", Describe(\$actor)+" looks nauseous, as something appears to be swelling in "+\$actor."base:possessive"+" mouth.", \$actor);
+\$actor.mute = 1;
+if(\$actor."appearance:tongue" \&\& !\$actor."appearance:tongue-backup")
+\{
+  \$actor."appearance:tongue-backup" = \$actor."appearance:tongue";
+\}
+\$actor."appearance:tongue" = "hair-covered";
+\$delay(15, FALSE, "e7d9");
+EmitTo(\$actor, "The hair along your tongue feels like it's falling out.");
+\$actor.mute = nil;
+\$actor."appearance:tongue" = \$actor."appearance:tongue-backup";
+\$actor."appearance:tongue-backup" = nil;
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-post:pour-dob">
+         X[M] \$color = \$this."trait:color";
+
+if(!\$iob) return TRUE;
+if(sizeof(\$iob)\>1) \{ EmitTo(\$actor, "You may only add your potion to one thing at a time."); return FALSE; \}
+
+if((NRefDetail(\$iob[0]) == "body") \|\| (NRefDetail(\$iob[0]) == "fur"))
+\{
+  \$iob = NRefOb(\$iob[0]);
+  \$iob.no_hairlength_reset = 1;
+  
+  EmitTo(\$iob, "You feel the oils  of the dye slowly seep into your fur and skin. Leaving both feeling silky smooth and shimmering with a health glow.");
+  EmitIn(\$iob."base:environment", Describe(\$iob)+" massages " +Describe(\$this)+ " into their fur, effectively dying it.");
+EmitTo(\$iob, "Setting origfurcolor to the original fur color.");
+\$iob."appearance:origfurcolor" = \$iob."appearance:furcolor";
+EmitTo(\$iob, "changing furcolor to dye color.");
+\$iob."appearance:furcolor" = \$this."trait:color";
+\}
+EmitTo(\$iob, "This dye is to be used only for dying your fur.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:drink-what">
+         X[M] if(!\$this."trait:quantity" \|\| (\$this."trait:quantity" \< 1))
+\{
+  EmitTo(\$actor, "This potion is empty, you cannot drink it.");
+  return FALSE;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:add-dob">
+         X[M] if(!\$iob) return TRUE;
+if(sizeof(\$iob)\>1) \{ EmitTo(\$actor, "You may only add your potion to one thing at a time."); return FALSE; \}
+if(!\$this."trait:quantity" \|\| (\$this."trait:quantity" \< 1))
+\{
+  EmitTo(\$actor, Describe(\$this, nil, \$actor) +" is empty.");
+  return FALSE;
+\} else \{
+  \$this."trait:quantity"--;
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1200849993, "necate", "E", 1200850079, "necate", "K", 1200850130, "necate", "E", 1200850212, "necate", "E", 1200850331, "necate", "P", 1200850386, "necate", "P", 1200850399, "necate", "P", 1200850486, "necate", "P", 1200850524, "necate", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

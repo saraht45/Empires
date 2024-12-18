@@ -1,0 +1,154 @@
+<object clone="/usr/SkotOS/obj/meracha" owner="SkotOS">
+  <SkotOS:MerAcHa action_id="compare" verb="OBJ(Socials:Verbs:C:compare)">
+    <Core:PCProperties>
+      <Core:Property property="gimli:global-post:action">
+         "E[G]\\n// Compare two scrolls to see if the handwriting matches\\n// Difficulty to recognize the handwriting is set in Ironclaw:Neoct:Verbs:Actions:W:write\\nif(!\$dob \|\| !sizeof(\$dob)) return TRUE;\\n\\nif(sizeof(\$dob) \>= 2) \{\\n  \$second = NRefOb(\$dob[1]);\\n\} else \{\\n  if(\$with \&\& sizeof(\$with)) \{\\n    \$second = NRefOb(\$with[0]);\\n  \} else if(\$iob \&\& sizeof(\$iob)) \{\\n    \$second = NRefOb(\$iob[0]);\\n  \} else \{\\n    return TRUE;\\n  \}\\n\}\\n\$first = NRefOb(\$dob[0]);\\n\\n// Are they both scrolls with writers?\\nif(!\$first.\\"lastwriter\\" \|\| !\$second.\\"lastwriter\\") return TRUE;\\n\\n// Do a skill roll\\n\$roll = ironclaw::roll(\$roller:\$actor, \$skills:(\{ \\"identify_writer\\" \}), \$bonus:0);\\n\\n// Compare skill roll to disguise roll in the scroll\\n \$roll = \$roll - ironclaw::roll(\$roller:\$actor, \$skills:(\{ \\"trait:intelligence\\", \\"trait:perception\\", \\"skill:thief:sneak\\", \\"skill:combat:precision\\" \}), \$bonus:0);\\n// EmitTo(\$actor, \\"You rolled \\"+Str(\$roll));\\n\\n\\n// Which is unsigned?\\nif(\$first.\\"lastsigner:object\\" \&\& \$second.\\"lastsigner:object\\") \{\\n  if((\$first.\\"lastwriter_object\\" == \$second.\\"lastwriter_object\\") \|\| (\$first.\\"lastwriter\\" == \$second.\\"lastwriter\\")) \{\\n    EmitTo(\$actor, \\"The signatures on these scrolls matches.\\");\\n  \} else \{\\n    EmitTo(\$actor, \\"The signatures on these scrolls clearly don't match.\\");\\n  \}\\n  return TRUE;\\n\} else if (!\$first.\\"lastsigner:object\\" \&\& !\$second.\\"lastsigner:object\\") \{\\n  // No signatures at all\\n  // Pick one of the scrolls to behave like the signed scroll\\n  if(Int(\$first.\\"lastwriter_recognition_difficulty\\") \> Int(\$second.\\"lastwriter_recognition_difficulty\\")) \{\\n    \$signed = \$second;\\n    \$unsigned = \$first;\\n  \} else \{\\n    \$signed = \$first;\\n    \$unsigned = \$second;\\n  \}  \\n\} else if (\$first.\\"lastsigner:object\\" \&\& !\$second.\\"lastsigner:object\\") \{\\n  \$signed = \$first;\\n  \$unsigned = \$second;\\n\} else if (!\$first.\\"lastsigner:object\\" \&\& \$second.\\"lastsigner:object\\") \{\\n  \$signed = \$second;\\n  \$unsigned = \$first;\\n\}\\n\\n// Do we already have a roll on file for this comparison?\\nif(!\$unsigned.\\"handwriting_comparison_data\\") \$unsigned.\\"handwriting_comparison_data\\" = ([ ]);\\nif(!\$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)]) \$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)] = ([ ]);\\nif(\$signed.\\"lastwriter_object\\") \{\\n  \$data = \$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][name(\$signed.\\"lastwriter_object\\")];\\n\} else if(\$signed.\\"lastwriter\\") \{\\n  \$data = \$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][\$signed.\\"lastwriter\\"];\\n\} else \{\\n  \$data = \$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][name(\$signed)];\\n\}\\n\\nif(\$data) \{\\n  // We already have a result on file\\n  \$roll = \$data[0];\\n  \$matches = \$data[1];\\n  \$clear = \$data[2];\\n\} else \{\\n  // Do the writers match?\\n  \$roll -= Int(\$unsigned.\\"lastwriter_recognition_difficulty\\");\\n  // Handle old scrolls that don't have a recognition difficulty\\n  if(!Int(\$unsigned.\\"lastwriter_recognition_difficulty\\")) \$roll -= 16;\\n  \$matches = FALSE;\\n  \$clear = FALSE;\\n\\n  if((\$first.\\"lastwriter_object\\" == \$second.\\"lastwriter_object\\") \|\| (\$first.\\"lastwriter\\" == \$second.\\"lastwriter\\")) \{\\n    // Scrolls match\\n    if(\$roll \> 0) \{ // They rolled well enough, tell them the truth\\n      \$matches = TRUE;\\n      if(\$roll \> 10) \$clear = TRUE;\\n    \} else if(!random(100)) \{ // Just occasionally give someone the truth even if they didn't roll well enough\\n      \$matches = TRUE;\\n      if(!random(10)) \$clear = TRUE;\\n    \}\\n  \} else \{\\n    // Scrolls don't match\\n    if(\$roll \<= 0) \{ // They rolled badly. They might get a false positive\\n      if(!random(20)) \{\\n        \$matches = TRUE;\\n        if(\$roll \< -10) \$clear = TRUE;\\n      \}\\n    \} else \{\\n      if(\$roll \> 10) \$clear = TRUE;\\n    \}\\n  \}\\n\}\\n\\nif(\$signed.\\"lastsigner:object\\") \{\\n  if(\$matches) \{\\n    if(\$clear)\\n      EmitTo(\$actor, \\"The handwriting on these scrolls clearly matches. You believe the writer to be \\"+\$signed.\\"lastwriter\\"+\\".\\");\\n    else\\n      EmitTo(\$actor, \\"The handwriting on these scrolls looks very similar. You believe the writer to be \\"+\$signed.\\"lastwriter\\"+\\".\\");\\n  \} else \{\\n    if(\$clear)\\n      EmitTo(\$actor, \\"The handwriting on these scrolls clearly doesn't match. You believe the writer was not \\"+\$signed.\\"lastwriter\\"+\\".\\");\\n    else\\n      EmitTo(\$actor, \\"The handwriting on these scrolls doesn't look like it matches. You believe the writer was not \\"+\$signed.\\"lastwriter\\"+\\".\\");\\n  \}\\n\} else \{\\n  if(\$matches) \{\\n    if(\$clear)\\n      EmitTo(\$actor, \\"The handwriting on these scrolls clearly matches.\\");\\n    else\\n      EmitTo(\$actor, \\"The handwriting on these scrolls looks like it matches.\\");\\n  \} else \{\\n    if(\$clear)\\n      EmitTo(\$actor, \\"The handwriting on these scrolls clearly doesn't match.\\");\\n    else\\n      EmitTo(\$actor, \\"The handwriting on these scrolls doesn't seem to match.\\");\\n  \}\\n\}\\n\\n// Record the outcome\\nif(\$signed.\\"lastwriter_object\\") \{\\n  if(!\$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][name(\$signed.\\"lastwriter_object\\")]) \$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][name(\$signed.\\"lastwriter_object\\")] = (\{ \$roll, \$matches, \$clear \});\\n\} else if(\$signed.\\"lastwriter\\") \{\\n  if(!\$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][\$signed.\\"lastwriter\\"]) \$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][\$signed.\\"lastwriter\\"] = (\{ \$roll, \$matches, \$clear \});\\n\} else \{\\n  if(!\$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][name(\$signed)]) \$unsigned.\\"handwriting_comparison_data\\"[name(\$actor)][name(\$signed)] = (\{ \$roll, \$matches, \$clear \});\\n\}\\n\\nreturn TRUE;"
+      </Core:Property>
+      <Core:Property property="merry:global-post:action">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:global-post:action instead! */
+/* Compare two scrolls to see if the handwriting matches */
+/* Difficulty to recognize the handwriting is set in Ironclaw:Neoct:Verbs:Actions:W:write */
+if(!\$dob \|\| !sizeof(\$dob)) return TRUE;
+
+if(sizeof(\$dob) \>= 2) \{
+  \$second = NRefOb(\$dob[1]);
+\} else \{
+  if(\$with \&\& sizeof(\$with)) \{
+    \$second = NRefOb(\$with[0]);
+  \} else if(\$iob \&\& sizeof(\$iob)) \{
+    \$second = NRefOb(\$iob[0]);
+  \} else \{
+    return TRUE;
+  \}
+\}
+\$first = NRefOb(\$dob[0]);
+
+/* Are they both scrolls with writers? */
+if(!\$first.lastwriter \|\| !\$second.lastwriter) return TRUE;
+
+/* Do a skill roll */
+\$roll = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "identify_writer" \}), \$bonus: 0);
+
+/* Compare skill roll to disguise roll in the scroll */
+ \$roll = \$roll - ironclaw::roll(\$roller: \$actor, \$skills: (\{ "trait:mind", "academics:religion", "academics:teaching", "skill:career:spy" \}), \$bonus: 0); 
+/* EmitTo(\$actor, "You rolled "+Str(\$roll)); */
+
+
+/* Which is unsigned? */
+if(\$first."lastsigner:object" \&\& \$second."lastsigner:object") \{
+  if((\$first.lastwriter_object == \$second.lastwriter_object) \|\| (\$first.lastwriter == \$second.lastwriter)) \{
+    EmitTo(\$actor, "The signatures on these scrolls matches.");
+  \} else \{
+    EmitTo(\$actor, "The signatures on these scrolls clearly don't match.");
+  \}
+  return TRUE;
+\} else if (!\$first."lastsigner:object" \&\& !\$second."lastsigner:object") \{
+  /* No signatures at all */
+  /* Pick one of the scrolls to behave like the signed scroll */
+  if(Int(\$first.lastwriter_recognition_difficulty) \> Int(\$second.lastwriter_recognition_difficulty)) \{
+    \$signed = \$second;
+    \$unsigned = \$first;
+  \} else \{
+    \$signed = \$first;
+    \$unsigned = \$second;
+  \}  
+\} else if (\$first."lastsigner:object" \&\& !\$second."lastsigner:object") \{
+  \$signed = \$first;
+  \$unsigned = \$second;
+\} else if (!\$first."lastsigner:object" \&\& \$second."lastsigner:object") \{
+  \$signed = \$second;
+  \$unsigned = \$first;
+\}
+
+/* Do we already have a roll on file for this comparison? */
+if(!\$unsigned.handwriting_comparison_data) \$unsigned.handwriting_comparison_data = ([ ]);
+if(!\$unsigned.handwriting_comparison_data[name(\$actor)]) \$unsigned.handwriting_comparison_data[name(\$actor)] = ([ ]);
+if(\$signed.lastwriter_object) \{
+  \$data = \$unsigned.handwriting_comparison_data[name(\$actor)][name(\$signed.lastwriter_object)];
+\} else if(\$signed.lastwriter) \{
+  \$data = \$unsigned.handwriting_comparison_data[name(\$actor)][\$signed.lastwriter];
+\} else \{
+  \$data = \$unsigned.handwriting_comparison_data[name(\$actor)][name(\$signed)];
+\}
+
+if(\$data) \{
+  /* We already have a result on file */
+  \$roll = \$data[0];
+  \$matches = \$data[1];
+  \$clear = \$data[2];
+\} else \{
+  /* Do the writers match? */
+  \$roll -= Int(\$unsigned.lastwriter_recognition_difficulty);
+  /* Handle old scrolls that don't have a recognition difficulty */
+  if(!Int(\$unsigned.lastwriter_recognition_difficulty)) \$roll -= 16;
+  \$matches = FALSE;
+  \$clear = FALSE;
+
+  if((\$first.lastwriter_object == \$second.lastwriter_object) \|\| (\$first.lastwriter == \$second.lastwriter)) \{
+    /* Scrolls match */
+    if(\$roll \> 0) \{ /* They rolled well enough, tell them the truth */
+      \$matches = TRUE;
+      if(\$roll \> 10) \$clear = TRUE;
+    \} else if(!random(100)) \{ /* Just occasionally give someone the truth even if they didn't roll well enough */
+      \$matches = TRUE;
+      if(!random(10)) \$clear = TRUE;
+    \}
+  \} else \{
+    /* Scrolls don't match */
+    if(\$roll \<= 0) \{ /* They rolled badly. They might get a false positive */
+      if(!random(20)) \{
+        \$matches = TRUE;
+        if(\$roll \< -10) \$clear = TRUE;
+      \}
+    \} else \{
+      if(\$roll \> 10) \$clear = TRUE;
+    \}
+  \}
+\}
+
+if(\$signed."lastsigner:object") \{
+  if(\$matches) \{
+    if(\$clear)
+      EmitTo(\$actor, "The handwriting on these scrolls clearly matches. You believe the writer to be "+ capitalize(Get(\$signed."lastsigner:object", "skotos:charname")) +".");
+    else
+      EmitTo(\$actor, "The handwriting on these scrolls looks very similar. You believe the writer to be "+ capitalize(Get(\$signed."lastsigner:object", "skotos:charname")) +".");
+  \} else \{
+    if(\$clear)
+      EmitTo(\$actor, "The handwriting on these scrolls clearly doesn't match. You believe the writer was not "+ capitalize(Get(\$signed."lastsigner:object", "skotos:charname")) +".");
+    else
+      EmitTo(\$actor, "The handwriting on these scrolls doesn't look like it matches. You believe the writer was not "+ capitalize(Get(\$signed."lastsigner:object", "skotos:charname")) +".");
+  \}
+\} else \{
+  if(\$matches) \{
+    if(\$clear)
+      EmitTo(\$actor, "The handwriting on these scrolls clearly matches.");
+    else
+      EmitTo(\$actor, "The handwriting on these scrolls looks like it matches.");
+  \} else \{
+    if(\$clear)
+      EmitTo(\$actor, "The handwriting on these scrolls clearly doesn't match.");
+    else
+      EmitTo(\$actor, "The handwriting on these scrolls doesn't seem to match.");
+  \}
+\}
+
+/* Record the outcome */
+if(\$signed.lastwriter_object) \{
+  if(!\$unsigned.handwriting_comparison_data[name(\$actor)][name(\$signed.lastwriter_object)]) \$unsigned.handwriting_comparison_data[name(\$actor)][name(\$signed.lastwriter_object)] = (\{ \$roll, \$matches, \$clear \});
+\} else if(\$signed.lastwriter) \{
+  if(!\$unsigned.handwriting_comparison_data[name(\$actor)][\$signed.lastwriter]) \$unsigned.handwriting_comparison_data[name(\$actor)][\$signed.lastwriter] = (\{ \$roll, \$matches, \$clear \});
+\} else \{
+  if(!\$unsigned.handwriting_comparison_data[name(\$actor)][name(\$signed)]) \$unsigned.handwriting_comparison_data[name(\$actor)][name(\$signed)] = (\{ \$roll, \$matches, \$clear \});
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052081, "-", "SYNC", 1221752477, "???", "R", 1409288191, "tonyd", "E", 1409288259, "tonyd", "E", 1409288320, "tonyd", "P", 1409288342, "tonyd", "P", 1409288401, "tonyd", "P", 1409288427, "tonyd", "P", 1409288445, "tonyd", "P", 1409288480, "tonyd", "P", 1409288534, "tonyd", "P", 1409288574, "tonyd", "P", 1426826725, "tonyd", "P", 1524876172, "jominey", "E", 1524876276, "jominey", "E", 1524876317, "jominey", "E", 1694757171, "ezralee", "E", 1694757620, "ezralee", "E" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:PCProperties>
+  </SkotOS:MerAcHa>
+</object>

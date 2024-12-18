@@ -1,0 +1,160 @@
+<object clone="/base/obj/thing" owner="pp74">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Furniture:UrFurnitureContainer)"/>
+    <Base:Bulk immobile="false" mass="1" density="2"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="100" verb2="contain" verb3="contains"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst></Base:DrinkMessageFirst>
+      <Base:DrinkMessageThird></Base:DrinkMessageThird>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst></Base:DieMessageFirst>
+      <Base:DieMessageThird></Base:DieMessageThird>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="chest"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="chests"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="old"/>
+          <Base:Adjective adjective="worn"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             old chest
+          </Base:Description>
+          <Base:Description type="examine">
+             an old worn chest made of cedar, with barely visible carvings etched into the lid.
+          </Base:Description>
+          <Base:Description type="look">
+             an old worn chest.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="true" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties>
+      <Base:InitialProperty property="details:default:exit:closed">
+         1
+      </Base:InitialProperty>
+    </Base:InitialProperties>
+    <Core:Properties>
+      <Core:Property property="export:alteration:add:default:lock">
+         ([ "adj-prop":(\{ "trait:material", "trait:size", "trait:color", "trait:brief" \}), "names":(\{ (\{ "sname", "lock" \}), (\{ "pname", "locks" \}) \}), "properties":(\{ (\{ "trait:material", "trait:lock:material" \}), (\{ "trait:size", "trait:lock:size" \}), (\{ "trait:color", "trait:lock:color" \}), (\{ "trait:brief", "trait:lock:brief" \}), (\{ "trait:examine", "trait:lock:examine" \}), (\{ "trait:quality", "trait:lock:quality" \}), (\{ "trait:lockpicking", "trait:lockpicking" \}), (\{ "details:default:exit:keycode", "details:default:exit:keycode" \}), (\{ "base:urparent", "trait:lock:parent" \}), (\{ "lock:default:lockpick:history", "lock:default:lockpick:history" \}), (\{ "trait:madeby", "trait:lock:madeby" \}), (\{ "trait:madeby:account", "trait:lock:madeby:account" \}), (\{ "trait:madeby:object", "trait:lock:madeby:object" \}) \}), "stopvalue":(\{ "trait:lock:brief", nil, "This piece of furniture already holds a lock." \}) ])
+      </Core:Property>
+      <Core:Property property="export:trait:brief">
+         "chest"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "A rectangular structure with four walls and a lid for storage."
+      </Core:Property>
+      <Core:Property property="export:trait:handle-pick">
+         1
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "chest"
+      </Core:Property>
+      <Core:Property property="export:writable">1</Core:Property>
+      <Core:Property property="merry:react:open-what">
+         X[M] /* Can't open this chest until it's been lockpicked */     
+if(!this.lockpicked) \{     
+  EmitTo(\$actor, "You cannot open "+Describe(this, nil, \$actor)+" as the lock seems to have rusted shut. You'll need someone skilled at lockpicking to get it unlocked.");     
+  return FALSE;     
+\}     
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react:pick-dob">
+         X[M] /* Trying to use lockpicking skill to open this */     
+     
+/* Is this already open? */     
+if(this.lockpicked) return TRUE;     
+     
+/* Are they holding lockpicks? */     
+\$lockpick = Call(\$\{Ironclaw:Lib:Skills:Lockpicking\}, "findlockpick");     
+if(!\$lockpick) return FALSE;     
+     
+\$roll = ironclaw::roll(\$roller: \$actor, \$skills: (\{ "thief:lock-picking", "thief:lockpicking" \}), \$bonus: "trait:mind");     
+if(\$roll \> random(24)) \{     
+  /* They passed. Unlock the box, and fill it with items */     
+  EmitTo(\$actor, "You unlock "+Describe(this, nil, \$actor)+" using "+Describe(\$lockpick, nil, \$actor)+".");     
+  EmitIn(\$actor."base:environment", "With an audible click, "+Describe(\$actor)+" unlocks "+Describe(this, \$actor)+" with "+Describe(\$lockpick, \$actor)+".");     
+  /* let the box be opened */     
+  this.lockpicked = TRUE;     
+  this."trait:trash" = TRUE;     
+  /* give 1 to 5 items */     
+  \$rods = random(5)+1;
+  for(\$i=0;\$i\<\$rods;\$i++) \{     
+    \$rod = Spawn(\$\{Ironclaw:Staff:Eos:Props:TarnishedBronzeRod\});               
+    /* check there was space for the items */    
+    \$rod."base:environment" = this;
+    if(\$rod."base:environment" != this) Slay(\$rod); 
+  \}
+  \$bombs = random(5)+1; 
+  for(\$i=0;\$i\<\$bombs;\$i++) \{     
+    \$bomb = Spawn(\$\{Ironclaw:Staff:Eos:Props:FireBomb\});                
+    /* check there was space for the items */    
+    \$bomb."base:environment" = this;    
+    if(\$bomb."base:environment" != this) Slay(\$bomb);
+  \}
+    \$necklace = Spawn(\$\{Ironclaw:Staff:Eos:Props:Necklace\});                
+    /* check there was space for the items */    
+    \$necklace."base:environment" = this;    
+    if(\$necklace."base:environment" != this) Slay(\$necklace);
+\} else \{     
+  /* They failed. Destroy the lockpicks */     
+  EmitTo(\$actor, "You use "+Describe(\$lockpick, nil, \$actor)+" to try and open "+Describe(this, nil, \$actor)+". You fiddles around a moment, before there is an audible snapping sound, and you realize you have broken "+Describe(\$lockpick, nil, \$actor)+".");     
+  EmitIn(\$actor."base:environment", Describe(\$actor)+" uses "+Describe(\$lockpick, \$actor)+" to try and open "+Describe(this, \$actor)+". "+capitalize(Describe(\$actor))+" fiddles around a moment, before there is an audible snapping sound.", \$actor);     
+  Slay(\$lockpick);     
+\}     
+     
+return FALSE;
+      </Core:Property>
+      <Core:Property property="misc:lastdropped">
+         "1342982999 StoryPlotter Ditto[meandmine]"
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1223925912, "morwenlorelie", "K", 1223925944, "morwenlorelie", "E", 1223925974, "morwenlorelie", "E", 1223926075, "morwenlorelie", "X", 1223926086, "morwenlorelie", "E", 1241567169, "morwenlorelie", "E", 1241567289, "morwenlorelie", "E", 1241567337, "morwenlorelie", "X", 1241567354, "morwenlorelie", "X", 1252071625, "slurpeeslurp", "E", 1252071670, "slurpeeslurp", "E", 1260620598, "slurpeeslurp", "E", 1260620605, "slurpeeslurp", "E", 1260620615, "slurpeeslurp", "E", 1305001578, "slurpeeslurp", "E", 1305001599, "slurpeeslurp", "E", 1305003371, "slurpeeslurp", "E", 1327655733, "pp74", "K", 1327655988, "pp74", "E", 1327656899, "pp74", "E", 1327657715, "pp74", "E", 1327727251, "tonyd", "E", 1327727261, "tonyd", "E", 1327727280, "tonyd", "X", 1327727288, "tonyd", "E", 1327973218, "tonyd", "E", 1327973229, "tonyd", "E", 1327973327, "tonyd", "E", 1327973339, "tonyd", "E", 1327974115, "tonyd", "E", 1327974481, "tonyd", "P", 1327974526, "tonyd", "P", 1328156510, "tonyd", "P", 1328156928, "tonyd", "P", 1328157032, "tonyd", "P", 1328157099, "tonyd", "P", 1328157106, "tonyd", "P", 1328157387, "tonyd", "P", 1328157427, "tonyd", "P", 1328157442, "tonyd", "P", 1328157460, "tonyd", "P", 1328157474, "tonyd", "P", 1328157521, "tonyd", "P", 1328157596, "tonyd", "P", 1328157691, "tonyd", "P", 1328157752, "tonyd", "P", 1328157964, "tonyd", "P", 1328158082, "tonyd", "P", 1328158286, "tonyd", "P", 1328158473, "tonyd", "P", 1328158481, "tonyd", "P", 1331862245, "tonyd", "E", 1366230730, "pp74", "X", 1366230780, "pp74", "E", 1366231385, "pp74", "X", 1366234110, "pp74", "X", 1366234198, "pp74", "X", 1366237051, "pp74", "K", 1366237575, "pp74", "X", 1366311164, "pp74", "E", 1366311465, "pp74", "E", 1366311798, "pp74", "E", 1366311951, "pp74", "E", 1366313511, "pp74", "E", 1366313564, "pp74", "E", 1366313921, "pp74", "E", 1366313991, "pp74", "E", 1366314124, "pp74", "E", 1366316062, "pp74", "E", 1366316745, "pp74", "E", 1366316777, "pp74", "E", 1366317517, "pp74", "E", 1367512306, "pp74", "R" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="writable">"true"</Core:Property>
+    </Core:Properties>
+    <Notes:Notes>
+      <Notes:Category cat="QA" catstate="Open">
+        <Notes:Note ix="1327656899" state="Open" user="pp74">
+           Lockpicking skill needed to open the chest.
+It spawns 3 types of items, one unique (necklaceIronclaw:Staff:Eos:Props:Necklace) (must be changed to something else if the code is copied), some firebombs(Ironclaw:Staff:Eos:Props:FireBomb) and some tarnished bronze rods(Ironclaw:Staff:Eos:Props:TarnishedBronzeRod).
+The chest comes from the home of an old widow who's husband left behind this locked chest, and she can't open it. So she sold it to a neighbour who then sold it to the highest bidder in Triskellian (a PC).
+The items in it are shady - leaving an opening for a plot later where the widow can come out asking who bought the chest, where the necklace is etc, because the husband turned out to be a secret member of an underground guild: Thieves, vandalizing people or the like (nothing magic or supernatural here!)
+        </Notes:Note>
+      </Notes:Category>
+    </Notes:Notes>
+  </Base:Thing>
+</object>

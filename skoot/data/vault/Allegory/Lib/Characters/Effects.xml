@@ -1,0 +1,136 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:apply_effect">
+         X[M] object db, effectOb;
+int severity, defaultSeverity, resistance, dosage;
+string name;
+mapping effect;
+
+db = \$\{Allegory:Data:Herbalism:Effects\};
+
+if(\$data["name"]) \{
+    name = \$data["name"];
+\} else \{
+    name = "UNDEFINED";
+\}
+
+if(!Get(db, name)) \{
+    /* No data for this poison exists! */
+    return FALSE;
+\}
+
+effect = Get(db, name);
+
+if(!effect["effect"]) \{
+    /* No effect object has been defined! */
+    return FALSE;
+\}
+
+effectOb = effect["effect"];
+
+if(effect["resistance"]) resistance = Int(effect["resistance"]);
+
+if(\$data["dosage"]) 
+    dosage = Int(\$data["dosage"]);
+else if(effect["dosage"]) 
+    dosage = Int(effect["dosage"]);
+
+if(\$data["severity"]) \{
+    defaultSeverity = Int(\$data["severity"]);
+\} else \{
+    defaultSeverity = 10;
+\}
+
+if(Int(\$amount) \<= 0) \$amount = 1;
+
+if(\$data["source"]) \{
+    severity = defaultSeverity;
+\} else \{
+    severity = defaultSeverity/\$amount;
+\}
+
+if(\$data["type"] == "antidote") \{
+    \$newseverity = Int(Get(\$actor, "effect:" + name + ":severity")) + severity;
+    Set(\$actor, "effect:" + name + ":dosage", dosage);
+    Set(\$actor, "effect:" + name + ":severity", \$newseverity);
+    return TRUE;
+\}
+
+Call(effectOb, "apply", \$who: \$actor, \$severity: severity, \$dosage: dosage, \$resistance: resistance);
+      </Core:Property>
+      <Core:Property property="merry:lib:consume">
+         X[M] \$foods = \$what;
+
+/* Check for effects (poison, intoxication, medicine) */
+for(\$i = 0; \$i \< sizeof(\$foods); \$i++) \{
+    \$ob = NRefOb(\$foods[\$i]);
+
+    /* Check if bite/drink size is 0 */
+    if(\$amount \&\& \$amount != 0) \{
+        if(NRefOb(\$foods[\$i]) \&\& NRefOb(\$foods[\$i])."consumable:effects") \{
+            /* found poisons. Run the script for each of them */ 
+            for(\$j = 0; \$j \< sizeof(NRefOb(\$foods[\$i])."consumable:effects"); \$j++) \{
+                if(NRefOb(\$foods[\$i])."consumable:effects"[\$j]["chance"]) \{ 
+                    if((random(100) + 1) \<= Int(NRefOb(\$foods[\$i])."consumable:effects"[\$j]["chance"])) \{
+                        Call(\$\{Allegory:Lib:Characters:Effects\}, "apply_effect", \$quantity: \$amount, \$data: NRefOb(\$foods[\$i])."consumable:effects"[\$j], \$resistance_period: 60*15);
+                    \}
+                \} else \{ 
+                    Call(\$\{Allegory:Lib:Characters:Effects\}, "apply_effect", \$quantity: \$amount, \$data: NRefOb(\$foods[\$i])."consumable:effects"[\$j], \$resistance_period: 60*15);
+                \}
+            \}
+        \}
+
+        /* Reduce quantity for foods (and some drinks -sigh-) */
+        if(\$type == "food" \|\| (\$type == "drink" \&\& \$ob."trait:quantity")) \{
+            \$quantity = Int(\$ob."trait:quantity");
+
+            if(\$amount \< 0) \{ 
+                \$amount = \$quantity;
+                \$quantity = 0;
+            \} else \{
+                \$quantity-=\$amount;
+            \}
+
+            \$ob."trait:quantity" = \$quantity;
+        \}
+
+        /* Reduce hunger */
+        if(\$ob."trait:hunger_value") \{
+            \$hunger = \$ob."trait:hunger_value" * \$amount;
+        \} else \{
+            \$hunger = 4 * \$amount;
+        \}
+
+        status::change_status(\$char: \$actor, \$type: "hunger", \$amount: \$hunger);
+
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_severity">
+         X[M] /* (\{ 0, "cured", 12, "minor", 24, "moderate", 36, "severe", 48, "grave" \}) */
+
+int i;
+
+if(!\$source) return "";
+
+\$degrees = Get(\$source, "effect:degrees");
+
+for(i = 0; i \< sizeof(\$degrees)-1; i+=2) \{
+    if(Int(\$severity) \< \$degrees[i]) \{
+        return \$degrees[i-1];
+    \}
+\}
+
+return \$degrees[sizeof(\$degrees)-1];
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1587675516, "jominey", "E", 1587676376, "jominey", "E", 1587677508, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

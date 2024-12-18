@@ -1,0 +1,164 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="0.03" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="clam"/>
+            <Base:SName sname="shell"/>
+            <Base:SName sname="scallop"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="clams"/>
+            <Base:PName pname="scallops"/>
+            <Base:PName pname="shells"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="fan-shaped"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color)scallop
+          </Base:Description>
+          <Base:Description type="examine">
+             A cold, brightly colored $(this.trait:color)scallop, a fan-shaped shell with a radiating fluted pattern. It's two shells are shut tight, but could possibly be pried open with a tool.
+          </Base:Description>
+          <Base:Description type="look">
+             A brightly colored $(this.trait:color)scallop, it has a fan-shaped shell with a radiating fluted pattern.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:smell">
+         "fish and the ocean"
+      </Core:Property>
+      <Core:Property property="export:trait:taste">
+         "of salt and fish"
+      </Core:Property>
+      <Core:Property property="merry:act:start">
+         X[M] \$this."trait:color" = oneof( "orange ", "reddish brown ", "pink and white ", "dull gold  ", "striped pink ", "light blue ", "pearly white ", "chalky cream ", "dirty yellow ", "circular patterned yellow ", "greenish ", "purpleish red ", "purple " );
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:open">
+         X[M] if(\$this.opened) \{
+    return TRUE;
+\}
+
+\$this.opened = 1;
+
+\$meat = Spawn(\$\{Ironclaw:Props:Plot:Tsunami:ScallopMeat\});
+\$meat."base:environment" = \$actor;
+
+\$shell = Spawn(\$\{Allegory:Props:Animals:Fish:OddCatches:BrokenShell\});
+\$delay(0.2, FALSE, "2b93");
+\$shell."trait:color" = \$this."trait:color";
+\$shell."base:environment" = \$actor;
+
+\$second = Str(Get(\$vob, "verb:second"));
+\$third = Str(Get(\$vob, "verb:third"));
+
+EmitTo(\$actor, "You " + \$second + " open " + Describe(\$this, nil, \$actor) + " with " + Describe(\$tool, nil, \$actor) + ", revealing some scallop meat.");
+EmitIn(\$actor."base:environment", Describe(\$actor) + " " + \$third + " open " + Describe(\$this, \$actor) + " with " + Describe(\$tool, \$actor) + ", revealing some scallop meat.", \$actor);
+
+Slay(\$this);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:break-dob">
+         X[M] if(!\$using) \{
+    EmitTo(\$actor, "What did you want to break " + Describe(\$this, nil, \$actor) + " with?");
+    return FALSE;
+\}
+
+\$tool = NRefOb(\$using[0]);
+if(\$tool."trait:objecttype" != "rock" \&\& \$tool."trait:objecttype" != "hammer") \{
+    EmitTo(\$actor, "You cannot break open " + Describe(\$this, nil, \$actor) + " with that.");
+    return FALSE;
+\}
+
+::open();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:open-what">
+         X[M] EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is closed too tightly to open that way. Perhaps a little force is in order.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:pry-dob">
+         X[M] if(!\$using) \{
+    EmitTo(\$actor, "What did you want to pry " + Describe(\$this, nil, \$actor) + " with?");
+    return FALSE;
+\}
+
+\$tool = NRefOb(\$using[0]);
+if(\$tool."trait:objecttype" != "knife" \&\& \$tool."trait:objecttype" != "chisel" \&\& \$tool."trait:objecttype" == "stiletto") \{
+    EmitTo(\$actor, "You cannot pry open " + Describe(\$this, nil, \$actor) + " with that.");
+    return FALSE;
+\}
+
+::open();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:smash-dob">
+         X[M] if(!\$using) \{
+    EmitTo(\$actor, "What did you want to smash " + Describe(\$this, nil, \$actor) + " with?");
+    return FALSE;
+\}
+
+\$tool = NRefOb(\$using[0]);
+if(\$tool."trait:objecttype" != "rock" \&\& \$tool."trait:objecttype" != "hammer") \{
+    EmitTo(\$actor, "You cannot smash open " + Describe(\$this, nil, \$actor) + " with that.");
+    return FALSE;
+\}
+
+::open();
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="new property name">
+         "New Property Value"
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1304739054, "delfina", "R", 1304740488, "delfina", "K", 1304740536, "delfina", "K", 1304740554, "delfina", "E", 1304740637, "delfina", "K", 1304740655, "delfina", "K", 1304740816, "delfina", "K", 1304740847, "delfina", "K", 1304740876, "delfina", "K", 1304740906, "delfina", "K", 1304740957, "delfina", "E", 1304741180, "delfina", "E", 1304741218, "delfina", "E", 1304741235, "delfina", "E", 1304741294, "delfina", "E", 1304741391, "delfina", "K", 1304741414, "delfina", "K", 1304741441, "delfina", "E", 1304741469, "delfina", "K", 1304741525, "delfina", "K", 1304741590, "delfina", "E", 1304742843, "delfina", "K", 1304742848, "delfina", "E", 1304742861, "delfina", "E", 1304743758, "delfina", "E", 1304743779, "delfina", "E", 1304743876, "arrianna", "E", 1304743926, "arrianna", "E", 1304743930, "delfina", "K", 1304743938, "arrianna", "E", 1304743959, "delfina", "K", 1304743975, "delfina", "E", 1304744020, "delfina", "E", 1304744064, "delfina", "E", 1304744116, "delfina", "E", 1304744665, "arrianna", "E", 1304744674, "delfina", "K", 1304744708, "delfina", "E", 1304744746, "haystack", "K", 1304744771, "delfina", "K", 1304744775, "haystack", "K", 1304744842, "delfina", "K", 1305253015, "delfina", "R", 1305339291, "delfina", "E", 1305343897, "jominey", "E", 1305344466, "jominey", "E", 1305344837, "jominey", "E", 1305345376, "jominey", "E", 1305345605, "jominey", "E", 1305345711, "jominey", "E", 1305345895, "jominey", "E", 1305345942, "jominey", "E", 1305346039, "jominey", "E", 1305346188, "jominey", "E", 1305346218, "jominey", "E", 1305346238, "jominey", "E", 1305346248, "jominey", "E", 1305346675, "jominey", "E", 1305346701, "jominey", "E", 1305346726, "jominey", "E", 1305346798, "jominey", "E", 1305346851, "jominey", "E", 1305347001, "jominey", "E", 1305347118, "jominey", "E", 1305347287, "jominey", "E", 1310318426, "meandmine", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

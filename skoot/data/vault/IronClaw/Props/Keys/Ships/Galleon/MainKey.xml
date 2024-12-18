@@ -1,0 +1,226 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Keys:BoardHouse:UrRentingKey)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="key"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="keys"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="brass"/>
+          <Base:Adjective adjective="galleon"/>
+          <Base:Adjective adjective="stamped"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             $(this.trait:color) $(this.trait:material) key
+          </Base:Description>
+          <Base:Description type="look">
+             A $(this.trait:color) $(this.trait:material) key stamped with the image of a $(this.trait:variation).
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:base:keycode">
+         "IronClaw:Rooms:Docktown:Central:Ships:Galleon:Deck-Main"
+      </Core:Property>
+      <Core:Property property="export:nip:item:cost">
+         0
+      </Core:Property>
+      <Core:Property property="export:roomcost">0</Core:Property>
+      <Core:Property property="export:trait:material">
+         "polished brass"
+      </Core:Property>
+      <Core:Property property="export:trait:variation">
+         "galleon"
+      </Core:Property>
+      <Core:Property property="merry:lib:delete_room">
+         X[M] EmitTo(\$actor, "Thank you. Your room is now returned.");  
+  
+if(Get(\$actor, "virtualhome:"+lower_case(Obj(\$this."base:keycode").isvirtual)))  
+  \$room = Get(\$actor, "virtualhome:"+lower_case(Obj(\$this."base:keycode").isvirtual));  
+  
+/* no longer pay rent for this room */  
+if(\$cost = Get(\$actor, "virtualhome:"+lower_case(Obj(\$this."base:keycode").isvirtual)+":cost")) \{  
+  \$actor."trait:incomecosts" -= \$cost;  
+  Set(\$actor, "virtualhome:"+lower_case(Obj(\$this."base:keycode").isvirtual)+":cost", nil);  
+\}  
+  
+\$inv = \$room."base:inventory";  
+for(\$i=0;((sizeof(\$inv) != 0)\&\&(\$i\<500));\$i++) \{  
+  /* There are still things in this room */  
+  if(\$inv[0]."base:volition") \{  
+    /* There is an animal in the room! */  
+    EmitTo(\$inv[0], "Servants politely move you out of this room and into the corridor.");  
+    \$inv[0]."base:environment" = \$\{Allegory:Setting:Rinascita:Buildings:Northwest:FrenchEstate:SecondFloor:Balcony\};  
+  \} else if (\$inv[0]."base:integration") \{  
+    /* This is part of the room */  
+    Slay(\$inv[0]);  
+  \} else if (\$inv[0]."base:immobile") \{  
+    /* This is part of the room */  
+    Slay(\$inv[0]);  
+  \} else \{  
+    /* Moving to donation bin */  
+    \$inv[0]."base:environment" = \$\{Ironclaw:World:DockTown:Commons:Props:DonationBox\};  
+  \}  
+\}  
+  
+Slay(\$room);  
+Slay(\$this);  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:expire_fun">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:returning_accept">
+         X[M] \$delay(0.5, TRUE, "9145");  
+/* Double check if the player wants to return the room */  
+interaction::question(\$actor: \$actor, \$question: "Servants will go to your room and put any belongings they find in the Docktown donation bin. You can always remove your belongings first, and return your key later. Are you sure you want to stop renting your room now?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "delete_room", \$no_fun: "returning_decline", \$expire_fun: "returning_expire", \$par: ([ "room": \$room, "actor": \$actor]));  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:returning_decline">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:returning_expire">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:lock-using">
+         X[M] /* Code for virtual room keys */  
+  
+/* Check if this key unlocks this virtual room */  
+if(\$this."base:keycode") \{  
+  if(  
+    Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")  
+  \&\&  
+    name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")))  
+  \&\&  
+    (name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest"))) == \$this."base:keycode")  
+  ) \{  
+    /* The key matches this door */  
+    EmitTo(\$actor, "You lock "+Describe(\$what[0])+".");  
+    EmitIn(\$actor."base:environment", Describe(\$actor)+" locks "+Describe(\$what[0])+".", \$actor);  
+    return FALSE;  
+  \}  
+\}  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:offer-what%returning">
+         X[M] if(\$who \&\& \$who[0].returnsrooms) \{  
+  /* If this isn't our key */  
+  if(\$this."trait:owner" \&\& (\$this."trait:owner" != \$actor)) return TRUE;  
+  
+  if(Get(\$actor, "virtualhome:"+lower_case(Obj(\$this."base:keycode").isvirtual)))\{  
+    \$room = Get(\$actor, "virtualhome:"+lower_case(Obj(\$this."base:keycode").isvirtual));  
+  
+    /* Check if the player wants to return the room */  
+    interaction::question(\$actor: \$actor, \$question: "Do you want to stop renting "+Describe(\$room)+"?", \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "returning_accept", \$no_fun: "returning_decline", \$expire_fun: "returning_expire", \$par: ([ "room": \$room, "actor": \$actor]));  
+  
+    return FALSE;  
+  \} else \{  
+    /* No owner. Slay key. */  
+    EmitTo(\$actor, Describe(\$who[0])+" takes "+Describe(\$this, nil, \$actor)+".");  
+    EmitIn(\$actor."base:environment", Describe(\$who[0])+" takes "+Describe(\$this)+".", \$actor);  
+    Slay(\$this);  
+    return FALSE;  
+  \}  
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:unlock-using">
+         X[M] /* Code for virtual room keys */  
+  
+/* Check if this key unlocks this virtual room */  
+if(\$this."base:keycode") \{  
+  if(  
+    Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")  
+  \&\&  
+    name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")))  
+  \&\&  
+    (name(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest"))) == \$this."base:keycode")  
+  ) \{  
+    /* The key matches this door */  
+    /* Check if this key is already owned by someone */  
+    if(!\$this."trait:owner") \{  
+      /* Nobody owns the key. Does the actor already have a room of this type? */  
+      if(!(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual \&\& Get(\$actor, "virtualhome:"+NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual)))  
+      \{  
+        /* Create a new room for this actor, and label the key */  
+  
+        /* Create the room */  
+        \$newroom = Spawn(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")));  
+  
+        if(\$newroom) \{  
+          Set(\$actor, "virtualhome:"+lower_case(NRefOb(Get(NRefOb(\$what[0]), "details:"+NRefDetail(\$what[0])+":exit:dest")).isvirtual), \$newroom);  
+          \$newroom.homeowner = \$actor;  
+        \}  
+      \}  
+      /* Label the key */  
+      \$this."trait:owner" = \$actor;  
+      \$this."details:tag:description:writing" = Describe(\$actor);  
+      \$this."details:default:description:writing" = Describe(\$actor);  
+      EmitTo(\$actor, "You unlock "+Describe(\$what[0])+", and label "+Describe(\$this, nil, \$actor)+".");  
+      EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+".", \$actor);  
+      return FALSE;  
+    \} else \{  
+      /* The key is already owned */  
+      if(\$this."trait:owner" != \$actor) \{  
+        EmitTo(\$actor, "That is not the key to your room.");  
+        return FALSE;  
+      \} else \{  
+        EmitTo(\$actor, "You unlock "+Describe(\$what[0])+".");  
+        EmitIn(\$actor."base:environment", Describe(\$actor)+" unlocks "+Describe(\$what[0])+".", \$actor);  
+        return FALSE;  
+      \}  
+    \}  
+  \}  
+\}  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1230725333, "morwenlorelie", "R", 1230725406, "morwenlorelie", "E", 1230725507, "morwenlorelie", "K", 1230725515, "morwenlorelie", "E", 1230725803, "morwenlorelie", "X", 1230725812, "morwenlorelie", "E", 1230725968, "morwenlorelie", "E", 1230725988, "morwenlorelie", "E", 1230726240, "morwenlorelie", "E", 1230726260, "morwenlorelie", "K", 1230727372, "morwenlorelie", "X" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

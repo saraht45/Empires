@@ -1,0 +1,155 @@
+<object clone="/base/obj/thing" owner="slurpeeslurp">
+  <Base:Thing>
+    <Ur:UrObject urobject="OBJ(Allegory:Props:Food:UrFood)"/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="true" against="true" under="true" on="true" inside="true" near="true" over="true" behind="true" before="true" beside="true"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="meat"/>
+            <Base:SName sname="steak"/>
+            <Base:SName sname="food"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="meats"/>
+            <Base:PName pname="steaks"/>
+            <Base:PName pname="foods"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="myr"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="NEW">empty</Base:Description>
+          <Base:Description type="brief">
+             $(this.trait:brief)
+          </Base:Description>
+          <Base:Description type="examine">
+             $(this.trait:examine){? | $(this.trait:eaten) | Someone appears to have <eaten what="$(this)"/>it.}
+          </Base:Description>
+          <Base:Description type="look">
+             $(this.trait:look){? | $(this.trait:eaten) | Someone appears to have <eaten what="$(this)"/>it.}
+          </Base:Description>
+          <Base:Description type="new">empty</Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:brief">
+         "large Myr steak"
+      </Core:Property>
+      <Core:Property property="export:trait:examine">
+         "A large Myr steak, exceedingly thick and oozing with fresh blood."
+      </Core:Property>
+      <Core:Property property="export:trait:look">
+         "A large Myr steak, exceedingly thick and oozing with fresh blood."
+      </Core:Property>
+      <Core:Property property="export:trait:quantity">
+         100
+      </Core:Property>
+      <Core:Property property="export:trait:smell">
+         "ultra gamey meat"
+      </Core:Property>
+      <Core:Property property="export:trait:taste">
+         "like raw meat. The metallic flavor of fresh blood possesses your mouth and lingers for hours after you swallow"
+      </Core:Property>
+      <Core:Property property="merry:react-post:roast-dob">
+         X[M] /* check if the meat is cooked already */
+if(\$this."trait:brief" == "smoked myr steak") \{
+   EmitTo(\$actor, "The Myr steak is already cooked."); 
+   return FALSE;
+   \}
+
+/* check if fire is present and used */
+if(!\$using) \{
+ EmitTo(\$actor, "You need some manner of fire to roast the meat by.");
+ return FALSE;
+\}
+if(sizeof(\$using) != 1) \{
+ EmitTo(\$actor, "One fire is enough to cook the meat, silly.");
+ return FALSE;
+\}
+
+if(\$this."base:environment" != \$actor) \{
+    EmitTo(\$actor, "You must be holding that in order to roast it.");
+    return FALSE;
+\}
+
+\$light = (\$using[0]);
+if(NRefDetail(\$light) != "fire" \&\& NRefOb(\$light)."base:urparent" != \$\{IronClaw:Props:Lighting:Source:Misc:Bonfire\} \&\& NRefOb(\$light)."base:urparent" != \$\{Ironclaw:Props:Camping:Campfire\}) \{
+if(sizeof(\$using) != 1) return TRUE;
+   EmitTo(\$actor, "You need some manner of fire to roast this meat with.");
+   return FALSE;
+   \}
+
+/* emit the cooking */
+ EmitTo(\$actor, Describe(\$this, nil, \$actor)+" slowly cooks over the fire, sending wafts of gamey scents into the air.");
+ EmitIn(\$actor."base:environment", Describe(\$this)+" slowly roasts over the fire, sending wafts of gamey scents into the air. "+ Describe(\$actor)+" gradually turns the meat to allow the fire to lick all sides of it.", \$actor);
+
+/* cook the meat */
+\$this."trait:brief" = "smoked Myr steak";
+\$this."trait:look" = "A large slab of Myr steak. It has been heavily smoked and lightly seasoned.";
+\$this."trait:examine" = "A large Myr steak, heavily smoked and lightly seasoned. The thickness of the meat has caused it to not cook all the way through, and occasionally drips of blood fall from the surface.";
+\$this."trait:smell" = "very gamey meat, and the scent of blood still clings to it due to inadequate cooking time. The seasoning helps to cover up the aroma, but not enough to make it go unnoticed";
+\$this."trait:taste" = "super rich and succulent (if you like undercooked meat). The smoky flavor and light seasonings aid in making the eating experience manageable for those who tend to like their food more well done";
+
+
+if(\$this."base:environment" != \$actor) \{
+ EmitTo(\$actor, Describe(\$this, nil, \$actor)+" slips out of your hands, and onto the ground. Oops.");
+ EmitIn(\$actor."base:environment", Describe(\$this)+" slips out of "+Describe(\$actor)+"'s hands, and onto the ground. Oops.", \$actor);
+ Slay(\$this);
+ return FALSE;
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1264611636, "balkaar", "E", 1264611868, "balkaar", "E", 1264611877, "balkaar", "E", 1264611978, "balkaar", "E", 1264612017, "balkaar", "E", 1264612589, "balkaar", "E", 1264612609, "balkaar", "E", 1264614011, "balkaar", "E", 1264614044, "balkaar", "E", 1264614053, "balkaar", "E", 1264614088, "balkaar", "E", 1264614096, "balkaar", "E", 1264614241, "balkaar", "E", 1264614249, "balkaar", "E", 1264614275, "balkaar", "E", 1264614285, "balkaar", "E", 1264614378, "balkaar", "E", 1264614389, "balkaar", "E", 1264616169, "balkaar", "E", 1264616372, "balkaar", "E", 1264616379, "balkaar", "E", 1264616381, "balkaar", "E", 1264616393, "balkaar", "E", 1264616506, "balkaar", "E", 1264616881, "balkaar", "E", 1264617099, "balkaar", "E", 1264617349, "balkaar", "E", 1264617392, "balkaar", "E", 1272780976, "slurpeeslurp", "E", 1272784672, "slurpeeslurp", "E", 1373234390, "jominey", "E", 1417790380, "slurpeeslurp", "E", 1417790409, "slurpeeslurp", "K", 1417790544, "slurpeeslurp", "E", 1417790994, "slurpeeslurp", "E", 1417792807, "slurpeeslurp", "K", 1417792828, "slurpeeslurp", "K", 1417877775, "slurpeeslurp", "R", 1417881146, "slurpeeslurp", "K", 1417882071, "slurpeeslurp", "E", 1417882235, "slurpeeslurp", "E", 1417882288, "slurpeeslurp", "E", 1417882314, "slurpeeslurp", "E", 1458697940, "jominey", "E", 1508191257, "jominey", "E", 1508191948, "jominey", "E", 1510197130, "jominey", "E", 1510197232, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="trait:brief">
+         "large slab of freshly killed Myr"
+      </Core:Property>
+      <Core:Property property="trait:examine">
+         "A large Myr steak, exceedingly thick and oozing with fresh blood."
+      </Core:Property>
+      <Core:Property property="trait:look">
+         "A large Myr steak, exceedingly thick and oozing with fresh blood."
+      </Core:Property>
+      <Core:Property property="trait:smell">
+         "ultra gamey meat"
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

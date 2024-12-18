@@ -1,0 +1,979 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="export:cost:career">
+         15
+      </Core:Property>
+      <Core:Property property="export:cost:combat">5</Core:Property>
+      <Core:Property property="export:cost:knowledge">
+         2
+      </Core:Property>
+      <Core:Property property="export:cost:lang">3</Core:Property>
+      <Core:Property property="export:difficulty:career">
+         3
+      </Core:Property>
+      <Core:Property property="export:teaching:npc">
+         1
+      </Core:Property>
+      <Core:Property property="merry:lib:begin_teaching">
+         X[M] /* Add student to the teachers list of students */
+if(\$teacher."teaching:students")\{
+  \$teacher."teaching:students" \|= (\{ \$student \});
+\} else \{
+  \$teacher."teaching:students" = (\{ \$student \});
+\}
+
+/* Add the topic and teacher to the students list */
+\$student."student:topic" = \$topic;
+\$student."student:teacher" = \$teacher;
+\$student."student:lesson_name" = \$lessonName;
+
+return Call(\$this, "teaching_loop");
+      </Core:Property>
+      <Core:Property property="merry:lib:cancel_lesson">
+         X[M] /* cancels \$student's current lesson */
+\$student = NRefOb(\$student);
+
+/* set the teacher to not be teaching this student anymore */
+if(\$student."student:teacher" \&\& \$student."student:teacher"."teaching:students")
+  \$student."student:teacher"."teaching:students" -= (\{ \$student \});
+/* set the student to not be having a lesson anymore */
+\$student."student:lesson_name" = nil;
+\$student."student:topic" = nil;
+\$student."student:teacher" = nil;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:charge_learning_cost">
+         X[M] \$student."student:learningpoints" -= \$cost;
+
+if(\$penalty)
+  \$student."student:learningpoints" -= \$penalty;
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:charge_money">
+         X[M] /* ask about the money cost */
+
+if(\$par["moneycost"]) \{
+
+  /* Check we have enough learning points to be able to afford this */
+  \$cost = \$par["cost"];
+  if(\$cost)
+  \{
+    if(!Call(\$this, "check_learningpoints", \$student: \$actor)) \{
+      EmitTo(\$actor, "You don't have enough study points to learn this. Wait some time, then try again later.");
+      EmitTo(\$teacher, Describe(\$actor)+" does not have enough study points to study with you.");
+      return FALSE;
+    \}
+  \}
+
+  /* there is a money cost for this lesson */
+  \$moneycost = \$par["moneycost"];
+  \$message = "Do you want to pay ";
+  if(\$moneycost == 100) \{
+    \$message += "1 denar";
+  \} else \{
+    \$message += Str(Int(Int(\$moneycost)/100))+" denarii";
+  \}
+  \$message += " for this lesson?";
+
+\$delay(0.1, TRUE, "a3f1");
+
+interaction::question(\$question: \$message, \$expires: 60, \$env: "TRUE", \$yes_ob: this, \$no_ob: this, \$expire_ob: this, \$yes_fun: "charge_money_now", \$no_fun: "teaching_decline", \$expire_fun: "teaching_expire", \$par: ([ "teacher": \$par["teacher"], "topic": \$par["topic"], "property": \$par["property"], "lesson_name": \$par["lesson_name"], "cost": \$par["cost"], "penalty": \$par["penalty"], "moneycost": \$par["moneycost"]]));
+
+\} else \{
+  /* no money cost for the lesson */
+
+  /* do the lesson */
+  \$teacher = \$par["teacher"];
+  \$topic = \$par["topic"];
+  \$topicProp = \$par["property"];
+  \$lessonName = \$par["lesson_name"];
+  \$cost = \$par["cost"];
+  \$penalty = \$par["penalty"];
+
+  Call(this, "teaching_accept");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:charge_money_now">
+         X[M] /* charge money cost */
+\$teacher = \$par["teacher"];
+\$moneycost = \$par["moneycost"];
+\$CDO = \$\{Ironclaw:Data:Trading:Money\};
+\$hide_decimals = \$CDO."cash:hide-decimals";
+if( Call( \$\{Ironclaw:Lib:Old:Trading:TradingNPC\}, "core_trading_deduct", \$CDO: \$CDO, \$query: \$moneycost, \$item: \$teacher, \$sales_assistant: \$teacher ))
+\{
+  /* check if the teacher has a guild, if so, give some of the money to the guild */
+  if(\$teacher \&\& \$teacher.guild) \{
+    /* check if there is money going to the guild */
+    if(\$moneycost \> 100) \{
+      /* money goes to the guild */
+      \$wage = Int(((Flt(\$moneycost)*0.1)/100.0)-0.5)*100;
+      if(\$wage \< 100) \$wage = 100;
+      \$moneycost = Int(\$moneycost) - \$wage;
+      if(!\$teacher.guild.kitty) \{
+        \$teacher.guild.kitty = \$moneycost;
+      \} else \{
+        \$teacher.guild.kitty += \$moneycost;
+      \}
+    \}
+  \}
+\} else \{
+  return FALSE;
+\}
+
+/* do the lesson */
+\$teacher = \$par["teacher"];
+\$topic = \$par["topic"];
+\$topicProp = \$par["property"];
+\$lessonName = \$par["lesson_name"];
+\$cost = \$par["cost"];
+\$penalty = \$par["penalty"];
+
+Call(this, "teaching_accept");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_alt_teaching">
+         X[M] if(!\$teacher) return FALSE;
+if(!\$student) return FALSE;
+
+if(!\$teacher."udat:object") return FALSE;
+if(!\$student."udat:object") return FALSE;
+
+if(\$teacher.noaltwarnings) return FALSE;
+if(\$student.noaltwarnings) return FALSE;
+
+if(\$teacher."udat:object" == \$student."udat:object") \{
+  /* they are alt teaching */
+  return "account";
+\}
+
+/* check if they are alt teaching on different accounts, but same IP */
+if(\$teacher."udat:name" \&\& \$student."udat:name") \{
+  if(
+    Call(\$\{UserAPI:UDatD\}, "udat_ipdata", \$name: \$teacher."udat:name", \$category: "text")[0][0]
+  ==
+    Call(\$\{UserAPI:UDatD\}, "udat_ipdata", \$name: \$student."udat:name", \$category: "text")[0][0]
+  ) \{
+    /* ip's match. this is an alt-teaching situation */
+    return "ip";
+  \}
+\}
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_learningpoints">
+         X[M] /* Check we have enough learning points to be able to afford this lesson */
+/* expects \$student and \$cost */
+if(!\$student."student:learningpoints" \|\| \$student."student:learningpoints" \< \$cost)
+  return FALSE;
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_number_of_students">
+         X[M] /* Check we are allowed to teach this many students */
+\$num_of_students = sizeof(\$dob);
+if(\$teacher."teaching:students")
+  \$num_of_students += sizeof(\$teacher."teaching:students");
+
+if(\$actor."skill:academics:teaching") \{
+  if(\$actor."skill:academics:teaching" == -1) return TRUE;
+  \$teaching_max = Int(\$actor."skill:academics:teaching");
+\} else \{
+  \$teaching_max = 1;
+\}
+if(\$actor."career:academics:teaching") \{
+  if(\$actor."career:academics:teaching" == -1) return TRUE;
+  if(Int(\$actor."career:academics:teaching") \> \$teaching_max)
+    \$teaching_max = Int(\$actor."career:academics:teaching");
+\}
+
+if(\$teaching_max \>= \$num_of_students) return TRUE;
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:check_topic_knowledge">
+         X[M] int counter;
+mapping map;
+object ob;
+
+if(!\$teacher) \$teacher = \$actor;
+
+/* Check if the teacher knows anything about this topic */
+if(!\$topic) return nil;
+
+/* Get a mapping of all the actors skills */
+map = ([ ]);
+map += prefixed_map(\$teacher."*", "skill:");
+for (ob = \$teacher."core:ur:parent"; ob; ob = ob."core:ur:parent") \{
+    map = prefixed_map(ob."*", "export:skill:") + map;
+\}
+
+\$list = map_indices(map);
+
+/* Search through for this skill */
+for (counter = 0; counter \< sizeof(\$list); counter++)
+\{
+  if(sscanf(\$list[counter], "skill:%s:"+\$topic, \$category) == 1 \|\| sscanf(\$list[counter], "export:skill:%s:"+\$topic, \$category) == 1)
+  break;
+\}
+
+if(!\$category)
+\{
+  return nil;
+\}
+
+return "skill:"+\$category+":"+\$topic;
+      </Core:Property>
+      <Core:Property property="merry:lib:finish_teaching">
+         X[M] /* Charge the learning cost */
+  Call(\$this, "charge_learning_cost");
+
+/* Remove this student from the teachers list */
+\$teacher."teaching:students" -= (\{ \$student \});
+
+/* Remove the topic and teacher from the students list */
+Call(\$this, "cancel_lesson");
+
+/* Grant the skill increase */
+if(Get(\$actor, \$topicProp))
+\{
+  Set(\$actor, \$topicProp, Int(Get(\$actor, \$topicProp)) + 1);
+\} else \{
+  Set(\$actor, \$topicProp, 1);
+\}
+
+/* Output a message saying the lesson is over */
+EmitTo(\$teacher, Describe(\$student)+" has finished studying "+\$topic+".");
+EmitTo(\$actor, Describe(\$teacher)+" has finished teaching you "+\$topic+".");
+EmitIn(\$actor."base:environment", Describe(\$teacher)+" finishes teaching "+Describe(\$actor)+" about "+\$topic+".", \$actor, \$teacher);
+
+/* check if we are alt-teaching */
+if(Call(\$this, "check_alt_teaching")) \{
+  \$reason = Call(\$this, "check_alt_teaching");
+  Call(\$this, "mark_alt_lesson", \$phase: "finished");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_lesson_cost">
+         X[M] /* calculate the learning points cost of this lesson */
+string category, topic;
+
+/* if we don't have a category and topic to check for, assume the multiplier is 5 */
+if(sscanf(\$topicProp, "skill:%s:%s", category, topic) == 2) \{
+  /* calculate the cost multiplier for this skill type */
+  if(Get(\$this, "cost:"+category+":"+topic)) \{
+    \$multiplier = Get(\$this, "cost:"+category+":"+topic);
+  \} else if(Get(\$this, "cost:"+category)) \{
+    \$multiplier = Get(\$this, "cost:"+category);
+  \} else \{
+    \$multiplier = 5;
+  \}
+\} else \{
+  \$multiplier = 5;
+\}
+
+/* Caclulate the current rating of this skill */
+if(Get(\$student, \$topicProp))
+\{
+  \$cost = Int(Get(\$student, \$topicProp));
+\} else \{
+  \$cost = 1;
+\}
+
+/* calculate final cost */
+\$cost = \$cost * \$multiplier;
+
+if(\$cost \> 200) \$cost = 200;
+
+return \$cost;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_lesson_cost_message">
+         X[M] /* output a message asking if the player wants this lesson */
+\$current_points = \$student."student:learningpoints";
+\$message = Describe(\$teacher)+" offers to teach you "+\$topic+". This will cost you "+\$cost+" learning point(s).";
+if(\$penalty) \{
+  /* mention there is an additional cost afterwards */
+  \$message += " There is also an additional cost of "+\$penalty+" study points that will be charged after the lesson (and may put you into negative learning points).";
+\}
+\$message += " You have "+\$current_points+" learning point(s).";
+if(\$moneycost) \{
+  \$message += "\\nThere is also an additional cost of ";
+  if(Int(\$moneycost/100) == 1) \{
+    \$message += "1 denar.";
+  \} else \{
+    \$message += Str(Int(\$moneycost/100))+" denarii.";
+  \}
+\}
+\$message += "\\nDo you want to learn "+\$topic+" from "+Describe(\$teacher)+"?";
+return \$message;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_teaching_delay">
+         X[M] /* get the delay between learning checks */
+\$learning_delay = 900;
+if(\$student."trait:mind")
+  \$learning_delay -= \$student."trait:mind"*60;
+if(\$learning_delay \< 300)
+  \$learning_delay = 300;
+  
+/* if it's an NPC teaching, teach quickly (since NPC's are boring) */
+if(\$teacher."teaching:npc")
+  \$learning_delay = 15;
+
+return \$learning_delay;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_teaching_skill">
+         X[M] /* get the teaching skill for the teacher and student */
+\$dice = (\{ \$teacher."skill:academics:teaching", \$teacher."career:academics:teaching", \$teacher."trait:mind" \});
+/* teachers teaching ability + mind */
+\$dice += (\{ \$student."trait:mind" \}); /* students mind */
+
+return \$dice;
+      </Core:Property>
+      <Core:Property property="merry:lib:get_teaching_target">
+         X[M] /* get the target for teaching */
+string category, topic;
+
+/* if we don't have a category and topic to check for, assume the multiplier is 1 */
+if(sscanf(\$topicProp, "skill:%s:%s", category, topic) == 2) \{
+  /* calculate the cost multiplier for this skill type */
+  if(Get(\$this, "difficulty:"+category+":"+topic)) \{
+    \$multiplier = Get(\$this, "difficulty:"+category+":"+topic);
+  \} else if(Get(\$this, "difficulty:"+category)) \{
+    \$multiplier = Get(\$this, "difficulty:"+category);
+  \} else \{
+    \$multiplier = 1;
+  \}
+\} else \{
+  \$multiplier = 1;
+\}
+
+
+if(Int(Get(\$student, \$topicProp)))
+\{
+  \$target = Int(Get(\$student, \$topicProp));
+\} else \{
+  \$target = 1;
+\}
+
+/* calculate final target */
+\$target = \$target * 2 * \$multiplier;
+
+if(\$target \> 50) \$target = 50;
+
+return \$target;
+      </Core:Property>
+      <Core:Property property="merry:lib:mark_alt_lesson">
+         X[M] /* put a note in players notes about alt teaching, and tell the LG line */
+
+if(!\$teacher) return FALSE;
+if(!\$student) return FALSE;
+if(!\$phase) \$phase = "began";
+
+if(!\$reason) \{
+  \$reason = "";
+\} else \{
+  \$reason = " ("+Str(\$reason)+")";
+\}
+
+/* alt teaching */
+chat::send_msg(\$message: Describe(\$teacher)+" "+\$phase+" an alt-teaching lesson with "+Describe(\$student)+"."+\$reason, \$line: "lg", \$actor: \$\{Chatters:IC:me:messenger\});
+  if(!\$student."vp:notes") \{
+    \$student."vp:notes" = (\{ \});
+  \}
+  \$student."vp:notes" += (\{ (\{ time(), "warning", Describe(\$teacher)+" "+\$phase+" an alt-teaching lesson with "+Describe(\$student)+"."+\$reason \}) \});
+  if(!\$teacher."vp:notes") \{
+    \$teacher."vp:notes" = (\{ \});
+  \}
+  \$teacher."vp:notes" += (\{ (\{ time(), "warning", Describe(\$teacher)+" "+\$phase+" an alt-teaching lesson with "+Describe(\$student)+"."+\$reason \}) \});
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:offer_teaching_to_students">
+         X[M] NRef *arr;
+object *tmpObjArr;
+int counter;
+
+/* offers a lesson to the students, after checking that we can teach them */
+
+/* Check we are allowed to teach this many students */
+if(!Call(this, "check_number_of_students")) \{
+    EmitTo(\$teacher, "You cannot teach that many people at once.");
+    return FALSE;
+\}
+
+/* set the teaching topic and time/lesson name */
+if(!\$teacher."teaching:topic" \|\| \$teacher."teaching:topic" != \$topic) \{
+  \$teacher."teaching:topic" = \$topic;
+  \$teacher."teaching:lesson_name" = time();
+\}
+
+/* consent not yet given, demand it */
+for(\$i=0;\$i\<sizeof(\$dob);\$i++) \{
+  /* calculate the cost of learning this skill */
+  \$cost = Call(this, "get_lesson_cost", \$student: NRefOb(\$dob[\$i]));
+  \$message = Call(this, "get_lesson_cost_message", \$student: NRefOb(\$dob[\$i]));
+
+  /* Request consent to teach the skill */
+  interaction::question(\$actor: NRefOb(\$dob[\$i]), \$question: \$message, \$expires: 60, \$env: "TRUE", \$yes_ob: \$this, \$no_ob: \$this, \$expire_ob: \$this, \$yes_fun: "teaching_accept", \$no_fun: "teaching_decline", \$expire_fun: "teaching_expire", \$par: ([ "teacher": \$teacher, "topic": \$topic, "property": \$topicProp, "lesson_name":\$teacher."teaching:lesson_name", "cost": \$cost]));
+\}
+EmitTo(\$teacher, "You offer to teach "+\$topic+" to "+Describe(\$dob)+".");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:stop_teaching">
+         X[M] /* stops teaching lessons to selected \$students, if being taught by \$teacher */
+/* returns an array of the students who are no longer being taught */
+object *tmpObjArr;
+int counter;
+
+/* make sure \$students is an array */
+if(!\$students) return (\{ \});
+\$students = Arr(\$students);
+
+tmpObjArr = (\{ \});
+if(\$teacher) \{
+  /* we have a teacher. Only cancel the lesson if this teacher was teaching them */
+  for(counter=0;counter\<sizeof(\$students);counter++) \{
+    if(NRefOb(\$students[counter])."student:teacher" == \$teacher \&\& NRefOb(\$students[counter])."student:lesson_name" == \$teacher."teaching:lesson_name") \{
+      /* tell the student */
+      EmitTo(NRefOb(\$students[counter]), Describe(\$teacher)+" has stopped teaching you "+NRefOb(\$students[counter])."student:topic"+".");
+      Call(\$this, "cancel_lesson", \$student: \$students[counter]);
+      tmpObjArr += (\{ \$students[counter] \});
+    \}
+  \}
+\} else \{
+  /* we don't have a teacher. Cancel the lesson for all students */
+  for(counter=0;counter\<sizeof(\$students);\$counter++) \{
+    /* if they are studying something */
+    if(NRefOb(\$students[counter])."student:topic") \{
+      /* set the teacher to not be teaching this student anymore */
+      if(NRefOb(\$students[counter])."student:teacher") \{
+        NRefOb(\$students[counter])."student:teacher"."teaching:students" -= (\{ NRefOb(\$students[counter]) \});
+        /* tell the student */
+        EmitTo(NRefOb(\$students[counter]), Describe(NRefOb(\$students[counter])."student:teacher")+" has stopped teaching you "+NRefOb(\$students[counter])."student:topic"+".");
+      \} else \{
+        /* tell the student */
+        EmitTo(NRefOb(\$students[counter]), "You have stopped studying "+NRefOb(\$students[counter])."student:topic"+".");
+      \}
+      /* set the student to not be having a lesson anymore */
+      Call(\$this, "cancel_lesson", \$student: \$students[counter]);
+      tmpObjArr += (\{ \$students[counter] \});
+    \}
+  \}
+\}
+
+return tmpObjArr;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_accept">
+         X[M] \$teacher = \$par["teacher"];
+\$topic = \$par["topic"];
+\$topicProp = \$par["property"];
+\$lessonName = \$par["lesson_name"];
+\$cost = \$par["cost"];
+\$penalty = \$par["penalty"];
+
+/* Check we have enough learning points to be able to afford this */
+if(\$cost)
+\{
+  if(!Call(\$this, "check_learningpoints", \$student: \$actor)) \{
+    EmitTo(\$actor, "You don't have enough study points to learn this. Wait some time, then try again later.");
+    EmitTo(\$teacher, Describe(\$actor)+" does not have enough study points to study with you.");
+    return FALSE;
+  \}
+\}
+
+/* check if we are alt-teaching */
+if(Call(\$this, "check_alt_teaching", \$student: \$actor)) \{
+  \$reason = Call(\$this, "check_alt_teaching", \$student: \$actor);
+  Call(\$this, "mark_alt_lesson", \$student: \$actor, \$phase: "began");
+\}
+
+/* if we have a lesson with a different teacher, cancel it */
+
+/* Check we are already studying something */
+if(\$actor."student:lesson_name" \&\& \$teacher."teaching:lesson_name" \&\& \$actor."student:lesson_name" != \$teacher."teaching:lesson_name") \{
+  /* sometimes we no longer know what the topic we were learning is */
+  if(\$actor."student:topic") \{
+    /* sometimes the teacher has deleted their body */
+    if(\$actor."student:teacher") \{
+      EmitTo(\$actor, "You are no longer studying "+\$actor."student:topic"+" with "+Describe(\$actor."student:teacher")+".");
+      EmitTo(\$actor."student:teacher", Describe(\$actor)+" is are no longer studying "+\$actor."student:topic"+" with you.");
+    \} else \{
+      EmitTo(\$actor, "You are no longer studying "+\$actor."student:topic"+".");
+    \}
+  \}
+
+  /* Remove this student from the old teachers teaching list */
+  Call(\$this, "cancel_lesson", \$student: \$actor);
+\}
+
+/* If we are already studying this */
+if(\$actor."student:lesson_name" \&\& \$actor."student:lesson_name" == \$teacher."teaching:lesson_name") \{
+  EmitTo(\$actor, "You continue studying "+\$actor."student:topic"+" with "+Describe(\$teacher)+".");
+  EmitTo(\$actor."student:teacher", Describe(\$actor)+" continues studying "+\$topic+" with you.");
+  return FALSE;
+\}
+
+/* Check if the teacher is good enough to train the actor in this skill */
+if(!Get(\$teacher, \$topicProp) \&\& !\$teacher."teaching:npc")
+\{
+  EmitTo(\$teacher, "You cannot teach "+\$topic+", as you know nothing about it.");
+  EmitTo(\$actor, "You already know as much about "+\$topic+" as "+Describe(\$teacher)+" can teach.");
+  return FALSE;
+\}
+
+if(Int(Get(\$actor, \$topicProp)) \&\& (Int(Get(\$actor, \$topicProp)) \>= Int(Get(\$teacher, \$topicProp))) \&\& !\$teacher."teaching:npc")
+\{
+  EmitTo(\$teacher, Describe(\$actor)+" already knows as much about "+\$topic+" as you can teach.");
+  EmitTo(\$actor, "You already know as much about "+\$topic+" as "+Describe(\$teacher)+" can teach.");
+  return FALSE;
+\}
+
+/* Check if the teacher is still in the room */
+if(\$teacher."base:environment" == \$actor."base:environment")
+\{
+  /* Check if the teacher is still teaching the topic */
+  if(\$teacher."teaching:topic" != \$topic)
+  \{
+    EmitTo(\$actor, Describe(\$teacher)+" is no longer teaching about "+\$topic+".");
+    EmitTo(\$teacher, Describe(\$actor)+" cannot accept your offer to teach "+\$topic+", as you are no longer teaching that.");
+    return FALSE;
+  \} else \{
+    /* check the teacher is allowed to teach this many students */
+    if(\$teacher."teaching:students") \{
+      \$num_of_students = sizeof(\$teacher."teaching:students")+1;
+    \} else \{
+      \$num_of_students = 1;
+    \}
+    if(\$teacher."skill:academics:teaching") \{
+      \$teaching_max = Int(\$teacher."skill:academics:teaching");
+    \} else \{
+      \$teaching_max = 1;
+    \}
+    if(\$teacher."career:academics:teaching") \{
+      if(\$teacher."career:academics:teaching" \> \$teaching_max)
+        \$teaching_max = Int(\$teacher."career:academics:teaching");
+    \}
+    if(\$num_of_students \> \$teaching_max) \{
+      EmitTo(\$teacher, "You cannot teach "+Describe(\$actor)+" while you are teaching so many other students.");
+      EmitTo(\$actor, Describe(\$teacher)+" cannot teach you while they have so many other students.");
+      return FALSE;
+    \}
+
+    EmitTo(\$actor, Describe(\$teacher)+" begins to teach you about "+\$topic+".");
+    EmitTo(\$teacher, "You begin to teach "+Describe(\$actor)+" about "+\$topic+".");
+    EmitIn(\$actor."base:environment", Describe(\$teacher)+" begins to teach "+Describe(\$actor)+" about "+\$topic+".", \$actor, \$teacher);
+  \}
+\} else \{
+  EmitTo(\$actor, Describe(\$teacher)+" is no longer in the room with you.");
+  EmitTo(\$teacher, Describe(\$actor)+" cannot accept your offer to teach "+\$topic+", as "+\$actor."base:pronoun"+" is no longer in the room with you.");
+  return FALSE;
+\}
+
+/* begin teaching */
+Call(\$this, "begin_teaching", \$student: \$actor);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_check">
+         X[M] /* check how far along in the lesson the student is */
+
+/* check that both the student and teacher are non-idle */
+\$az = nil /* defunct */;
+if(\$student."udat:idle" \&\& \$student."udat:idle" \> 600) \{
+  EmitTo(\$student, "Your lesson does not progress, due to you being idle.");
+  if(\$teacher)
+    EmitTo(\$teacher, "Your lesson with "+Describe(\$student)+"does not progress, due to "+Describe(\$student)+" being idle.");
+  return FALSE;
+\}
+if(\$teacher \&\& \$teacher."udat:idle" \&\& \$teacher."udat:idle" \> 600) \{
+  EmitTo(\$student, "Your lesson does not progress, due to your teacher being idle.");
+  EmitTo(\$teacher, "Your lesson with "+Describe(\$student)+"does not progress, due to you being idle.");
+  return FALSE;
+\}
+
+/* Check if the student passed */
+\$result = Call(\$\{IronClaw:Lib:UrPeople:System\}, "roll", \$dicearray: \$teachingSkill);
+if(Get(\$student, "learning:"+\$topicProp)) \{
+  if(Get(\$student, "learning:"+\$topicProp) + \$result \> \$target) \{
+    Set(\$student, "learning:"+\$topicProp, nil);
+    return TRUE;
+  \} else \{
+    Set(\$student, "learning:"+\$topicProp, Get(\$student, "learning:"+\$topicProp) + \$result);
+  \}
+\} else if (\$result \> \$target) \{
+  return TRUE;
+\} else \{
+  Set(\$student, "learning:"+\$topicProp, \$result);
+\}
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_continue_message">
+         X[M] /* send a message to the teacher and student, saying how far along the lesson is */
+
+/* check how far along in the lesson the student is */
+if(Get(\$student, "learning:"+\$topicProp)) \{
+  \$progress = Int(Flt(Get(\$student, "learning:"+\$topicProp))/Flt(\$target)*Flt(100)-0.5);
+  if(\$progress \> 99) \$progress = 99;
+  \$progress = Str(\$progress)+"%";
+\} else \{
+  \$progress = "0%";
+\}
+
+/* send message */
+if(\$teacher) \{
+  EmitTo(\$student, "You continue to study "+\$topic+" with "+Describe(\$teacher, nil, \$actor)+". The lesson is about "+\$progress+" complete.");
+  EmitTo(\$teacher, "You continue to teach "+\$topic+" to "+Describe(\$student, nil, \$teacher)+". The lesson is about "+\$progress+" complete.");
+\} else \{
+  EmitTo(\$student, "You continue to study "+\$topic+". The lesson is about "+\$progress+" complete.");
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_decline">
+         X[M] EmitTo(\$actor, "You decline "+Describe(\$par["teacher"])+"'s offer to teach you "+\$par["topic"]+"."); 
+EmitTo(\$par["teacher"], Describe(\$actor)+" declines your offer to teach "+\$par["topic"]+"."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_expire">
+         X[M] EmitTo(\$actor, Describe(\$par["teacher"])+"'s offer to teach you "+\$par["topic"]+" has expired."); 
+EmitTo(\$par["teacher"], "Your offer to teach "+Describe(\$actor)+" "+\$par["topic"]+" has expired."); 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_loop">
+         X[M] /* loops through, until the student has learnt the lesson */
+
+/* Calculate the dice to roll for this lesson */
+\$teachingSkill = Call(\$this, "get_teaching_skill");
+
+/* Calculate the target we have to reach */
+\$target = Call(\$this, "get_teaching_target");
+
+/* calculate the learning delay */
+\$learning_delay = Call(\$this, "get_teaching_delay");
+
+\$progress = 0;
+while(TRUE) \{
+/* wait an appropriate amount of time */
+  /* based on students intelligence */
+  \$delay(\$learning_delay, TRUE, "50c7");
+
+  /* Check if we are still being taught this lesson */
+  if(\$student."student:lesson_name" != \$lessonName)
+  \{
+    return FALSE;
+  \}
+
+  /* Check if the teacher is still in the room */
+  if(!\$student."base:environment" \|\| \$teacher."base:environment" != \$student."base:environment")
+  \{
+    /* If not, give a little while for the teacher or student to return */
+    \$delay(60*2, TRUE, "86d0");
+    /* If still apart, end the lesson */
+    if(!\$student."base:environment" \|\| \$teacher."base:environment" != \$student."base:environment")
+    \{
+      EmitTo(\$actor, "Your lesson with "+Describe(\$teacher)+" is cancelled, because you were away from "+Describe(\$teacher)+" for too long.");
+      EmitTo(\$teacher, "Your lesson with "+Describe(\$student)+" is cancelled, because you were away from "+Describe(\$student)+" for too long.");
+      /* Remove this student from the teachers list */
+      \$teacher."teaching:students" -= (\{ \$student \});
+      /* Remove the topic and teacher from the students list */
+      Call(\$this, "cancel_lesson");
+      return TRUE;
+    \}
+  \}
+
+  /* Check if we are still being taught this lesson */
+  if(\$actor."student:lesson_name" != \$lessonName)
+  \{
+    return FALSE;
+  \}
+
+/* Check if the teacher is still teaching this topic to this student */
+  /* Check if we are still being taught this lesson */
+  if(\$student."student:lesson_name" != \$lessonName)
+  \{
+    return FALSE;
+  \}
+
+  /* Check if the student passed */
+  if(Call(\$this, "teaching_check")) break;
+
+  Call(\$this, "teaching_continue_message");
+\}
+
+return Call(\$this, "finish_teaching");
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_offered">
+         X[M] NRef *arr;
+object *tmpObjArr;
+int counter;
+
+/* disabled */
+EmitTo(\$actor, "My apologies, teaching has been temporarily disabled. I'm working to get it updated and using the new 24 system soon. Hopefully we'll end up with a better, more fun system at the end of things! ~ Azrael");
+return FALSE;
+
+/* Check if we are teaching valid targets */
+tmpObjArr = (\{ \});
+for(counter=0;counter\<sizeof(\$dob);) \{
+  if(!NRefOb(\$dob[counter])."base:volition")
+  \{
+    tmpObjArr += (\{ \$dob[counter] \});
+    \$dob -= (\{ \$dob[counter] \});
+  \} else if(NRefOb(\$dob[counter]) == NRefOb(\$actor))
+  \{
+    /* Check that we aren't teaching ourself the skill */
+    EmitTo(\$actor, "What are you playing at? You can't teach yourself!");
+    \$dob -= (\{ \$dob[counter] \});
+  \} else \{
+    counter++;
+  \}
+\}
+if(sizeof(tmpObjArr)\>0) \{
+  EmitTo(\$actor, "You can't teach "+Describe(tmpObjArr, nil, \$actor)+" anything.");
+\}
+
+/* If we have nobody valid to teach */
+if(sizeof(\$dob) == 0) return FALSE;
+
+if(!\$(about:words)) \{
+  EmitTo(\$actor, "What skill would you like to teach "+Describe(\$dob)+" about?");
+  return FALSE;
+\}
+
+/* set the topic */
+\$topic = implode(\$(about:words), " ");
+
+/* If we are teaching about NOTHING then stop teaching these students */
+if(\$topic == "nothing")
+\{
+  /* If we weren't teaching anyone, we're done */
+  if(!\$actor."teaching:students" \|\| sizeof(\$actor."teaching:students") \< 1)
+    return FALSE;
+  /* for everyone targetted, send them a message, and stop their lesson if they were being taught */
+  tmpObjArr = Call(this, "stop_teaching", \$students: \$dob, \$teacher: \$actor);
+  /* output appropriate message */
+  if(sizeof(tmpObjArr) \> 0) \{
+    EmitTo(\$actor, "You stop teaching "+Describe(tmpObjArr)+".");
+  \} else \{
+    EmitTo(\$actor, "You aren't teaching "+Describe(\$dob)+" anything.");
+  \}
+  return FALSE;
+\}
+
+/* Check if the teacher knows anything about this topic */
+\$topicProp = Call(this, "check_topic_knowledge");
+if(!\$topicProp) \{
+  EmitTo(\$actor, "You don't know anything about "+\$topic+".");
+  return FALSE;
+\}
+
+/* Check if we are already teaching something else */
+if(\$actor."teaching:topic" \&\& (\$actor."teaching:topic" != \$topic))
+\{
+  /* If we were previously teaching a different topic */
+  /* And we have students studying that topic */
+  if(\$actor."teaching:students" \&\& (sizeof(\$actor."teaching:students") \> 0))
+  \{
+    /* Ask if we should stop teaching our current students */
+    interaction::question(\$question: "This is a new topic. Teaching it will mean you will stop teaching "+\$actor."teaching:topic"+" to "+Describe(\$actor."teaching:students")+". Do you want to teach the new topic?", \$expires: 60, \$env: "TRUE", \$yes_ob: this, \$no_ob: this, \$expire_ob: this, \$yes_fun: "topic_change", \$no_fun: "topic_stay", \$expire_fun: "topic_change_expire", \$par: ([ "teacher": \$actor, "topic": \$topic, "property": \$topicProp, "students": \$dob ]));
+    return FALSE;
+  \}
+\}
+
+return Call(this, "offer_teaching_to_students", \$teacher: \$actor);
+      </Core:Property>
+      <Core:Property property="merry:lib:teaching_pay_moneycost">
+         X[M] /* charge money cost */
+if(\$par["moneycost"]) \{
+  /* stuff */
+\$teacher = \$par["teacher"];
+\$topic = \$par["topic"];
+\$topicProp = \$par["property"];
+\$lessonName = \$par["lesson_name"];
+\$cost = \$par["cost"];
+\$penalty = \$par["penalty"];
+
+/* Request consent to teach the skill */
+/*interaction::question(\$question: \$message, \$expires: 60, \$env: "TRUE", \$yes_ob: \$teaching, \$no_ob: \$teaching, \$expire_ob: \$teaching, \$yes_fun: "teaching_accept", \$no_fun: "teaching_decline", \$expire_fun: "teaching_expire", \$par: ([ "teacher": \$teacher, "topic": \$topic, "property": \$topicProp, "lesson_name":\$teacher."teaching:lesson_name", "cost": \$cost, "penalty": \$penalty, "moneycost": \$moneycost]));
+*/
+\}
+
+/* do the lesson */
+\$teacher = \$par["teacher"];
+\$topic = \$par["topic"];
+\$topicProp = \$par["property"];
+\$lessonName = \$par["lesson_name"];
+\$cost = \$par["cost"];
+\$penalty = \$par["penalty"];
+
+Call(this, "teaching_accept");
+      </Core:Property>
+      <Core:Property property="merry:lib:topic_change">
+         X[M] object *tmpObjArr;
+
+/* stops teaching the current students, and offers a lesson to the new students */
+\$teacher = \$par["teacher"];
+\$dob = \$par["students"];
+\$topic = \$par["topic"];
+\$topicProp = \$par["property"];
+
+tmpObjArr = Call(this, "stop_teaching", \$students: \$teacher."teaching:students", \$teacher: \$teacher);
+/* output appropriate message */
+if(sizeof(tmpObjArr) \> 0) \{
+  EmitTo(\$teacher, "You stop teaching "+Describe(tmpObjArr)+".");
+\} else \{
+  EmitTo(\$teacher, "You aren't teaching "+Describe(\$dob)+" anything.");
+\}
+
+return Call(this, "offer_teaching_to_students");
+      </Core:Property>
+      <Core:Property property="merry:lib:topic_change_expire">
+         X[M] return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:topic_stay">
+         X[M] EmitTo(\$actor, "You decide not to change topics.");
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:updatecareer">
+         X[M] sscanf(\$(hook-property), "skill:career:%s", \$topic);
+
+\$value = Get(\$body, \$(hook-property));
+if(!\$value) return TRUE;
+
+/* we need to check the careers database, to see what other skills to grant */
+if(\$database = Get(\$\{Ironclaw:Lib:Teaching:CareersDB\}, \$topic))
+\{
+  /* gather a list of skills this career would grant */
+  \$skillmap = ([ ]);
+  \$increasingmap = ([ ]);
+  \$mappingmap = ([ ]);
+  \$arraylist = (\{\});
+
+  for(\$i = 1; \$i \< \$value+1; \$i++)
+  \{
+    /* gather a list of the skills that should be increased */
+
+    if(\$database[Str(\$i)] \&\& \$database[Str(\$i)]["increasing"])
+    \{
+      \$list = \$database[Str(\$i)]["increasing"];
+      for(\$j = 0; \$j \< sizeof(\$list); \$j++)
+      \{
+        /* add code here to remove elements from the list if they are 0 */
+        \$increasingmap[\$list[\$j][0]] = \$list[\$j][1];
+      \}
+    \}
+
+    /* Add these skills to the skill list */
+    for(\$j = 0; \$j \< sizeof(map_indices(\$increasingmap)); \$j++)
+    \{
+      \$tmp = Flt(\$skillmap[map_indices(\$increasingmap)[\$j]]);
+      if(!\$tmp) \$tmp = Flt(0);
+      \$tmp += Flt(\$increasingmap[map_indices(\$increasingmap)[\$j]]);
+      \$skillmap[map_indices(\$increasingmap)[\$j]] = \$tmp;
+    \}
+    /* Add any set skills for this level to the list */
+    if(\$database[Str(\$i)] \&\& \$database[Str(\$i)]["set"]) \{
+      \$list = \$database[Str(\$i)]["set"];
+      for(\$j = 0; \$j \< sizeof(\$list); \$j++)
+      \{
+        \$skillmap[\$list[\$j][0]] = \$list[\$j][1];
+      \}
+    \}
+
+    /* Add any set arrays for this level to the list */
+    if(\$database[Str(\$i)] \&\& \$database[Str(\$i)]["setarray"])
+      \$arraylist \|= \$database[Str(\$i)]["setarray"];
+
+    /* Add any set prop mappings for this level to the list */
+    if(\$database[Str(\$i)] \&\& \$database[Str(\$i)]["setmap"]) \{
+      \$list = \$database[Str(\$i)]["setmap"];
+      for(\$j = 0; \$j \< sizeof(\$list); \$j++)
+      \{
+        if(\$mappingmap[\$list[\$j][0]])
+        \{
+          \$mappingmap[\$list[\$j][0]] += (\{ (\{ \$list[\$j][1], \$list[\$j][2] \}) \});
+        \} else \{
+          \$mappingmap[\$list[\$j][0]] = (\{ (\{ \$list[\$j][1], \$list[\$j][2] \}) \});
+        \}
+      \}
+    \}
+  \}
+
+  /* grant these skills to the player */
+  for(\$i = 0; \$i \< sizeof(map_indices(\$skillmap)); \$i++)
+  \{
+    /* Check if the player already has this property */
+    if(Get(\$body, map_indices(\$skillmap)[\$i]))
+    \{
+      if((typeof(Get(\$body, map_indices(\$skillmap)[\$i])) != T_INT) \&\& (typeof(Get(\$body, map_indices(\$skillmap)[\$i])) != T_FLOAT))
+      \{
+        /* grant it */
+        Set(\$body, map_indices(\$skillmap)[\$i], \$skillmap[map_indices(\$skillmap)[\$i]]);
+      \} else \{
+        /* If so, check if we're trying to set a number, and if the new number is higher, grant it */
+        if(Int(\$skillmap[map_indices(\$skillmap)[\$i]]) \> Int(Get(\$body, map_indices(\$skillmap)[\$i])))
+        \{
+          Set(\$body, map_indices(\$skillmap)[\$i], Int(\$skillmap[map_indices(\$skillmap)[\$i]]));
+        \}
+      \}
+    \} else \{
+      /* If not, grant it */
+      Set(\$body, map_indices(\$skillmap)[\$i], \$skillmap[map_indices(\$skillmap)[\$i]]);
+    \}
+  \}
+
+  /*EmitTo(\$teacher, "Granting maps to "+Describe(\$actor));*/
+  for(\$i = 0; \$i \< sizeof(map_indices(\$mappingmap)); \$i++)
+  \{
+    \$property = map_indices(\$mappingmap)[\$i];
+
+    /* Get existing propmap */
+    if(Get(\$body, \$property))
+    \{
+      \$tmp = Get(\$body, \$property);
+    \} else \{
+      \$tmp = ([ ]);
+    \}
+
+
+    \$values = \$mappingmap[\$property];
+    for(\$j = 0; \$j \< sizeof(\$values); \$j++)
+    \{
+      \$tmp[Str(\$values[\$j][0])] = \$values[\$j][1];
+    \}
+
+    /* Set the new propmap */
+    Set(\$body, \$property, \$tmp);
+  \}
+
+  /*EmitTo(\$teacher, "Granting arrays to "+Describe(\$body));*/
+  /* Add array elements */
+  if(\$arraylist) \{
+    for(\$i = 0; \$i \< sizeof(\$arraylist); \$i++)
+    \{
+      /*EmitTo(\$teacher, "adding "+\$arraylist[\$i][1]+" to array "+\$arraylist[\$i][0]+".");*/
+      if(Get(\$body, \$arraylist[\$i][0]))
+      \{
+        \$newarray = Get(\$body, \$arraylist[\$i][0]);
+        \$newarray \|= (\{ \$arraylist[\$i][1] \});
+        Set(\$body, \$arraylist[\$i][0], \$newarray);
+      \} else \{
+        Set(\$body, \$arraylist[\$i][0], (\{ \$arraylist[\$i][1] \}));
+      \}
+    \}
+  \}
+
+
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1224215358, "tonyd", "E", 1224313379, "tonyd", "E", 1224313438, "tonyd", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

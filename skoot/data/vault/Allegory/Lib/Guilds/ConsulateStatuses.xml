@@ -1,0 +1,218 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="data:guilds">
+         ([ "england":\<Allegory:Guilds:england\>, "france":\<Allegory:Guilds:france\>, "germany":\<Allegory:Guilds:germany\>, "italy":\<Allegory:Guilds:italy\>, "scotland":\<Allegory:Guilds:scotland\>, "spain":\<Allegory:Guilds:spain\> ])
+      </Core:Property>
+      <Core:Property property="merry:lib:calculate_member_points">
+         X[M] /* \$guild, \$multiplier */ 
+
+int i, points;
+mixed* members;
+
+/* added by shentino on August 7, 2021 */
+/* reason: catching an obscure error and explaining it better */
+if (\$guild == nil) \{
+    error("Missing parameter in calculate_member_points: \$guild");
+\}
+
+
+if(!\$multiplier) \$multiplier = 1;
+
+members = \$guild.members;
+members -= (\{ nil \});
+points = 0;
+
+for(i = 0; i \< sizeof(members); i++) \{
+    if(time() \< Int(members[i]."cdat:lastlogin")+60*60*24*5) \{
+        if(\$getaccounts) \{
+            \$accounts += (\{ Str(members[i]."skotos:creator") \});
+            points += \$multiplier;
+            EmitTo(\$\{Chatters:AE:to:topsy\}, Str(members[i]) + " : +" + Str(\$multiplier) + " points");
+        \} else \{
+            if(!member(Str(members[i]."skotos:creator"), \$accounts)) \{
+                points += \$multiplier;
+                EmitTo(\$\{Chatters:AE:to:topsy\}, Str(members[i]) + " : +" + Str(\$multiplier) + " points");
+            \} else \{
+
+                EmitTo(\$\{Chatters:AE:to:topsy\}, Str(members[i]) + " : +0 points");
+            \}
+        \}
+    \}
+\}
+
+return points;
+      </Core:Property>
+      <Core:Property property="merry:lib:process_daily">
+         X[M] int i, j, points;
+mapping guildMap, data;
+string* guilds;
+object guild, sponsoredGuild;
+mixed* sponsoredGuilds;
+string month, currmonth;
+
+\$roo = \$\{Chatters:AE:to:topsy\};
+\$accounts = (\{ \});
+
+guildMap = \$this."data:guilds";
+guilds = map_indices(guildMap);
+
+data = \$this."rankings:current";
+
+for(i = 0; i \< sizeof(guilds); i++) \{
+    points = 0;
+
+    guild = guildMap[guilds[i]];
+
+    /* added by shentino */
+    if (guild == nil) \{
+        error("guild from guildMap is nil?!");
+    \}
+
+    /* One point per active member */
+    points += Call(\$this, "calculate_member_points", \$guild: guild, \$multiplier: 2, \$getaccounts: 1);
+
+    /* Get sponsored guilds */
+    if(guild."sponsor:guilds" \&\& sizeof(guild."sponsor:guilds")) \{
+        sponsoredGuilds = guild."sponsor:guilds";
+ 
+        for(j = 0; j \< sizeof(sponsoredGuilds); j++) \{
+            sponsoredGuild = sponsoredGuilds[j]["Guild"];
+
+            /* added by shentino */
+            if (sponsoredGuild == nil) \{
+                error("BUG: sponsoredGuild is nil for j = " + j);
+            \}
+
+            points += Call(\$this, "calculate_member_points", \$guild: sponsoredGuild, \$multiplier: 1);
+        \}
+    \}
+
+    data[guilds[i]] = data[guilds[i]] + points;
+
+    SetVar(guilds[i], points); 
+\}
+
+EmitTo(\$roo, dump_value(data));
+
+month = explode(short_time(time()), " ")[0];
+currmonth = \$this."month:current";
+
+if(month == currmonth) return TRUE;
+
+Call(\$this, "process_monthly");
+      </Core:Property>
+      <Core:Property property="merry:lib:process_monthly">
+         X[M] int i, j, sz, rank;
+mapping data, orderedList, rankings, desc;
+string* guilds;
+string month, currmonth;
+int* values;
+int* orderedValues;
+object guild;
+
+\$roo = \$\{Chatters:AE:to:topsy\};
+
+data = \$this."rankings:current";
+guilds = map_indices(data);
+values = map_indices(arr_to_set(map_values(data)));
+
+orderedList = ([ ]);
+
+/* Created an ordered list of rankings */
+for(i = 0; i \< sizeof(values); i++) \{
+    for(j = 0; j \< sizeof(guilds); j++) \{
+        if(values[i] == data[guilds[j]]) \{
+            if(orderedList[values[i]]) \{
+                orderedList[values[i]] += (\{ guilds[j] \});
+            \} else \{
+                orderedList[values[i]] = (\{ guilds[j] \});
+            \}
+        \}
+    \}
+\}
+
+/* Use the ordered list to assign ranks (1-6) to each member in the list */
+orderedValues = map_indices(orderedList);
+sz = sizeof(orderedValues);
+rankings = ([ ]);
+
+rank = 1;
+for(i = sz-1; i \>= 0; i--) \{
+    \$temp = orderedList[orderedValues[i]];
+    for(j = 0; j \< sizeof(\$temp); j++) \{
+        rankings[\$temp[j]] = rank;
+    \}
+    rank+= sizeof(\$temp);
+\}
+
+desc = ([ 1:"Prestigious", 2:"Well-known", 3:"Notable", 4:"Relatively Known", 5:"Unremarkable", 6:"Unknown" ]);
+
+/* Now set the rank in each guild */
+for(i = 0; i \< sizeof(guilds); i++) \{
+    guild = \$this."data:guilds"[guilds[i]];
+    guild.status = rankings[guilds[i]];
+    EmitTo(\$roo, Str(guilds[i]) + "(" + Str(guild) + ") - " + desc[rankings[guilds[i]]]);
+\} 
+
+month = explode(short_time(time()), " ")[0];
+currmonth = \$this."month:current";
+Set(\$this, "rankings:history:" + Str(currmonth), \$this."rankings:current");
+
+\$this."month:current" = month;
+
+Call(\$this, "reset");
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:reset">
+         X[M] \$this."rankings:current" = ([ "england":0, "france":0, "germany":0, "italy":0, "scotland":0, "spain":0 ]);
+      </Core:Property>
+      <Core:Property property="month:current">"Dec"</Core:Property>
+      <Core:Property property="rankings:current">
+         ([ "england":16, "france":2, "germany":0, "italy":62, "scotland":0, "spain":0 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:apr">
+         ([ "england":57, "france":0, "germany":30, "italy":95, "scotland":0, "spain":22 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:aug">
+         ([ "england":64, "france":0, "germany":0, "italy":140, "scotland":0, "spain":20 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:dec">
+         ([ "england":106, "france":149, "germany":93, "italy":292, "scotland":0, "spain":112 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:feb">
+         ([ "england":90, "france":66, "germany":96, "italy":230, "scotland":0, "spain":150 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:jan">
+         ([ "england":92, "france":132, "germany":133, "italy":308, "scotland":0, "spain":176 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:jul">
+         ([ "england":70, "france":0, "germany":9, "italy":162, "scotland":0, "spain":50 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:jun">
+         ([ "england":60, "france":10, "germany":6, "italy":74, "scotland":0, "spain":20 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:mar">
+         ([ "england":91, "france":56, "germany":41, "italy":186, "scotland":0, "spain":90 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:may">
+         ([ "england":85, "france":0, "germany":59, "italy":90, "scotland":0, "spain":48 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:nov">
+         ([ "england":48, "france":0, "germany":0, "italy":140, "scotland":0, "spain":14 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:oct">
+         ([ "england":53, "france":0, "germany":0, "italy":84, "scotland":0, "spain":0 ])
+      </Core:Property>
+      <Core:Property property="rankings:history:sep">
+         ([ "england":51, "france":0, "germany":0, "italy":60, "scotland":0, "spain":0 ])
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1579118645, "jominey", "E", 1579118806, "jominey", "E", 1579576193, "jominey", "E", 1579576229, "jominey", "E", 1583161928, "jominey", "E", 1583162270, "jominey", "E", 1583162305, "jominey", "E", 1583162333, "jominey", "E", 1583162346, "jominey", "E", 1583162473, "jominey", "E", 1583163080, "jominey", "E", 1583163170, "jominey", "E", 1585931303, "sendnoodlez", "E", 1625848915, "sendnoodlez", "E", 1625849034, "sendnoodlez", "E", 1625849046, "sendnoodlez", "E", 1625849196, "sendnoodlez", "E", 1625876506, "ezralee", "E", 1625876886, "ezralee", "E", 1625888995, "ezralee", "E", 1625889222, "ezralee", "E", 1625890214, "ezralee", "E", 1625890710, "ezralee", "E", 1625890990, "ezralee", "E", 1625897234, "ezralee", "E", 1625897934, "ezralee", "E", 1625898247, "ezralee", "E", 1625898987, "ezralee", "E", 1625899353, "ezralee", "E", 1625899390, "ezralee", "E", 1628348773, "shentino", "E", 1628350075, "shentino", "E", 1628350435, "shentino", "E", 1628352160, "shentino", "E", 1629997081, "shentino", "E", 1641008415, "ezralee", "E", 1641008497, "ezralee", "E", 1641008557, "ezralee", "E", 1641008607, "ezralee", "E", 1719008448, "annemairi", "E", 1719008502, "annemairi", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

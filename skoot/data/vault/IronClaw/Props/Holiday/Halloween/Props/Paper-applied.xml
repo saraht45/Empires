@@ -1,0 +1,128 @@
+<object clone="/base/obj/thing" owner="tonyd">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="lying" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="true" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="paper"/>
+            <Base:SName sname="rolls"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="papers"/>
+            <Base:PName pname="rolls"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives>
+          <Base:Adjective adjective="paper"/>
+        </Base:Adjectives>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             rolls of $(this.trait:color) paper strewn around and stuck to the walls using glue
+          </Base:Description>
+          <Base:Description type="look">
+             Some $(this.trait:color) paper, that's been torn into strips, wet, and stuck to the walls. Either glue, or maybe just spit was used. It would be possible to remove the paper, but as the paper has dried, it will now be a lot of effort.
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="merry:react-pre:unwear%cleaning_up">
+         X[M] /* stick the paper up around this room */
+
+if(\$message = ironclaw::busy_check(\$character: \$actor)) \{
+ EmitTo(\$actor, "You are already busy "+\$message+".");
+ return FALSE;
+\}
+\$room = \$this."base:environment";
+
+EmitTo(\$actor, "You begin to clean "+Describe(\$this)+" from "+Describe(\$room)+".");
+EmitIn(\$room, Describe(\$actor)+" begins to clean "+Describe(\$this, \$actor)+" from "+Describe(\$room)+".", \$actor);
+
+\$id = ironclaw::busy_start(\$character: \$actor, \$action: "cleaning up paper");
+
+\$timer = 60*30;
+while(\$timer \> 0) \{
+ \$timer -= 60*5;
+ \$delay(60*5, FALSE, "52a6");
+ if(\$actor."busy:id" != \$id) \{
+   /* they @stopped cleaning up the paper. Just exit */
+   return FALSE;
+ \}
+ /* check that they are still in the room */
+ if(\$actor."base:environment" != \$room) \{
+   EmitTo(\$actor, "You will have to stay in one place if you want to clean up that mess.");
+   /* mark them as not busy */
+   ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+   return FALSE;
+ \}
+ if(!\$this) \{
+   /* the paper object was deleted */
+   ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+   return FALSE;
+ \}
+ switch(random(3)) \{
+  case 2:
+   EmitTo(\$actor, "You scratch at "+Describe(\$this, nil, \$actor)+", finding it necessary to scrape it from the walls.");
+   EmitIn(\$room, Describe(\$actor)+" scratches and scrapes at "+Describe(\$this, \$actor)+".", \$actor);
+   break;
+  case 1:
+   EmitTo(\$actor, "You gather arm-fulls of "+Describe(\$this, nil, \$actor)+".");
+   EmitIn(\$room, Describe(\$actor)+" gathers arm-fulls of "+Describe(\$this, \$actor)+".", \$actor);
+   break;
+  default:
+   EmitTo(\$actor, "You keep scrubbing at "+Describe(\$this, nil, \$actor)+".");
+   EmitIn(\$room, Describe(\$actor)+" keeps scrubbing at "+Describe(\$this, \$actor)+".", \$actor);
+ \}
+\}
+
+/* mark them as not busy */
+ironclaw::busy_stop(\$character: \$actor, \$id: \$id);
+
+EmitTo(\$actor, "You finish cleaning up the "+Describe(\$this, nil, \$actor)+".");
+EmitIn(\$room, Describe(\$actor)+" finishes cleaning up the "+Describe(\$this, \$actor)+".", \$actor);
+
+Slay(\$this);
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1223145059, "morwenlorelie", "K", 1223145084, "morwenlorelie", "E", 1223145105, "morwenlorelie", "X", 1223145153, "morwenlorelie", "E", 1223145469, "morwenlorelie", "E", 1223503031, "morwenlorelie", "E", 1223503322, "morwenlorelie", "R", 1224853137, "tonyd", "E", 1224853165, "tonyd", "E", 1224853233, "tonyd", "E", 1224853406, "tonyd", "P", 1224853416, "tonyd", "P", 1224853435, "tonyd", "P", 1224853444, "tonyd", "P", 1224853692, "tonyd", "P", 1224853705, "tonyd", "P", 1224853720, "tonyd", "P", 1224853752, "tonyd", "P", 1224853791, "tonyd", "P", 1224853868, "tonyd", "P", 1224853934, "tonyd", "P", 1224853964, "tonyd", "P", 1224854080, "tonyd", "P", 1224854151, "tonyd", "P", 1224854187, "tonyd", "P", 1224854706, "tonyd", "P", 1224854717, "tonyd", "P", 1224854791, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+      <Core:Property property="volition">0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

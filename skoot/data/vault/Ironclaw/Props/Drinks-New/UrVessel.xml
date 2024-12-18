@@ -1,0 +1,206 @@
+<object clone="/base/obj/thing" owner="SkotOS">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="1" density="1"/>
+    <Base:Container flexible="false" transparent-container="false" public-container="false" tight="false" capacity="0" maxweight="0"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="false"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details>
+      <Base:Detail id="default" prime="true" def="false" abstract="false" hidden="false" luminosity="0" targetable_in_dark="false" plural="false">
+        <Base:Preposition close="false" against="false" under="false" on="false" inside="false" near="false" over="false" behind="false" before="false" beside="false"/>
+        <Base:Names>
+          <Base:SNames>
+            <Base:SName sname="vessel"/>
+          </Base:SNames>
+          <Base:PNames>
+            <Base:PName pname="vessels"/>
+          </Base:PNames>
+        </Base:Names>
+        <Base:Adjectives/>
+        <Base:Descriptions>
+          <Base:Description type="brief">
+             {? | $(this.trait:contents) | $(this.trait:brief) of $[Describe($this."trait:contents")] | empty $(this.trait:brief) }
+          </Base:Description>
+          <Base:Description type="examine">
+             $(this.trait:examine) {? | $(this.trait:contents) | It holds $[Describe($this."trait:contents")]. |}
+          </Base:Description>
+          <Base:Description type="look">
+             $(this.trait:look)
+          </Base:Description>
+        </Base:Descriptions>
+        <Base:Exit door="false" never_obvious="false" obvious_when_open="false" hidden_when_closed="false" separate="false" self-locking="false" deadbolt="false"/>
+        <Base:Climbable/>
+      </Base:Detail>
+    </Base:Details>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="export:trait:maxquantity">
+         80
+      </Core:Property>
+      <Core:Property property="export:trait:objecttype">
+         "vessel"
+      </Core:Property>
+      <Core:Property property="merry:lib:configure">
+         X[M] mixed* snames, pnames, adjectives; 
+int i; 
+ 
+snames = \$drink."details:default:snames"; 
+for(i = 0; i \< sizeof(snames); i++) \{ 
+    Set(\$vessel, "details:default:sname:" + snames[i], \$value); 
+\} 
+ 
+pnames = \$drink."details:default:pnames"; 
+for(i = 0; i \< sizeof(pnames); i++) \{ 
+    Set(\$vessel, "details:default:pname:" + pnames[i], \$value); 
+\} 
+ 
+adjectives = \$drink."details:default:adjectives"; 
+for(i = 0; i \< sizeof(adjectives); i++) \{ 
+    Set(\$vessel, "details:default:adjective:" + adjectives[i], \$value); 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:consume">
+         X[M] int i; 
+mixed* snames, pnames, adjectives; 
+ 
+if(!\$this."trait:contents") \{ 
+    EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is empty. Try filling it first."); 
+    return FALSE; 
+\} 
+ 
+if(\$this."trait:quantity") \$this."trait:quantity" -= \$quantity;  
+  
+if(Int(\$this."trait:quantity") \<= 0) \{  
+    EmitTo(\$actor, TAG("You finish drinking " + Describe(\$this, nil, \$actor) + ".", "social:first"));  
+    EmitTo(\$actor, UnSAM(\$this."trait:contents"."details:default:description:taste"));  
+  
+    EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " finishes drinking " + Describe(\$this, \$actor) + ".", "social:third"), \$actor);  
+ 
+    ::configure(\$vessel: \$this, \$drink: \$this."trait:contents", \$value: FALSE); 
+  
+    \$this."trait:contents" = nil;
+    \$this."trait:quantity" = nil;
+    return FALSE;  
+\}  
+  
+if(\$(iob:description)) \$desc = \$(iob:description);  
+if(\$(what:description)) \$desc = \$(what:description);  
+if(\$(dob:description)) \$desc = \$(dob:description);  
+if(\$(from:description)) \$desc = \$(from:description);  
+  
+EmitTo(\$actor, TAG("You " + \$desc + " " + Describe(\$this, nil, \$actor) + ".", "social:first"));  
+EmitTo(\$actor, UnSAM(\$this."trait:contents"."details:default:description:taste"));  
+  
+\$desc = replace_strings(\$desc, "sip", "sips", "drink", "drinks", "taste", "tastes");  
+  
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " " + \$desc + " " + Describe(\$this, \$actor) + ".", "social:third"), \$actor);  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:drink-from">
+         X[M] ::consume(\$quantity: 10);  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:drink-what">
+         X[M] ::consume(\$quantity: 10);  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:refill-dob">
+         X[M] object receptacle; 
+ 
+if(!\$iob \|\| !sizeof(\$iob)) \{ 
+    EmitTo(\$actor, "What did you want to refill " + Describe(\$this, nil, \$actor) + " from?"); 
+    return FALSE; 
+\} 
+ 
+if(sizeof(\$iob) \> 1) \{ 
+    EmitTo(\$actor, "You can only refill " + Describe(\$this, nil, \$actor) + " from one thing at a time."); 
+    return FALSE; 
+\} 
+ 
+if(\$this."trait:contents") \{  
+    EmitTo(\$actor, Describe(\$this) + " already has something in it."); 
+    return FALSE; 
+\} 
+ 
+receptacle = NRefOb(\$iob[0]); 
+ 
+if(receptacle."trait:objecttype" != "receptacle" \&\& receptacle."trait:objecttype" != "vessel" \&\& receptacle."trait:objecttype" != "watersource") \{ 
+    EmitTo(\$actor, "You cannot refill " + Describe(\$this, nil, \$actor) + " from that."); 
+    return FALSE; 
+\}
+ 
+if(!receptacle."trait:contents" \|\| Int(receptacle."trait:quantity" \<= 0)) \{ 
+    EmitTo(\$actor, Describe(receptacle) + " is empty."); 
+    return FALSE; 
+\} 
+ 
+\$this."trait:contents" = receptacle."trait:contents"; 
+::configure(\$vessel: \$this, \$drink: \$this."trait:contents", \$value: TRUE); 
+ 
+if(receptacle."trait:objecttype" == "receptacle") \{
+    \$this."trait:quantity" = \$this."trait:maxquantity"; 
+    receptacle."trait:quantity"--; 
+ 
+    if(receptacle."trait:quantity" \<= 0) \{  
+        Call(receptacle, "configure", \$vessel: receptacle, \$drink: receptacle."trait:contents", \$value: FALSE);
+        receptacle."trait:contents" = nil;
+    \} 
+\} else if(receptacle."trait:objecttype" == "vessel") \{ 
+    \$this."trait:quantity" = receptacle."trait:quantity"; 
+ 
+    ::configure(\$vessel: receptacle, \$drink: \$this."trait:contents", \$value: FALSE); 
+ 
+    receptacle."trait:contents" = nil; 
+\} 
+ 
+EmitTo(\$actor, TAG("You refill " + Describe(\$this, nil, \$actor) + " from " + Describe(receptacle) + ".", "social:first")); 
+EmitIn(\$actor."base:environment", TAG(Describe(\$actor) + " refills " + Describe(\$this, \$actor) + " from " + Describe(receptacle) + ".", "social:third"), \$actor); 
+ 
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:sip-iob">
+         X[M] ::consume(\$quantity: 5);  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:taste-dob">
+         X[M] ::consume(\$quantity: 2);  
+  
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052085, "-", "SYNC", 1221752477, "???", "R", 1441656315, "jominey", "K", 1441656573, "jominey", "E", 1441658271, "jominey", "K", 1441658490, "jominey", "E", 1441659191, "jominey", "E", 1441660932, "jominey", "X", 1441661057, "jominey", "K", 1441661112, "jominey", "E", 1441661118, "jominey", "E", 1441661137, "jominey", "E", 1441661183, "jominey", "E", 1441661243, "jominey", "E", 1441661360, "jominey", "E", 1441661404, "jominey", "E", 1441661490, "jominey", "E", 1441661579, "jominey", "E", 1441661797, "jominey", "E", 1441661820, "jominey", "E", 1441661940, "jominey", "E", 1441662043, "jominey", "E", 1441662206, "jominey", "E", 1441662248, "jominey", "E", 1441663030, "jominey", "E", 1441663332, "jominey", "E", 1441663599, "jominey", "E", 1441663619, "jominey", "K", 1441663675, "jominey", "E", 1441681545, "jominey", "E" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

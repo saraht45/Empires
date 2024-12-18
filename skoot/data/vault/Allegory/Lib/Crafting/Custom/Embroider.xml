@@ -1,0 +1,238 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="html:embroider">
+         X[S] \<zform actor="\$(actor)" garment="\$(garment)" thread="\$(thread)" error="\$(error)" examine1="\$(examine1)"\>
+\$[\$garment= Obj(\$garment);                        
+    \$actor = Obj(\$actor);               
+    \$thread = \$thread;]
+\<input type="hidden" name="thread" value="\$(thread)"/\>
+\<input type="hidden" name="error" value="\$(error)"/\>
+\<table\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td colspan="3"\>\<font size="2"\>\<i\>Type the description of the embroidery in the box below. Whatever you type will replace 'ENGRAVING_TEXT' in the sample description... pay special attention to periods. You can reference the color of thread you are using with the COLOR keyword. Example: Roses are stitched into the fabric using COLOR thread. Referencing a color different than that of the thread you are using is a violation of the rules listed at the bottom.\</i\>\</font\>\</td\>
+\</tr\>
+\<tr\>
+        \<td\>\<b\>Description:\</b\>\</td\>
+        \<td colspan="2"\>\$[Set(\$garment, "trait:embroidery", "EMBROIDERY_TEXT");          
+                          \$desc = UnSAM(ParseXML("\<describe-view view=\\"\$(garment)\\" type=\\"examine\\" cap/\>"));        
+                          Set(\$garment, "trait:embroidery", nil);         
+                          if(!contains(\$desc, "EMBROIDERY_TEXT")) error("This item cannot be embroidered.");          
+                          return \$desc;]\</td\>
+\</tr\>
+\<tr\>\<td\>\<br/\>\</td\>\</tr\>
+\<tr\>
+        \<td valign="top"\>\<b\>EMBROIDERY_TEXT:\</b\>\</td\>
+        \<td colspan="2"\>\<textarea name="examine" style="height:350px; width:100%"\>\$(examine1)\</textarea\>\</td\>
+\</tr\>
+\<tr\>
+        \<td colspan="3" align="right"\>(Note: By clicking "Finish" you agree to the rules outlined below.) \<input type="submit" name="update" value="Finish" style="height:30px"/\>\</td\>
+\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>Rules:\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>1. Submissions can have magical/supernatural themes but cannot be magical/supernatural themselves (ie. a painting of a figure that moves around the canvas).\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>2. Vulgar/sexually explicit material is forbidden--if the content is not acceptable for a minor, do not submit it! When in doubt, contact staff.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>3. Avoid phrasing that forces the viewer to think or feel a certain way (ie 'this painting is so beautiful you can't help but cry').\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>4. Do not reference details of the canvas that do not actually exist, such as a frame.\</font\>\</td\>\</tr\>
+\<tr\>\<td\>\</td\>\<td colspan="2"\>\<font size="2"\>5. I understand if I violate these rules, access to this command will be revoked.\</font\>\</td\>\</tr\>
+\</table\>
+    \<action\>
+        \$["";                                
+              Call(\$this, "embroider", \$design: \$examine, \$actor: \$actor, \$garment: \$garment, \$thread: \$thread, \$cost: 10);             
+              \$error = nil;]
+        \{? \| \$(error) \| \<redirect propob="\$(this)" prop="index" actor="\$(actor)" thread="\$(thread)" garment="\$(garment)" error="\$(error)" examine1="\$(examine)"/\> \| \<redirect propob="\$(this)" prop="finish" actor="\$(actor)" thread="\$(thread)" garment="\$(garment)" error="\$(error)" examine1="\$(examine)"/\> \}
+    \</action\>
+\</zform\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)" actor="\$(actor)" garment="\$(garment)" thread="\$(thread)"\>
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+    \<title\>Custom Embroidery\</title\>
+    \<meta http-equiv="content-type" content="text/html; charset=UTF-8"/\>
+\</head\>
+   \<body\>
+      \$(this.xtra:header)
+      \<div id="main"\>
+        \<div id="textareafull"\>
+        \$[::popup_initialize();       
+            \$actor = Obj(\$actor);]
+            \$(this.html:embroider)
+        \</div\>
+        \<span id="bottombox"\>
+          \<div id="footer"\>\\\&nbsp;\</div\>
+        \</span\>
+      \</div\>
+   \</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="merry:lib:embroider">
+         X[M] /* embroider clothes */  
+
+\$thread = Obj(\$thread);
+
+/* set the embroidery */       
+\$garment."trait:embroidery" = replace_strings(\$design, "COLOR", Get(\$thread, "trait:color") + " " + Get(\$thread, "trait:material"));    
+    
+\$thread."trait:quantity" -= 10;   
+
+if(\$cost) \{
+    \$text = "! EMBROIDERY ! " + Describe(\$garment) + ":\<" + Str(\$garment) + "\>, THREAD:" + Describe(\$thread) + " -\> " + \$design;
+    assist::dofileassist(\$data: Obj("Data:DB:assist:AssistGeneralDB"), \$char: Str(\$actor), \$queue: "custom", \$assisttext: \$text, \$log: "[TAS]"); 
+\} else \{
+    /* and set the adjectives */  
+    \$garment."trait:embroidery:pattern" = \$(raw-evoke);  
+    \$words = explode(\$(raw-evoke), " ");    
+    for(\$i = 0; \$i \< sizeof(\$words); \$i++)    
+        Set(\$garment, "details:default:adjective:" + lower_case(\$words[\$i]) + ":local", 1);
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] if(\$dat == nil) \{
+    error("page reached without a udat");
+\}
+if(\$name == nil) \{
+    error("page reached without a name");
+\}
+if(\$actor == nil) \{
+    error("page reached without an actor");
+\}
+if(!Obj(\$actor)) \{
+    error("page reached without a valid actor");
+\}
+\$actor = Obj(\$actor);
+
+if(!Obj(\$garment)) \{
+    error("page reached without a valid garment");
+\}
+\$garment = Obj(\$garment);
+
+if(\$garment."trait:embroidery") \{
+    error("garment has already been embroidered");
+\}
+
+if(\$garment."base:environment" != \$actor) \{
+    error("you  must be holding the garment");
+\}
+
+/* Check the player isn't trying to access someone elses body */
+/* Check if the players roster of characters */
+\$bodies = Udat::query_bodies_in_roster(\$user: \$name);
+
+if(!member(\$actor, \$bodies)) \{
+    error(dump_value(\$actor)+" body not found in "+dump_value(\$name)+" character roster");
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:react-pre:embroider-dob">
+         X[M] object database;
+database = \$\{Allegory:Lib:Crafting:Clothing:EmbroideryDB\};
+
+/* sanity check */
+if(this."trait:embroidery") \{
+ EmitTo(\$actor, Describe(\$this, nil, \$actor) + " is already embroidered.");
+ return FALSE;
+\}
+
+if(sizeof(\$dob) != 1) \{
+ EmitTo(\$actor, "Please only attempt to embroider one garment at a time.");
+ return FALSE;
+\}
+
+if(!\$using) \{
+ EmitTo(\$actor, "You need some thread to embroider with.");
+ return FALSE;
+\}
+
+if(sizeof(\$using) != 1) \{
+ EmitTo(\$actor, "You can only work with one spool of thread at a time.");
+ return FALSE;
+\}
+
+\$thread = NRefOb(\$using[0]);
+if(!\$thread."trait:objecttype" \&\& \$thread.objecttype != "thread") \{
+ EmitTo(\$actor, "You can only embroider " + Describe(\$this, nil, \$actor) + " with thread.");
+ return FALSE;
+\}
+
+if(this."base:worn-by") \{
+ EmitTo(\$actor, "How can you embroider " + Describe(this, nil, \$actor) + " while someone is wearing it?");
+ return FALSE;
+\}
+
+if(\$this."base:environment" != \$actor) \{
+ EmitTo(\$actor, "You must be holding " + Describe(\$this, nil, \$actor) + " to embroider it.");
+ return FALSE;
+\}
+
+\$skill = Int(\$actor."skill:alteration:tailoring");
+if(Int(\$actor."skill:alteration:tailoring") \> \$skill) \$skill = Int(\$actor."skill:alteration:tailoring");
+
+if(\$(raw-evoke)) \{
+    if(\$(raw-evoke) == "custom") \{
+        if(\$actor.mobimode) \{
+            EmitTo(\$actor, "POPUPURL::http://ironclaw.skotos.net/SAM/Prop/Ironclaw%3ALib%3ACrafting%3AEmbroider/html:index?actor=" + url_encode(name(\$actor)));
+        \}
+
+        Popup(\$actor, \$\{Allegory:Lib:Crafting:Custom:Embroider\}, "html:index", \$actor: \$actor, \$garment: \$this, \$thread: \$thread);
+
+        return FALSE;
+    \} else \{
+        \$tmp = Get(database, \$(raw-evoke));
+        if(\$tmp) \{
+            /* found a change to make */
+            if(\$tmp["skill"] \&\& \$tmp["skill"] \> \$skill) \{
+                EmitTo(\$actor, "You don't have enough skill to embroider " + Describe(this, nil, \$actor) + " in that way.");
+                return FALSE;
+            \}
+
+            if(\$tmp["design"]) \{
+                \$design = \$tmp["design"];
+            \} else \{
+                \$design = "It has been embroidered with a " + \$(raw-evoke) + " design.";
+            \}
+
+            /* no further objections. Make the change. */
+            EmitTo(\$actor, "You embroider " + Describe(this, nil, \$actor) + " with a "+\$(raw-evoke) + " pattern.");
+            EmitIn(\$actor."base:environment", Describe(\$actor) + " embroiders " + Describe(this, \$actor) + " with a " + \$(raw-evoke) + " pattern.", \$actor);
+            Call(\$\{Allegory:Lib:Crafting:Custom:Embroider\}, "embroider", \$actor: \$actor, \$garment: \$this, \$design: \$design, \$thread: \$thread);
+            return FALSE;
+        \}
+    \}
+\}
+
+/* list embroidery options */
+\$options = (\{ \});
+\$tmp = Get(database, "*");
+\$indices = map_indices(\$tmp);
+\$indices -= (\{ "revisions" \});
+
+for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{
+ if(typeof(\$tmp[\$indices[\$i]]) == T_MAPPING \&\& (!\$tmp[\$indices[\$i]]["skill"] \|\| Int(\$tmp[\$indices[\$i]]["skill"]) \<= \$skill)) \{
+  \$options \|= (\{ \$indices[\$i] \});
+ \}
+\}
+
+if(!sizeof(\$options)) \{
+ EmitTo(\$actor, "You don't know how to embroider " + Describe(this, nil, \$actor) + ".");
+ return FALSE;
+\}
+
+EmitTo(\$actor, "To embroider clothing, it must not be worn. Then the command is:");
+EmitTo(\$actor, "embroider " + Describe(this) + " 'PATTERN");
+EmitTo(\$actor, "Your pattern options are: " + implode(\$options, ", "));
+EmitTo(\$actor, "You can also do a custom embroidery using the syntax: embroider my garment 'custom'.");
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1502934130, "jominey", "E", 1502934270, "jominey", "E", 1502934474, "jominey", "E", 1502935277, "jominey", "E", 1502935379, "jominey", "E", 1502935482, "jominey", "E", 1502936770, "jominey", "E", 1502936785, "jominey", "E", 1503012668, "jominey", "E", 1503012673, "jominey", "E", 1503012731, "jominey", "E", 1503014071, "jominey", "E", 1503014078, "jominey", "E", 1503014140, "jominey", "E", 1503015879, "jominey", "E", 1503016189, "jominey", "E", 1503016217, "jominey", "E", 1503016229, "jominey", "E", 1503016248, "jominey", "E", 1503016265, "jominey", "E", 1503016315, "jominey", "E", 1503016631, "jominey", "E", 1503016815, "jominey", "E", 1503016851, "jominey", "E", 1503016913, "jominey", "E", 1503016975, "jominey", "E", 1503016995, "jominey", "E", 1503017053, "jominey", "E", 1503017120, "jominey", "E", 1503017184, "jominey", "E", 1503017330, "jominey", "E", 1503017594, "jominey", "E", 1503017646, "jominey", "E", 1503017729, "jominey", "E", 1503017762, "jominey", "E", 1503017784, "jominey", "E", 1503017799, "jominey", "E", 1503017852, "jominey", "E", 1503018073, "jominey", "E", 1503018115, "jominey", "E", 1503018206, "jominey", "E", 1503018417, "jominey", "E", 1503018515, "jominey", "E", 1503018760, "jominey", "E", 1503018923, "jominey", "E", 1503018953, "jominey", "E", 1503018997, "jominey", "E", 1503019039, "jominey", "E", 1503019231, "jominey", "R", 1503023177, "jominey", "E", 1513392509, "jominey", "E", 1513392947, "jominey", "E", 1513392960, "jominey", "E", 1570294697, "jominey", "R", 1572303853, "jominey", "E", 1573096141, "jominey", "E", 1573096248, "jominey", "E", 1573096287, "jominey", "E", 1573096310, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

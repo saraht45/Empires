@@ -1,0 +1,179 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:process_command">
+         X[M] /* show supereyes info */
+int i;
+string evoke;
+mixed langlevel, langname, langskill;
+
+if(!\$data) return TRUE;
+if(!\$who) return TRUE;
+if(!\$vob) return TRUE;
+if(\$verb == "look" \|\| \$verb == "elude" \|\| \$verb == "follow" \|\| \$verb == "scent" \|\| \$verb == "inventory" \|\| \$verb == "inv") return TRUE;
+
+if(contains(\$verb, "!") \|\| contains(\$verb, "@") \|\| contains(\$verb, "+")) return TRUE;
+
+/* describe their last action */
+\$output = "From within " + Describe(\$actor."base:environment") + ", " + Describe(\$actor);
+
+if(args["adverb:position"] == "pv" \&\& args["adverb"]) \{
+    \$output += " "+args["adverb"];
+\}
+
+\$output += " " + \$vob."verb:third";
+
+if(args["adverb:position"] == "pr" \&\& args["adverb"]) \{
+    \$output += " " + args["adverb"];
+\}
+
+if(args["roles"]) \{
+    for(\$i=0;\$i\<sizeof(args["roles"]);\$i++) \{
+        if(args[args["roles"][\$i] + ":preposition"]) \{
+            \$output += " " + args[args["roles"][\$i] + ":preposition"];
+        \}
+
+        if(\$verb == "whisper" \&\& args[args["roles"][\$i]][0] == \$actor) \{
+            \$output += " " + \$actor."base:objective" + "self";
+        \} else \{
+            \$output += " " + Describe(args[args["roles"][\$i]], \$actor);
+        \}
+    \}
+\}
+
+if(args["adverb:position"] == "pp" \&\& args["adverb"])
+    \$output += " " + args["adverb"];
+
+if((\$verb != "whisper" \|\| (\$verb == "whisper" \&\& \$showwhisper)) \&\& args["evoke"]) \{
+    langlevel = Str((\$r1 = \$actor."skotos:currentlang") ? \$r1 : 0);
+    langname = Get(\$\{Allegory:Lib:Languages:Lib:Languages\}, "language:id:" + langlevel);
+    langskill = Get(\$actor, "skill:lang:" + langname);
+
+    if (langlevel \&\& langlevel != "0" \&\& strlen(args["evoke"]) \> 0) \{
+        evoke = INLANG(langname, langskill, args["evoke"]);
+        \$output += " in " + capitalize(Str(langname));
+    \} else \{
+        evoke = args["evoke"];
+    \}
+
+    \$output += ", " + evoke;
+\} else \{
+    \$output += ".";
+\}
+
+EmitTo(\$who, TAG(\$output, "assist-alert"));
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness:command">
+         X[M] int i, j;
+object* rooms;
+object* witnesses;
+object* whisperWitnesses;
+string* peepholes;
+object env, dest;
+string detail, destDetail;
+NRef destNRef;
+
+rooms = \$this."echo:rooms";
+
+if(!rooms) return TRUE;
+if(!sizeof(rooms)) return TRUE; 
+
+whisperWitnesses = (\{ \}); 
+if(\$verb == "whisper" \&\& \$this."echo:peepholes") \{
+    if(\$target \&\& member(NRefDetail(\$target), \$this."echo:peepholes")) \{
+        env = NRefOb(\$target); 
+        detail = NRefDetail(\$target);
+        destNRef = Get(env, "details:" + detail + ":exit:dest");
+        dest = NRefOb(destNRef);
+        destDetail = NRefDetail(destNRef);
+        witnesses = dest."base:inventory"; 
+
+        for(i = 0; i \< sizeof(witnesses); i++) \{
+            if(witnesses[i]."base:proximity" \&\& NRefDetail(witnesses[i]."base:proximity") == NRefDetail(destNRef)) \{
+                whisperWitnesses += (\{ witnesses[i] \});
+            \}
+        \}
+    \}
+\} 
+
+for(i = 0; i \< sizeof(rooms); i++) \{
+    witnesses = rooms[i]."base:inventory";
+
+    for(j = 0; j \< sizeof(witnesses); j++) \{
+        if(sizeof(whisperWitnesses) \&\& member(witnesses[j], whisperWitnesses)) \{
+            \$showwhisper = 1;
+        \} else \{
+            \$showwhisper = nil;
+        \}
+        if(witnesses[j]."udat:possessed") Call(\$\{Allegory:Lib:Justice:JailMechanics\}, "process_command", \$data: args, \$who: witnesses[j], \$showwhisper: \$showwhisper);
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness:enter-from">
+         X[M] int i, j;
+object* rooms;
+object* witnesses;
+object* whisperWitnesses;
+string* peepholes;
+object env, dest;
+string detail, destDetail;
+NRef destNRef;
+
+rooms = \$this."echo:rooms";
+
+if(!rooms) return TRUE;
+if(!sizeof(rooms)) return TRUE;
+
+for(i = 0; i \< sizeof(rooms); i++) \{
+    witnesses = rooms[i]."base:inventory";
+
+    for(j = 0; j \< sizeof(witnesses); j++) \{
+        if(witnesses[j]."udat:possessed" \&\& witnesses[j]."base:environment" != NRefOb(\$dest) \&\& witnesses[j] != \$actor \&\& NRefOb(\$target) != witnesses[j]."base:environment") \{
+            \$output = "From within " + Describe(\$actor."base:environment") + ", " + Describe(\$actor) + " arrives through " + Describe(\$dest) + ".";
+            EmitTo(witnesses[j], TAG(\$output, "assist-alert"));
+        \}
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:witness:enter-into">
+         X[M] int i, j;
+object* rooms;
+object* witnesses;
+object* whisperWitnesses;
+string* peepholes;
+object env, dest;
+string detail, destDetail;
+NRef destNRef;
+
+rooms = \$this."echo:rooms";
+
+if(!rooms) return TRUE;
+if(!sizeof(rooms)) return TRUE;
+
+for(i = 0; i \< sizeof(rooms); i++) \{
+    witnesses = rooms[i]."base:inventory";
+
+    for(j = 0; j \< sizeof(witnesses); j++) \{
+        if(witnesses[j]."udat:possessed" \&\& witnesses[j]."base:environment" != NRefOb(\$dest) \&\& witnesses[j] != \$actor \&\& NRefOb(\$target) != witnesses[j]."base:environment") \{
+            \$output = "From within " + Describe(\$actor."base:environment") + ", " + Describe(\$actor) + " leaves through " + Describe(\$target) + ".";
+            EmitTo(witnesses[j], TAG(\$output, "assist-alert"));
+        \}
+    \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1579713868, "jominey", "E", 1579713888, "jominey", "E", 1579713916, "jominey", "E", 1579713961, "jominey", "E", 1579714195, "jominey", "E", 1579714223, "jominey", "E", 1579714246, "jominey", "E", 1579714290, "jominey", "E", 1579714704, "jominey", "E", 1579714747, "jominey", "E", 1579714800, "jominey", "E", 1579714821, "jominey", "E", 1579714847, "jominey", "E", 1579714885, "jominey", "E", 1579714922, "jominey", "E", 1579714958, "jominey", "E", 1579715210, "jominey", "E", 1579715310, "jominey", "E", 1579715449, "jominey", "E", 1579715504, "jominey", "E", 1579715581, "jominey", "E", 1579715674, "jominey", "E", 1579715694, "jominey", "E", 1581136071, "jominey", "E", 1597091110, "jominey", "P", 1597091209, "jominey", "P" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

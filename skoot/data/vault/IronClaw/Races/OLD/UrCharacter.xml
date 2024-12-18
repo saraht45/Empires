@@ -1,0 +1,196 @@
+<object clone="/base/obj/thing" owner="bradbach">
+  <Base:Thing>
+    <Ur:UrObject/>
+    <Base:Bulk immobile="false" mass="55" density="1"/>
+    <Base:Container flexible="true" transparent-container="false" public-container="false" tight="false" capacity="1" maxweight="100"/>
+    <Base:Misc gender="neuter" volition="false" weapon="false" default_stance="none" combinable="false" discrete="false" by_weight="false" tight="false" scriptrunner="false">
+      <Base:Edible value="false"/>
+      <Base:Potable value="false"/>
+      <Base:DrinkMessageFirst/>
+      <Base:DrinkMessageThird/>
+      <Base:Transparency value="true"/>
+      <Base:Unsafe value="false"/>
+      <Base:Safe value="false"/>
+      <Base:ClothesExpected value="false"/>
+      <Base:DieMessageFirst/>
+      <Base:DieMessageThird/>
+    </Base:Misc>
+    <Base:Details/>
+    <Base:Combat>
+      <Base:Strength value="1"/>
+      <Base:MaxFatigue value="1"/>
+    </Base:Combat>
+    <Base:Clothing>
+      <Base:SingleWear value="false"/>
+    </Base:Clothing>
+    <Base:Crafting see_level="0" do_level="0" time="0" attention="false" held="false">
+      <Base:Ingredients/>
+      <Base:Tools/>
+      <Base:CraftVerbs/>
+    </Base:Crafting>
+    <Base:InitialContents/>
+    <Base:InitialProperties/>
+    <Core:Properties>
+      <Core:Property property="bilbo:inherit:react:tattoo">
+         "\<Generic:DB:UrPeople:altersub\>"
+      </Core:Property>
+      <Core:Property property="merry:act-post:linkdie">
+         X[M] /* check if this is a reconnect only */                     
+this."cdat:recchk" = 1;                     
+\$delay(0.5, FALSE, "28e7");                     
+this."cdat:recchk" = 0;                     
+if( this."udat:name" ) return TRUE;                     
+                     
+/* timestamp recs */                     
+\$actor."cdat:lastlogout" = time();                     
+       
+/* +lastseen -- Sets sessiontime and total which determine average amount of seconds a character stays connected per connection. */                     
+      
+\$actor."cdat:sessionlastlinkdie" = humanized_date(time());      
+                    
+\$sessionlogin = \$actor."cdat:lastlogin";                    
+\$sessionlogout = \$actor."cdat:lastlogout";                    
+\$sessiontime = \$actor."cdat:sessiontime";            
+\$sessiontotal = \$actor."cdat:sessiontotal";           
+  
+  
+if (\$actor."cdat:lastlogin") \{                    
+\$actor."cdat:sessiontime" = Int(\$sessionlogout) - Int(\$sessionlogin) + Int(\$sessiontime);                     
+\$actor."cdat:sessiontotal" = Int(\$sessiontotal) + 1;          
+\}       
+  
+  
+/* +see */                     
+\$db = \$\{Data:DB:seeDB\};                      
+                         
+\$list = Get( \$db, "acclisteners" );                         
+                     
+                         
+\$mute = Get( \$db, "mutelist" );                      
+                      
+\$characct = Get( \$actor, "skotos:creator" );                         
+                         
+if( !\$list ) return TRUE;                         
+                         
+if( !\$list[\$characct] ) return TRUE;                         
+                         
+/* Seems we're on the +see-list. Step through the list and notify those that are online */                         
+                         
+if( contains( \$actor."base:objectname", "players" )) \$tagline = "who"; else \$tagline = "plotters";                      
+                      
+\$notification = TAG( smalltime( time() ) + " [SEE] " + \$characct + " [" + Describe( \$actor ) + "]'s connection was lost.", \$tagline );                      
+                      
+\$recnotify = TAG( short_time( time() ) + " - " + \$characct + " [" + Describe( \$actor ) + "] disconnected.", \$tagline );                      
+                      
+for( \$i = 0; \$i \< sizeof( \$list[\$characct] ); \$i++ )                     
+  if( \$list[\$characct][\$i] )\{                         
+    if( !\$mute[ \$list[\$characct][\$i] ] ) EmitTo( \$list[\$characct][\$i], \$notification );                         
+    \$z = Get( \$list[\$characct][\$i], "seelist" );                      
+    if( !\$z ) \$z = (\{ \});                      
+    if( sizeof( \$z ) \> 20 ) \$z = \$z[2..];                      
+    \$z += (\{ \$recnotify \});                      
+    Set( \$list[\$characct][\$i], "seelist", \$z );                      
+  \}                         
+                         
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:login">
+         X[M] \$dodebug = TRUE;    
+    
+if( !this."cdat:recchk" ) \$actor."cdat:lastlogin" = time();            
+    
+/* +see */                    
+\$db = \$\{Data:DB:seeDB\};                     
+                        
+\$list = Get( \$db, "acclisteners" );                        
+                        
+\$mute = Get( \$db, "mutelist" );                     
+                     
+\$characct = Get( \$actor, "skotos:creator" );                        
+                    
+if( !\$list \|\| !\$list[\$characct] ) return TRUE;    
+                        
+/* Seems we're on the +see-list. Step through the list and notify those that are online */                        
+                        
+if( contains( \$actor."base:objectname", "players" )) \$tagline = "who"; else \$tagline = "plotters";                     
+                     
+if( !this."cdat:recchk" )\{                    
+  \$notification = TAG( smalltime( time() ) + " [SEE] " + \$characct + " [" + Describe( \$actor ) + "] logs on.", \$tagline );                     
+                     
+  \$recnotify = TAG( short_time( time() ) + " - " + \$characct + " [" + Describe( \$actor ) + "] logged on.", \$tagline );                     
+\} else \{                    
+  \$notification = TAG( smalltime( time() ) + " [SEE] " + \$characct + " [" + Describe( \$actor ) + "] reconnects.", \$tagline );                    
+                    
+  \$recnotify = TAG( short_time( time() ) + " - " + \$characct + " [" + Describe( \$actor ) + "] reconnected.", \$tagline );                     
+\}                    
+                     
+for( \$i = 0; \$i \< sizeof( \$list[\$characct] ); \$i++ )                    
+  if( \$list[\$characct][\$i] )\{                        
+    if( !\$mute[ \$list[\$characct][\$i] ] ) EmitTo( \$list[\$characct][\$i], \$notification );                        
+    \$z = Get( \$list[\$characct][\$i], "seelist" );                     
+    if( !\$z ) \$z = (\{ \});                     
+    if( sizeof( \$z ) \> 20 ) \$z = \$z[2..];                     
+    \$z += (\{ \$recnotify \});                     
+    Set( \$list[\$characct][\$i], "seelist", \$z );                     
+  \}                     
+    
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:act-post:quit">
+         X[M] /* timestamp recs */                   
+\$actor."cdat:lastlogout" = time();                   
+\$actor."cdat:sessionlastquit" = humanized_date(time());    
+                   
+/* +lastseen -- Sets sessiontime and total which determine average amount of seconds a character stays connected per connection. */                   
+                  
+\$sessionlogin = \$actor."cdat:lastlogin";                  
+\$sessionlogout = \$actor."cdat:lastlogout";                  
+\$sessiontime = \$actor."cdat:sessiontime";          
+\$sessiontotal = \$actor."cdat:sessiontotal";         
+    
+if (\$actor."cdat:lastlogin") \{                 
+\$actor."cdat:sessiontime" = Int(\$sessionlogout) - Int(\$sessionlogin) + Int(\$sessiontime);                   
+\$actor."cdat:sessiontotal" = Int(\$sessiontotal) + 1;                   
+\}                   
+  
+/* +see */                   
+\$db = \$\{Data:DB:seeDB\};                    
+                       
+\$list = Get( \$db, "acclisteners" );                       
+                       
+\$characct = Get( \$actor, "skotos:creator" );                       
+                    
+\$mute = Get( \$db, "mutelist" );                    
+                       
+if( !\$list ) return TRUE;                       
+                       
+if( !\$list[\$characct] ) return TRUE;                       
+                       
+/* Seems we're on the +see-list. Step through the list and notify those that are online */                       
+                       
+if( contains( \$actor."base:objectname", "players" )) \$tagline = "who"; else \$tagline = "plotters";                    
+                    
+\$notification = TAG( smalltime( time() ) + " [SEE] " + \$characct + " [" + Describe( \$actor ) + "] logs out.", \$tagline );                    
+                    
+\$recnotify = TAG( short_time( time() ) + " - " + \$characct + " [" + Describe( \$actor ) + "] logged out.", \$tagline );                    
+                    
+for( \$i = 0; \$i \< sizeof( \$list[\$characct] ); \$i++ )                   
+  if( \$list[\$characct][\$i] )\{                    
+    if( !\$mute[ \$list[\$characct][\$i] ] ) EmitTo( \$list[\$characct][\$i], \$notification );                       
+    \$z = Get( \$list[\$characct][\$i], "seelist" );                    
+    if( !\$z ) \$z = (\{ \});                    
+    if( sizeof( \$z ) \> 20 ) \$z = \$z[2..];                    
+    \$z += (\{ \$recnotify \});                    
+    Set( \$list[\$characct][\$i], "seelist", \$z );                    
+  \}                     
+                       
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1053453729, "kargh", "X", 1053453892, "kargh", "X", 1053453972, "kargh", "X", 1053455212, "kargh", "X", 1053455338, "kargh", "X" \})
+      </Core:Property>
+      <Core:Property property="skill:fatigue">1.0</Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Base:Thing>
+</object>

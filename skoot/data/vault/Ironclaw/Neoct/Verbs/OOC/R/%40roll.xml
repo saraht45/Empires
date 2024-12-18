@@ -1,0 +1,208 @@
+<object clone="/usr/SkotOS/obj/verb" owner="tonyd">
+  <Socials:Verb imp="@roll" second="roll" third="rolls" evoke="forbidden" audible="false" private="true" secret="true" obscured="true" target-abstracts="false" disabled="false" ooc="true" raw_verb="true">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="merry:global:command">
+         X[M] int i, j, successes;
+string *skills, *careers;
+\$loca = \$actor."base:environment";
+
+if(\$line) \{
+    \$line = lower_case(\$line);
+    \$line = explode(\$line, "vs");
+    \$rolling = \$line[0];
+    \$target = nil;
+    if(sizeof(\$line) \> 1) \{
+        \$target = "";
+        for (i=0; i\<strlen(\$line[1]); i++) \{
+            switch(\$line[1][i]) \{
+            case '0' .. '9':
+                \$target = \$target + \$line[1][i..i];
+                break;
+            \}
+        \}
+        \$target = Int(\$target);
+    \}
+    if(!\$target) \$target = 3;
+
+    \$rolling = replace_strings(\$rolling, "+", " ", ",", " "); /* Get rid of anything like commas or plusses */
+    \$rolling = explode(\$rolling, " "); /* Split up based on spaces between words */
+    \$rolling -= (\{ "" \}); /* get rid of any empty elements, if there were two spaces together */
+
+    /* Convert the titles into properties */
+    skills = map_indices(prefixed_map(Get(\$actor, "*"), "skill:")); /* get a list of skills the PC knows */
+    careers = map_indices(prefixed_map(Get(\$actor, "*"), "career:")); /* and careers */
+
+    for(i=0; i\<sizeof(\$rolling); i++) \{
+        if(Get(\$actor, "trait:"+\$rolling[i])) \{
+            \$rolling[i] = "trait:"+\$rolling[i];
+        \} else \{
+            \$tmp = \$rolling[i];
+            \$rolling[i] = nil;
+            for(j=0;j\<sizeof(skills);j++) \{
+                if(strlen(skills[j]) \> strlen(\$tmp)) \{
+                    if(\$tmp == skills[j][strlen(skills[j])-strlen(\$tmp)..]) \{
+                        \$rolling[i] = skills[j][6..];
+                        continue;
+                    \}
+                \}
+            \}
+            if(!\$rolling[i]) \{
+                for(j=0;j\<sizeof(careers);j++) \{
+                    if(strlen(careers[j]) \> strlen(\$tmp)) \{
+                        if(\$tmp == careers[j][strlen(careers[j])-strlen(\$tmp)..]) \{
+                            \$rolling[i] = careers[j][7..];
+                            continue;
+                        \}
+                    \}
+                \}
+            \}
+            if(!\$rolling[i]) \{
+                \$rolling[i] = "";
+                for(j=0; j\<strlen(\$tmp); j++) \{
+                    switch(\$tmp[j]) \{
+                    case '0' .. '9':
+                        \$rolling[i] = \$rolling[i] + \$tmp[j..j];
+                        break;
+                    \}
+                \}
+                \$rolling[i] = Int(\$rolling[i]);
+            \}
+        \}
+    \}
+
+    \$rolling -= (\{ nil \});
+    successes = ironclaw::roll_dicepool(\$roller: \$actor, \$skills: \$rolling, \$rolltype: "target", \$target: \$target);
+    EmitTo(\$actor, TAG("["+Str(\$line[0])+" vs target "+Str(\$target)+"] You roll "+Str(successes)+" successes.", "imp"));
+    EmitIn(\$loca, TAG("["+Str(\$line[0])+" vs target "+Str(\$target)+"] "+Describe(\$actor) +" rolled "+Str(successes)+" successes.", "imp"), \$actor);
+\} else \{
+    \$result = random(12)+1;
+    EmitTo(\$actor, TAG("You roll a "+Str(\$result)+".", "imp"));
+    EmitIn(\$loca, TAG(Describe(\$actor) +" rolled a "+Str(\$result)+".", "imp"), \$actor);
+\}
+
+/*
+\$loca = \$actor."base:environment";
+if(\$evoke)
+\{
+\$multiplier = 1;
+\$dice = 0;
+\$addition = 0;
+
+\$finding = "addition";
+
+\$result = 0;
+
+for (\$i = 1; \$i \< strlen(\$evoke)-1; \$i++) \{
+  switch(\$evoke[\$i]) \{
+    case '0' .. '9':
+      if(\$finding == "addition")
+      \{
+        \$addition = \$addition*10+(Int(\$evoke[\$i])-48);
+      \} else \{
+        \$dice = \$dice*10+(Int(\$evoke[\$i])-48);
+      \}
+    break;
+    case 'd':
+    case 'D':
+      \$multiplier = \$addition;
+      \$addition = 0;
+      \$finding = "dice";
+      if(\$multiplier == 0) \$multiplier = 1;
+    break;
+    case '+':
+      for(\$j = 0; \$j \< \$multiplier; \$j++)
+      \{
+        \$random = random(\$dice)+1;
+        if(\$random \> \$result) \$result = \$random;
+      \}
+      \$multiplier = 1; \$addition = 0; \$dice = 0;
+    break;
+    default:
+    break;
+      EmitTo(\$actor, "Unknown roll");
+      return FALSE;
+  \}
+
+\}
+
+      for(\$j = 0; \$j \< \$multiplier; \$j++)
+      \{
+        \$random = random(\$dice)+1;
+        if(\$random \> \$result) \$result = \$random;
+      \}
+  EmitTo(\$actor, TAG("You roll a "+Str(\$result)+" ("+\$evoke[1..strlen(\$evoke)-2]+")", "imp"));
+  EmitIn(\$loca, TAG(Describe(\$actor) +" rolled a "+Str(\$result)+" ("+\$evoke[1..strlen(\$evoke)-2]+")", "imp"), \$actor);
+
+\} else \{
+  \$result = random(12)+1;
+  EmitTo(\$actor, TAG("You roll a "+Str(\$result)+".", "imp"));
+  EmitIn(\$loca, TAG(Describe(\$actor) +" rolled a "+Str(\$result)+".", "imp"), \$actor);
+\}
+*/
+
+/*
+if(\$evoke)
+\{
+\$multiplier = 1;
+\$dice = 0;
+\$addition = 0;
+
+\$finding = "addition";
+
+
+\$result = 0;
+
+for (\$i = 1; \$i \< strlen(\$evoke)-1; \$i++) \{
+  switch(\$evoke[\$i]) \{
+    case '0' .. '9':
+      if(\$finding == "addition")
+      \{
+        \$addition = \$addition*10+(Int(\$evoke[\$i])-48);
+      \} else \{
+        \$dice = \$dice*10+(Int(\$evoke[\$i])-48);
+      \}
+    break;
+    case 'd':
+    case 'D':
+      \$multiplier = \$addition;
+      \$addition = 0;
+      \$finding = "dice";
+      if(\$multiplier == 0) \$multiplier = 1;
+    break;
+    case '+':
+      \$result = \$result + ((\$multiplier * (random(\$dice)+1))+\$addition);
+      \$finding = "addition";
+      \$multiplier = 1; \$addition = 0; \$dice = 0;
+    break;
+    default:
+    break;
+      EmitTo(\$actor, "Unknown roll");
+      return FALSE;
+  \}
+
+\}
+
+\$result = \$result + ((\$multiplier * (random(\$dice)+1))+\$addition);
+  EmitTo(\$actor, TAG("You roll a "+Str(\$result)+" ("+\$evoke[1..strlen(\$evoke)-2]+")", "imp"));
+  EmitIn(\$loca, TAG(Describe(\$actor) +" rolled a "+Str(\$result)+" ("+\$evoke[1..strlen(\$evoke)-2]+")", "imp"), \$actor);
+  EmitTo(\$\{Chatters:IC:Az:Azrael\}, ":"+ Describe(\$actor) +" rolled a "+Str(\$result)+" ("+\$evoke[1..strlen(\$evoke)-2]+")");
+
+\} else \{
+  \$result = random(20)+1;
+  EmitTo(\$actor, TAG("You roll a "+Str(\$result)+".", "imp"));
+  EmitIn(\$loca, TAG(Describe(\$actor) +" rolled a "+Str(\$result)+" ("+\$evoke[1..strlen(\$evoke)-2]+")", "imp"), \$actor);
+  EmitTo(\$\{Chatters:IC:Qu:Quo\}, ":"+ Describe(\$actor) +" rolled a "+Str(\$result)+".");
+\}
+*/
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1125726084, "tonyd", "E", 1125726173, "tonyd", "E", 1125726250, "tonyd", "E", 1125726308, "tonyd", "E", 1125726355, "tonyd", "E", 1125726377, "tonyd", "E", 1125726422, "tonyd", "E", 1125726545, "tonyd", "E", 1125726573, "tonyd", "E", 1125726649, "tonyd", "E", 1125726744, "tonyd", "E", 1125727017, "tonyd", "E", 1125727069, "tonyd", "E", 1125730526, "tonyd", "E", 1125730588, "tonyd", "E", 1125730673, "tonyd", "E", 1125730734, "tonyd", "E", 1125730793, "tonyd", "E", 1125730830, "tonyd", "E", 1125730869, "tonyd", "E", 1125876742, "tonyd", "E", 1125876794, "tonyd", "E", 1125876867, "tonyd", "E", 1125877005, "tonyd", "E", 1125910359, "tonyd", "E", 1127291946, "tonyd", "E", 1127291985, "tonyd", "E", 1172584745, "librarysage", "R", 1175597091, "necate", "E", 1175676030, "necate", "P", 1175676056, "necate", "P", 1175676113, "necate", "P", 1175676161, "necate", "P", 1285301590, "jominey", "E", 1285301857, "jominey", "E", 1335063132, "tonyd", "P", 1335063172, "tonyd", "P", 1335063215, "tonyd", "E", 1335063298, "tonyd", "E", 1335063324, "tonyd", "P", 1335063353, "tonyd", "E", 1335063365, "tonyd", "E", 1335063369, "tonyd", "E", 1335063393, "tonyd", "P", 1335063462, "tonyd", "P", 1335063526, "tonyd", "P", 1335063533, "tonyd", "P", 1335063545, "tonyd", "P", 1335063570, "tonyd", "P", 1335063653, "tonyd", "P", 1335063669, "tonyd", "P", 1335063686, "tonyd", "P", 1335063706, "tonyd", "P", 1335063747, "tonyd", "P", 1335063804, "tonyd", "P", 1335063945, "tonyd", "P", 1335063989, "tonyd", "P", 1335064200, "tonyd", "P", 1335064222, "tonyd", "P", 1335064575, "tonyd", "P", 1335064642, "tonyd", "P", 1335064661, "tonyd", "P", 1335064775, "tonyd", "P", 1335064797, "tonyd", "P", 1335064827, "tonyd", "P", 1335065018, "tonyd", "P", 1335065115, "tonyd", "P", 1335065162, "tonyd", "P", 1335065263, "tonyd", "P", 1335065298, "tonyd", "P", 1335065335, "tonyd", "P", 1335065353, "tonyd", "P", 1335065577, "tonyd", "P", 1335065870, "tonyd", "P", 1335065891, "tonyd", "P", 1335065897, "tonyd", "P", 1335066016, "tonyd", "P", 1335066032, "tonyd", "P", 1335066103, "tonyd", "P", 1335066173, "tonyd", "P", 1335066193, "tonyd", "P", 1335066216, "tonyd", "P", 1335066284, "tonyd", "P", 1335066333, "tonyd", "P", 1335066351, "tonyd", "P", 1335066411, "tonyd", "P", 1335066518, "tonyd", "P", 1335066551, "tonyd", "P", 1335067166, "tonyd", "P", 1335067351, "tonyd", "P", 1335067386, "tonyd", "P", 1342581451, "jominey", "E", 1342581483, "jominey", "E", 1342581559, "jominey", "E", 1342581693, "jominey", "E" \})
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

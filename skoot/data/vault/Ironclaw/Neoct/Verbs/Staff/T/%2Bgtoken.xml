@@ -1,0 +1,177 @@
+<object clone="/usr/SkotOS/obj/verb" owner="SkotOS">
+  <Socials:Verb imp="+gtoken" evoke="required" audible="false" private="false" secret="false" obscured="false" target-abstracts="false" disabled="false" ooc="false" raw_verb="true">
+    <Ur:UrObject/>
+    <Socials:SocialObjects/>
+    <Socials:VerbActions/>
+    <Core:Properties>
+      <Core:Property property="gimli:global:command">
+         "E[G]\\n\$help = \\"ADD/REMOVE TOKENS\\" + \\"\\\\n\\" +\\n        \\"SYNTAX: +token [guild] [character] [function] [#] [token] 'Reason'\\" + \\"\\\\n\\" +\\n        \\" -- guild is the short name or the woe name of the guild \\" + \\"\\\\n\\" +\\n        \\" -- character is the name of the character who authorized this transaction\\" + \\"\\\\n\\" +\\n        \\" -- function will either be 'add' or 'remove'... there is also a 'query' function which is described below\\" + \\"\\\\n\\" +\\n        \\" -- # is the number of tokens you are adding or removing\\" + \\"\\\\n\\" +\\n        \\" -- token is the type of token you want to add or remove (if you aren't sure whether or not a guild has this token type, use the query function)\\" + \\"\\\\n\\" +\\n        \\" -- 'Reason' is the reason for the token transaction (this will be visible to players on the guild page... so include as much detail as you can)\\" + \\"\\\\n\\" +\\n        \\"QUERY TOKENS\\" + \\"\\\\n\\" +\\n        \\"SYNTAX: +token [guild] query [token]\\" + \\"\\\\n\\" +\\n        \\" -- guild is the woe name of the guild \\" + \\"\\\\n\\" +\\n        \\" -- token is the type of token you are querying (be specific)\\" + \\"\\\\n\\";\\n\\n\\nif(!\$line) \{\\n  EmitTo(\$actor, \$help);\\n  return FALSE;\\n\}\\n\\n\$temp = sscanf(\$line, \\"%s %s %s %d %s %s\\", \$guild, \$char, \$function, \$num, \$type, \$reason);\\nif(\$temp == 6) \{\\n\\n\$guild = lower_case(\$guild);\\n\$function= lower_case(\$function);\\n\\n    if(!Obj(\$guild)) \{\\n      if(!Obj(\\"Ironclaw:Guilds:\\"+\$guild)) \{\\n        EmitTo(\$actor, TAG(\\"NO SUCH GUILD EXISTS!\\", \\"imp\\"));\\n        EmitTo(\$actor, PRE(\$help));\\n        return FALSE;\\n      \} else \{\\n        \$guild = Obj(\\"Ironclaw:Guilds:\\"+\$guild);\\n      \}\\n    \} else \{\\n        \$guild = Obj(\$guild);\\n    \}\\n    \\n    if(!common::lookup(\$name: \$char)) \{\\n        EmitTo(\$actor, TAG(\\"NO SUCH CHARACTER EXISTS!\\", \\"imp\\"));\\n        EmitTo(\$actor, PRE(\$help));\\n        return FALSE;\\n    \}\\n\\n    \$char = common::lookup(\$name: \$char);\\n\\n    if(\$function != \\"add\\" \&\& \$function != \\"remove\\") \{\\n        EmitTo(\$actor, TAG(\\"INVALID FUNCTION!\\", \\"imp\\"));\\n        EmitTo(\$actor, PRE(\$help));\\n        return FALSE;\\n    \}\\n\\n    if(\$num \<= 0) \{\\n        EmitTo(\$actor, TAG(\\"# OF TOKENS TO ADD/REMOVE MUST BE GREATER THAN 0!\\", \\"imp\\"));\\n        EmitTo(\$actor, PRE(\$help));\\n        return FALSE;\\n    \}\\n\\n    \$actualNum = Int(Get(\$guild, \\"tokens:\\" + \$type));\\n\\n    if(\$actualNum \< \$num) \{\\n        EmitTo(\$actor, TAG(\\"GUILD DOES NOT HAVE THAT MANY OF THAT TYPE OF TOKEN!\\", \\"imp\\"));\\n        EmitTo(\$actor, PRE(\$help));\\n        return FALSE;\\n    \}\\n\\n    if(\$function == \\"remove\\") \{\\n        Set(\$guild, \\"tokens:\\" + \$type, Int(\$actualNum - \$num));\\n    \}\\n\\n    if(\$function == \\"add\\") \{\\n        Set(\$guild, \\"tokens:\\" + \$type, Int(\$actualNum + \$num));\\n    \}\\n\\n    if(!\$reason) \{\\n        EmitTo(\$actor, TAG(\\"PLEASE INCLUDE A REASON!\\", \\"imp\\"));\\n        EmitTo(\$actor, PRE(\$help));\\n        return FALSE;\\n    \}\\n\\n    \$reason = replace_strings(\$reason, \\"'\\", \\"\\", \\"\\\\\\"\\", \\"\\");\\n\\n    \$transaction = (\{ \$char, \$num, \$type, \$guild, time(), \$function, \$reason \});\\n\\n    if(!Get(\$guild, \\"token_transfers\\")) \{\\n        \$transfers = (\{ \});\\n    \} else \{\\n        \$transfers = copy(Get(\$guild, \\"token_transfers\\"));\\n    \}\\n\\n    \$transfers += (\{ \$transaction \});\\n\\n    Set(\$guild, \\"token_transfers\\", \$transfers);\\n\\n    EmitTo(\$actor, \\"Done!\\");\\n\\n    return FALSE;\\n\\n\}\\n\\n\$temp = sscanf(\$line, \\"%s %s %s\\", \$guild, \$function, \$type);\\nif(\$temp == 3) \{\\n\\n        if(!Obj(\$guild)) \{\\n            EmitTo(\$actor, TAG(\\"NO SUCH GUILD EXISTS!\\", \\"imp\\"));\\n            EmitTo(\$actor, PRE(\$help));\\n            return FALSE;\\n        \}\\n\\n        \$guild = Obj(\$guild);\\n\\n        if(\$function != \\"query\\") \{\\n            EmitTo(\$actor, TAG(\\"INVALID FUNCTION!\\", \\"imp\\"));\\n            EmitTo(\$actor, PRE(\$help));\\n            return FALSE;\\n        \}\\n\\n        \$listing = \\"tokens:\\" + \$type + \\" - \\" + Str(Get(\$guild, \\"tokens:\\" + \$type));\\n\\n        EmitTo(\$actor, \$listing);\\n\\n        return FALSE;\\n\\n\}\\n\\n\$temp = sscanf(\$line, \\"%s %s\\", \$guild, \$function);\\nif(\$temp == 2) \{\\n\\n    if(\$guild \&\& !Obj(\$guild)) \{\\n        EmitTo(\$actor, TAG(\\"NO SUCH GUILD EXISTS!\\", \\"imp\\"));\\n        EmitTo(\$actor, PRE(\$help));\\n        return FALSE;\\n    \}\\n\\n    \$guild = Obj(\$guild);\\n\\n    if(\$function \&\& \$function != \\"query\\") \{\\n        EmitTo(\$actor, TAG(\\"INVALID FUNCTION!\\", \\"imp\\"));\\n        EmitTo(\$actor, PRE(\$help));\\n        return FALSE;\\n    \}\\n\\n    \$token_list = map_indices(prefixed_map(\$guild.\\"*\\", \\"tokens:\\"));\\n\\n    for(\$i = 0; \$i \< sizeof(\$token_list); \$i++) \{\\n        EmitTo(\$actor, Str(\$token_list[\$i]) + \\" - \\" + Str(Get(\$guild, Str(\$token_list[\$i]))));\\n    \}\\n\\n    return FALSE;\\n\\n\}\\n\\nEmitTo(\$actor, PRE(\$help));\\n\\n\\nreturn FALSE;"
+      </Core:Property>
+      <Core:Property property="merry:global:command">
+         X[M] /* Gimli-Powered! Do not edit! Edit gimli:global:command instead! */
+\$help = "ADD/REMOVE TOKENS" + "\\n" +
+        "SYNTAX: +token [guild] [character] [function] [#] [token] 'Reason'" + "\\n" +
+        " -- guild is the short name or the woe name of the guild " + "\\n" +
+        " -- character is the name of the character who authorized this transaction" + "\\n" +
+        " -- function will either be 'add' or 'remove'... there is also a 'query' function which is described below" + "\\n" +
+        " -- # is the number of tokens you are adding or removing" + "\\n" +
+        " -- token is the type of token you want to add or remove (if you aren't sure whether or not a guild has this token type, use the query function)" + "\\n" +
+        " -- 'Reason' is the reason for the token transaction (this will be visible to players on the guild page... so include as much detail as you can)" + "\\n" +
+        "QUERY TOKENS" + "\\n" +
+        "SYNTAX: +token [guild] query [token]" + "\\n" +
+        " -- guild is the woe name of the guild " + "\\n" +
+        " -- token is the type of token you are querying (be specific)" + "\\n";
+
+
+if(!\$line) \{
+  EmitTo(\$actor, \$help);
+  return FALSE;
+\}
+
+\$temp = sscanf(\$line, "%s %s %s %d %s %s", \$guild, \$char, \$function, \$num, \$type, \$reason);
+if(\$temp == 6) \{
+
+\$guild = lower_case(\$guild);
+\$function= lower_case(\$function);
+
+    if(!Obj(\$guild)) \{
+      if(!Obj("Ironclaw:Guilds:"+\$guild)) \{
+        EmitTo(\$actor, TAG("NO SUCH GUILD EXISTS!", "imp"));
+        EmitTo(\$actor, PRE(\$help));
+        return FALSE;
+      \} else \{
+        \$guild = Obj("Ironclaw:Guilds:"+\$guild);
+      \}
+    \} else \{
+        \$guild = Obj(\$guild);
+    \}
+    
+    if(!common::lookup(\$name: \$char)) \{
+        EmitTo(\$actor, TAG("NO SUCH CHARACTER EXISTS!", "imp"));
+        EmitTo(\$actor, PRE(\$help));
+        return FALSE;
+    \}
+
+    \$char = common::lookup(\$name: \$char);
+
+    if(\$function != "add" \&\& \$function != "remove") \{
+        EmitTo(\$actor, TAG("INVALID FUNCTION!", "imp"));
+        EmitTo(\$actor, PRE(\$help));
+        return FALSE;
+    \}
+
+    if(\$num \<= 0) \{
+        EmitTo(\$actor, TAG("# OF TOKENS TO ADD/REMOVE MUST BE GREATER THAN 0!", "imp"));
+        EmitTo(\$actor, PRE(\$help));
+        return FALSE;
+    \}
+
+    \$actualNum = Int(Get(\$guild, "tokens:" + \$type));
+
+    if(\$actualNum \< \$num) \{
+        EmitTo(\$actor, TAG("GUILD DOES NOT HAVE THAT MANY OF THAT TYPE OF TOKEN!", "imp"));
+        EmitTo(\$actor, PRE(\$help));
+        return FALSE;
+    \}
+
+    if(\$function == "remove") \{
+        Set(\$guild, "tokens:" + \$type, Int(\$actualNum - \$num));
+    \}
+
+    if(\$function == "add") \{
+        Set(\$guild, "tokens:" + \$type, Int(\$actualNum + \$num));
+    \}
+
+    if(!\$reason) \{
+        EmitTo(\$actor, TAG("PLEASE INCLUDE A REASON!", "imp"));
+        EmitTo(\$actor, PRE(\$help));
+        return FALSE;
+    \}
+
+    \$reason = replace_strings(\$reason, "'", "", "\\"", "");
+
+    \$transaction = (\{ \$char, \$num, \$type, \$guild, time(), \$function, \$reason \});
+
+    if(!Get(\$guild, "token_transfers")) \{
+        \$transfers = (\{ \});
+    \} else \{
+        \$transfers = copy(Get(\$guild, "token_transfers"));
+    \}
+
+    \$transfers += (\{ \$transaction \});
+
+    Set(\$guild, "token_transfers", \$transfers);
+
+    EmitTo(\$actor, "Done!");
+
+    return FALSE;
+
+\}
+
+\$temp = sscanf(\$line, "%s %s %s", \$guild, \$function, \$type);
+if(\$temp == 3) \{
+
+        if(!Obj(\$guild)) \{
+            EmitTo(\$actor, TAG("NO SUCH GUILD EXISTS!", "imp"));
+            EmitTo(\$actor, PRE(\$help));
+            return FALSE;
+        \}
+
+        \$guild = Obj(\$guild);
+
+        if(\$function != "query") \{
+            EmitTo(\$actor, TAG("INVALID FUNCTION!", "imp"));
+            EmitTo(\$actor, PRE(\$help));
+            return FALSE;
+        \}
+
+        \$listing = "tokens:" + \$type + " - " + Str(Get(\$guild, "tokens:" + \$type));
+
+        EmitTo(\$actor, \$listing);
+
+        return FALSE;
+
+\}
+
+\$temp = sscanf(\$line, "%s %s", \$guild, \$function);
+if(\$temp == 2) \{
+
+    if(\$guild \&\& !Obj(\$guild)) \{
+        EmitTo(\$actor, TAG("NO SUCH GUILD EXISTS!", "imp"));
+        EmitTo(\$actor, PRE(\$help));
+        return FALSE;
+    \}
+
+    \$guild = Obj(\$guild);
+
+    if(\$function \&\& \$function != "query") \{
+        EmitTo(\$actor, TAG("INVALID FUNCTION!", "imp"));
+        EmitTo(\$actor, PRE(\$help));
+        return FALSE;
+    \}
+
+    \$token_list = map_indices(prefixed_map(\$guild."*", "tokens:"));
+
+    for(\$i = 0; \$i \< sizeof(\$token_list); \$i++) \{
+        EmitTo(\$actor, Str(\$token_list[\$i]) + " - " + Str(Get(\$guild, Str(\$token_list[\$i]))));
+    \}
+
+    return FALSE;
+
+\}
+
+EmitTo(\$actor, PRE(\$help));
+
+
+return FALSE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1144052091, "-", "SYNC", 1221752477, "???", "R", 1401726854, "jominey", "E", 1401726959, "jominey", "E", 1401727050, "jominey", "E", 1401727677, "jominey", "E", 1401727706, "jominey", "E", 1401727838, "jominey", "E", 1401727990, "jominey", "E", 1401728027, "jominey", "E", 1401728530, "jominey", "E", 1401728573, "jominey", "E", 1401728604, "jominey", "E", 1401728693, "jominey", "E", 1401728726, "jominey", "E", 1401728757, "jominey", "E", 1401728769, "jominey", "E", 1401729308, "jominey", "E", 1401731552, "jominey", "E", 1401731637, "jominey", "E", 1401731703, "jominey", "E", 1401731757, "jominey", "E", 1401731837, "jominey", "E", 1401732116, "jominey", "E", 1401732215, "jominey", "E", 1401732254, "jominey", "E", 1401732390, "jominey", "E", 1401732588, "jominey", "E", 1401732717, "jominey", "E", 1401732768, "jominey", "E", 1401732797, "jominey", "E", 1401734925, "jominey", "E", 1401734972, "jominey", "E", 1401734983, "jominey", "E", 1401735045, "jominey", "E", 1401735148, "jominey", "E", 1401735215, "jominey", "E", 1401735245, "jominey", "E", 1401735256, "jominey", "E", 1401735358, "jominey", "E", 1401735391, "jominey", "E", 1401735463, "jominey", "E", 1401735732, "jominey", "E", 1401735765, "jominey", "E", 1401736019, "jominey", "E", 1401736084, "jominey", "E", 1401736120, "jominey", "E", 1401743330, "jominey", "E", 1401743335, "jominey", "R", 1462763857, "tonyd", "P", 1462764355, "tonyd", "P", 1462764390, "tonyd", "P", 1462764470, "tonyd", "P", 1462764578, "tonyd", "P" \})
+      </Core:Property>
+      <Core:Property property="x_gimliinstance">
+         ([  ])
+      </Core:Property>
+    </Core:Properties>
+    <Notes:Notes/>
+  </Socials:Verb>
+</object>

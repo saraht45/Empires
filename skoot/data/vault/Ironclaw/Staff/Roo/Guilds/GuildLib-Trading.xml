@@ -1,0 +1,1534 @@
+<object clone="/obj/properties" owner="jominey">
+  <Core:PropertyContainer>
+    <Ur:UrObject urobject="OBJ(Ironclaw:Staff:Roo:Guilds:GuildLib-Teaching)"/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:add_import_auction">
+         X[M] /* int i;
+mixed* properties;
+mixed* token;
+
+if(!\$guildleader \&\& !\$char."guild:trader") \{
+    return "You do not have the authority to request new imports.";
+\}
+
+\$historyNew = (\{ \});
+if(\$guild.auction_history) \{
+    \$history = \$guild.auction_history; /*
+
+    /* How many auctions have been requested in this last week? */
+ /*   for(i = 0; i \< sizeof(\$history); i++) \{
+        if(Int(time() - \$history[i]) \< (60*60*24*7)) \{
+            \$historyNew += (\{ \$history[i] \});
+        \}
+    \}
+\}
+
+\$guild.auction_history = \$historyNew;
+
+if(sizeof(\$historyNew) \>= 4) \{
+    \$mostRecent = \$historyNew[3];
+    \$waiting = (60*60*24*7) - (time() - \$mostRecent);
+    return "Request denied. You have already requested 4 imports in the last week. You must wait " + Str(\$waiting/3600) + " hour(s)";
+\}
+
+\$tokenCost = 10;
+
+\$temp = explode(\$vars[0], ",");
+\$item = Obj(\$temp[0]);
+
+properties = (\{ \});
+for(i = 1; i \< sizeof(\$temp)-2; i+=2) \{
+    properties += (\{ \$temp[i], \$temp[i+1] \});
+\}
+
+token = \$temp[sizeof(\$temp)-2..];
+
+if(Int(Get(\$guild, token[1])) \< \$tokenCost) \{
+    return "Request denied. You do not have enough resources to complete this transaction. Gather more resources or choose a different token type.";
+\}
+
+Set(\$guild, token[1], Int(Get(\$guild, token[1]))-\$tokenCost);
+
+for(i = 0; i \< sizeof(properties); i+=2) \{
+    Set(\$this, properties[i], properties[i+1]);
+\}
+
+\$desc = UnSAM(Get(Obj(\$item), "details:default:description:brief"));
+
+for(i = 0; i \< sizeof(properties); i+=2) \{
+    Set(\$this, properties[i], nil);
+\} 
+
+\$auction = (\{ 1, (\{ capitalize(common::aan(\$what: \$desc)), 1, \$item, nil, \$desc, nil \}), capitalize(common::aan(\$what: \$desc)), capitalize(common::aan(\$what: \$desc)) + " is brought into town by " + \$guild.fullname + ".", properties, (\{ "caravan", 1, 0 \}), nil, nil, nil, nil, \$guild \}); */
+
+/* record the transfer */
+/* if(!\$guild.token_transfers) \$guild.token_transfers = (\{ \});
+\$guild.token_transfers += (\{ (\{ \$actor, \$tokenCost, token[1], \$guild, time(), "remove", "Import of " + Str(\$desc) + "." \}) \});
+
+\$assisttext = "AUTO IMPORT: " + proper(Str(\$actor."skotos:charname")) + " (" + \$guild.fullname + ") requested an import for " + Str(\$desc) + ".";
+assist::dofileassist(\$data: \$\{Data:DB:assist:AssistGeneralDB\}, \$char: Str(\$actor), \$queue: "trading", \$assisttext: \$assisttext, \$log: "[TAS]");
+
+\$rand = (60*60*12) + random(60*60*12*3); */ /* Random 12-48 hour delay */
+/* EmitTo(\$actor, dump_value(\$rand));
+\$delay(\$rand, "Your request has been received. Please allow up to 48 hours for processing.", "f2bb");
+
+Set(\$\{Ironclaw:Guilds:Trading:bidding\}, "bidding:" + \$guildname + ":" + Str(time()), \$auction);
+
+if(!\$guild.auction_history) \$guild.auction_history = (\{ \});
+\$guild.auction_history += (\{ time() \});
+
+
+return "Request approved!"; */
+
+return "Importing has been temporarily disabled.";
+      </Core:Property>
+      <Core:Property property="merry:lib:charge_tokens">
+         X[M] /* charge the specified number of tokens from the guild */
+ int count;
+ string special_token;
+ if(!\$amount) \{ return FALSE; \}
+ if(!\$guild) \{ return FALSE; \}
+ if(!\$token) \{ return FALSE; \}
+ \$amount = Int(\$amount);
+ /* Do they have enough tokens? */
+ if(\$amount \> Call(this, "general_script", \$script: "count_tokens", \$token: \$token)) return FALSE;
+ /* they have enough tokens. Start removing them */
+ count = \$amount;
+ if(Int(Get(\$guild, "tokens:"+\$token)) \>= \$amount) \{
+  /* pay in one lot */
+  Set(\$guild, "tokens:"+\$token, Int(Get(\$guild, "tokens:"+\$token))-count);
+  return TRUE;
+ \} else \{
+  /* pay from specialized-token types */
+  /* first take the non-specialized tokens */
+  count -= Int(Get(\$guild, "tokens:"+\$token));
+  Set(\$guild, "tokens:"+\$token, 0);
+  /* now get a list of other specialized token types */
+  \$token_types = map_indices(prefixed_map(Get(\$guild, "*"), "tokens:"+\$token));
+
+  while(count \&\& sizeof(\$token_types)) \{
+   \$tmp = random(sizeof(\$token_types));
+   special_token = \$token_types[\$tmp];
+   \$token_types -= (\{ \$token_types[\$tmp] \});
+   if(Int(Get(\$guild, special_token)) \>= count) \{
+    /* pay remainder in one lot */
+    Set(\$guild, special_token, Int(Get(\$guild, special_token))-count);
+    count = 0;
+   \} else \{
+    /* partially pay remainder */
+    count -= Int(Get(\$guild, special_token));
+    Set(\$guild, special_token, nil);
+   \}
+  \}
+ \}
+ if(!count) return TRUE;
+ return FALSE;
+      </Core:Property>
+      <Core:Property property="merry:lib:count_tokens">
+         X[M] /* count the number of tokens of this type in the guild */
+ int count;
+ count = 0;
+ if(!\$guild) return 0;
+ if(!\$token) return 0;
+ \$tmp = map_values(prefixed_map(Get(\$guild, "*"), "tokens:"+\$token));
+ for(\$count_tokens_i = 0; \$count_tokens_i \< sizeof(\$tmp); \$count_tokens_i++)
+  count += \$tmp[\$count_tokens_i];
+ return count;
+      </Core:Property>
+      <Core:Property property="merry:lib:customize_import">
+         X[M] string output, vstr;
+int i, j, trading, trade;
+mixed db, *importList, *verified, *options, *values, *properties;
+mapping itemMap, optionsMap, tradingAll, tradeAll, tokens, propertiesMap;
+object item;
+
+\$tokenCost = 10;
+
+output = "";
+
+db = \$\{Ironclaw:Data:AuctionHouse\};
+
+if(!\$vars \|\| \$vars[0] == "undefined") return "";
+
+itemMap = Get(db, \$vars[0]);
+item = itemMap["object"];
+
+vstr = "";
+
+if(itemMap["properties"]) \{
+    propertiesMap = itemMap["properties"];
+    properties = map_indices(propertiesMap);
+    for(i = 0; i \< sizeof(properties); i++) \{
+        vstr += "'" + properties[i] + "', '" + propertiesMap[properties[i]] + "', ";
+    \}
+\}
+
+if(itemMap["options"]) \{
+    optionsMap = itemMap["options"];
+    options = map_indices(optionsMap);
+    for(i = 0; i \< sizeof(options); i++) \{
+        output += "\<select id='" + options[i] + "'\>\\n";
+        vstr += "'" + options[i] + "', getElementById('" + options[i] + "').value" + ", ";
+
+        output += "\<option\>" + "---" + capitalize(Str(options[i])) + "---\</options\>";
+
+        values = optionsMap[options[i]];
+        for(j = 0; j \< sizeof(values); j++) \{
+            output += "\<option value='" + values[j] + "'\>" + capitalize(values[j]) + "\</option\>";
+        \}
+
+        output += "\</select\>\<i\>(optional)\</i\>\<br/\>";
+    \}
+\}
+
+output += "\</td\>\</tr\>\</table\>\<br/\>\<font color='red'\>\<b\>Your guild will be charged " + Str(\$tokenCost) + "\<select id='tokentype'\>\\n";
+vstr += "'tokentype', getElementById('tokentype').value";
+
+tokens = structure_propmap(copy(\$guild."*"))["tokens"];
+trading = Int(\$guild."tokens:trading");
+trade = Int(\$guild."tokens:trade");
+verified = (\{ \});
+
+if(trading \>= \$tokenCost) \{
+    verified += (\{ "tokens:trading" \});
+    output += "\<option value='tokens:trading'\>Trading\</option\>";
+\}
+
+if(tokens["trading"]) \{
+    tradingAll = tokens["trading"];
+    if(map_sizeof(tradingAll)) \{
+        for(i = 0; i \< map_sizeof(tradingAll); i++) \{
+            \$tokenTemp = Int(Get(\$guild, "tokens:trading:" + map_indices(tradingAll)[i]));
+            if(\$tokenTemp \>= \$tokenCost) \{
+                \$tempToken = "tokens:trading:" + map_indices(tradingAll)[i];
+                verified += (\{ \$tempToken \});
+                output += "\<option value='" + \$tempToken +"'\>" + capitalize(replace_strings(\$tempToken, "tokens:", "")) + " (" + Str(Get(\$guild, \$tempToken)) + ")\</option\>";
+            \}
+        \}
+    \}
+\}
+
+if(trade \>= \$tokenCost) \{
+    verified += (\{ "tokens:trade" \});
+    output += "\<option value='tokens:trade'\>Trade\</option\>";
+\}
+
+if(tokens["trade"]) \{
+    tradeAll = tokens["trade"];
+    if(map_sizeof(tradeAll)) \{
+        for(i = 0; i \< map_sizeof(tradeAll); i++) \{
+            \$tokenTemp = Int(Get(\$guild, "tokens:trade:" + map_indices(tradeAll)[i]));
+            if(\$tokenTemp \>= \$tokenCost) \{
+                \$tempToken = "tokens:trade:" + map_indices(tradeAll)[i];
+                verified += (\{ \$tempToken \});
+                output += "\<option value='" + \$tempToken +"'\>" + capitalize(replace_strings(\$tempToken, "tokens:", "")) + " (" + Str(Get(\$guild, \$tempToken)) + ")\</option\>";
+            \}
+        \}
+    \}
+\}
+output += "\</select\> tokens.\</b\>\</font\>\<br/\>";
+
+if(sizeof(verified)) \{
+    output += "\<br/\>\<input type='submit' value='Make Request' class='clickable' onclick=\\"run_script('add_import_auction', ['" + Str(item) + "', " + vstr + "]);\\"/\>";
+\} else \{
+    output += " You do not have enough trade tokens.";
+\}
+
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:display_trading_notices">
+         X[M] string content, *notices; 
+int i, sz; 
+ 
+/* don't display if in editmode */ 
+if(\$editmode) 
+  return "\&lt;GUILD TRADING NOTICES\&gt;"; 
+
+if(!\$guild.trades) return "";
+if(!\$guild.trades."trading:notes") return "";
+ 
+/* display the notices for this guild */ 
+if(!sizeof(\$guild.trades."trading:notes")) return ""; 
+ 
+ 
+content = "\<p\>"; 
+ 
+/* are we deleting a trading notice? */ 
+if(\$delete_trading_notice \&\& \$guild.trades."trading:notes" \&\& sizeof(\$guild.trades."trading:notes") == Int(\$trading_notice_size)) \{ 
+  if(\$char \&\& \$guild \&\& \$char.guild \&\& \$char.guild == \$guild \&\& (\$guildrank == 1 \|\| \$char."guild:trader"))\{ 
+    \$guild.trades."trading:notes"[Int(\$delete_trading_notice)] = nil; 
+    \$guild.trades."trading:notes" -= (\{ nil \}); 
+  \} 
+\} 
+ 
+notices = \$guild.trades."trading:notes"; 
+sz = sizeof(notices); 
+for(i=0;i\<sz;i++) \{ 
+  content += notices[i]; 
+  /* if they are a trader, allow them to delete this */ 
+  if(\$char \&\& \$guild \&\& \$char.guild \&\& \$char.guild == \$guild \&\& (\$guildrank == 1 \|\| \$char."guild:trader"))\{ 
+    content += UnSAM(ParseXML(" [\<ZLINK base=\\"/SAM/Prop/Ironclaw:Lib:Guilds:Guild/popup\\" char=\$(char) page=\$(page) delete_trading_notice="+Str(i)+" trading_notice_size="+Str(sizeof(notices))+"\>Delete\</ZLINK\>]")); 
+  \} 
+  content += "\<br/\>"; 
+\}
+      </Core:Property>
+      <Core:Property property="merry:lib:do_kitty_transfer">
+         X[M] int i;
+/* Transfer money from one guild to the other */
+ if(!\$guildleader \&\& (!\$char."guild:inventory" \|\| \$char."guild:inventory" == "no access")) return nil;
+
+ /* sanity check that they requested the transfer properly */
+ if(!\$vars \|\| sizeof(\$vars) != 3) return nil;
+ if(!sscanf(\$vars[0], "%d", i))
+  return "Unknown amount of money to transfer.";
+ if(i\<=0)
+  return nil;
+ /* because a denar is "100" (for bits) multiply i by 100 before checking \& transferring */
+ i = i*100;
+ if(i\>Int(\$guild.kitty))
+  return "You don't have "+Str(i)+" denarii in your guild kitty.";
+ \$otherguild = Obj("Ironclaw:Guilds:"+\$vars[1]);
+ if(!\$otherguild)
+  return "Sorry, we can't find the guild you're trying to transfer money to.";
+ if(!\$otherguild.kitty) \$otherguild.kitty = 0;
+\$reason = \$vars[2];
+
+ /* all looks in order. Transfer the money */
+ \$guild.kitty -= i;
+ \$otherguild.kitty += i;
+
+ /* record the transfer */
+ if(!\$guild.transfers) \$guild.transfers = (\{ \});
+ \$guild.transfers += (\{ (\{ \$actor, i, \$otherguild, time(), "sending", \$reason \}) \});
+
+ /* record it in the other guild too */
+ if(!\$otherguild.transfers) \$otherguild.transfers = (\{ \});
+ \$otherguild.transfers += (\{ (\{ \$actor, i, \$guild, time(), "receiving", \$reason \}) \});
+
+ ::check_alt_abuse();
+
+ return Str(Int(i/100))+" denarii successfully transferred to the "+Str(\$otherguild.fullname)+".";
+      </Core:Property>
+      <Core:Property property="merry:lib:do_token_transfer">
+         X[M] int i;
+
+/* Transfer tokens from one guild to the other */
+ if(!\$guildleader \&\& (!\$char."guild:inventory" \|\| \$char."guild:inventory" == "no access")) return nil;
+
+ /* sanity check that they requested the transfer properly */
+ if(!\$vars \|\| sizeof(\$vars) != 3) return nil;
+ if(!sscanf(\$vars[0], "%d", i))
+  return "Unknown number of tokens to transfer.";
+ if(i\<=0)
+  return nil;
+ if(i\>Call(this, "general_script", \$script: "count_tokens", \$token: \$vars[1][7..]))
+  return "You don't have "+Str(i)+" "+Str(\$vars[1][7..])+" tokens in your guild kitty.";
+
+ \$recipient = Obj(\$vars[2]);
+ if(\$recipient) \{
+   /* Transferring to a PC */
+   /* all looks in order. Transfer the tokens to this PC */
+   /* subtract the tokens from this guild */
+   if(!Call( this, "general_script", \$script: "charge_tokens", \$token: \$vars[1][7..], \$amount: i))
+     return "Error taking tokens from the inventory.";
+
+   /* and add them to the PC */
+   Set(\$recipient, \$vars[1], Int(Get(\$recipient, \$vars[1]))+i);
+
+   /* record the transfer */
+   if(!\$guild.token_transfers) \$guild.token_transfers = (\{ \});
+   \$guild.token_transfers += (\{ (\{ \$char, i, Str(\$vars[1][7..]), \$recipient, time(), "sending" \}) \});
+
+
+   /* ::check_alt_abuse(); */
+
+   return Str(Int(i))+" "+Str(explode(\$vars[1][7..], ":")[0])+" tokens successfully transferred to "+capitalize(\$recipient."skotos:charname")+".";
+   
+   return "Transferring to PC";
+ \}
+
+ \$otherguild = Obj("Ironclaw:Guilds:"+\$vars[2]);
+ if(!\$otherguild)
+  return "Sorry, we can't find the guild you're trying to transfer tokens to.";
+
+ /* all looks in order. Transfer the tokens */
+ /* subtract the tokens from this guild */
+ if(!Call( this, "general_script", \$script: "charge_tokens", \$token: \$vars[1][7..], \$amount: i))
+  return "Error taking tokens from the inventory.";
+ /* and add them to the new guild */
+ Set(\$otherguild, "tokens:"+explode(\$vars[1][7..], ":")[0], Int(Get(\$otherguild, "tokens:"+explode(\$vars[1][7..], ":")[0]))+i );
+
+ /* record the transfer */
+ if(!\$guild.token_transfers) \$guild.token_transfers = (\{ \});
+ \$guild.token_transfers += (\{ (\{ \$actor, i, \$vars[1][7..], \$otherguild, time(), "sending" \}) \});
+
+ if(!\$otherguild.token_transfers) \$otherguild.token_transfers = (\{ \});
+ \$otherguild.token_transfers += (\{ (\{ \$actor, i, \$vars[1][7..], \$guild, time(), "receiving" \}) \});
+
+ ::check_alt_abuse();
+
+ return Str(Int(i))+" "+Str(explode(\$vars[1][7..], ":")[0])+" tokens successfully transferred to the "+Str(\$otherguild.fullname)+".";
+      </Core:Property>
+      <Core:Property property="merry:lib:do_working_token_conversion">
+         X[M] /* convert working tokens into another token type */
+ if(!\$guild) return FALSE;
+ if(!\$guildleader \&\& (!\$char."guild:inventory" \|\| \$char."guild:inventory" == "no access")) return nil;
+
+ if(!\$vars \|\| sizeof(\$vars) != 2) return FALSE;
+ \$vars[0] = Int(\$vars[0]);
+ if(\$vars[0] \<= 0) return TRUE;
+
+ /* does the guild have enough tokens? */
+ if(\$vars[0] \> Int(\$guild."tokens:working"))
+  return "You don't have enough working tokens to do that conversion. Sorry!";
+
+ /* charge the tokens */
+ \$guild."tokens:working" -= \$vars[0];
+ if(!\$guild."tokens:working") \$guild."tokens:working" = nil;
+ /* and give the new tokens */
+ Set(\$guild, "tokens:"+\$vars[1], Int(Get(\$guild, "tokens:"+\$vars[1]))+\$vars[0] );
+
+ return "Converted "+Str(\$vars[0])+" working tokens into "+\$vars[1]+" tokens.";
+      </Core:Property>
+      <Core:Property property="merry:lib:end_bid">
+         X[M] /* finalize the bidding */ 
+ 
+\$az = \$\{Chatters:AE:az:azrael\}; /* defunct */; 
+EmitTo(\$az, "Bidding over"); 
+EmitTo(\$az, "Item is: "+dump_value(\$item)); 
+ 
+/* get details for this bidding */ 
+\$details = Get(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item); 
+/* if this item doesn't exist, exit */ 
+if(!\$details) 
+  return FALSE; 
+ 
+/* check that the winning guild exists, and has the money */ 
+if(!\$details[7]) \{ 
+  /* guild doesn't exist */ 
+  Call(\$this, "end_bid_reset", \$item: \$item); 
+  return TRUE; 
+\} 
+ 
+/* add the item to the guild trading deals */ 
+/* check if the guild has a trading deals container set */ 
+if(!\$details[7].trades)\{ 
+  /* nope. So create one */ 
+  /* pick a name */ 
+  \$tmp = "Ironclaw:Guilds:Trades:"+name(\$details[7])[16..strlen(name(\$details[7]))-1]; 
+  \$trades = Duplicate(\$\{Allegory:Guilds:Trades:default_trades\}); 
+  /* this line doesn't seem to work - it sets it as a property instead of changing the name */ 
+  \$trades."core:objectname" = \$tmp; 
+  \$details[7].trades = \$trades; 
+\} else \{ 
+  \$trades = \$details[7].trades; 
+\} 
+ 
+/* place the item into the guild trading */ 
+Set(\$trades, \$item, copy(\$details)); 
+ 
+/* remove the item from guild bidding */ 
+Set(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item, nil); 
+ 
+/* send a note to the winning guild */ 
+if(!\$trades."trading:notes") \{ 
+  \$trades."trading:notes" = (\{ \}); 
+\} 
+\$trades."trading:notes" += (\{ "Your guild has successfully won a trade deal for " + Str(\$details[0]) + " " + \$details[2] + " for " + Str(Int(\$details[6])) + " denarii." \}); 
+
+/* Add 10% of profit to the importing guild. */
+if(\$details[10]) \{
+    \$importingGuild = \$details[10];
+  
+    /* Make sure it's an object */
+    if(typeof(\$importingGuild) != 4) \{
+        if(Obj(\$importingGuild)) \{
+            \$importingGuild = Obj(\$importingGuild);
+        \}
+    \}
+
+    if(typeof(\$importingGuild) == 4) \{
+        \$profit = Flt(\$details[6]*100)/10.0;
+        \$kitty = Int(\$importingGuild.kitty);
+
+        /* Probably not needed but want to make sure profit is \>= 0 */
+        if(Int(\$profit) \< 0) \$profit = 0;
+
+        \$kitty = Int(\$kitty) + Int(\$profit);
+        \$importingGuild.kitty = \$kitty;
+
+        if(\$importingGuild.trades) \$importingGuildTrades = \$importingGuild.trades;
+
+        if(\$importingGuildTrades) \{
+            if(!\$importingGuildTrades."trading:notes") \{
+                \$importingGuildTrades."trading:notes" = (\{ \});
+            \}
+
+            \$importingGuildTrades."trading:notes" += (\{ "Your guild has earned " + Str(Int(\$profit)/100) + " denarii from an auction for " + Str(\$details[0]) + " " + \$details[2] + "." \});
+        \}
+    \}
+\}
+ 
+/* and for debug purposes, make changes and set the item back again */ 
+/* remove bidding information */ 
+/* 
+\$details[6] = nil; 
+\$details[7] = nil; 
+\$details[8] = nil; 
+*/ 
+/* set item back again */ 
+/*Set(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item, \$details);*/ 
+
+    /* GUILD COUNCIL CODE */
+    \$council = nil /* defunct */;
+    \$council.kitty = \$council.kitty + 2000;
+
+    \$data = explode(ctime(time()), " ");
+    \$month = \$data[1];
+    \$year = \$data[4];
+
+    if(\$month == "Jan") \$month = "01";
+    if(\$month == "Feb") \$month = "02";
+    if(\$month == "Mar") \$month = "03";
+    if(\$month == "Apr") \$month = "04";
+    if(\$month == "May") \$month = "05";
+    if(\$month == "Jun") \$month = "06";
+    if(\$month == "Jul") \$month = "07";
+    if(\$month == "Aug") \$month = "08";
+    if(\$month == "Sep") \$month = "09";
+    if(\$month == "Oct") \$month = "10";
+    if(\$month == "Nov") \$month = "11";
+    if(\$month == "Dec") \$month = "12";
+
+    \$property = "transactions:deposit:imports:" + Str(\$year) + ":" + Str(\$month);
+    if(Get(\$council, \$property)) \{
+        Set(\$council, \$property, Int(Get(\$council, \$property)) + 2000);
+    \} else \{
+        Set(\$council, \$property, 2000);
+    \}
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:end_bid_countdown">
+         X[M] /* delay while time remains in the bidding */ 
+ 
+/* how long should we wait? */ 
+\$time = \$time-time(); 
+if(\$time\>0) 
+  \$delay(\$time, TRUE, "0281"); 
+ 
+return Call(\$this, "end_bid", \$item: \$item);
+      </Core:Property>
+      <Core:Property property="merry:lib:end_bid_reset">
+         X[M] int shipment_remaining; 
+/* reset the bidding */ 
+ 
+/* get details for this bidding */ 
+if(typeof(\$item) == T_ARRAY) \{ 
+  \$details = \$item; 
+  /* set the new name for \$item */ 
+  if(\$name) \{ 
+    \$item = \$name; 
+  \} else \{ 
+    \$item = "bidding:"+Str(random(100))+":"+Str(time()); 
+  \} 
+\} else \{ 
+  \$details = Get(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item); 
+  /* remove the item from bidding */ 
+  Set(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item, nil); 
+  /* if this item doesn't exist, exit */ 
+  if(!\$details) 
+    return FALSE; 
+\} 
+ 
+/* make changes and set the item back again */ 
+\$details[6] = nil; 
+\$details[7] = nil; 
+\$details[8] = nil; 
+/* reduce the shipments remaining, if applicable */ 
+shipment_remaining = FALSE; 
+if(\$details[5] \&\& \$details[5][1] != "-1") \{ 
+  if(\$details[5][1] \> 0) \{ 
+    \$details[5][1]--; 
+    shipment_remaining = TRUE; 
+  \} 
+\} else if(\$details[5] \&\& \$details[5][1] == "-1") \{ 
+  shipment_remaining = TRUE; 
+\} 
+ 
+/* set item back again */ 
+/* only if there are more shipments remaining */ 
+if(\$details[5] \&\& \$details[5][1] != "-1" \&\& \$details[5][1] \<= 0) \{ 
+  Set(\$\{Ironclaw:Guilds:Trading:bidding\}, "nostock:"+\$item, \$details); 
+\} else \{ 
+  Set(\$\{Ironclaw:Guilds:Trading:bidding\}, \$item, \$details); 
+\} 
+ 
+/* if this is something that can be sold off the docks, give one shipment to the docks */ 
+if(shipment_remaining \&\& typeof(\$details[1]) == T_ARRAY) \{ 
+  \$dock_inv = \$\{Allegory:Guilds:Inventories:dock_overflow_inventory\}; 
+  /* what is the name of this item? */ 
+  \$itemname = \$item[7..strlen(\$item)-1]; 
+  \$itemname = "tradingitem"+\$itemname; 
+  /* does this item already exist? */ 
+  if(Get(\$dock_inv, \$itemname)) \{ 
+    /* item already exists. Increase quantity. */ 
+    \$tmp = Get(\$dock_inv, \$itemname); 
+    \$tmp[1] += \$details[0]; 
+    Set(\$dock_inv, \$itemname, \$tmp); 
+  \} else \{ 
+    /* item doesn't exist, so add it */ 
+    \$tmp = \$details[1]; 
+    \$tmp[1] = \$details[0]; 
+    Set(\$dock_inv, \$itemname, \$tmp); 
+    Set(\$dock_inv, "settings:"+\$itemname+":properties", \$details[4]); 
+  \} 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:list_inventory">
+         X[M] string *items, *imports;
+object inventory;
+string output;
+int i, sz;
+
+output = "";
+
+  /* only let them see the inventory list if they are in the guild */
+  if(!\$guildrank) return "You are not authorized to view this inventory.";
+  /* only let them take items or dump stock if they have access */
+  if(\$actor."guild:inventory" == "access" \|\| \$guildleader) \{
+    \$inv_editor = TRUE;
+  \} else \{
+    \$inv_editor = nil;
+  \}
+
+  if(!\$guild.inventory)\{
+    catch(Call(\$\{Lib:objects\}, "create_of_type", \$name: "Ironclaw:Guilds:Inventories:"+name(\$guild)[16..strlen(name(\$guild))-1], \$type: "propcontainer"));
+    \$guild.inventory = Obj("Ironclaw:Guilds:Inventories:"+name(\$guild)[16..strlen(name(\$guild))-1]);
+  \}
+  inventory = \$guild.inventory;
+
+  /* display the inventory for this guild */
+  items = map_indices(prefixed_map(inventory."*", "tradingitem:"));
+  imports = map_indices(prefixed_map(inventory."*", "guildimport:"));
+
+  output = "\<table border=\\"0\\"\>\\n";
+  output += "\<tr\>\<td colspan=";
+  if(\$inv_editor) \{
+    output += "5";
+  \} else \{
+    output += "3";
+  \}
+  output += "\>Guild kitty: \<strong\>"+Str(Int(\$guild.kitty)/100)+" denarii\</strong\>\</td\>\</tr\>\\n";
+  output += "\<tr\>\<td\>\<strong\>Quantity\</strong\>\</td\>\<td\>\<strong\>Item\</strong\>\</td\>\<td\>\<strong\>Notes\</strong\>\</td\>";
+  if(\$inv_editor)
+    output += "\<td\>\<strong\>Take Item\</strong\>\</td\>";
+  output += "\<td\>\<strong\>Token Cost\</strong\>\</td\>";
+  output += "\<td\>\<strong\>Token Type\</strong\>\</td\>";
+  output += "\</tr\>\\n";
+
+  /* silver rings */
+  if(\$guildleader) \{
+    output += "\<tr\>\<td\>unlimited\</td\>\<td\>silver ring\</td\>\<td\>Used for administering the guild\</td\>";
+    if(\$inv_editor)
+      output += "\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', 'silverring');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\</td\>\<td\>\</td\>";
+    output += "\</tr\>";
+  \}
+
+  /* bronze rings */
+  output += "\<tr\>\<td\>unlimited\</td\>\<td\>bronze ring\</td\>\<td\>Used for administering the guild\</td\>";
+  if(\$inv_editor)
+    output += "\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', 'bronzering');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\</td\>\<td\>\</td\>";
+  output += "\</tr\>";
+
+  /* guild cloaks */
+  if(\$guild.cloak) \{
+    output += "\<tr\>\<td\>unlimited\</td\>\<td\>guild cloak\</td\>\<td\>Fly your colours proudly!\</td\>";
+    if(\$inv_editor)
+      output += "\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', 'guildcloak');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\</td\>\<td\>\</td\>";
+    output += "\</tr\>";
+  \}
+
+  if(!sizeof(items) \&\& !sizeof(imports)) return output;
+
+/* "The warehouses are currently empty."; */
+
+  /* for each item in the inventory... */
+  if(sizeof(items)) \{
+      sz = sizeof(items);
+      for(i=0;i\<sz;i++) \{
+        if(!Get(inventory, items[i])[1]) \{
+          /* None of this item left in the inventory. Clear it */
+          Set(inventory, items[i], nil);
+          Set(inventory, "settings:"+items[i]+":properties", nil);
+        \} else \{
+          output += "\<tr\>\<td\>";
+          if(Get(inventory, items[i])[1] == -1) \{
+            output += "unlimited";
+          \} else \{
+            output += Str(Get(inventory, items[i])[1]);
+          \}
+          output += "\</td\>\<td\>"+Get(inventory, items[i])[0]+"\</td\>\<td\>";
+          output += "\&nbsp;";
+          /* Allow them to take items if they have access */
+          if(\$inv_editor) \{
+            output += "\</td\>\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_inv_item', '"+items[i]+"'); display_block('inventorylist', 'list_inventory');\\"\\\>take item\</u\>\</strong\>]";
+          \}
+          output += "\</td\>\<td\>\</td\>\<td\>\</td\>\</tr\>";
+        \}
+      \}
+  \}
+
+  if(sizeof(imports)) \{
+    sz = sizeof(imports);
+    for(i = 0; i \< sz; i++) \{
+        output += "\<br\>\<td\>";
+        output += "unlimited";
+        output += "\</td\>\<td\>" + Get(inventory, imports[i])[0]+"\</td\>\<td\>";
+        output += "\&nbsp;";
+        if(\$inv_editor) \{
+          output += "\</td\>\<td\>[\<strong\>\<u class=\\"clickable\\" onclick=\\"run_script('take_import_item', '"+imports[i]+"'); display_block('inventorylist', 'list_inventory');\\"\\\>take item\</u\>\</strong\>]\</td\>\<td\>\<center\>" + Str(Get(inventory, imports[i])[3]) + "\</center\>\</td\>\<td\>\<center\>" + Str(Get(inventory, imports[i])[2]) + "\</center\>";
+        \}
+        output += "\</td\>\</tr\>";
+    \}
+  \}
+
+  output += "\</table\>\\n";
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:list_tokens">
+         X[M] string output;
+int i;
+
+output = "";
+
+/* only let them see the tokens list if they are in the guild */
+if(!\$guildrank) return FALSE;
+
+\$token_list = map_indices(prefixed_map(\$guild."*", "tokens:"));
+if(!sizeof(\$token_list)) return "This guild has no tokens.";
+
+output = "\<table border=\\"0\\"\>\\n";
+output += "\<tr\>\<td\>\<strong\>Token\</strong\>\</td\>\<td\>\<strong\>Quantity\</strong\>\</td\>\</tr\>\\n";
+
+for(i=0;i\<sizeof(\$token_list);i++) \{
+    output += "\<tr\>\<td\>"+capitalize(\$token_list[i][7..strlen(\$token_list[i])-1])+"\</td\>\<td\>";
+    output += Str(Get(\$guild, \$token_list[i]))+"\</td\>\</tr\>\\n";
+\}
+
+output += "\</table\>\\n";
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_auction">
+         X[M] string *guilds, *tokens;
+string output;
+int i, sz;
+
+output = "";
+
+/* \$debugger = \$\{Chatters:IC:ro:roo\}; */
+\$debugger = nil;
+
+/* only let them see the deals if they are in the guild */
+if(!\$guildrank) return FALSE;
+
+/* Are they allowed to make trades? */
+/* EXTENSION - make this based on their guild position */
+\$trader = nil;
+if(\$guildleader \|\| \$char."guild:trader") \{
+    \$trader = TRUE;
+\}
+
+/* Display the items currently up for auction */
+\$bidding_object = \$\{Ironclaw:Guilds:Trading:bidding\};
+\$inventory_list = prefixed_map(\$bidding_object."*", "bidding:");
+\$inventory_list = map_indices(\$inventory_list);
+
+EmitTo(\$debugger, dump_value("Ready..."));
+
+if(!sizeof(\$inventory_list)) \{
+    output += "\<p\>There is nothing to bid on right now.\</p\>\\n";
+\} else \{
+    /* Show how much money they have available in the guild kitty */
+    if(\$trader) \{
+        output += "\<p\>Guild kitty: ";
+        i = Int(Flt(\$guild.kitty)/100.0);
+
+        if(i==1) \{
+            output += "1 denar.";
+        \} else \{
+            output += Str(i)+" denarii.";
+        \}
+        output += "\</p\>";
+    \}
+
+    /* Show the table of items up for auction */
+    output += "\<table border=1 cellspacing=0 cellpadding=10\>\<tr\>\<td\>Item\&nbsp;\&nbsp;\</td\>\<td\>Quantity\&nbsp;\&nbsp;\</td\>\<td\>Notes\&nbsp;\&nbsp;\</td\>\<td\>Recurring\</td\>\<td\>Transport\&nbsp;\&nbsp;\</td\>\<td\>Highest Bid\&nbsp;\&nbsp;\</td\>\<td\>Remaining time\</td\>\</tr\>";
+
+    /* for each item in the inventory... */
+    sz = sizeof(\$inventory_list);
+
+    EmitTo(\$debugger, dump_value("Set..."));
+
+    for(i=0;i\<sz;i++) \{
+
+        \$item = Get(\$bidding_object, \$inventory_list[i]);
+
+        EmitTo(\$debugger, dump_value(i + " -- " + \$item[2]));
+
+        /* item */
+        output += "\<tr\>\<td\>"+\$item[2]+"\</td\>\<td\>";
+
+        /* quantity */
+        output += \$item[0]+"\</td\>\<td\>";
+
+        /* notes */
+        output += \$item[3]+"\</td\>\<td\>";
+
+        /* how often does this item recur? */
+        if(\$item[5]) \{
+            if(\$item[5][1] == -1) \{
+                output += "a new shipment";
+            \} else if(\$item[5][1] == 1) \{
+                output += "1 shipment";
+            \} else \{
+                output += Str(\$item[5][1])+" shipments, one sent";
+            \}
+
+            if(\$item[5][2] == 1) \{
+                output += " every day.";
+            \} else if(\$item[5][2] != 0) \{
+                output += " every "+Str(\$item[5][2])+" days";
+            \}
+        \} else if (\$item[1].stocktype) \{
+            /* NOT USED YET! */
+            switch(\$item[1].stocktype) \{
+                case "property":
+                    output += "rent due once a week";
+                    break;
+                default:
+                    output += "Unknown stock type";
+                    break;
+            \}
+        \} else \{
+            output += "-";
+        \}
+
+        output += "\</td\>\<td\>";
+
+        /* what is the mode of transport? */
+        if(\$item[5] \&\& \$item[5][0]) \{
+            output += \$item[5][0]+"\</td\>\<td\>";
+        \} else \{
+            output += "-\</td\>\<td\>";
+        \}
+
+        /* give bid price, and allow the chance to bid */
+        if(\$item[6]) \{
+            \$tmp = Str(\$item[6]);
+        \} else \{
+            \$tmp = "no bid";
+        \}
+
+        if(\$item[7] == \$guild) \{
+            \$tmp = "\<font color=\\"red\\"\>"+\$tmp+"\</font\>";
+        \} else \{
+            \$tmp = "\<font color=\\"blue\\"\>"+\$tmp+"\</font\>";
+        \}
+
+        if(\$guild == \$char.guild \&\& (\$guildrank == 1 \|\| \$char."guild:trader")) \{
+            \$biditem = \$inventory_list[i];
+            \$tmp = "\<ZLINK base=\\"/SAM/Prop/Ironclaw:Staff:Roo:Guilds:GuildPage/index\\" char=\$(char) item=\$(biditem) guild=\$(guildname) page=\\"bid\\"\>"+\$tmp+"\</ZLINK\>";
+        \}
+
+        output += UnSAM(ParseXML(\$tmp))+"\</td\>\<td\>";
+
+        /* display how much time is left to bid on this */
+        if(\$item[8]) \{
+            \$output = \$item[8] - time();
+
+            if(\$output \>= 0) \{
+                /* now work it out in seconds, hours, and days */
+
+                \$days = (\$output/(60*60*24));
+                if(\$days == 0) \{
+                    \$days = nil;
+                \} else if(\$days == 1) \{
+                    \$days = "1 day";
+                \} else \{
+                    \$days = Str(\$days)+" days";
+                \}
+
+                \$hours = (\$output/(60*60))%24;
+                if(\$hours == 0) \{
+                    \$hours = nil;
+                \} else if(\$hours == 1) \{
+                    \$hours = "1 hour";
+                \} else \{
+                    \$hours = Str(\$hours)+" hours";
+                \}
+
+                \$minutes = (\$output/60)%60;
+                if(\$minutes == 0) \{
+                    \$minutes = nil;
+                \} else if(\$minutes == 1) \{
+                    \$minutes = "1 minute";
+                \} else \{
+                    \$minutes = Str(\$minutes)+" minutes";
+                \}
+
+                \$seconds = \$output%60;
+                if(\$seconds == 1) \{
+                    \$seconds = "1 second";
+                \} else \{
+                    \$seconds = Str(\$seconds)+" seconds";
+                \}
+
+                if(\$days \&\& \$hours) \{
+                    \$output = \$days+", "+\$hours;
+                \} else if(\$days) \{
+                    \$output = \$days;
+                \} else if (\$hours) \{
+                    \$output = \$hours+", "+\$minutes;
+                \} else if (\$minutes) \{
+                    \$output = \$minutes+", "+\$seconds;
+                \} else \{
+                    \$output = \$seconds;
+                \}
+
+                /*content += \$output+" (estimate)\</td\>\</tr\>";*/
+
+                \$output = \$item[8] - time();
+
+                if((\$output/(60*60*24)) \>= 3) \{
+                    \$output = Str(\$days)+" remaining.";
+                \} else if(((\$output+60*60*3)/(60*60*24)) \>= 1) \{
+                    \$output = "less than three days remaining.";
+                \} else \{
+                    \$output = "less than a day remaining.";
+                \}
+
+                output += \$output+"\</td\>\</tr\>";
+
+            \} else \{
+                output += "UNKNOWN\</td\>\</tr\>";
+            \}
+        \} else \{
+            output += "-\</td\>\</tr\>";
+        \}
+    \}
+
+    if(i\<sz-1) output += "\<br/\>";
+    output += "\</table\>";
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_import">
+         X[M] mixed db;
+string *importList, *importSubList;
+mapping importMap, importSubMap;
+string output;
+int i, j;
+
+output = "";
+output += "\<br/\>";
+
+/* \$debugger = \$\{Chatters:IC:ro:roo\}; */
+\$debugger = nil;
+
+/* only let them see the deals if they are in the guild */
+if(!\$guildrank) return FALSE;
+
+/* Are they allowed to make trades? */
+/* EXTENSION - make this based on their guild position */
+\$trader = nil;
+if(\$guildleader \|\| \$char."guild:trader") \{
+    \$trader = TRUE;
+\} else \{
+    output += "You do not have the authority to request trade imports.";
+    return output;
+\}
+
+\$historyNew = (\{ \});
+if(\$guild.auction_history) \{
+    \$history = \$guild.auction_history;
+
+    /* How many auctions have been requested in this last week? */
+    for(i = 0; i \< sizeof(\$history); i++) \{
+        if(Int(time() - \$history[i]) \< (60*60*24*7)) \{
+            \$historyNew += (\{ \$history[i] \});
+        \}
+    \}
+\}
+
+\$guild.auction_history = \$historyNew;
+
+if(sizeof(\$historyNew) \>= 4) \{
+    \$mostRecent = \$historyNew[3];
+    \$waiting = (60*60*24*7) - (time() - \$mostRecent);
+    output += "You have already requested 4 imports in the last week. You must wait " + Str(\$waiting/3600) + " hour(s). \<br/\>\<br/\>";
+    return output;
+\}
+
+db = \$\{Ironclaw:Data:AuctionHouse\};
+
+\$temp = copy(db."*");
+
+if(!structure_propmap(\$temp)[\$guildname]) \{
+    return "Your guild does not have any available imports.";
+\}
+
+importMap = structure_propmap(\$temp)[\$guildname];
+importList = map_indices(importMap);
+
+output += "\<table\>\<tr\>\<td valign='top'\>Available imports:\</td\>\<td valign='top'\>";
+output += "\<select onchange=\\"switch_list(value, ['" + implode(importList, "', '") + "']);\\"\>"; 
+output += "\<option/\>";
+for(i = 0; i \< sizeof(importList); i++) \{
+    output += "\<option value=\\"" + importList[i] + "\\"\>" + proper(replace_strings(importList[i], "-", " ")) + "\</option\>"; 
+\}
+
+output += "\</select\>\</td\>\<td\>";
+
+for(i = 0; i \< sizeof(importList); i++) \{
+    importSubMap = importMap[importList[i]];
+    importSubList = map_indices(importSubMap);
+
+    output += "\<span id='" + importList[i] + "' style='display:none;'\>";
+output += "\<select onchange=\\"display_block('showimportcustomization', 'customize_import', value);\\"\>";
+    output += "\<option id=''/\>";
+    for(j = 0; j \< sizeof(importSubList); j++) \{
+        output += "\<option value=\\"" + \$guildname + ":" + importList[i] + ":" + importSubList[j] + "\\"\>" + proper(replace_strings(importSubList[j], "-", " ")) + "\</option\>"; 
+    \}
+    output += "\</select\>";
+    output += "\</span\>";
+\}
+
+output += "\<span id=\\"showimportcustomization\\"\>"; 
+output += Call(this, "general_script", \$script: "customize_import"); 
+output += "\</span\>\</td\>\</tr\>\</table\>\<br/\>";
+
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_tradehistory">
+         X[M] string output;
+
+output = "\<br/\>\<b\>\<u\>Kitty Transfers\</u\>\</b\>\<br/\>";
+
+\$transfers = (\{ \});
+if(Get(\$guild, "transfers")) \{
+    \$transfers = Get(\$guild, "transfers");
+\}
+
+if(!sizeof(\$transfers)) \{
+    output += "No records to display.";
+\}
+
+\$sz = sizeof(\$transfers);
+for(\$i = (\$sz-1); \$i \>= 0; \$i--) \{
+    \$temp = \$transfers[\$i];
+
+    if(\$temp[0]) \{
+        \$who = capitalize(\$temp[0]."skotos:charname");	/* Who initiated the transaction */
+    \} else \{
+        \$who = "Unknown";
+    \}
+
+    \$howmuch = Int(\$temp[1])/100;    /* How much is being sent/received */
+    if(\$howmuch \> 1) \$type = "denarii"; else \$type = "denar";
+
+    if(\$temp[2]) \{
+        \$otherguild = \$temp[2].fullname;    /* Guild we are trading with */
+    \} else \{
+        \$otherguild = "Unknown";
+    \}
+
+    \$when = ctime(\$temp[3])[4..10] + ctime(\$temp[3])[20..23];    /* When did this transaction take place */
+
+    if(sizeof(\$temp) \< 5) \{
+        output += "\<font color='red'\>[" + Str(\$when) + "]  Transferred \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\> to \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").\</font\>";
+    \} else if(sizeof(\$temp) \> 4 \&\& \$temp[4] == "receiving") \{
+        output += "\<font color='green'\>[" + Str(\$when) + "] Received \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\> from \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").";
+        if(sizeof(\$temp) == 6) output += " Reason: " + Str(\$temp[5]);
+        output += "\</font\>";
+    \} else if(sizeof(\$temp) \> 4 \&\& sizeof(\$temp) != 6) \{
+        output += "\<font color='red'\>[" + Str(\$when) + "]  Transferred \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\> to \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").\</font\>";
+    \} else \{
+        output += "\<font color='red'\>[" + Str(\$when) + "]  Transferred \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\> to \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + "). Reason: " + Str(\$temp[5]) + "\</font\>";
+    \}
+
+    output += "\<br/\>";
+\}
+
+output += "\<br/\>\<b\>\<u\>Token Transfers\</u\>\</b\>\<br/\>";
+
+\$transfers = (\{ \});
+if(Get(\$guild, "token_transfers")) \{
+    \$transfers = Get(\$guild, "token_transfers");
+\}
+
+if(!sizeof(\$transfers)) \{
+    output += "No records to display.";
+\}
+
+\$sz = sizeof(\$transfers);
+for(\$i = (\$sz-1); \$i \>= 0; \$i--) \{
+    \$temp = \$transfers[\$i];
+
+    if(\$temp[0]) \{
+        \$who = capitalize(\$temp[0]."skotos:charname");	/* Who initiated the transaction */
+    \} else \{
+        \$who = "Unknown";
+    \}
+
+    \$howmuch = Int(\$temp[1]);    /* How much is being sent/received */
+    \$type = Str(\$temp[2]);
+
+    if(\$temp[3]) \{
+        if(\$temp[3].fullname) \{
+            \$otherguild = \$temp[3].fullname;    /* Guild we are trading with */
+        \} else if(\$temp[3]."skotos:charname") \{
+            \$otherguild = \$temp[3]."skotos:charname"; /* Adding support for guild to pc token transfers */
+        \} else \{
+            \$otherguild = "Unknown";
+        \}
+    \} else \{
+        \$otherguild = "Unknown";
+    \}
+
+    \$when = ctime(\$temp[4])[4..10] + ctime(\$temp[4])[20..23];    /* When did this transaction take place */
+
+    if(sizeof(\$temp) \&\& sizeof(\$temp) \<= 5) \{
+        output += "\<font color='red'\>[" + Str(\$when) + "]  Transferred \<b\>" + Str(\$howmuch) + " " + \$type + " tokens\</b\> to \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").\</font\>";
+    \} else if(sizeof(\$temp) \&\& sizeof(\$temp) \> 5) \{
+            if(\$temp[5] == "receiving") \{
+                output += "\<font color='green'\>[" + Str(\$when) + "] Received \<b\>" + Str(\$howmuch) + " " + \$type + " tokens\</b\> from \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").\</font\>";
+            \} else if(sizeof(\$temp) \&\& \$temp[5] == "sending") \{
+                output += "\<font color='red'\>[" + Str(\$when) + "]  Transferred \<b\>" + Str(\$howmuch) + " " + \$type + " tokens\</b\> to \<b\>" + proper(\$otherguild) + "\</b\> (authorized by " + Str(\$who) + ").\</font\>";
+            \} else if(sizeof(\$temp) \&\& \$temp[5] == "add") \{
+                output += "\<font color='green'\>[" + Str(\$when) + "] Received \<b\>" + Str(\$howmuch) + " " + \$type + " tokens.\</b\> Reason: " + Str(\$temp[6]) + ".\</font\>";
+            \} else if(sizeof(\$temp) \&\& \$temp[5] == "remove") \{
+                output += "\<font color='red'\>[" + Str(\$when) + "] Spent \<b\>" + Str(\$howmuch) + " " + \$type + " tokens.\</b\> Reason: " + Str(\$temp[6]) + "\</b\> (authorized by " + Str(\$who) + ").\</font\>";
+            \}
+    \}
+
+    output += "\<br/\>";
+\}
+
+output += "\<br/\>\<b\>\<u\>Donations\</u\>\</b\>\</br\>";
+
+\$transfers = (\{ \});
+if(Get(\$guild, "donations")) \{
+    \$transfers = Get(\$guild, "donations");
+\}
+
+if(!sizeof(\$transfers)) \{
+    output += "No records to display.";
+\}
+
+\$sz = sizeof(\$transfers);
+for(\$i = (\$sz-1); \$i \>= 0; \$i--) \{
+    \$temp = \$transfers[\$i];
+
+    if(\$temp[0]) \{
+        \$who = capitalize(\$temp[0]."skotos:charname");	/* Who initiated the transaction */
+    \} else \{
+        \$who = "Unknown";
+    \}
+
+    \$howmuch = Int(\$temp[1])/100;    /* How much is being sent/received */
+    \$when = ctime(\$temp[2])[4..10] + ctime(\$temp[2])[20..23];    /* When did this transaction take place */
+
+    if(\$howmuch \> 1) \$type = "denarii"; else \$type = "denar";
+
+    output += "\<font color='green'\>[" + Str(\$when) + "] " + \$who + " donated \<b\>" + Str(\$howmuch) + " " + \$type + "\</b\>.\</font\>";
+
+    output += "\<br/\>";
+\}
+
+output += "\<br/\>\<b\>\<u\>Trade Deals\</u\>\</b\>\</br\>";
+
+if(!\$guild.trades) \{
+    output += "No records to display.";
+    return output;
+\}
+
+\$trading_object = \$guild.trades;
+
+if(!\$trading_object \|\| !\$trading_object."trading:notes") \{
+    output += "No records to display.";
+\} else \{
+  \$trades = \$trading_object."trading:notes";
+
+  if(!sizeof(\$trades)) \{
+    output += "No records to display.";
+  \}
+
+  for(\$i = 0; \$i \< sizeof(\$trades); \$i++) \{
+    output += Str(\$trades[\$i]) + "\<br/\>";
+  \}
+\}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:show_trading_deals">
+         X[M] string *guilds, *tokens;
+ int i, sz, t, day;
+string output, content, tmp_str;
+
+
+output = "";
+
+ /* only let them see the deals if they are in the guild */
+ if(!\$guildrank) return FALSE;
+ if(\$guildleader \|\| Str(\$char."guild:inventory") == "access") \{
+  output += "\<p\>\<b\>Transfer guild kitty to another guild\</b\> (kitty is currently at "+Str(Int(\$guild.kitty)/100)+" denarii)\<br/\>\\n";
+  output += "Transfer ";
+  output += "\<input NAME=\\"transfer_kitty_amount\\" id=\\"transfer_kitty_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  output += " denarii to ";
+
+  /* get a list of all guilds */
+  output += "\<select NAME=\\"transfer_kitty_guildlist\\" id=\\"transfer_kitty_guildlist\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Ironclaw:Guilds");
+  for(i=0;i\<sizeof(guilds);i++)
+   output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(guilds[i])+"\</option\>\\n";
+   /*output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(Get(Obj("Ironclaw:Guilds:" + guilds[i]), "fullname"))+"\</option\>\\n";*/
+  output += "\</select\>\\n";
+  output += "\</p\>\<p\>Reason \<input NAME=\\"transfer_kitty_reason\\" id=\\"transfer_kitty_reason\\" size=\\"50\\" value=\\"\\"/\>";
+  output += " \<input type=\\"submit\\" value=\\"Send\\" class=\\"clickable\\" onclick=\\"run_script('do_kitty_transfer', getElementById('transfer_kitty_amount').value +'\|'+ getElementById('transfer_kitty_guildlist').value + '\|' + getElementById('transfer_kitty_reason').value); getElementById('transfer_kitty_amount').value = '0';\\"/\>\</p\>";
+ \}
+
+ if(\$guildleader \|\| Str(\$char."guild:inventory") == "access") \{
+  output += "\<p\>\<b\>Transfer guild tokens to another guild\</b\>\<br/\>\\n";
+  output += "Transfer ";
+  output += "\<input NAME=\\"transfer_token_amount\\" id=\\"transfer_token_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  /* get a list of all tokens */
+  output += "\<select NAME=\\"transfer_token_types\\" id=\\"transfer_token_types\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  tokens = map_indices(prefixed_map(Get(\$guild, "*"), "tokens:"));
+  for(i=0;i\<sizeof(tokens);i++)
+   output += "\<option value=\\""+tokens[i]+"\\"\>"+Str(tokens[i])[7..]+" ("+Str(Int(Get(\$guild, tokens[i])))+")\</option\>\\n";
+  output += "\</select\>\\n";
+  output += " tokens to ";
+
+  /* get a list of all guilds */
+  output += "\<select NAME=\\"transfer_token_guildlist\\" id=\\"transfer_token_guildlist\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  guilds = Call(\$\{/usr/System/sys/idd\}, "idd:get-objects", \$folder: "Ironclaw:Guilds");
+  for(i=0;i\<sizeof(guilds);i++)
+   output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(guilds[i])+"\</option\>\\n";
+   /*output += "\<option value=\\""+guilds[i]+"\\"\>"+Str(Get(Obj("Ironclaw:Guilds:" + guilds[i]), "fullname"))+"\</option\>\\n";*/
+  output += "\</select\>\\n";
+  output += " \<input type=\\"submit\\" value=\\"Send\\" class=\\"clickable\\" onclick=\\"run_script('do_token_transfer', getElementById('transfer_token_amount').value +'\|'+ getElementById('transfer_token_types').value +'\|'+ getElementById('transfer_token_guildlist').value); getElementById('transfer_token_amount').value = '0'; getElementById('transfer_token_types').value = '';\\"/\>\</p\>";
+ \}
+
+ if(\$guildleader \|\| Str(\$char."guild:inventory") == "access") \{
+  output += "\<p\>\<b\>Transfer guild tokens to a guild member\</b\>\<br/\>\\n";
+  output += "Transfer ";
+  output += "\<input NAME=\\"transfer_pc_token_amount\\" id=\\"transfer_pc_token_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  /* get a list of all tokens */
+  output += "\<select NAME=\\"transfer_pc_token_types\\" id=\\"transfer_pc_token_types\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  tokens = map_indices(prefixed_map(Get(\$guild, "*"), "tokens:"));
+  for(i=0;i\<sizeof(tokens);i++)
+   output += "\<option value=\\""+tokens[i]+"\\"\>"+Str(tokens[i])[7..]+" ("+Str(Int(Get(\$guild, tokens[i])))+")\</option\>\\n";
+  output += "\</select\>\\n";
+  output += " tokens to ";
+
+  /* get a list of all members */
+  output += "\<select NAME=\\"transfer_pc_token_memberlist\\" id=\\"transfer_pc_token_memberlist\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  \$members = \$guild.members;
+  for(i=0;i\<sizeof(\$members);i++)
+   output += "\<option value=\\""+name(\$members[i])+"\\"\>"+capitalize(\$members[i]."skotos:charname")+"\</option\>\\n";
+  output += "\</select\>\\n";
+  output += " \<input type=\\"submit\\" value=\\"Send\\" class=\\"clickable\\" onclick=\\"run_script('do_token_transfer', getElementById('transfer_pc_token_amount').value +'\|'+ getElementById('transfer_pc_token_types').value +'\|'+ getElementById('transfer_pc_token_memberlist').value); getElementById('transfer_pc_token_amount').value = '0'; getElementById('transfer_pc_token_types').value = '';\\"/\>\</p\>";
+ \}
+
+ if(\$guildleader \|\| Str(\$char."guild:inventory") == "access") \{
+  output += "\<p\>\<b\>Convert working tokens to another token type\</b\>\<br/\>\\n";
+  output += "Convert ";
+  output += "\<input NAME=\\"convert_working_token_amount\\" id=\\"convert_working_token_amount\\" size=\\"3\\" value=\\"0\\"/\>";
+  output += " working tokens into ";
+  /* get a list of all tokens */
+  output += "\<select NAME=\\"convert_working_token_types\\" id=\\"convert_working_token_types\\"\>\\n";
+  output += "\<option value=\\"\\"\>\&nbsp;\</option\>\\n";
+  output += "\<option value=\\"academic\\"\>Academic\</option\>\\n";
+  output += "\<option value=\\"martial\\"\>Martial\</option\>\\n";
+  output += "\<option value=\\"society\\"\>Society\</option\>\\n";
+  output += "\<option value=\\"subterfuge\\"\>Subterfuge\</option\>\\n";
+  output += "\<option value=\\"trade\\"\>Trade\</option\>\\n";
+  output += "\</select\>\\n";
+  output += " tokens.";
+
+  output += " \<input type=\\"submit\\" value=\\"Convert\\" class=\\"clickable\\" onclick=\\"run_script('do_working_token_conversion', getElementById('convert_working_token_amount').value +'\|'+ getElementById('convert_working_token_types').value); getElementById('convert_working_token_amount').value = '0';\\"/\>\</p\>";
+ \}
+
+ /* allow the creation of new trading deals */
+
+
+ /* show any active trading deals */
+
+/* display the current trading deals */
+if(\$guild.trades) \{
+    \$trading_object = \$guild.trades;
+\} else \{
+    \$temp12 = explode(name(\$guild), ":");
+    if(Obj("Ironclaw:Guilds:Trades:" + \$temp12[2])) \{
+        \$trading_object =  Obj("Ironclaw:Guilds:Trades:" + \$temp12[2]);
+    \}
+\}
+
+
+if(!\$trading_object) \{
+    content = "\<p\>There are no active trading deals\</p\>\\n";
+\} else \{
+    content = "\<table border=1 cellspacing=0 cellpadding=10\>\<tr\>\<td\>Guild\&nbsp;\&nbsp;\</td\>\<td\>Giving\&nbsp;\&nbsp;\</td\>\<td\>Receiving\&nbsp;\&nbsp;\</td\>\<td\>Notes\&nbsp;\&nbsp;\</td\>\<td\>Recurring\&nbsp;\&nbsp;\</td\>\<td\>When\&nbsp;\&nbsp;\</td\>\</tr\>";
+
+/* display the deals from guild bidding */
+\$trading_list = map_indices(prefixed_map(\$trading_object."*", "bidding:"));
+
+sz = sizeof(\$trading_list);
+if(!sz) \{
+  content = "\<p\>No trading deals.\</p\>";
+\} else \{
+
+for(i=0;i\<sz;i++) \{
+  \$item = Get(\$trading_object, \$trading_list[i]);
+  content += "\<tr\>\<td\>Auction\</td\>\<td\>";
+  if(\$item[6] == 1) \{
+    content += Str(\$item[6])+" denar\</td\>\<td\>";
+  \} else \{
+    content += Str(\$item[6])+" denarii\</td\>\<td\>";
+  \}
+  content += Str(\$item[0])+" "+Str(\$item[2])+"\</td\>\<td\>";
+  content += Str(\$item[3])+"\</td\>\<td\>";
+
+  /* how many/often do the shipments arrive? */
+  if(\$item[5]) \{
+    if(\$item[5][1] == -1) \{
+      content += "a new shipment";
+    \} else if(\$item[5][1] == 1) \{
+      content += "1 shipment";
+    \} else \{
+      content += Str(\$item[5][1])+" shipments, one sent";
+    \}
+    if(\$item[5][2] == 1) \{
+      content += " every day.";
+    \} else if(\$item[5][2] != 0) \{
+      content += " every "+Str(\$item[5][2])+" days";
+    \}
+  \} else if (\$item[1].stocktype) \{
+    switch(\$item[1].stocktype) \{
+      case "property":
+        content += "rent due once a week";
+        break;
+      default:
+        content += "Unknown stock type";
+        break;
+    \}
+  \} else \{
+    content += "-";
+  \}
+  content += "\</td\>\<td\>";
+
+
+  /* calculate when the deal will next happen */
+
+  /* FOR DEBUGGING - IF THERE IS NO TIME SET */
+  if(!\$item[8]) \$item[8] = time();
+
+  t = \$item[8]-time();
+  day = (24*60*60);
+  if(t \< day) \{
+    /* less than a day */
+    content += "Today";
+  \} else if(t \< day*2) \{
+    /* one day to go */
+    content += "1 day";
+  \} else \{
+    /* list the days */
+    content += Str(Int(t/day))+" days";
+  \}
+  content += "\</td\>\</tr\>";
+\}
+
+content += "\</table\>";
+ \}
+\}
+
+output += content;
+
+
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_import_item">
+         X[M] string *items;
+  object inventory;
+string output;
+int i, sz;
+object item;
+
+output = "";
+
+    /* only let them take items if they are in the guild and have access */
+    if(!\$guildrank \|\| (\$actor."guild:inventory" != "access" \&\& !\$guildleader))
+      return "You do not have access to remove items from the guild inventory.";
+
+    if(!\$vars \|\| !sizeof(\$vars)) return "Unknown item.";
+
+    \$inventory = \$guild.inventory;
+    \$info = Get(\$inventory, \$vars[0]);
+
+    /* Do they have enough tokens to spawn this item? */
+    \$amount = Int(\$info[3]);
+    \$token = Str(\$info[2]);
+
+    if(Call(\$this, "general_script", \$script: "charge_tokens", \$token: \$token, \$amount: \$amount)) \{
+      item = Spawn(\$info[1]);
+      item."base:environment" = \$actor;
+
+      if(FindMerry(item, "lib", "setquality")) \{
+          Call(item, "setquality", \$actor: \$actor);
+      \}
+      
+      if(item."trait:quality" \< 4) \{
+          item."trait:quality" = 4;
+      \}
+
+      /* set properties */
+      if(sizeof(\$info) \> 4) \{
+        for(i = 4; i \< sizeof(\$info); i++) \{
+            \$temp = \$info[i];
+            if(sizeof(\$temp) \&\& sizeof(\$temp) == 2) \{
+                Set(item, Str(\$temp[0]), Str(\$temp[1]));
+            \}
+        \}
+      \}
+
+      return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+    \} else \{
+      return "Your guild does not have enough " + \$token + " tokens.";
+    \}
+
+return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:take_inv_item">
+         X[M] string *items;
+  object inventory;
+string output;
+int i, sz;
+
+output = "";
+
+ /* only let them take items if they are in the guild and have access */
+  if(!\$guildrank \|\| (\$actor."guild:inventory" != "access" \&\& !\$guildleader))
+    return "You do not have access to remove items from the guild inventory.";
+  if(!\$vars \|\| !sizeof(\$vars)) return "Unknown item.";
+
+  /* are they removing the guild cloak? */
+  /* AT SOME POINT WE PROBABLY WANT TO INCORPORATE GUILD CLOAKS AS NORMAL INV ITEMS */
+  if(\$vars[0] == "guildcloak" \&\& \$guild.cloak) \{
+    object item;
+    item = Spawn(\$guild.cloak);
+    item."base:environment" = \$actor;
+    item.guild = \$guild;
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \} else if(\$vars[0] == "silverring") \{
+    object item;
+    item = Spawn(\$\{IronClaw:Props:Guilds:GuildRing\});
+    item."base:environment" = \$actor;
+    /* set properties */
+    if(!\$guild.ringlist) \$guild.ringlist = (\{ \});
+    \$guild.ringlist += (\{ item \});
+    item.guild = \$guild;
+    item."guild:officer" = TRUE;
+    item."guild:rank" = 2;
+    item."trait:material" = "silver";
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \} else if(\$vars[0] == "bronzering") \{
+    object item;
+    item = Spawn(\$\{IronClaw:Props:Guilds:GuildRing\});
+    item."base:environment" = \$actor;
+    /* set properties */
+    if(!\$guild.ringlist) \$guild.ringlist = (\{ \});
+    \$guild.ringlist += (\{ item \});
+    item.guild = \$guild;
+    item."guild:officer" = TRUE;
+    item."guild:rank" = 3;
+    item."trait:material" = "bronze";
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \} else \{
+    /* if it's some other item */
+    object item;
+    int i, sz;
+    \$inventory = \$guild.inventory;
+    \$info = Get(\$inventory, \$vars[0]);
+    /* check there is stock */
+    if(\$info[1] == -1) \{
+      /* unlimited stock. Do nothing */
+    \} else if (!\$info[1]) \{
+      /* no stock */
+      return "There is no stock left in the guild inventory.";
+    \} else \{
+      /* reduce the stock */
+      \$info[1]--;
+    \}
+    item = Spawn(\$info[2]);
+    item."base:environment" = \$actor;
+    /* set quality */
+    /*
+    i=random(4)+random(4)+random(4)+random(4);
+    if(i\>8) i=random(4)+random(4)+random(4)+random(4);
+    if(i\<1) i=1;
+    item."trait:quality" = i;
+    */
+
+      \$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{"social:trading"\}), \$bonus: (\{ "trait:mind" \}));
+
+      if(\$result \> 12) \{
+          \$result = ironclaw::roll(\$roller: \$actor, \$skills: (\{"social:trading"\}), \$bonus: (\{ "trait:mind" \}));
+          if(\$result \< 12) \$result = 12;
+      \}
+
+      \$result = \$result / 2;
+
+      if(\$result \< 1) \$result = 1;
+
+      item."trait:quality" = \$result;
+
+    /* set properties */
+    item.guild = \$guild;
+    if(\$props = Get(\$inventory, "settings:"+\$vars[0]+":properties")) \{
+      sz = sizeof(\$props);
+      for(i=0;i\<sz-1;i=i+2) \{
+        if(\$props[i] == "trait:quality" \|\| \$props[i] == "trait:quantity") \{
+            Set(item, \$props[i], Int(\$props[i+1]));
+        \} else \{
+            Set(item, \$props[i], \$props[i+1]);
+        \}
+      \}
+    \}
+
+    return Describe(\$actor)+" removes "+Describe(item, \$actor)+" from the guild inventory.";
+  \}
+  output = Describe(\$actor)+" could not find this item in the inventory."+dump_value(\$vars);
+
+return output;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1346706370, "jominey", "E", 1346706385, "jominey", "R", 1346706696, "jominey", "E", 1346708825, "jominey", "E", 1346713515, "jominey", "E", 1346713523, "jominey", "E", 1346716929, "jominey", "E", 1346724168, "jominey", "E", 1346724177, "jominey", "E", 1346724251, "jominey", "E", 1346724444, "jominey", "E", 1346724871, "jominey", "E", 1346725187, "jominey", "E", 1346725274, "jominey", "E", 1346725308, "jominey", "E", 1346725382, "jominey", "E", 1346725406, "jominey", "E", 1346725432, "jominey", "E", 1346725468, "jominey", "E", 1346725514, "jominey", "E", 1346725630, "jominey", "E", 1346725819, "jominey", "E", 1346725875, "jominey", "E", 1346726244, "jominey", "E", 1346726532, "jominey", "E", 1346726635, "jominey", "E", 1346726670, "jominey", "E", 1346726719, "jominey", "E", 1346726772, "jominey", "E", 1346726799, "jominey", "E", 1346727134, "jominey", "E", 1346727208, "jominey", "E", 1346727229, "jominey", "E", 1346727238, "jominey", "E", 1346727269, "jominey", "E", 1346727300, "jominey", "E", 1346727409, "jominey", "E", 1346728374, "jominey", "E", 1346738230, "jominey", "E", 1346738287, "jominey", "E", 1346738343, "jominey", "E", 1346738430, "jominey", "E", 1346738519, "jominey", "E", 1346738572, "jominey", "E", 1346738640, "jominey", "E", 1346738749, "jominey", "P", 1347078945, "jominey", "E", 1347079077, "jominey", "E", 1347140873, "jominey", "E", 1347168807, "jominey", "E", 1347168847, "jominey", "E", 1347168868, "jominey", "E", 1347168876, "jominey", "E", 1347168899, "jominey", "E", 1347169000, "jominey", "E", 1347214775, "jominey", "E", 1347214797, "jominey", "E", 1347214815, "jominey", "E", 1347214849, "jominey", "E", 1347831677, "jominey", "E", 1347831896, "jominey", "E", 1349132884, "jominey", "E", 1349133733, "jominey", "E", 1349134635, "jominey", "E", 1349134789, "jominey", "E", 1349134909, "jominey", "E", 1349135288, "jominey", "E", 1349135301, "jominey", "E", 1349739854, "jominey", "E", 1349740047, "jominey", "E", 1349740129, "jominey", "E", 1349740159, "jominey", "E", 1349740230, "jominey", "E", 1368549232, "jominey", "E", 1368549511, "jominey", "E", 1369354744, "jominey", "E", 1369354776, "jominey", "E", 1369354824, "jominey", "E", 1369355011, "jominey", "E", 1369355085, "jominey", "E", 1369355198, "jominey", "E", 1369356035, "jominey", "E", 1369356877, "jominey", "E", 1369357093, "jominey", "E", 1369357142, "jominey", "E", 1369357565, "jominey", "E", 1369357589, "jominey", "E", 1369357798, "jominey", "E", 1369358209, "jominey", "E", 1369358539, "jominey", "E", 1374368233, "jominey", "E", 1401335035, "jominey", "E", 1401335146, "jominey", "E", 1401335726, "jominey", "E", 1401733056, "jominey", "E", 1401733570, "jominey", "E", 1401733592, "jominey", "E", 1401733651, "jominey", "E", 1401733887, "jominey", "E", 1401733967, "jominey", "E", 1401734333, "jominey", "E", 1401734422, "jominey", "E", 1401734488, "jominey", "E", 1401734579, "jominey", "E", 1401734611, "jominey", "E", 1401734644, "jominey", "E", 1401734745, "jominey", "E", 1401734812, "jominey", "E", 1401736997, "jominey", "E", 1401737055, "jominey", "E", 1401737142, "jominey", "E", 1401737154, "jominey", "E", 1401737215, "jominey", "E", 1401737254, "jominey", "E", 1401737285, "jominey", "E", 1401737306, "jominey", "E", 1401737466, "jominey", "E", 1401737492, "jominey", "E", 1405038833, "jominey", "E", 1406583214, "jominey", "E", 1406583571, "jominey", "E", 1411744891, "jominey", "P", 1412050742, "jominey", "E", 1461304665, "tonyd", "P", 1461304709, "tonyd", "P", 1461304854, "tonyd", "P", 1461304866, "tonyd", "P", 1461304906, "tonyd", "P", 1461305302, "tonyd", "P", 1461305327, "tonyd", "P", 1461305374, "tonyd", "P", 1461305502, "tonyd", "P", 1461305559, "tonyd", "P", 1461305640, "tonyd", "P", 1461305694, "tonyd", "P", 1461306088, "tonyd", "P", 1461306137, "tonyd", "P", 1461306161, "tonyd", "P", 1461306239, "tonyd", "P", 1464186244, "jominey", "E", 1464186300, "jominey", "E", 1464186368, "jominey", "E", 1464186436, "jominey", "E", 1464186694, "jominey", "E", 1464186747, "jominey", "E", 1464187159, "jominey", "E", 1464187321, "jominey", "E", 1464187357, "jominey", "E", 1464187468, "jominey", "E", 1464187531, "jominey", "E", 1464188810, "jominey", "E", 1464189018, "jominey", "E", 1464189197, "jominey", "E", 1464189283, "jominey", "E", 1464189335, "jominey", "E", 1464189524, "jominey", "E", 1464189698, "jominey", "E", 1464189935, "jominey", "E", 1464189976, "jominey", "E", 1464190013, "jominey", "E", 1464190040, "jominey", "E", 1464190103, "jominey", "E", 1464190376, "jominey", "E", 1464190488, "jominey", "E", 1464190525, "jominey", "E", 1464190570, "jominey", "E", 1464190628, "jominey", "E", 1464190766, "jominey", "E", 1464190860, "jominey", "E", 1464191306, "jominey", "E", 1464192445, "jominey", "E", 1464192584, "jominey", "E", 1464192739, "jominey", "E", 1464192794, "jominey", "E", 1464192813, "jominey", "E", 1464192958, "jominey", "E", 1464193000, "jominey", "E", 1464193165, "jominey", "E", 1464193199, "jominey", "E", 1464193333, "jominey", "E", 1464193361, "jominey", "E", 1464193425, "jominey", "E", 1464193451, "jominey", "E", 1464193511, "jominey", "E", 1464193578, "jominey", "E", 1464193633, "jominey", "E", 1464194260, "jominey", "E", 1464194578, "jominey", "E", 1464194848, "jominey", "E", 1464195023, "jominey", "E", 1464195198, "jominey", "E", 1464197636, "jominey", "E", 1464197636, "jominey", "E", 1464197859, "jominey", "E", 1464199367, "jominey", "E", 1464223698, "jominey", "E", 1464223733, "jominey", "E", 1464223909, "jominey", "E", 1464223958, "jominey", "E", 1464224006, "jominey", "E", 1464224019, "jominey", "E", 1464224176, "jominey", "E", 1464224286, "jominey", "E", 1464224359, "jominey", "E", 1464224493, "jominey", "E", 1464224515, "jominey", "E", 1464224999, "jominey", "E", 1464225120, "jominey", "E", 1464225178, "jominey", "E", 1464225248, "jominey", "E", 1464225334, "jominey", "E", 1464225410, "jominey", "E", 1464225448, "jominey", "E", 1464225488, "jominey", "E", 1464225571, "jominey", "E", 1464225787, "jominey", "E", 1464225831, "jominey", "E", 1464225872, "jominey", "E", 1464226263, "jominey", "E", 1464226390, "jominey", "E", 1464226472, "jominey", "E", 1464226792, "jominey", "E", 1464226875, "jominey", "E", 1464226974, "jominey", "E", 1464227091, "jominey", "E", 1464227105, "jominey", "E", 1464227224, "jominey", "E", 1464227265, "jominey", "E", 1464227419, "jominey", "E", 1464227486, "jominey", "E", 1464227508, "jominey", "E", 1464227536, "jominey", "E", 1464227843, "jominey", "E", 1464228101, "jominey", "E", 1464228146, "jominey", "E", 1464228236, "jominey", "E", 1464228436, "jominey", "E", 1464228800, "jominey", "E", 1464228835, "jominey", "E", 1464228983, "jominey", "E", 1464229250, "jominey", "E", 1464229310, "jominey", "E", 1464229358, "jominey", "E", 1464229595, "jominey", "E", 1464229732, "jominey", "E", 1464229766, "jominey", "E", 1464229821, "jominey", "E", 1464230172, "jominey", "E", 1464230479, "jominey", "E", 1464231225, "jominey", "E", 1464231351, "jominey", "E", 1464233846, "jominey", "E", 1464548115, "jominey", "E", 1464548152, "jominey", "E", 1464548231, "jominey", "E", 1464549072, "jominey", "E", 1464549099, "jominey", "E", 1464549200, "jominey", "E", 1464549318, "jominey", "E", 1464549366, "jominey", "E", 1464550192, "jominey", "E", 1464550215, "jominey", "E", 1464550322, "jominey", "E", 1464550543, "jominey", "E", 1464550721, "jominey", "E", 1464550783, "jominey", "E", 1464550839, "jominey", "E", 1464550907, "jominey", "E", 1464551094, "jominey", "E", 1464551364, "jominey", "E", 1464551462, "jominey", "E", 1464551520, "jominey", "E", 1464551801, "jominey", "E", 1464551828, "jominey", "E", 1464552129, "jominey", "E", 1464552161, "jominey", "E", 1464552207, "jominey", "E", 1464552874, "jominey", "E", 1464552965, "jominey", "E", 1464552997, "jominey", "E", 1464553651, "jominey", "E", 1464554067, "jominey", "E", 1464554082, "jominey", "E", 1464554108, "jominey", "E", 1464554278, "jominey", "E", 1464554327, "jominey", "E", 1464554372, "jominey", "E", 1464554393, "jominey", "E", 1464554414, "jominey", "E", 1464554463, "jominey", "E", 1464554511, "jominey", "E", 1464554548, "jominey", "E", 1464554779, "jominey", "E", 1464554894, "jominey", "E", 1464554969, "jominey", "E", 1464555097, "jominey", "E", 1464555137, "jominey", "E", 1464555159, "jominey", "E", 1464555221, "jominey", "E", 1464555352, "jominey", "E", 1464555417, "jominey", "E", 1464555497, "jominey", "E", 1464555519, "jominey", "E", 1464555556, "jominey", "E", 1464555610, "jominey", "E", 1464555627, "jominey", "E", 1464555695, "jominey", "E", 1464555778, "jominey", "E", 1464555984, "jominey", "E", 1464556038, "jominey", "E", 1464556093, "jominey", "E", 1464556120, "jominey", "E", 1464556141, "jominey", "E", 1464556168, "jominey", "E", 1464556186, "jominey", "E", 1464556210, "jominey", "E", 1464556250, "jominey", "E", 1464556351, "jominey", "E", 1464556717, "jominey", "E", 1464556871, "jominey", "E", 1464556925, "jominey", "E", 1464557023, "jominey", "E", 1464557037, "jominey", "E", 1464557085, "jominey", "E", 1464557338, "jominey", "E", 1464557451, "jominey", "E", 1464557540, "jominey", "E", 1464557647, "jominey", "E", 1464557718, "jominey", "E", 1464560171, "jominey", "P", 1464560454, "jominey", "P", 1464560493, "jominey", "P", 1464560719, "jominey", "P", 1464560777, "jominey", "P", 1464560835, "jominey", "P", 1464560940, "jominey", "P", 1464564074, "jominey", "E", 1464564452, "jominey", "E", 1464564648, "jominey", "E", 1464564746, "jominey", "E", 1464564917, "jominey", "E", 1464565026, "jominey", "E", 1464565196, "jominey", "E", 1464565420, "jominey", "E", 1464565469, "jominey", "E", 1464565713, "jominey", "E", 1464565756, "jominey", "E", 1464565812, "jominey", "E", 1464566315, "jominey", "E", 1464566415, "jominey", "E", 1464566727, "jominey", "E", 1464567292, "jominey", "E", 1464567574, "jominey", "E", 1464567674, "jominey", "E", 1464567860, "jominey", "E", 1464568038, "jominey", "E", 1464568060, "jominey", "E", 1464568086, "jominey", "E", 1464568184, "jominey", "E", 1464568306, "jominey", "E", 1464568327, "jominey", "E", 1464568389, "jominey", "E", 1464568465, "jominey", "E", 1464569239, "jominey", "E", 1464569283, "jominey", "E", 1464569309, "jominey", "E", 1464569371, "jominey", "E", 1464569431, "jominey", "E", 1464569510, "jominey", "E", 1464569610, "jominey", "E", 1464569658, "jominey", "E", 1464569730, "jominey", "E", 1464569781, "jominey", "E", 1464569909, "jominey", "E", 1464570007, "jominey", "E", 1464570106, "jominey", "E", 1464570171, "jominey", "E", 1464570200, "jominey", "E", 1464570308, "jominey", "E", 1464570558, "jominey", "E", 1464570662, "jominey", "E", 1464570753, "jominey", "E", 1464570807, "jominey", "E", 1464570841, "jominey", "E", 1464570925, "jominey", "E", 1464570963, "jominey", "E", 1464570994, "jominey", "E", 1464571101, "jominey", "E", 1464571497, "jominey", "E", 1464571607, "jominey", "E", 1464571759, "jominey", "E", 1464572032, "jominey", "E", 1464572062, "jominey", "E", 1464572246, "jominey", "E", 1464572491, "jominey", "E", 1464575768, "jominey", "E", 1464575832, "jominey", "E", 1464575934, "jominey", "E", 1464576094, "jominey", "E", 1464576190, "jominey", "E", 1464576394, "jominey", "E", 1464576428, "jominey", "E", 1464576557, "jominey", "E", 1464576586, "jominey", "E", 1464577104, "jominey", "E", 1464578284, "jominey", "E", 1464578720, "jominey", "E", 1464578766, "jominey", "E", 1464578781, "jominey", "E", 1464578818, "jominey", "E", 1464580982, "jominey", "E", 1464581069, "jominey", "E", 1464581158, "jominey", "E", 1464582719, "jominey", "E", 1464583458, "jominey", "E", 1464583503, "jominey", "E", 1464585292, "jominey", "E", 1470102530, "jominey", "E", 1479428792, "jominey", "E", 1479428840, "jominey", "E", 1479428908, "jominey", "E", 1479428945, "jominey", "E", 1479428981, "jominey", "E", 1479428999, "jominey", "E", 1479429105, "jominey", "E", 1479429211, "jominey", "E", 1479429343, "jominey", "E", 1479429431, "jominey", "E", 1479429554, "jominey", "E", 1479429607, "jominey", "E", 1479429915, "jominey", "E", 1479429993, "jominey", "E", 1479430012, "jominey", "E", 1479430079, "jominey", "E", 1479430152, "jominey", "E", 1479430269, "jominey", "E", 1479430293, "jominey", "E", 1479430326, "jominey", "E", 1479430460, "jominey", "E", 1479430511, "jominey", "E", 1479430558, "jominey", "E", 1479430632, "jominey", "E", 1479430666, "jominey", "E", 1479430702, "jominey", "E", 1479431428, "jominey", "E", 1479431505, "jominey", "E", 1479435122, "jominey", "E", 1479435145, "jominey", "E", 1479445262, "jominey", "E", 1497310961, "jominey", "E", 1497311684, "jominey", "E", 1497311845, "jominey", "E", 1497311897, "jominey", "E", 1497833242, "jominey", "E", 1497833493, "jominey", "E", 1497833663, "jominey", "E", 1497833747, "jominey", "E", 1497833849, "jominey", "E", 1497833997, "jominey", "E", 1497834060, "jominey", "E", 1524014012, "jominey", "E", 1539798943, "jominey", "E", 1571082795, "sendnoodlez", "E", 1571082896, "sendnoodlez", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

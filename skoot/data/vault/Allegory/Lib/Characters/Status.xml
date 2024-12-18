@@ -1,0 +1,149 @@
+<object clone="/obj/properties" owner="SkotOS">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="merry:lib:change_status">
+         X[M] /* change_stauts(\$char: \$char, \$type: "energy", \$amount: 2); */
+
+\$old = Int(Get(\$char, "effect:" + \$type + ":severity"));
+
+if(\$type == "hunger") \{
+    \$new = \$old - \$amount;
+\} else \{
+    \$new = \$old + \$amount;
+\}
+
+Set(\$char, "effect:" + \$type + ":severity", \$new);
+
+if(Int(Get(\$char, "effect:" + \$type + ":severity")) \< 0) Set(\$char, "effect:" + \$type + ":severity", 0);
+
+if(\$type == "hunger") \{
+    if(Int(Get(\$char, "effect:" + \$type + ":severity")) \> 400) \{
+        Set(\$char, "effect:" + \$type + ":severity", 400);
+    \}
+\} else \{
+    if(Int(Get(\$char, "effect:" + \$type + ":severity")) \> 100) \{
+        Set(\$char, "effect:" + \$type + ":severity", 100);
+    \}
+\}
+
+Set(\$char, "effect:" + \$type + ":dosage", nil);
+Set(\$char, "effect:" + \$type + ":severity", nil);
+
+if(\$type == "hunger") 
+    Call(\$\{Allegory:Effects:Status:Hunger:Data\}, "apply", \$who: \$char, \$severity: \$new, \$dosage: 1);
+
+if(\$type == "health") 
+    Call(\$\{Allegory:Effects:Status:Health:Data\}, "apply", \$who: \$char, \$severity: \$new, \$dosage: -1);
+
+if(\$type == "energy") 
+    Call(\$\{Allegory:Effects:Status:Energy:Data\}, "apply", \$who: \$char, \$severity: \$new, \$dosage: -2);
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:login">
+         X[M] \$actor."effect:hunger:severity" = Int(\$actor."effect:hunger:severity");
+if(Int(\$actor."effect:hunger:severity") \< 0) \$actor."effect:hunger:severity" = 0;
+if(Int(\$actor."effect:hunger:severity") \> 400) \$actor."effect:hunger:severity" = 400;
+\$actor."effect:hunger:dosage" = nil;
+Call(\$\{Allegory:Effects:Status:Hunger:Data\}, "apply", \$who: \$actor, \$severity: 0, \$dosage: 1);
+
+\$actor."effect:health:severity" = Int(\$actor."effect:health:severity");
+\$actor."effect:health:dosage" = nil;
+Call(\$\{Allegory:Effects:Status:Health:Data\}, "apply", \$who: \$actor, \$severity: 0, \$dosage: -1);
+
+\$actor."effect:energy:severity" = Int(\$actor."effect:energy:severity");
+\$actor."effect:energy:dosage" = nil;
+Call(\$\{Allegory:Effects:Status:Energy:Data\}, "apply", \$who: \$actor, \$severity: 0, \$dosage: -1);
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:effect:energy:severity">
+         X[M] int cap, energy, severity;  
+  
+severity = Int(\$this."effect:energy:severity") + Int(\$amount);  
+  
+cap = Int(Get(\$\{Allegory:Effects:Status:Energy:Data\}, "effect:severity_cap"));  
+  
+if(severity \> cap) severity = cap;  
+if(severity \< 0) severity = 0;  
+  
+energy = 100 - Int((Flt(severity)/Flt(cap)) * 100.0);  
+  
+Set(\$this, "status:energy", energy);  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:effect:health:severity">
+         X[M] int cap, health, severity;  
+  
+severity = Int(\$this."effect:health:severity") + Int(\$amount);  
+  
+cap = Int(Get(\$\{Allegory:Effects:Status:Health:Data\}, "effect:severity_cap"));  
+  
+if(severity \> cap) severity = cap;  
+if(severity \< 0) severity = 0;  
+  
+health = 100 - Int((Flt(severity)/Flt(cap)) * 100.0);  
+
+Set(\$this, "status:health", health);  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:effect:hunger:severity">
+         X[M] int cap, hunger, severity;  
+  
+severity = Int(\$this."effect:hunger:severity") + Int(\$amount);  
+  
+cap = Int(Get(\$\{Allegory:Effects:Status:Hunger:Data\}, "effect:severity_cap"));  
+  
+if(severity \> cap) severity = cap;  
+if(severity \< 0) severity = 0;  
+  
+hunger = 100 - Int((Flt(severity)/Flt(cap)) * 100.0);  
+  
+Set(\$this, "status:hunger", hunger);  
+  
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:status:energy">
+         X[M] float x, y; 
+ 
+if(Int(\$this."status:energy") \> Int(\$this."status:energy-max")) \{ 
+    \$this."status:energy" = Int(\$this."status:energy-max"); 
+\} 
+ 
+x = Flt(\$this."status:energy"); 
+y = Flt(\$this."status:energy-max"); 
+ 
+Act(\$this, "client_control", \$id: 80, \$val: "energy " + Str(Int(Flt(x/y)*100.0)));
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:status:health">
+         X[M] float x, y; 
+ 
+if(Int(\$this."status:health") \> Int(\$this."status:health-max")) \{ 
+    \$this."status:health" = Int(\$this."status:health-max"); 
+\} 
+ 
+x = Flt(\$this."status:health"); 
+y = Flt(\$this."status:health-max"); 
+
+Act(\$this, "client_control", \$id: 80, \$val: "health " + Str(Int(Flt(x/y)*100.0)));
+      </Core:Property>
+      <Core:Property property="merry:setprop-post:status:hunger">
+         X[M] float x, y; 
+ 
+if(Int(\$this."status:hunger") \> Int(\$this."status:hunger-max")) \{ 
+    \$this."status:hunger" = Int(\$this."status:hunger-max"); 
+\} 
+ 
+x = Flt(\$this."status:hunger"); 
+y = Flt(\$this."status:hunger-max"); 
+ 
+Act(\$this, "client_control", \$id: 80, \$val: "hunger " + Str(Int(Flt(x/y)*100.0)));
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1566075868, "jominey", "E", 1566075957, "jominey", "E", 1566565678, "jominey", "E", 1566565767, "jominey", "E", 1567185690, "jominey", "E", 1567185783, "jominey", "E", 1567185858, "jominey", "E", 1567186014, "jominey", "E", 1567186156, "jominey", "E", 1567191100, "jominey", "E", 1567191508, "jominey", "E", 1567191548, "jominey", "E", 1572746302, "jominey", "E", 1572754046, "jominey", "E", 1572754214, "jominey", "E", 1572832388, "jominey", "E", 1572832531, "jominey", "E", 1572832632, "jominey", "E", 1572832740, "jominey", "E", 1572832855, "jominey", "E", 1572832896, "jominey", "E", 1572833083, "jominey", "E", 1575931842, "jominey", "E", 1620797852, "ezralee", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>

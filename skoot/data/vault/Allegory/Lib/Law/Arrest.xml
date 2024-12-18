@@ -1,0 +1,2797 @@
+<object clone="/obj/properties" owner="tonyd">
+  <Core:PropertyContainer>
+    <Ur:UrObject/>
+    <Core:PCProperties>
+      <Core:Property property="categorydb">([  ])</Core:Property>
+      <Core:Property property="crimedbs">
+         (\{ \<Allegory:Lib:Law:crimes\>, \<Allegory:Lib:Law:church\> \})
+      </Core:Property>
+      <Core:Property property="html:accept_charges">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */   
+  ::popup_initialize();   
+  if(::verify_char(\$char: \$char, \$arrester: TRUE)) \{   
+    \$is_arrester = TRUE;   
+  \} else \{   
+    \$is_arrester = nil;   
+  \}   
+  /* get info about the crime */   
+  \$db = \$\{Allegory:Lib:Law:OpenDB\};   
+  \$punish_db = \$\{Allegory:Lib:Law:punishments\};   
+  if(!\$db) error("Crime database not found");   
+  if(!\$item_index) \{   
+    if(\$db.number) \{   
+      \$item_index = \$db.number - 1;   
+    \} else \{   
+      error("Unknown item index");   
+    \}   
+  \}   
+  if(!(\$info=Get(\$db, Str(\$item_index))))   
+    error("No crime information found");   
+  if(Get(\$char, "skotos:charname")) \{   
+    \$name = capitalize(Get(\$char, "skotos:charname"));   
+  \} else \{   
+    \$name += Describe(\$char);   
+  \}   
+  return nil;]
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Crime Information - Accepting Charges - Triskellian Arrest/Prison System\</title\>
+    \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+  \$(this.html:javascript)
+  \$(this.html:punishmentscript)
+\</head\>
+\<body\>
+\<a href="index?char=\$[name(\$char)]"\>\\\<== Back\</a\>
+\<h2\>Accepting Charges - \$[\$info["name"]]\</h2\>
+\<p\>
+Name: \$(name)\<br/\>
+\$[string charges;   
+charges = "";   
+\$value = 0;   
+\$crimes = Get(\$char, "crimes:charges:"+Str(\$item_index));   
+\$indices = map_indices(\$crimes);   
+/* ignore the flags that aren't charges */   
+\$indices -= (\{ "arrestable", "punishments", "punishvalue", "locked" \});   
+for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{   
+  if(\$i \&\& \$i+1 == sizeof(\$indices)) \{   
+    charges += " and ";   
+  \} else if (\$i\>0) \{   
+    charges += ", ";   
+  \}   
+  charges += capitalize(\$indices[\$i]);   
+   
+  /*\$value += Int(\$crimes[\$indices[\$i]]["severity"]);*/   
+   
+  \$pun_value = 0;   
+  for(\$j=0;\$j\<sizeof(this.crimedbs)\&\&!\$pun_value;\$j++) \{   
+    \$db = this.crimedbs[\$j];   
+    if(\$db) \{   
+      if(Get(\$db, "crimes:"+\$indices[\$i]) \&\& Get(\$db, "crimes:"+\$indices[\$i])["value"])   
+        \$pun_value = Int(Get(\$db, "crimes:"+\$indices[\$i])["value"]);   
+    \}   
+  \}   
+  \$value += Int((Flt(\$crimes[\$indices[\$i]]["severity"])/2.0)*Flt(\$pun_value));   
+  
+  /* also add any additional punishment from influence */  
+  if(\$crimes[\$indices[\$i]]["influence"] \&\& \$crimes[\$indices[\$i]]["influence"]["punishment"])  
+   \$value += \$crimes[\$indices[\$i]]["influence"]["punishment"];  
+  
+/*   
+    needed_value = 0;   
+    sz = sizeof(this.crimedbs);   
+    for(i=0;i\<sz\&\&!needed_value;i++) \{   
+      \$db = this.crimedbs[i];   
+      if(\$db) \{   
+        if(Get(\$db, "crimes:"+\$indices[\$i]) \&\& Get(\$db, "crimes:"+\$indices[\$i])["value"])   
+          needed_value = Get(\$db, "crimes:"+\$indices[\$i])["value"];   
+      \}   
+    \}   
+*/   
+   
+   
+   
+\}   
+charges = "Charges: "+charges;   
+charges += "\<br/\>Combined value: "+Str(\$value);   
+return charges;]
+\<script type="text/javascript"\>
+  points = \$(value);
+\</script\>
+\<br/\>
+\<span id="show_points"\>\</span\>\</p\>
+\<p\>
+\<strong\>Punishments Selected\</strong\>\<br/\>
+\<span id="show_selected_punishments"\>\</span\>
+\</p\>
+\<span id="select_punishments"\>
+\<p\>
+\<strong\>Add additional punishment\</strong\>\<br/\>
+\<select NAME="punishlist" id="punishlist" onchange="show_punishment_info(this.value);"\>
+  \<option VALUE=""\>\</option\>
+\$[string output;   
+output = "";   
+\$list = prefixed_map(Get(\$punish_db, "*"), "punishment:");   
+\$indices = map_indices(\$list);   
+for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{   
+  output += "\<option value=\\""+\$indices[\$i]+"\\"\>"+\$list[\$indices[\$i]]["name"]+" - "+Str(\$list[\$indices[\$i]]["value"])+"\</option\>\\n";   
+\}   
+return output;]
+\</select\>
+\</p\>
+\<span id="show_punishment_info"\>\</span\>
+\</span\>
+\<span id="lock_in_punishments"\>
+\<p\>You have now selected enough points worth of punishment. When you are ready, lock in the punishments, and they will start to take effect. Some punishments will require you to remain in the jailhouse, while others will allow you to be released immediately.\<br/\>
+\<input onclick="lock_in_punishment();" type="button" value="Lock in these punishments"/\>\</p\>
+\</span\>
+\<script type="text/javascript"\>
+  show_punishment_info(document.getElementById('punishlist').value);
+  refresh_punishments();
+  show_punishment_points();
+\</script\>
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:arrest">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */  
+  ::popup_initialize();  
+  return nil;]
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Crime Information - Triskellian Arrest/Prison System\</title\>
+  \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+  \$(this.html:javascript)
+  \$(this.html:arrestscript)
+\</head\>
+\<body\>
+\<a href="index?char=\$[name(\$char)]"\>\\\<== Back\</a\>
+\<h2\>Crime Information\</h2\>
+\{? \| \$[if(\$char \&\& \$canmakearrests) return TRUE; return TRUE;] \|
+\<p\>
+Name of Criminal(s): \<span id="show_crim"\>\</span\> \<input type="text" id="add_crim"/\> \<input onclick="add_crim(document.getElementById('add_crim').value);" type="button" value="Add"/\>\<br/\>
+Name of Accomplice(s): \<span id="show_accomplice"\>\</span\> \<input type="text" id="add_accomplice"/\> \<input onclick="add_accomplice(document.getElementById('add_accomplice').value);" type="button" value="Add"/\>\<br/\>
+Name of Crime: \<input id="crime_name" type="text" size="60"/\>\<br/\>
+Description of Crime:\<br/\>
+\<textarea cols="60" id="crime_description" rows="5"\>\</textarea\>\<br/\>
+\<input onclick="file_crime(document.getElementById('crime_name').value, document.getElementById('crime_description').value);" type="button" value="File Crime"/\>
+\</p\>
+\$[/* If we have a prisoner, add them */ return nil;]
+\{? \| \$(prisoner) \|
+\<script type="text/javascript"\>
+  add_crim('\$(prisoner)');
+\</script\>
+\}
+\|
+  \<p\>I am sorry, but \$[Describe(\$char)] is not authorized to file arrests. Please seek out a constable.\</p\>
+\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:arrestscript">
+         X[S] \<script type="text/javascript"\>
+var criminals=new Array();
+var accomplices=new Array();
+function add_crim(crim) \\\{
+  if(!crim) \\\{
+    return;
+  \\\}
+  crim = crim.toLowerCase();
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="verify_char?char="+crim;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText == "invalid") \\\{
+        alert("Invalid PC name for the criminal.");
+        return;
+      \\\}
+//      document.getElementById("crime_description").value=xmlHttp.responseText;
+      criminals.push(crim);
+      list_crims();
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function list_crims() \\\{
+  output = "";
+  for(x=0;x\\\<criminals.length;x++) \\\{
+    if(output) output = output+", ";
+    output = output+criminals[x].substr(0,1).toUpperCase()+criminals[x].substr(1,criminals[x].length);
+  \\\}
+  document.getElementById("show_crim").innerHTML=output;
+\\\}
+function add_accomplice(crim) \\\{
+  if(!crim) \\\{
+    return;
+  \\\}
+  crim = crim.toLowerCase();
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="verify_char?char="+crim;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText == "invalid") \\\{
+        alert("Invalid PC name for the accomplice.");
+        return;
+      \\\}
+//      document.getElementById("crime_description").value=xmlHttp.responseText;
+      accomplices.push(crim);
+      list_accomplices();
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function list_accomplices() \\\{
+  output = "";
+  for(x=0;x\\\<accomplices.length;x++) \\\{
+    if(output) output = output+", ";
+    output = output+accomplices[x].substr(0,1).toUpperCase()+accomplices[x].substr(1,accomplices[x].length);
+  \\\}
+  document.getElementById("show_accomplice").innerHTML=output;
+\\\}
+function file_crime(name, description) \\\{
+  if(!name) \\\{
+    alert("Please enter a name for this crime.");
+    return;
+  \\\}
+  if(!description) \\\{
+    alert("Please enter a description for this crime.");
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="file_crime?char=\$(char.name)\\\&criminals="+criminals.toString()+"\\\&accomplices="+accomplices.toString()+"\\\&crimename="+name+"\\\&description="+description;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText == "success") \\\{
+        window.location="list_crime?char=\$(char.name)";
+        return;
+      \\\}
+      alert(xmlHttp.responseText);
+      document.getElementById("crime_description").value=xmlHttp.responseText;
+      return;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:change_category">
+         X[S] \$[/* find which file keeps a list of the jobs */  
+if(!\$dbrequest) return "";  
+  
+if(!this.categorydb)  
+  this.categorydb = ([ ]);  
+if(!(\$db = this.categorydb[\$dbrequest])) \{  
+  \$name = "";  
+  \$tmp = "";  
+  for(\$i=0;\$i\<strlen(name(this));\$i++) \{  
+    if(name(this)[\$i] != ':') \{  
+      \$tmp += char_to_string(name(this)[\$i]);  
+    \} else \{  
+      \$name += \$tmp + ":";  
+      \$tmp = "";  
+    \}  
+  \}  
+  \$name += \$dbrequest;  
+  catch(Call(\$\{Lib:objects\}, "create_of_type", \$type: "propcontainer"));  
+  \$db = Obj(\$name);  
+  this.jobdb[\$dbrequest] = \$db;  
+\}  
+return name(\$db);]
+      </Core:Property>
+      <Core:Property property="html:evidencescript">
+         X[S] \<script type="text/javascript"\>
+function add_crim(crim) \\\{
+  if(!crim) \\\{
+    return;
+  \\\}
+  crim = crim.toLowerCase();
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=addcrim\\\&char=\$(charname)\\\&addcrim="+crim+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("show_crim").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function add_accomplice(crim) \\\{
+  if(!crim) \\\{
+    return;
+  \\\}
+  crim = crim.toLowerCase();
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=addaccomplice\\\&char=\$(charname)\\\&addcrim="+crim+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("show_accomplice").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function update_crimename(desc) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=update_crimename\\\&char=\$(charname)\\\&description="+desc+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      alert("Updated!");
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function update_crimestatus(desc) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=update_crimestatus\\\&char=\$(charname)\\\&description="+desc+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      alert("Updated!");
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function update_crimedescription(desc) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=update_crimedescription\\\&char=\$(charname)\\\&description="+desc+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      alert("Updated!");
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+var current_crim;
+function show_crimes(crim, crime) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  if(crime) \\\{
+    var url="general_script?script=show_crimes\\\&char=\$(charname)\\\&crim="+crim+"\\\&crime="+crime+"\\\&index=\$(item_index)";
+  \\\} else \\\{
+    var url="general_script?script=show_crimes\\\&char=\$(charname)\\\&crim="+crim+"\\\&index=\$(item_index)";
+  \\\}
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      current_crim = crim;
+      document.getElementById("byline").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function describe_crime(crime) \\\{
+  if(!crime \\\|\\\| crime == "") \\\{
+    document.getElementById("crimedesc").innerHTML="";
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=describe_crime\\\&char=\$(charname)\\\&crime="+crime;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("crimedesc").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function add_crime(crime, severity) \\\{
+  if(!current_crim) \\\{
+    alert("Please choose a criminal before filing charges");
+    return;
+  \\\}
+  if(!crime \\\|\\\| crime == "") \\\{
+    alert("Please choose a crime before filing charges");
+    return;
+  \\\}
+  if(!severity \\\|\\\| severity == "") \\\{
+    alert("Please choose a severity for the crime");
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=add_crime\\\&char=\$(charname)\\\&crim="+current_crim+"\\\&crime="+crime+"\\\&severity="+severity+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      if(xmlHttp.responseText != "") \\\{
+        alert(xmlHttp.responseText);
+      \\\}
+      show_crimes(current_crim);
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function show_evidence(crime, item_index) \\\{
+  if(!current_crim) \\\{
+    alert("Please choose a criminal before viewing charges");
+    return;
+  \\\}
+  if(!crime \\\|\\\| crime == "") \\\{
+    alert("Please choose a crime before viewing charges");
+    return;
+  \\\}
+  if(!item_index) \\\{
+    alert("Error: Invalid index");
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=view_evidence\\\&char=\$(charname)\\\&crim="+current_crim+"\\\&crime="+crime+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("details_"+crime).innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function add_testimony(crime, item_index, testimony, type, strength) \\\{
+  if(!current_crim) \\\{
+    alert("Please choose a criminal before viewing charges");
+    return;
+  \\\}
+  if(!crime \\\|\\\| crime == "") \\\{
+    alert("Please choose a crime before viewing charges");
+    return;
+  \\\}
+  if(!item_index) \\\{
+    alert("Error: Invalid index");
+    return;
+  \\\}
+  if(!testimony \\\|\\\| testimony == "") \\\{
+    alert("Please enter a description of what your characters knows about this charge");
+    return;
+  \\\}
+  if(!type) \\\{
+    alert("Error: Invalid testimony type");
+    return;
+  \\\}
+  if(!strength) \\\{
+    alert("Error: Invalid testimony strength");
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=add_testimony\\\&char=\$(charname)\\\&crim="+current_crim+"\\\&crime="+crime+"\\\&testimony="+testimony+"\\\&type="+type+"\\\&strength="+strength+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      show_crimes(current_crim, crime);
+      if(xmlHttp.responseText \\\&\\\& xmlHttp.responseText != "") \\\{
+        alert(xmlHttp.responseText);
+      \\\}
+      return;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function add_evidence(crime, item_index, description, strength, direction, evidence_index, verify_description) \\\{
+  if(!current_crim) \\\{
+    alert("Please choose a criminal before viewing charges");
+    return;
+  \\\}
+  if(!crime \\\|\\\| crime == "") \\\{
+    alert("Please choose a crime before viewing charges");
+    return;
+  \\\}
+  if(!item_index) \\\{
+    item_index = 0;
+  \\\}
+  if(!description \\\|\\\| description == "") \\\{
+    alert("Please enter a description of what your characters knows about this charge");
+    return;
+  \\\}
+  if(!direction \\\|\\\| direction == "") \\\{
+    alert("Error: Invalid testimony type");
+    return;
+  \\\}
+  if(!strength) \\\{
+    alert("Error: Invalid testimony strength");
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  if(evidence_index \\\&\\\& verify_description) \\\{
+    var url="general_script?script=add_evidence\\\&char=\$(charname)\\\&crim="+current_crim+"\\\&crime="+crime+"\\\&description="+description+"\\\&direction="+direction+"\\\&strength="+strength+"\\\&evidence_index="+evidence_index+"\\\&verify_description="+verify_description+"\\\&index=\$(item_index)";
+  \\\} else \\\{
+    var url="general_script?script=add_evidence\\\&char=\$(charname)\\\&crim="+current_crim+"\\\&crime="+crime+"\\\&description="+description+"\\\&direction="+direction+"\\\&strength="+strength+"\\\&index=\$(item_index)";
+  \\\}
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      show_crimes(current_crim, crime);
+      if(xmlHttp.responseText \\\&\\\& xmlHttp.responseText != "") \\\{
+        alert(xmlHttp.responseText);
+      \\\}
+      return;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function add_opinion(crime, item_index, testimony, type) \\\{
+  if(!current_crim) \\\{
+    alert("Please choose a criminal before viewing charges");
+    return;
+  \\\}
+  if(!crime \\\|\\\| crime == "") \\\{
+    alert("Please choose a crime before viewing charges");
+    return;
+  \\\}
+  if(!item_index) \\\{
+    alert("Error: Invalid index");
+    return;
+  \\\}
+  if(!testimony \\\|\\\| testimony == "") \\\{
+    alert("Please enter a description of what your characters thinks about this charge");
+    return;
+  \\\}
+  if(!type) \\\{
+    alert("Error: Invalid testimony type");
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=add_opinion\\\&char=\$(charname)\\\&crim="+current_crim+"\\\&crime="+crime+"\\\&testimony="+testimony+"\\\&type="+type+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      show_crimes(current_crim, crime);
+      if(xmlHttp.responseText \\\&\\\& xmlHttp.responseText != "") \\\{
+        alert(xmlHttp.responseText);
+      \\\}
+      return;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function add_influence(crime, item_index, influence_type, influence_strength) \\\{
+  if(!current_crim) \\\{
+    alert("Please choose a criminal before viewing charges");
+    return;
+  \\\}
+  if(!crime \\\|\\\| crime == "") \\\{
+    alert("Please choose a crime before viewing charges");
+    return;
+  \\\}
+  if(!item_index) \\\{
+    alert("Error: Invalid index");
+    return;
+  \\\}
+  if(!influence_type) \\\{
+    alert("Error: Invalid type");
+    return;
+  \\\}
+  if(!influence_strength) \\\{
+    alert("Error: Invalid strength");
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=add_influence\\\&char=\$(charname)\\\&crim="+current_crim+"\\\&crime="+crime+"\\\&type="+influence_type+"\\\&strength="+influence_strength+"\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      show_crimes(current_crim, crime);
+      if(xmlHttp.responseText \\\&\\\& xmlHttp.responseText != "") \\\{
+        alert(xmlHttp.responseText);
+      \\\}
+      return;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:file_crime">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>\$[/* run some initial code */     
+::popup_initialize();     
+/* check this is someone who can file crimes */     
+if(!(::verify_char(\$char: \$char, \$arrester: TRUE)))     
+  return "You are not authorized to file a crime. You will have to report the crime to a member of the constabulary, who can then file it.";     
+     
+/* check the file database of open crimes */     
+\$db = \$\{Allegory:Lib:Law:OpenDB\};     
+if(!\$db) return "Error: No crime database found.";     
+     
+/* what number are we up to? */     
+if(\$db.number) \{     
+  \$number = \$db.number;     
+\} else \{     
+  \$db.number = 1;     
+  \$number = 1;     
+\}     
+     
+/* now check that we aren't overwriting something */     
+while(Get(\$db, Str(\$number))) \{     
+  \$number++;     
+  \$db.number = \$number;     
+\}     
+     
+/* create information for this crime */     
+\$info = ([ ]);     
+\$info["name"] = \$crimename;     
+\$info["description"] = \$description;     
+\$info["status"] = "\<font color='green'\>Case Open\</font\>";    
+\$info["date"] = time();    
+    
+if(Obj(\$char)) \{    
+    \$info["openedby"] = proper(\$char."skotos:charname");    
+\} else \{    
+    \$info["openedby"] = "Unknown";    
+\}    
+    
+/* include the criminals */     
+\$criminals = explode(\$criminals, ",");     
+for(\$i=0;\$i\<sizeof(\$criminals);\$i++) \{     
+  \$criminals[\$i] = Obj(::verify_char(\$char: \$criminals[\$i]));     
+\}     
+\$criminals -= (\{ nil \});     
+\$info["criminals"] = \$criminals;     
+     
+/* include the accomplices */     
+\$accomplices = explode(\$accomplices, ",");     
+for(\$i=0;\$i\<sizeof(\$accomplices);\$i++) \{     
+  \$accomplices[\$i] = Obj(::verify_char(\$char: \$accomplices[\$i]));     
+\}     
+\$accomplices-= (\{ nil \});     
+\$info["accomplices"] = \$accomplices;     
+     
+/* set the info */     
+Set(\$db, Str(\$number), \$info);     
+\$db.number++;     
+     
+return "success";]\</z\>
+      </Core:Property>
+      <Core:Property property="html:general_script">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>\$[/* run some initial code */        
+string output;        
+::popup_initialize();        
+if(::verify_char(\$char: \$char, \$arrester: TRUE)) \{        
+  \$is_arrester = TRUE;        
+\} else \{        
+  \$is_arrester = nil;        
+\}        
+/* get info about the crime */        
+\$db = \$\{Allegory:Lib:Law:OpenDB\};        
+if(!\$db) error("Crime database not found");        
+if(!\$index) \{        
+  if(\$db.number) \{        
+    \$index = \$db.number - 1;        
+  \} else \{        
+    error("Unknown item index");        
+  \}        
+\}        
+\$info=Get(\$db, Str(\$index));        
+        
+output = "";        
+if(\$script == "addcrim") \{        
+  if(!\$is_arrester) return "Error: You are not authorized to add criminal charges";        
+  if(!\$info) return "Error: No crime information found";        
+  if(!\$addcrim) return "Error: No name entered";        
+  \$tmp = Obj(::verify_char(\$char: \$addcrim));        
+  if(\$tmp) \{        
+    \$info["criminals"] \|= (\{ \$tmp \});        
+  \} else \{        
+    return "Error: Unknown name";        
+  \}        
+  \$info["criminals"] -= (\{ nil \});        
+          
+  for(\$i=0;\$i\<sizeof(\$info["criminals"]);\$i++) \{        
+    if(\$i\>=1) output += ", ";        
+    if(Get(\$info["criminals"][\$i], "skotos:charname")) \{        
+      output += capitalize(Get(\$info["criminals"][\$i], "skotos:charname"));        
+    \} else \{        
+      output += Describe(\$info["criminals"][\$i]);        
+    \}        
+  \}        
+  return output;        
+\} else if(\$script == "addaccomplice") \{        
+  if(!\$is_arrester) return "Error: You are not authorized to add criminal charges";        
+  if(!\$info) return "Error: No crime information found";        
+  if(!\$addcrim) return "Error: No name entered";        
+  \$tmp = Obj(::verify_char(\$char: \$addcrim));        
+  if(\$tmp) \{        
+    \$info["accomplices"] \|= (\{ \$tmp \});        
+  \} else \{        
+    return "Error: Unknown name";        
+  \}        
+  \$info["accomplices"] -= \$info["criminals"];        
+  \$info["accomplices"] -= (\{ nil \});        
+          
+  for(\$i=0;\$i\<sizeof(\$info["accomplices"]);\$i++) \{        
+    if(\$i\>=1) output += ", ";        
+    if(Get(\$info["accomplices"][\$i], "skotos:charname")) \{        
+      output += capitalize(Get(\$info["accomplices"][\$i], "skotos:charname"));        
+    \} else \{        
+      output += Describe(\$info["accomplices"][\$i]);        
+    \}        
+  \}        
+  return output;        
+\} else if(\$script == "update_crimename") \{        
+  if(!\$is_arrester) return "Error: You are not authorized to add criminal charges";        
+  if(!\$info) return "Error: No crime information found";        
+  if(!\$description) return "Error: No description entered";        
+  \$info["name"] = \$description;        
+  Set(\$db, Str(\$index), \$info);        
+  return \$description;        
+\} else if(\$script == "update_crimestatus") \{       
+  if(!\$is_arrester) return "Error: You are not authorized to add criminal charges";       
+  if(!\$info) return "Error: No crime information found";       
+  if(!\$description) return "Error: No description entered";       
+  \$info["status"] = \$description;      
+  Set(\$db, Str(\$index), \$info);       
+  return \$description;       
+\} else if(\$script == "update_crimedescription") \{        
+  if(!\$is_arrester) return "Error: You are not authorized to add criminal charges";        
+  if(!\$info) return "Error: No crime information found";        
+  if(!\$description) return "Error: No description entered";        
+  \$info["description"] = \$description;        
+  Set(\$db, Str(\$index), \$info);        
+  return \$description;        
+\} else if(\$script == "show_crimes") \{        
+  return ::display_charge();        
+\} else if(\$script == "describe_crime") \{        
+  if(!\$crime) return "Error: No crime requested";        
+  if(\$crime == "") return "";        
+  for(\$i=0;\$i\<sizeof(this.crimedbs);\$i++) \{        
+    \$db = this.crimedbs[\$i];        
+    if(\$db) \{        
+      if(Get(\$db, "crimes:"+\$crime) \&\& Get(\$db, "crimes:"+\$crime)["description"])        
+        return Get(\$db, "crimes:"+\$crime)["description"];        
+    \}        
+  \}        
+  return "No description found for this crime.";        
+\} else if(\$script == "add_crime") \{        
+  if(!\$is_arrester) return "Error: You are not authorized to add criminal charges";        
+  if(!\$info) return "Error: No crime information found";        
+  \$crim = Obj(::verify_char(\$char: \$crim));        
+  if(!\$crim) return "Error: No name entered";        
+  if(!\$crime) return "Error: No crime selected";        
+  if(!\$severity) return "Error: No severity selected";        
+          
+  \$crimes = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  if(!\$crimes) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index), ([ ]));        
+    \$crimes = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  \}        
+  if(\$crimes[\$crime]) \{        
+    /* crime already exists. Change the severity */        
+    if(\$crimes[\$crime]["severity"] \&\& \$crimes[\$crime]["severity"] == Int(\$severity))        
+      return "No changes necessary\\n(crime is already filed at this severity)";        
+    \$crimes[\$crime]["severity"] = Int(\$severity);        
+    if(!Int(\$severity)) \{        
+      if(Get(\$char, "skotos:charname")) \{        
+        \$crimes[\$crime]["droppedby"] = capitalize(Get(\$char, "skotos:charname"));        
+      \} else \{        
+        \$crimes[\$crime]["droppedby"] += Describe(\$char);        
+      \}        
+      return "Charges dropped";        
+    \}        
+    return "Severity changed";        
+  \}        
+  /* create the crime */        
+  if(Int(\$severity) == 0) \{        
+    return "Error: You cannot drop a charge that doesn't exist";        
+  \}        
+  \$crimes[\$crime] = ([ ]);        
+  \$crimes[\$crime]["severity"] = Int(\$severity);        
+  return "Charge added";        
+  return "Error: Adding a crime for "+name(\$crim)+" of "+\$crime+" with severity "+\$severity;        
+        
+          
+    \$crimes = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  if(!\$crimes \|\| !sizeof(map_indices(\$crimes))) \{        
+    return "\<h3\>No crimes are listed for "+\$name+" (yet?)\</h3\>";        
+  \}        
+  output += "\<h3\>";        
+  output += "Crimes charges for "+\$name+"\</h3\>\<p\>";        
+  \$indices = map_indices(\$crimes);        
+  for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{        
+    output += "\<strong\>"+\$indices[\$i]+"\</strong\>\<br/\>\\n";        
+  \}        
+  output += "\</p\>";        
+  return output;        
+\} else if(\$script == "view_evidence") \{        
+  return "Error: Do we need this? view_evidence";        
+  if(!\$info) return "Error: No crime information found";        
+  \$crim = Obj(::verify_char(\$char: \$crim));        
+  if(!\$crim) return "Error: No character selected";        
+  if(!\$crime) return "Error: No charge selected";        
+  /* do we need this \$name? */        
+  if(Get(\$crim, "skotos:charname")) \{        
+    \$name = capitalize(Get(\$crim, "skotos:charname"));        
+  \} else \{        
+    \$name += Describe(\$crim);        
+  \}        
+  return "Error: Here1";        
+  \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  if(!\$evidence \|\| !sizeof(map_indices(\$evidence))) return "";        
+  \$evidence = \$evidence[\$crime];        
+  return "Error: Here";        
+  if(!\$evidence \|\| !sizeof(\$evidence)) return "";        
+  if(\$evidence["evidence"] \&\& sizeof(\$evidence["evidence"])) \{        
+    output += "There is evidence here\<br/\>\\n";        
+  \}        
+  if(\$evidence["testimony"] \&\& sizeof(map_indices(\$evidence["testimony"]))) \{        
+    output += "\<i\>Testimonies:\</i\>\<br/\>\\n";        
+    for(\$i=0;\$i\<sizeof(map_indices(\$evidence["testimony"]));\$i++) \{        
+      output += "\<u\>"+\$evidence["testimony"][map_indices(\$evidence["testimony"])[\$i]][3]+"\</u\> - \<strong\>(";        
+      output += Str(\$evidence["testimony"][map_indices(\$evidence["testimony"])[\$i]][1])+")\</strong\>\<br/\>\\n";        
+      output += \$evidence["testimony"][map_indices(\$evidence["testimony"])[\$i]][2]+"\<br/\>\\n";        
+    \}        
+  \}        
+  if(output == "") \{        
+    output += "There is no evidence or testimonies filed for this charge.\<br/\>";        
+  \}        
+        
+  if(\$evidence["testimony"] \&\& \$evidence["testimony"][name(\$char)]) \{        
+  output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('add_evidence_"+\$crime+"').style.display = \\'block\\';\\"\>Change your testimony\</u\>]\<br/\>\\n";        
+  \} else \{        
+  output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('add_evidence_"+\$crime+"').style.display = \\'block\\';\\"\>Add your testimony\</u\>]\<br/\>\\n";        
+  \}        
+  if(\$is_arrester) \{        
+    output += "[\<u\>File evidence\</u\>]\<br/\>\\n";        
+  \}        
+  output += "\<div id='add_evidence_"+\$crime+"' style='display:none'\>\<strong\>Note:\</strong\> Please only write a testimony if you have information about this charge. If you are only giving your opinion then please use [Add your opinion] instead. It is acceptable for you to include IC lies in this testimony, but that may result in an IC charge of giving false testimony.\<br/\>\\n";        
+  output += "\<textarea cols='80' id='add_testimony_"+\$crime+"' rows='10'\>";        
+  if(\$evidence["testimony"] \&\& \$evidence["testimony"][name(\$char)])        
+    output += Str(\$evidence["testimony"][name(\$char)][2]);        
+  output += "\</textarea\>\<br/\>\\n";        
+  output += "\<select id='testimony_type_"+\$crime+"'\>\\n";        
+  output += "\<option VALUE='witness_guilty'\>I was a witness, and think they are guilty of this charge\</option\>\\n";        
+  output += "\<option VALUE='witness_innocent'\>I was a witness, and think they are innocent of this charge\</option\>\\n";        
+  output += "\<option VALUE='witness_undecided'\>I was a witness, but do not know if they are guilty or innocent\</option\>\\n";        
+  output += "\</select\>\\n";        
+  output += "\<select id='testimony_strength_"+\$crime+"'\>\\n";        
+  output += "\<option VALUE='solid_evidence'\>This is solid evidence\</option\>\\n";        
+  output += "\<option VALUE='circumstantial_evidence'\>This is circumstantial or unclear evidence\</option\>\\n";        
+  output += "\</select\>\<br/\>\\n";        
+  output += "\<input onclick=\\"add_testimony('"+\$crime+"', '"+\$index+"', document.getElementById('add_testimony_"+\$crime+"').value, document.getElementById('testimony_type_"+\$crime+"').value, document.getElementById('testimony_strength_"+\$crime+"').value);\\" type='button' value='Add my testimony'/\>\</div\>\\n";        
+  return output;        
+\} else if(\$script == "add_influence") \{        
+  if(!\$info) return "Error: No crime information found";        
+  \$crim = Obj(::verify_char(\$char: \$crim));        
+  if(!\$crim) return "Error: No character selected";        
+  if(!\$crime) return "Error: No charge selected";        
+  if(!\$type) return "Error: No influence type entered";        
+  if(!\$strength) return "Error: No influence strength selected";        
+  \$strength = Int(\$strength);     
+     
+  /* check that they have enough points to spend */     
+  if(!ironclaw::spend_influencepoints(\$actor: \$char, \$points: \$strength, \$type: "social"))     
+   return "Error: You do not have enough influence points to spend.";     
+     
+  /* check that the property for the evidence exists */        
+  \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  if(!\$evidence) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index), ([ ]));        
+    \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  \}        
+  \$evidence = \$evidence[\$crime];        
+  if(!\$evidence) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index)[\$crime], ([ ]));        
+    \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index)[\$crime]);        
+  \}        
+     
+  \$this_influence = \$evidence["influence"];        
+  if(!\$this_influence) \{     
+   \$evidence["influence"] = ([ ]);        
+   \$this_influence = \$evidence["influence"];        
+  \}     
+       
+  /* track who is spending influence */     
+  if(!\$this_influence["tracking"]) \$this_influence["tracking"] = (\{ \});     
+  \$this_influence["tracking"] += (\{ (\{ \$char, \$type, \$strength, time() \}) \});     
+       
+  /* add the influence spent */     
+  \$this_influence[\$type] = Int(\$this_influence[\$type]) + \$strength;     
+  /* constable influence is worth double. So add it again */     
+  if(\$char.guild == \$\{Allegory:Guilds:cityguard\})     
+   \$this_influence[\$type] = Int(\$this_influence[\$type]) + \$strength;     
+     
+  output = "Your influence has impacted the NPCs conducting this trial";        
+  return output;        
+\} else if(\$script == "add_testimony") \{        
+  if(!\$info) return "Error: No crime information found";        
+  \$crim = Obj(::verify_char(\$char: \$crim));        
+  if(!\$crim) return "Error: No character selected";        
+  if(!\$crime) return "Error: No charge selected";        
+  if(!\$testimony) return "Error: No testimony entered";        
+  if(!\$type) return "Error: No charge type selected";        
+  if(!\$strength) return "Error: No charge strength selected";        
+        
+  /* the reporter's name */        
+  if(Get(\$char, "skotos:charname")) \{        
+    \$name = capitalize(Get(\$char, "skotos:charname"));        
+  \} else \{        
+    \$name += Describe(\$char);        
+  \}        
+        
+  /* check that the property for the evidence exists */        
+  \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  if(!\$evidence) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index), ([ ]));        
+    \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  \}        
+  \$evidence = \$evidence[\$crime];        
+  if(!\$evidence) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index)[\$crime], ([ ]));        
+    \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index)[\$crime]);        
+  \}        
+  \$this_testimony = \$evidence["testimony"];        
+  if(!\$this_testimony) \{        
+    \$evidence["testimony"] = ([ ]);        
+    \$this_testimony = \$evidence["testimony"];        
+  \}        
+        
+  /* calculate the strength */        
+  if(\$strength == "solid_evidence") \{        
+    \$strength = 2;        
+  \} else if (\$strength == "circumstantial_evidence") \{        
+    \$strength = 1;        
+  \}        
+  if(\$type == "witness_innocent") \{        
+    \$strength = Int(\$strength) * -1;        
+  \} else if (\$type == "witness_undecided") \{        
+    \$strength = 0;        
+  \}        
+        
+  /* add their testimony */        
+  if(\$this_testimony[name(\$char)]) \{        
+    output = "Your testimony was modified";        
+  \} else \{        
+    output = "Your testimony was added";        
+  \}        
+  \$this_testimony[name(\$char)] = (\{ \$type, \$strength, \$testimony, \$name \});        
+  return output;        
+\} else if(\$script == "add_evidence") \{        
+  if(!\$is_arrester) return "Error: You are not authorized to file evidence.\\nSeek out a constable.";        
+  if(!\$info) return "Error: No crime information found";        
+  \$crim = Obj(::verify_char(\$char: \$crim));        
+  if(!\$crim) return "Error: No character selected";        
+  if(!\$crime) return "Error: No charge selected";        
+  if(!\$description) return "Error: No evidence description entered";        
+  if(!\$direction) return "Error: No info whether this shows guilt or innocence";        
+  if(!\$strength) return "Error: No evidence strength selected";        
+/*  if(!\$evidence_index) return "Error: No evidence index entered";        
+  if(!\$verify_description) return "Error: No evidence verification description entered";*/        
+        
+  /* the reporter's name */        
+  if(Get(\$char, "skotos:charname")) \{        
+    \$name = capitalize(Get(\$char, "skotos:charname"));        
+  \} else \{        
+    \$name += Describe(\$char);        
+  \}        
+        
+  /* check that the property for the evidence exists */        
+  \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  if(!\$evidence) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index), ([ ]));        
+    \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  \}        
+  \$evidence = \$evidence[\$crime];        
+  if(!\$evidence) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index)[\$crime], ([ ]));        
+    \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index)[\$crime]);        
+  \}        
+  \$this_evidence = \$evidence["evidence"];        
+  if(!\$this_evidence) \{        
+    \$evidence["evidence"] = (\{ \});        
+    \$this_evidence = \$evidence["evidence"];        
+  \}        
+        
+  \$strength = Int(\$strength);        
+  if(\$direction == "innocence")        
+    \$strength *= -1;        
+        
+  if(!\$evidence_index) \{        
+    /* no index. Create a new entry */        
+    \$this_evidence += (\{ (\{ \$description, \$strength, \$name \}) \});        
+    \$evidence["evidence"] = \$this_evidence;        
+    return "New Evidence Filed";        
+  \}        
+        
+  /* instead we were given an index for some evidence to replace */        
+  \$evidence_index = Int(\$evidence_index);        
+  if(\$this_evidence[\$evidence_index][0] == \$description \&\& \$this_evidence[\$evidence_index][1] == \$strength)        
+    return "No changes were made";        
+\$this_evidence[\$evidence_index][0] = replace_strings(\$this_evidence[\$evidence_index][0], "\\":", "\\"", "^", "'");   
+\$verify_description = replace_strings(\$verify_description, "\\":", "\\"", "^", "'");     
+  if(\$this_evidence[\$evidence_index][0] == \$verify_description) \{        
+    \$this_evidence[\$evidence_index] += (\{ copy(\$this_evidence[\$evidence_index]) \});        
+    \$this_evidence[\$evidence_index][0] = \$description;        
+    \$this_evidence[\$evidence_index][1] = \$strength;        
+    \$this_evidence[\$evidence_index][2] = \$name;        
+    return "Evidence update completed";        
+  \}        
+        
+  return "Changes NOT completed - someone else added or changed evidence since you last loaded the page. Try again.";        
+          
+  return "Error: Script to enter evidence\\n (not finished yet)";        
+        
+    \$this_evidence += (\{ (\{ \$description, \$strength, \$name \}) \});        
+    \$evidence["evidence"] = \$this_evidence;        
+    return "New Evidence Filed";        
+        
+        
+  /* calculate the strength */        
+  if(\$strength == "solid_evidence") \{        
+    \$strength = 2;        
+  \} else if (\$strength == "circumstantial_evidence") \{        
+    \$strength = 1;        
+  \}        
+  if(\$type == "witness_innocent") \{        
+    \$strength = Int(\$strength) * -1;        
+  \} else if (\$type == "witness_undecided") \{        
+    \$strength = 0;        
+  \}        
+        
+  /* add their testimony */        
+  if(\$this_testimony[name(\$char)]) \{        
+    output = "Your testimony was modified";        
+  \} else \{        
+    output = "Your testimony was added";        
+  \}        
+  \$this_testimony[name(\$char)] = (\{ \$type, \$strength, \$testimony, \$name \});        
+  return output;        
+\} else if(\$script == "add_opinion") \{        
+  if(!\$info) return "Error: No crime information found";        
+  \$crim = Obj(::verify_char(\$char: \$crim));        
+  if(!\$crim) return "Error: No character selected";        
+  if(!\$crime) return "Error: No charge selected";        
+  if(!\$testimony) return "Error: No testimony entered";        
+  if(!\$type) return "Error: No charge type selected";        
+        
+  /* the reporter's name */        
+  if(Get(\$char, "skotos:charname")) \{        
+    \$name = capitalize(Get(\$char, "skotos:charname"));        
+  \} else \{        
+    \$name += Describe(\$char);        
+  \}        
+        
+  /* check that the property for the evidence exists */        
+  \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  if(!\$evidence) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index), ([ ]));        
+    \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index));        
+  \}        
+  \$evidence = \$evidence[\$crime];        
+  if(!\$evidence) \{        
+    Set(\$crim, "crimes:charges:"+Str(\$index)[\$crime], ([ ]));        
+    \$evidence = Get(\$crim, "crimes:charges:"+Str(\$index)[\$crime]);        
+  \}        
+  \$this_testimony = \$evidence["opinion"];        
+  if(!\$this_testimony) \{        
+    \$evidence["opinion"] = ([ ]);        
+    \$this_testimony = \$evidence["opinion"];        
+  \}        
+        
+  /* add their testimony */        
+  if(\$this_testimony[name(\$char)]) \{        
+    output = "Your opinion was modified";        
+  \} else \{        
+    output = "Your opinion was added";        
+  \}        
+  \$this_testimony[name(\$char)] = (\{ \$type, \$testimony, \$name \});        
+  return output;        
+\} else if(\$script == "show_punishment_info") \{        
+  \$info = \$\{Allegory:Lib:Law:punishments\};        
+  if(!Get(\$info, \$punishment))        
+    return "\<p\>Unknown Punishment\</p\>";        
+  output = "\<p\>\<strong\>"+Get(\$info, \$punishment)["name"]+" - ";        
+  if(Get(\$info, \$punishment)["value"] == 1) \{        
+    output += Str(Get(\$info, \$punishment)["value"])+" point";        
+  \} else \{        
+    output += Str(Get(\$info, \$punishment)["value"])+" points";        
+  \}        
+  output += "\</strong\>\<br/\>\\n";        
+  output += Str(Get(\$info, \$punishment)["description"])+"\<br/\>\\n";        
+  output += "\<input onclick=\\"add_punishment(document.getElementById('punishlist').value);\\" type=\\"button\\" value=\\"Select this punishment\\"/\>\\n";        
+  output += "\</p\>";        
+  return output;        
+\} else if(\$script == "display_punishment") \{        
+  \$db = \$\{Allegory:Lib:Law:punishments\};        
+  \$crime = Get(\$char, "crimes:charges:"+Str(\$index));        
+  if(\$punishment) \{        
+    /* add a new punishment to the list */        
+    if(!(\$info = Get(\$db, \$punishment)))        
+      return "Error: Unknown punishment";        
+    if(!\$crime["punishvalue"]) \$crime["punishvalue"] = 0;        
+    if(!\$crime["punishments"]) \$crime["punishments"] = (\{ \});        
+        
+    /* can we add the punishment? */        
+    if(member(\$punishment, \$crime["punishments"]) \&\& !\$info["unlimited"])        
+      return "Error: You have already selected that punishment. Please choose another one.";        
+        
+    /* add this punishment */        
+    \$crime["punishvalue"] += \$info["value"];        
+    \$crime["punishments"] += (\{ \$punishment \});        
+  \}        
+        
+  /* display the punishments */        
+  if(!\$crime["punishments"] \|\| !sizeof(\$crime["punishments"])) return "No punishments selected\\n";        
+  \$crime["punishments"] -= (\{ nil \});        
+        
+  output = "\<ul\>\\n";        
+  for(\$i=0;\$i\<sizeof(\$crime["punishments"]);\$i++) \{        
+    \$info = Get(\$db, \$crime["punishments"][\$i]);        
+    output += "\<li\>"+capitalize(\$info["name"])+" - ";        
+    if(\$info["value"] == 1) \{        
+      output += Str(\$info["value"])+" point";        
+    \} else \{        
+      output += Str(\$info["value"])+" points";        
+    \}        
+    output += " [\<strong class=\\"clickable\\" onclick=\\"remove_punishment('"+Str(\$i)+"');\\"\>remove punishment\</strong\>]\</li\>\\n";        
+  \}        
+  output += "\</ul\>\\n";        
+  return output;        
+  output = "\<p\>\<strong\>"+Get(\$info, \$punishment)["name"]+" - ";        
+  if(Get(\$info, \$punishment)["value"] == 1) \{        
+    output += Str(Get(\$info, \$punishment)["value"])+" point";        
+  \} else \{        
+    output += Str(Get(\$info, \$punishment)["value"])+" points";        
+  \}        
+  output += "\</strong\>\<br/\>\\n";        
+  output += Str(Get(\$info, \$punishment)["description"])+"\<br/\>\\n";        
+  output += "\<input onclick=\\"add_punishment(document.getElementById('punishlist').value);\\" type=\\"button\\" value=\\"Select this punishment\\"/\>\\n";        
+  output += "\</p\>";        
+  return output;        
+\} else if(\$script == "remove_punishment") \{        
+  \$db = \$\{Allegory:Lib:Law:punishments\};        
+  \$crime = Get(\$char, "crimes:charges:"+Str(\$index));        
+  if(!\$crime["punishments"]) return "";        
+  if(!\$crime["punishvalue"]) \$crime["punishvalue"] = 0;        
+  \$punishment = Int(\$punishment);        
+        
+  if(!\$crime["punishments"][\$punishment] \|\| !(\$info = Get(\$db, \$crime["punishments"][\$punishment]))) return "Error: Unknown punishment";        
+        
+  /* remove the value of this punishment */        
+  \$crime["punishvalue"] -= \$info["value"];        
+  if(\$crime["punishvalue"] \< 0) \$crime["punishvalue"] = 0;        
+        
+  /* remove this punishment */        
+  \$tmp = \$punishment;        
+  \$punishment = \$crime["punishments"][\$punishment];        
+  \$crime["punishments"][\$tmp] = nil;        
+  \$crime["punishments"] -= (\{ nil \});        
+        
+  /* display the punishments */        
+  if(!\$crime["punishments"] \|\| !sizeof(\$crime["punishments"])) return "No punishments selected\\n";        
+        
+  output = "\<ul\>\\n";        
+  for(\$i=0;\$i\<sizeof(\$crime["punishments"]);\$i++) \{        
+    \$info = Get(\$db, \$crime["punishments"][\$i]);        
+    output += "\<li\>"+capitalize(\$info["name"])+" - ";        
+    if(\$info["value"] == 1) \{        
+      output += Str(\$info["value"])+" point";        
+    \} else \{        
+      output += Str(\$info["value"])+" points";        
+    \}        
+    output += " [\<strong class=\\"clickable\\" onclick=\\"remove_punishment('"+Str(\$i)+"');\\"\>remove punishment\</strong\>]\</li\>\\n";        
+  \}        
+  output += "\</ul\>\\n";        
+  return output;        
+  output = "\<p\>\<strong\>"+Get(\$info, \$punishment)["name"]+" - ";        
+  if(Get(\$info, \$punishment)["value"] == 1) \{        
+    output += Str(Get(\$info, \$punishment)["value"])+" point";        
+  \} else \{        
+    output += Str(Get(\$info, \$punishment)["value"])+" points";        
+  \}        
+  output += "\</strong\>\<br/\>\\n";        
+  output += Str(Get(\$info, \$punishment)["description"])+"\<br/\>\\n";        
+  output += "\<input onclick=\\"add_punishment(document.getElementById('punishlist').value);\\" type=\\"button\\" value=\\"Select this punishment\\"/\>\\n";        
+  output += "\</p\>";        
+  return output;        
+\} else if(\$script == "lock_in_punishment") \{        
+  /* are they in jail */        
+  if(!\$char."base:environment" \|\| !\$char."base:environment".jail)        
+    return "Error: You must be inside the newtown jail to lock in your punishments.";        
+  \$db = \$\{Allegory:Lib:Law:punishments\};        
+  \$crime = Get(\$char, "crimes:charges:"+Str(\$index));        
+  if(\$crime["locked"]) return "Error: Punishments have already been locked in for this crime";        
+  if(!\$crime["punishments"]) return "Error: No punishments selected";        
+  \$punishments = copy(\$crime["punishments"]);        
+        
+  if(!\$char."crimes:punishments") \$char."crimes:punishments" = (\{ \});        
+        
+  /* count any fines */        
+  if(member("punishment:fine", \$punishments)) \{        
+    /* add the fines */        
+    if(!\$char."crimes:punishments:finelevel")        
+      \$char."crimes:punishments:finelevel" = 2;        
+    if(!\$char."crimes:punishments:fine")        
+      \$char."crimes:punishments:fine" = 0;        
+    \$tmp = 0;        
+    for(\$i=0;\$i\<sizeof(\$punishments);\$i++) \{        
+      if(\$punishments[\$i] == "punishment:fine") \{        
+        \$tmp += \$char."crimes:punishments:finelevel";        
+        \$punishments[\$i] = nil;        
+      \}        
+    \}        
+    \$char."crimes:punishments:fine" += \$tmp;        
+    \$char."crimes:punishments:finelevel" *= 2;        
+    \$punishments -= (\{ nil \});        
+  \}        
+        
+  for(\$i=0;\$i\<sizeof(\$punishments);\$i++) \{        
+    if(FindMerry(\$db, "lib", \$punishments[\$i][11..])) \{        
+      Call(\$db, \$punishments[\$i][11..], \$char: \$char);        
+      \$punishments[\$i] = nil;        
+    \}        
+  \}        
+  \$punishments -= (\{ nil \});        
+        
+  \$char."crimes:punishments" += \$punishments;        
+  \$crime["locked"] = TRUE;        
+  if(\$char."crimes:arrestable")        
+    \$char."crimes:arrestable" -= (\{ Str(\$index) \});        
+  return "success";        
+\} else if(\$script == "show_punishment_points") \{        
+  \$crime = Get(\$char, "crimes:charges:"+Str(\$index));        
+  if(\$crime["punishvalue"]) \{        
+    return \$crime["punishvalue"];        
+  \}        
+  return 0;        
+\}        
+        
+return "Error: Unknown script";]\</z\>
+      </Core:Property>
+      <Core:Property property="html:index">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */       
+  ::popup_initialize();       
+  if(::verify_char(\$char: \$char, \$arrester: TRUE)) \{       
+    \$is_arrester = TRUE;       
+  \} else \{       
+    \$is_arrester = nil;       
+  \}       
+  /* get info about the crime */       
+  \$db = \$\{Allegory:Lib:Law:OpenDB\};       
+  if(!\$db) error("Crime database not found");       
+  return nil;]
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Crime Information - Triskellian Arrest/Prison System\</title\>
+    \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+\</head\>
+\<body\>
+\{? \| \$[(\$char."crimes:arrestable" \&\& sizeof(\$char."crimes:arrestable")) ? 1 : 0] \|
+\<h2\>Outstanding arrest warrants for \<capitalize what="\$(charname)" strip="1"/\>.\</h2\>
+\<ul\>
+\$[string output;  
+output = "";  
+for(\$i=0;\$i\<sizeof(\$char."crimes:arrestable");\$i++) \{  
+ output += "\<li\>\<a href=\\"list_crime?char="+name(\$char)+"\\\&item_index="+Str(\$char."crimes:arrestable"[\$i])+"\\"\>";       
+ output += Get(\$db, Str(\$char."crimes:arrestable"[\$i]))["name"];     
+ output += "\</a\>\</li\>\\n";  
+\}  
+return output;]
+\</ul\>
+\}
+\<h2\>Crimes under Investigation\</h2\>
+\<p\>
+\{? \| \$(is_arrester) \| [\<a href="arrest?char=\$[name(\$char)]"\>File a new crime for investigation\</a\>]\<br/\> \}
+\$[string output;       
+output = "";       
+\$num = Int(Get(\$db, "number"));      
+\$crimes = map_indices(Get(\$db, "*"));       
+\$crimes -= (\{ "number", "revisions" \});       
+  
+  
+  
+if(!\$crimes \|\| !sizeof(\$crimes))       
+  return "No crimes are currently under investigation.";       
+      
+output += "\<ul\>\\n";       
+for(\$i=\$num;\$i\>=1;\$i--) \{       
+  if(Get(\$db, Str(\$i))) \{      
+     
+    output += "\<li\>";       
+    output += "\<a href=\\"list_crime?char="+name(\$char)+"\\\&item_index="+Str(\$i)+"\\"\>";       
+    output += Get(\$db, Str(\$i))["name"];     
+    output += " - ";     
+    output += Get(\$db, Str(\$i))["status"];     
+    output += "\</a\>";     
+    \$list = Get(\$db, Str(\$i))["criminals"];       
+    \$list -= (\{ nil \});     
+   
+    if(sizeof(\$list) \&\& sizeof(\$list) \> 0) \{   
+      output += " - ";   
+    \}   
+     
+    for(\$j=0;\$j\<sizeof(\$list);\$j++) \{       
+      if(\$j\>=1) output += ", ";       
+      if(Get(\$list[\$j], "skotos:charname")) \{       
+        output += capitalize(Get(\$list[\$j], "skotos:charname"));       
+      \} else \{       
+        output += Describe(\$list[\$j]);       
+      \}       
+    \}       
+    \$list = Get(\$db, Str(\$i))["accomplices"];       
+    \$list -= Get(\$db, Str(\$i))["criminals"];       
+    \$list -= (\{ nil \});       
+    for(\$j=0;\$j\<sizeof(\$list);\$j++) \{       
+      if(\$j\>=1) \{       
+        output += ", ";       
+      \} else \{       
+        output += " Accomplices: ";       
+      \}       
+      if(Get(\$list[\$j], "skotos:charname")) \{       
+        output += capitalize(Get(\$list[\$j], "skotos:charname"));       
+      \} else \{       
+        output += Describe(\$list[\$j]);       
+      \}       
+    \}       
+    output += "\</li\>\\n";       
+  \}      
+\}       
+output += "\</ul\>\\n";       
+return output;]
+\</p\>
+\<hr/\>
+[\<a href="show_punishments?char=\$[name(\$char)]"\>View outstanding punishments (for yours or other characters)\</a\>]
+\<hr/\>
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:item_info">
+         X[S] \$[/* add a new item holder to the database */  
+string output;  
+output = "";  
+if(!\$db \|\| !(\$db = Obj(\$db)))  
+  return "Please select a category from the list at the top.";  
+if(!\$itemname \|\| \$itemname == "")  
+  return "Error: No item name specified.";  
+if(!\$category \|\| \$category == "")  
+  return "Error: No item name specified.";  
+  
+/* get item information */  
+\$item = Get(\$db, \$category+":"+\$itemname);  
+if(!\$item)  
+  return "Error: No item found.";  
+  
+\$description = \$item["description"];  
+if(!\$description) \$description = "No description available.";  
+if(\$value = \$item["value"]) \{  
+  if(Flt(\$value)==1.0) \{  
+    \$value = Str(\$value)+" point.";  
+  \} else \{  
+    \$value = Str(\$value)+" points.";  
+  \}  
+\} else \{  
+  \$value = "";  
+\}  
+  
+return \$description+"\|"+\$value;  
+  
+return "Info goes here";  
+/* check that a job with this name doesn't already exist */  
+/* first check the open job lists */  
+if(Get(\$db, "open:"+\$itemname))  
+  return "There is already a job named "+\$itemname+" listed in open jobs.";  
+/* then check the closed job lists */  
+if(Get(\$db, "closed:"+\$itemname))  
+  return "There is already a job named "+\$itemname+" listed in closed jobs.";  
+/* add the item to the job lists */  
+Set(\$db, "open:"+\$itemname, ([ "priority":time() ]));  
+return output;]
+      </Core:Property>
+      <Core:Property property="html:javascript">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+function GetXmlHttpObject() \\\{
+  var xmlHttp;
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:javascript-bak">
+         X[S] \<script type="text/javascript"\>
+onerror=handleErr;
+function handleErr(msg,url,l) \\\{
+  if(1) \\\{
+    var txt="";
+    txt="There was an error on this page.\\\\n\\\\n";
+    txt+="Error: " + msg + "\\\\n";
+    txt+="URL: " + url + "\\\\n";
+    txt+="Line: " + l + "\\\\n\\\\n";
+    txt+="Click OK to continue.\\\\n\\\\n";
+    alert(txt);
+  \\\}
+  return true;
+\\\}
+function GetXmlHttpObject() \\\{
+  var xmlHttp;
+  try \\\{
+    // Firefox, Opera 8.0+, Safari
+    xmlHttp=new XMLHttpRequest();
+  \\\} catch (e) \\\{
+    // Internet Explorer
+    try \\\{
+      xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    \\\} catch (e) \\\{
+      xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+    \\\}
+  \\\}
+  return xmlHttp;
+\\\}
+var categorydb;
+var str_category;
+function change_category(category) \\\{
+  if(!category) return;
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  //save the name and woe name of the category database we're currently using
+  if(category != str_category) \\\{
+    var url="change_category?dbrequest="+category;
+    xmlHttp.onreadystatechange=function() \\\{
+      if(xmlHttp.readyState==4) \\\{
+        categorydb = xmlHttp.responseText;
+        str_category = category;
+        change_category(category);
+      \\\}
+    \\\}
+  \\\} else \\\{
+    //repopulate the itemlist with the list of laws
+    var url="list_category?dbname="+categorydb+"\\\&category="+category;
+    xmlHttp.onreadystatechange=function() \\\{
+      if(xmlHttp.readyState==4) \\\{
+        if(xmlHttp.responseText == "Unknown database") \\\{
+          alert("Unknown database");
+        \\\} else \\\{
+          var list=xmlHttp.responseText.split("\\\|");
+          var select=document.getElementById("itemlist");
+          //clear the list
+          while(select.length)
+            select.remove(0);
+          //display the blurb
+          document.getElementById("blurb").innerHTML=list[0];
+          for(x=1;x\\\<list.length;x++) \\\{
+            var my_option = document.createElement('option');
+            my_option.text = list[x];
+            my_option.value = list[x];
+            select.add(my_option, null);
+          \\\}
+        \\\}
+      \\\}
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function item_info(item) \\\{
+  xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="item_info?itemname="+item+"\\\&db="+categorydb+"\\\&category="+str_category;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      var list=xmlHttp.responseText.split("\\\|");
+      document.getElementById("blurb").innerHTML="";
+      document.getElementById("description").innerHTML=list[0];
+      document.getElementById("value").innerHTML=list[1];
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:joblist">
+         X[S] \$[/* find which file keeps a list of the jobs */  
+if(!\$dbname \&\& !\$dbrequest) return "";  
+  
+/* is it asking for the database? */  
+if(\$dbrequest) \{  
+  if(!this.jobdb)  
+    this.jobdb = ([ ]);  
+  if(!(\$db = this.jobdb[\$dbrequest])) \{  
+    \$name = "";  
+    \$tmp = "";  
+    for(\$i=0;\$i\<strlen(name(this));\$i++) \{  
+      if(name(this)[\$i] != ':') \{  
+        \$tmp += char_to_string(name(this)[\$i]);  
+      \} else \{  
+        \$name += \$tmp + ":";  
+        \$tmp = "";  
+      \}  
+    \}  
+    \$name += \$dbrequest;  
+    catch(Call(\$\{Lib:objects\}, "create_of_type", \$type: "propcontainer"));  
+    \$db = Obj(\$name);  
+    this.jobdb[\$dbrequest] = \$db;  
+  \}  
+  return name(\$db);  
+\} else if (\$dbname) \{  
+  /* ok, we're querying a database */  
+  if(!(\$db = Obj(\$dbname)))  
+    return "Unknown database";  
+  \$list = map_indices(prefixed_map(Get(\$db, "*"), "open:"));  
+  \$output = "";  
+  \{  
+    int i, sz;  
+    sz = sizeof(\$list);  
+    for(i=0;i\<sz;i++) \{  
+      if(i!=0) \$output += "\|";  
+      \$output += replace_strings(\$list[i], "\|", "?")[5..];  
+    \}  
+  \}  
+  return \$output;  
+\}  
+return "";]
+      </Core:Property>
+      <Core:Property property="html:list_category">
+         X[S] \$[/* find which file keeps a list of the jobs */  
+  
+if(!\$category)  
+  return "Unknown category";  
+if(!\$dbname \|\| !(\$db = Obj(\$dbname)))  
+  return "Unknown database";  
+\$list = map_indices(prefixed_map(Get(\$db, "*"), \$category+":"));  
+\$output = "";  
+/* get the blurb */  
+\$output = Str(Get(\$db, "blurb:"+\$category));  
+\$output += "\|";  
+\{  
+  int i, sz;  
+  sz = sizeof(\$list);  
+  for(i=0;i\<sz;i++) \{  
+    if(i!=0) \$output += "\|";  
+    \$output += replace_strings(\$list[i], "\|", "?")[strlen(\$category)+1..];  
+  \}  
+\}  
+return \$output;]
+      </Core:Property>
+      <Core:Property property="html:list_crime">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */            
+  ::popup_initialize();            
+  if(::verify_char(\$char: \$char, \$arrester: TRUE)) \{            
+    \$is_arrester = TRUE;            
+  \} else \{            
+    \$is_arrester = nil;            
+  \}            
+  /* get info about the crime */            
+  \$db = \$\{Allegory:Lib:Law:OpenDB\};            
+  if(!\$db) error("Crime database not found");            
+  if(!\$item_index) \{            
+    if(\$db.number) \{            
+      \$item_index = \$db.number - 1;            
+    \} else \{            
+      error("Unknown item index");            
+    \}            
+  \}            
+  if(!(\$info=Get(\$db, Str(\$item_index))))            
+    error("No crime information found");            
+  return nil;]
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Crime Information - Triskellian Arrest/Prison System\</title\>
+    \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+  \$(this.html:javascript)
+  \$(this.html:evidencescript)
+\</head\>
+\<body\>
+\<a href="index?char=\$[name(\$char)]"\>\\\<== Back\</a\>
+\<h2\>Crime Information - \$[\$info["name"]]\</h2\>
+\<p\>
+Opened By:
+\{? \| \$(is_arrester) \|
+  \$[if(\$info["openedby"] == "") \{       
+         \$info["openedby"] = "Unknown";       
+     \}       
+       
+     return \$info["openedby"];]
+\}\<br/\>
+Date Opened:
+\{? \| \$(is_arrester) \|
+  \$[if(\$info["date"] == "" \|\| \$info["date"] == "Unknown") \{       
+         \$info["date"] = "Unknown";       
+         return \$info["date"];       
+     \} else \{       
+         return "[OOC: " + Str(ctime(Int(\$info["date"]))) + "]";       
+     \}]
+\}\<br/\>
+Name of Criminal(s): \<span id="show_crim"\>
+\$[string output;            
+output = "";            
+\$info["criminals"] -= (\{ nil \});       
+\$criminals = \$info["criminals"];         
+for(\$i=0;\$i\<sizeof(\$info["criminals"]);\$i++) \{            
+  if(\$i\>=1) output += ", ";            
+  if(Get(\$info["criminals"][\$i], "skotos:charname")) \{            
+    output += capitalize(Get(\$info["criminals"][\$i], "skotos:charname"));            
+  \} else \{            
+    output += Describe(\$info["criminals"][\$i]);            
+  \}            
+\}            
+return output;]
+\</span\>
+\{? \| \$(is_arrester) \|\<input type="text" id="add_crim"/\> \<input onclick="add_crim(document.getElementById('add_crim').value);" type="button" value="Add"/\>\}\<br/\>
+Name of Accomplice(s): \<span id="show_accomplice"\>
+\$[string output;            
+output = "";            
+\$info["accomplices"] -= (\{ nil \});     
+\$accomplices = \$info["accomplices"];           
+for(\$i=0;\$i\<sizeof(\$info["accomplices"]);\$i++) \{            
+  if(\$i\>=1) output += ", ";            
+  if(Get(\$info["accomplices"][\$i], "skotos:charname")) \{            
+    output += capitalize(Get(\$info["accomplices"][\$i], "skotos:charname"));            
+  \} else \{            
+    output += Describe(\$info["accomplices"][\$i]);            
+  \}            
+\}            
+return output;]
+\</span\>
+\{? \| \$(is_arrester) \|\<input type="text" id="add_accomplice"/\> \<input onclick="add_accomplice(document.getElementById('add_accomplice').value);" type="button" value="Add"/\>\}\<br/\>
+Name of Crime:
+\{? \| \$(is_arrester) \|\<input id="crime_name" type="text" value="\$[\$info["name"]]" size="60"/\>\<input onclick="update_crimename(document.getElementById('crime_name').value);" type="button" value="Update"/\>\|\$[\$info["name"]]\}\<br/\>
+Case Status:
+\{? \| \$(is_arrester) \|
+\$[\$status = \$info["status"];           
+    \$options = (\{ "\<font color='green'\>Case Open\</font\>", "\<font color='red'\>Case Closed\</font\>", "\<font color='green'\>Case Open - arrest warrant issued\</font\>", "\<font color='brown'\>No Suspects\</font\>", "\<font color='red'\>Case Closed (unresolved)\</font\>" \});           
+           
+    \$retStr = "\<select id=\\"crime_status\\" name=\\"crime_status\\" onchange=\\"update_crimestatus(this.value);\\"\>";           
+    if(\$status == "") \{         
+        \$retStr += "\<option name=\\"\\" value=\\"\\" selected=\\"selected\\"\>" + "(select one)" + "\</option\>";           
+    \} else \{         
+        \$retStr += "\<option name=\\"\\" value=\\"\\"\>" + "(select one)" + "\</option\>";           
+    \}         
+    for(\$i = 0; \$i \< sizeof(\$options); \$i++) \{           
+        if(\$status == \$options[\$i]) \{           
+            \$retStr += "\<option name=\\"" + \$options[\$i] + "\\" value=\\"" + \$options[\$i] + "\\" selected=\\"selected\\"\>" + \$options[\$i] + "\</option\>";           
+        \} else \{           
+            \$retStr += "\<option name=\\"" + \$options[\$i] + "\\" value=\\"" + \$options[\$i] + "\\"\>" + \$options[\$i] + "\</option\>";           
+        \}           
+    \}           
+    \$retStr += "\</select\>";]
+\$(retStr)
+\| \$[\$info["status"]]\}
+\$["";    
+    \$retStr = "";    
+        \$retStr ="\<table border=\\"0\\"\>";    
+        \$retStr += "\<tr\>\<td\>\<b\>Chosen Punishments:\</b\>\</td\>\</tr\>";    
+          if(\$criminals \&\& sizeof(\$criminals)) \{   
+            for(\$i = 0; \$i \< sizeof(\$criminals); \$i++) \{    
+              if(Get(\$criminals[\$i], "crimes:charges:" + \$item_index)) \{   
+              \$charge = Get(\$criminals[\$i], "crimes:charges:" + \$item_index);    
+              if(\$charge["locked"] \&\& \$charge["locked"] == 1) \{   
+                \$retStr += "\<tr\>\<td\>\<i\>" + capitalize(\$criminals[\$i]."skotos:charname") + "\</i\>\</td\>\</tr\>";     
+                if(!\$charge["punishments"]) \{    
+                    \$retStr += "\<tr\>\<td\>- No conviction\</td\>\</tr\>";   
+                \} else if(!sizeof(\$charge["punishments"])) \{   
+                    \$retStr += "\<tr\>\<td\>- No punishments selected yet\</td\>\</tr\>";   
+                \} else \{    
+                    \$punish = \$charge["punishments"];    
+                    for(\$j = 0; \$j \< sizeof(\$punish); \$j++) \{    
+                      if(\$punish[\$j] == "punishment:fine") \{    
+                          \$retStr += "\<tr\>\<td\>- Pay a fine.\</td\>\<tr\>";    
+                      \} else \{    
+                        if(Get(\$\{Allegory:Lib:Law:punishments\}, \$punish[\$j])) \{    
+                            \$retStr += "\<tr\>\<td\>- " + Get(\$\{Allegory:Lib:Law:punishments\}, \$punish[\$j])["description"] + "\</td\>\</tr\>";    
+                        \} else \{    
+       \$retStr += "\<tr\>\<td\>- " + \$punish[\$j] + "\</td\>\</tr\>";    
+                        \}    
+                      \}    
+                    \}    
+                \}    
+              \}   
+             \}   
+            \}    
+          \}   
+   
+          if(\$accomplices \&\& sizeof(\$accomplices)) \{   
+    
+            for(\$i = 0; \$i \< sizeof(\$accomplices); \$i++) \{    
+              if(Get(\$accomplices[\$i], "crimes:charges:" + \$item_index)) \{   
+              \$charge = Get(\$accomplices[\$i], "crimes:charges:" + \$item_index);    
+              if(\$charge["locked"] \&\& \$charge["locked"] == 1) \{   
+                \$retStr += "\<tr\>\<td colspan=\\"2\\"\>\<i\>" + capitalize(\$accomplices[\$i]."skotos:charname") + "\</i\>\</td\>\</tr\>";    
+   
+                if(!\$charge["punishments"]) \{    
+                    \$retStr += "\<tr\>\<td\>- No conviction\</td\>\</tr\>";   
+                \} else if(!sizeof(\$charge["punishments"])) \{   
+                    \$retStr += "\<tr\>\<td\>- No punishments selected yet\</td\>\</tr\>";   
+                \} else \{    
+                    \$punish = \$charge["punishments"];    
+                    for(\$j = 0; \$j \< sizeof(\$punish); \$j++) \{    
+                      if(\$punish[\$j] == "punishment:fine") \{    
+                          \$retStr += "\<tr\>\<td\>- Pay a fine.\</td\>\<tr\>";    
+                      \} else \{    
+                        if(Get(\$\{Allegory:Lib:Law:punishments\}, \$punish[\$j])) \{    
+                            \$retStr += "\<tr\>\<td\>- " + Get(\$\{Allegory:Lib:Law:punishments\}, \$punish[\$j])["description"] + "\</td\>\</tr\>";    
+                        \} else \{    
+       \$retStr += "\<tr\>\<td\>- " + \$punish[\$j] + "\</td\>\</tr\>";    
+                        \}    
+                      \}    
+                    \}    
+                \}    
+              \}   
+       \}   
+            \}   
+           \}   
+    
+        \$retStr +="\</table\>";]
+\$(retStr)
+\<br/\>
+Description of Crime:\<br/\>
+\{? \| \$(is_arrester) \|
+\<textarea cols="60" id="crime_description" rows="5"\>\$[\$info["description"]]\</textarea\>\<br/\>
+\<input onclick="update_crimedescription(document.getElementById('crime_description').value);" type="button" value="Update description"/\>
+\|\$[\$info["description"]]\}
+\<hr/\>
+View charges and evidence for \<select NAME="crimlist" id="crimlist" onchange="show_crimes(this.value);"\>
+    \<option VALUE=""\>\</option\>
+\$[string output;            
+output = "";            
+\$info["criminals"] -= (\{ nil \});            
+\$info["accomplices"] -= (\{ nil \});            
+for(\$i=0;\$i\<sizeof(\$info["criminals"]);\$i++) \{            
+  output += "\<option VALUE='"+name(\$info["criminals"][\$i])+"'\>";            
+  if(Get(\$info["criminals"][\$i], "skotos:charname")) \{            
+    output += capitalize(Get(\$info["criminals"][\$i], "skotos:charname"));            
+  \} else \{            
+    output += Describe(\$info["criminals"][\$i]);            
+  \}            
+  output += "\</option\>\\n";            
+\}            
+for(\$i=0;\$i\<sizeof(\$info["accomplices"]);\$i++) \{            
+  output += "\<option VALUE='"+name(\$info["accomplices"][\$i])+"'\>";            
+  if(Get(\$info["accomplices"][\$i], "skotos:charname")) \{            
+    output += capitalize(Get(\$info["accomplices"][\$i], "skotos:charname"));            
+  \} else \{            
+    output += Describe(\$info["accomplices"][\$i]);            
+  \}            
+  output += "\</option\>\\n";            
+\}            
+return output;]
+  \</select\>
+\</p\>
+\<div id="byline"\>\</div\>
+\<script type="text/javascript"\>
+  show_crimes(document.getElementById('crimlist').value);
+\</script\>
+\<div id="addevidence"\>\</div\>
+\<div id="addopinion"\>\</div\>
+\{? \| \$(is_arrester) \|
+\<div id="addcrime"\>
+  \<select NAME="crimelist" id="crimelist" onchange="describe_crime(this.value);"\>
+    \<option VALUE=""\>\</option\>
+\$[string output; output = "";            
+\$list = (\{ \});            
+for(\$i=0;\$i\<sizeof(this.crimedbs);\$i++) \{            
+  \$db = this.crimedbs[\$i];            
+  if(\$db)            
+    \$list += map_indices(prefixed_map(\$db."*", "crimes:"));            
+\}            
+for(\$i=0;\$i\<sizeof(\$list);\$i++)            
+  output += "\<option value='"+\$list[\$i][7..]+"'\>"+capitalize(\$list[\$i][7..])+"\</option\>\\n";            
+return output;]
+  \</select\>
+  \<select NAME="crimeseverity" id="crimeseverity"\>
+    \<option VALUE="2"\>Normal charge\</option\>
+    \<option VALUE="1"\>Minor charge\</option\>
+    \<option VALUE="4"\>Major charge\</option\>
+    \<option VALUE="0"\>Drop charge\</option\>
+  \</select\>
+\</div\>
+\<div id="crimedesc"\>\</div\>
+\<input onclick="add_crime(document.getElementById('crimelist').value, document.getElementById('crimeseverity').value);" type="button" value="Add crime (or change severity)"/\>
+\<script type="text/javascript"\>
+  describe_crime(document.getElementById('crimelist').value);
+\</script\>
+\|\}
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:new_item">
+         X[S] \$[/* add a new item holder to the database */  
+string output;  
+output = "";  
+if(!\$db \|\| !(\$db = Obj(\$db))) \{  
+  return "Please select a category from the list at the top.";  
+\}  
+if(!\$itemname \|\| \$itemname == "") return "Error: No item name specified.";  
+/* check that a job with this name doesn't already exist */  
+/* first check the open job lists */  
+if(Get(\$db, "open:"+\$itemname))  
+  return "There is already a job named "+\$itemname+" listed in open jobs.";  
+/* then check the closed job lists */  
+if(Get(\$db, "closed:"+\$itemname))  
+  return "There is already a job named "+\$itemname+" listed in closed jobs.";  
+/* add the item to the job lists */  
+Set(\$db, "open:"+\$itemname, ([ "priority":time() ]));  
+return output;]
+      </Core:Property>
+      <Core:Property property="html:punishmentscript">
+         X[S] \<script type="text/javascript"\>
+var points;
+var lockin;
+lockin = 0;
+function show_punishment_info(punishment) \\\{
+  if(!punishment \\\|\\\| punishment == "") \\\{
+    document.getElementById("show_punishment_info").innerHTML="";
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=show_punishment_info\\\&char=\$(charname)\\\&punishment="+punishment;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("show_punishment_info").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function add_punishment(punishment) \\\{
+  if(!punishment \\\|\\\| punishment == "") \\\{
+    alert("No punishment selected");
+    return;
+  \\\}
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=display_punishment\\\&char=\$(charname)\\\&index=\$(item_index)\\\&punishment="+punishment;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("show_selected_punishments").innerHTML=xmlHttp.responseText;
+      show_punishment_points();
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function remove_punishment(punishment) \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=remove_punishment\\\&char=\$(charname)\\\&index=\$(item_index)\\\&punishment="+punishment;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("show_selected_punishments").innerHTML=xmlHttp.responseText;
+      show_punishment_points();
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function refresh_punishments() \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=display_punishment\\\&char=\$(charname)\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("show_selected_punishments").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function show_punishment_points() \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  var url="general_script?script=show_punishment_points\\\&char=\$(charname)\\\&index=\$(item_index)\\\&points="+points;
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      document.getElementById("show_points").innerHTML= "Punishment points selected: "+xmlHttp.responseText+"\<br/\>";
+      document.getElementById("show_points").innerHTML+= "Punishment points remaining: ";
+      var remaining = points - xmlHttp.responseText;
+      if(remaining \\\< 0) remaining = 0;
+      if(remaining \\\> 0) \\\{
+        lockin = 0;
+        document.getElementById("show_points").innerHTML+= "\\\<font color='red'\\\>"+remaining+"\\\</font\\\>";
+        document.getElementById("select_punishments").style.display="block";
+        document.getElementById("lock_in_punishments").style.display="none";
+      \\\} else \\\{
+        lockin = 1;
+        document.getElementById("show_points").innerHTML+= remaining;
+        document.getElementById("select_punishments").style.display="none";
+        document.getElementById("lock_in_punishments").style.display="block";
+      \\\}
+      //document.getElementById("show_points").innerHTML=xmlHttp.responseText;
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+function lock_in_punishment() \\\{
+  var xmlHttp=GetXmlHttpObject();
+  if (xmlHttp==null) \\\{
+    alert ("Your browser does not support AJAX!");
+    return;
+  \\\}
+  if(!lockin) \\\{
+    alert("You have not yet selected enough punishments.");
+    return;
+  \\\}
+  var url="general_script?script=lock_in_punishment\\\&char=\$(charname)\\\&index=\$(item_index)";
+  xmlHttp.onreadystatechange=function() \\\{
+    if(xmlHttp.readyState==4) \\\{
+      if(xmlHttp.responseText.substring(0,6) == "Error:") \\\{
+        alert(xmlHttp.responseText);
+        return;
+      \\\}
+      alert("Punishment locked in");
+      window.location="show_punishments?char=\$(char.name)";
+    \\\}
+  \\\}
+  xmlHttp.open("GET",url,true);
+  xmlHttp.send(null);
+\\\}
+\</script\>
+      </Core:Property>
+      <Core:Property property="html:set_info">
+         X[S] \$[/* add a new item holder to the database */  
+string output;  
+output = "";  
+if(!\$db \|\| !(\$db = Obj(\$db)))  
+  return "Please select a category from the list at the top.";  
+if(!\$itemname \|\| \$itemname == "")  
+  return "Error: No item name specified.";  
+if(!\$info \|\| \$info == "")  
+  return "Error: No information query specified.";  
+  
+/* get item information */  
+\$item = Get(\$db, "open:"+\$itemname);  
+if(!\$item)  
+  return "Error: No item found.";  
+  
+/* what information are we after? */  
+if(\$info == "requires_approval") \{  
+  if(!\$value) return "Error: No value specified.";  
+  if(\$value == "no") \{  
+    \$item["approval"] = "unneeded";  
+    return "";  
+  \} else if (\$value == "yes") \{  
+    /* prompt for information about the approval that is needed */  
+    output = "Why does the job require approval? \<input type=\\"text\\" size=50 name=\\"approval_reason\\" value=\\"Should this item be added in-game?\\"/\>\<br/\>";  
+    output += "Who should give approval? \<input type=\\"text\\" size=50 name=\\"approval_people\\" value=\\"Building leads\\"/\>";  
+    return output;  
+  \}  
+  return "Error: Unexpected response.";  
+\}  
+  
+return output;]
+      </Core:Property>
+      <Core:Property property="html:show_punishments">
+         X[S] \<z dat="\$(UDat.Dat)" name="\$(UDat.Name)"\>
+\$[/* run some initial code */  
+  ::popup_initialize();  
+  if(!\$crim \|\| strlen(\$crim)\<3) \{  
+    \$crim = \$char;  
+  \} else \{  
+    if(typeof(\$crim) == 3) \{  
+      /* \$crim is a string. make it an object */  
+      if(Obj(\$crim)) \{  
+        \$crim = Obj(\$crim);  
+      \} else \{  
+        \$crim = lower_case(\$crim);  
+        \$crim = Obj("Chatters:AE:"+\$crim[0..1]+":"+\$crim);  
+      \}  
+    \}  
+    if(!::verify_char(\$char: \$crim))  
+      \$crim = \$char;  
+  \}  
+  if(::verify_char(\$char: \$char, \$arrester: TRUE)) \{  
+    \$is_arrester = TRUE;  
+  \} else \{  
+    \$is_arrester = nil;  
+  \}  
+  /* get info about the crime */  
+  \$punish_db = \$\{Allegory:Lib:Law:punishments\};  
+  if(!\$punish_db) error("Punishment database not found");  
+  if(Get(\$crim, "skotos:charname")) \{  
+    \$name = capitalize(Get(\$crim, "skotos:charname"));  
+  \} else \{  
+    \$name += Describe(\$crim);  
+  \}  
+  return nil;]
+\$["\<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\"/\>"]
+\<html lang="en"\>
+\<head\>
+  \<title\>Crime Information - Pending punishments\</title\>
+  \<style\>.clickable \\\{ cursor: pointer; color: #0000FF;\\\}\</style\>
+  \$(this.html:javascript)
+  \$(this.html:punishmentscript)
+\</head\>
+\<body\>
+\{? \| \$(is_arrester) \|
+\$[/* remove any completed punishments */  
+if(!\$punishment) return nil;  
+if(!\$id) return nil;  
+if(\$crim."crimes:punishments:id" == \$id) return nil;  
+if(!\$crim."crimes:punishments") return nil;  
+for(\$i=0;\$i\<sizeof(\$crim."crimes:punishments");\$i++) \{  
+  if(\$crim."crimes:punishments"[\$i] == \$punishment) \{  
+    if(!\$crim."crimes:punishments:completed")  
+      \$crim."crimes:punishments:completed" = (\{ \});  
+    \$crim."crimes:punishments:completed" += (\{ (\{ \$crim."crimes:punishments"[\$i], name(\$char), \$char."skotos:charname" \}) \});  
+    \$crim."crimes:punishments"[\$i] = nil;  
+    \$crim."crimes:punishments:id" = \$id;  
+    break;  
+  \}  
+\}  
+return nil;]
+\}
+\<a href="index?char=\$[name(\$char)]"\>\\\<== Back\</a\>
+\<zform char="\$(char)"\>
+    \<input type="text" name="crim_name"/\>
+    \<input type="submit" value="Check this character"/\>
+    \<action\>
+      \<redirect propob="\$(this)" prop="show_punishments" char="\$(char)" crim="\$(crim_name)"/\>
+    \</action\>
+\</zform\>
+\<h2\>Pending punishments for \$(name)\</h2\>
+\$[string output; output = "";  
+if(!\$crim."crimes:punishments") \$crim."crimes:punishments" = (\{ \});  
+\$crim."crimes:punishments" -= (\{ nil \});  
+\$punishments = \$crim."crimes:punishments";  
+for(\$i=0;\$i\<sizeof(\$punishments);\$i++) \{  
+  if(\$info = Get(\$punish_db, \$punishments[\$i])) \{  
+    output += "\<p\>\<strong\>"+\$info["name"]+"\</strong\> - "+\$info["description"];  
+    if(\$is_arrester)  
+      output += "\<br/\>\<input onclick=\\"window.location='show_punishments?char="+name(\$char)+"\\\&crim="+name(\$crim)+"\\\&punishment="+\$punishments[\$i]+"\\\&id="+(random(10000)+1)+"';\\" type=\\"button\\" value=\\"This punishment has been completed\\"/\>";  
+    output += "\</p\>";  
+  \}  
+\}  
+  
+if(\$is_arrester \&\& \$crim."crimes:punishments:completed" \&\& sizeof(\$crim."crimes:punishments:completed")) \{  
+  output += "\<h2\>Completed Punishments\</h2\>";  
+  \$punishments = \$crim."crimes:punishments:completed";  
+  for(\$i=0;\$i\<sizeof(\$punishments);\$i++) \{  
+    if(\$info = Get(\$punish_db, \$punishments[\$i][0])) \{  
+      output += "\<p\>\<strong\>"+\$info["name"]+"\</strong\> - "+\$info["description"];  
+      output += "\<br/\>Completed by: "+capitalize(Str(\$punishments[\$i][2]))+"\</p\>";  
+    \}  
+  \}  
+\}  
+  
+if(\$char."crimes:punishments:jailtime" \&\& \$char."crimes:punishments:jailtime"-time() \> 0) \{  
+  \$time = \$char."crimes:punishments:jailtime"-time();  
+  output += "\<p\>"+\$name+" is to be kept in prison for another "+dump_value(\$time)+" seconds.\</p\>";  
+\}  
+  
+if(\$char."crimes:punishments:docktown" \&\& \$char."crimes:punishments:docktown"-time() \> 0) \{  
+  \$time = \$char."crimes:punishments:docktown"-time();  
+  if(\$char."crimes:punishments:jailtime" \&\& \$char."crimes:punishments:jailtime"-time() \> 0) \{  
+    \$jailtime = \$char."crimes:punishments:jailtime"-time();  
+  \} else \{  
+    \$jailtime = 0;  
+  \}  
+  if(\$time \> \$jailtime+60*10)  
+    output += "\<p\>"+\$name+" is to be restricted to docktown for another "+dump_value(\$time)+" seconds.\</p\>";  
+\}  
+  
+  
+if(!output \|\| output == "")  
+  output = "\<p\>There are no outstanding punishments for "+\$name+".\</p\>\\n";  
+return output;]
+\</body\>
+\</html\>
+\</z\>
+      </Core:Property>
+      <Core:Property property="html:time">
+         X[S] \$[int i, sz;  
+object *wholist;  
+string output;  
+  
+wholist = common::wholist();  
+sz = sizeof(wholist);  
+output = "";  
+for(i=0;i\<sz;i++)\{  
+  if(i\>0) output += ", ";  
+  output += Describe(wholist[i]);  
+\}  
+return output;]
+      </Core:Property>
+      <Core:Property property="html:verify_char">
+         X[S] \$[/* is this a valid character? */  
+if(!(::verify_char(\$char: \$char))) return "invalid";  
+  
+/* Is this someone who can make arrests? */  
+if(::verify_char(\$char: \$char, \$arrester: TRUE))  
+  return "arrester";  
+  
+return "valid";]
+      </Core:Property>
+      <Core:Property property="jobdb">
+         ([ nil:\<Ironclaw:Lib:Test:Ironclaw:Lib:Test:items\>, "crimes":\<Allegory:Lib:Law:crimes\>, "guiding":\<Ironclaw:Lib:Test:guiding\>, "item_code":\<Ironclaw:Lib:Test:item_code\>, "items":\<Ironclaw:Lib:Test:items\>, "legwarmer":\<Ironclaw:Lib:Test:legwarmer\>, "misdemeanors":\<Ironclaw:Lib:Law:misdemeanors\>, "plotting":\<Ironclaw:Lib:Test:plotting\>, "property":\<Ironclaw:Lib:Law:property\>, "requests":\<Ironclaw:Lib:Law:requests\>, "room_code":\<Ironclaw:Lib:Test:room_code\>, "rooms":\<Ironclaw:Lib:Test:rooms\>, "slaves":\<Ironclaw:Lib:Law:slaves\>, "systems":\<Ironclaw:Lib:Test:systems\>, "tailwarmer":\<Ironclaw:Lib:Test:tailwarmer\> ])
+      </Core:Property>
+      <Core:Property property="merry:act:enter%arrestable">
+         X[M] /* when moving between rooms, check if anyone in the new location has an arrest warrant */
+
+/* delay so they can arrive in the new room first */
+\$delay(1.5, TRUE, "e148");
+
+/* check each PC in the room to see if they can be arrested */
+\$pcs = Match(\$actor."base:environment", "pc");
+if(sizeof(\$pcs) \> 1) \{
+ for(\$i=0;\$i\<sizeof(\$pcs);\$i++) \{
+  if(NRefOb(\$pcs[\$i])."crimes:arrestable" \&\& sizeof(Arr(NRefOb(\$pcs[\$i])."crimes:arrestable"))) \{
+   \$crim = NRefOb(\$pcs[\$i]);
+   EmitTo(\$actor, TAG("There is an outstanding arrest warrant for "+Describe(\$pcs[\$i])+". "+capitalize(\$crim."base:pronoun")+" is wanted for:", "IMP"));
+   \$db = \$\{Allegory:Lib:Law:OpenDB\};
+   for(\$j=0;\$j\<sizeof(Arr(\$crim."crimes:arrestable"));\$j++) \{
+    EmitTo(\$actor, TAG("- "+Str(Get(\$db, Str(Arr(\$crim."crimes:arrestable")[\$j]))["name"]), "IMP"));
+   \}
+  \}
+ \}
+\}
+
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:display_charge">
+         X[M] /* display information about this charge for this PC */ 
+  string output, ch_output; 
+  int total_value_needed, total_value_collected, additional_punishment, arrestable; 
+  int i, sz; 
+  output = ch_output = ""; 
+  total_value_needed = total_value_collected = additional_punishment = 0; 
+  arrestable = TRUE; 
+  if(!\$info) return "Error: No crime information found"; 
+  \$crim = Obj(::verify_char(\$char: \$crim)); 
+  if(!\$crim) return ""; 
+  if(Get(\$crim, "skotos:charname")) \{ 
+    \$name = capitalize(Get(\$crim, "skotos:charname")); 
+  \} else \{ 
+    \$name += Describe(\$crim); 
+  \} 
+  \$crimes = Get(\$crim, "crimes:charges:"+Str(\$index)); 
+  if(!\$crimes) \{ 
+    return "\<h3\>No crimes are listed for "+\$name+" (yet?)\</h3\>"; 
+  \} 
+  \$indices = map_indices(\$crimes); 
+  if(member("locked", \$indices)) \{ 
+    \$locked = TRUE; 
+  \} else \{ 
+    \$locked = nil; 
+  \} 
+  /* ignore the flags that aren't charges */ 
+  \$indices -= (\{ "arrestable", "punishments", "punishvalue", "locked" \}); 
+  if(!sizeof(\$indices)) \{ 
+    return "\<h3\>No crimes are listed for "+\$name+" (yet?)\</h3\>"; 
+  \} 
+  for(\$i=0;\$i\<sizeof(\$indices);\$i++) \{ 
+    mapping charge; 
+    int severity, current_value, needed_value; 
+    charge = \$crimes[\$indices[\$i]]; 
+    severity = charge["severity"]; 
+    if(!severity) \{ 
+      ch_output += "\<strong\>"+capitalize(\$indices[\$i])+"\</strong\> (charge dropped by "+Str(charge["droppedby"])+")\<br/\>\\n"; 
+      continue; 
+    \} 
+ 
+    /* count the needed points */ 
+    needed_value = 0; 
+    sz = sizeof(this.crimedbs); 
+    for(i=0;i\<sz\&\&!needed_value;i++) \{ 
+      \$db = this.crimedbs[i]; 
+      if(\$db) \{ 
+        if(Get(\$db, "crimes:"+\$indices[\$i]) \&\& Get(\$db, "crimes:"+\$indices[\$i])["value"]) 
+          needed_value = Get(\$db, "crimes:"+\$indices[\$i])["value"]; 
+      \} 
+    \} 
+    needed_value = Int((Flt(severity)/2.0)*Flt(needed_value)); 
+    total_value_needed += needed_value; 
+    /* count the current points */ 
+    current_value = 0; 
+    if(charge["evidence"]) \{ 
+      \$evidence = charge["evidence"]; 
+      for(\$j=0;\$j\<sizeof(\$evidence);\$j++) \{ 
+        current_value += \$evidence[\$j][1]; 
+      \} 
+    \} 
+    if(charge["testimony"]) \{ 
+      \$evidence = charge["testimony"]; 
+      for(\$j=0;\$j\<sizeof(map_indices(\$evidence));\$j++) \{ 
+        current_value += \$evidence[map_indices(\$evidence)[\$j]][1]; 
+      \} 
+    \} 
+    if(charge["opinion"]) \{ 
+      \$int_for = 0; 
+      \$int_against = 0; 
+      \$evidence = charge["opinion"]; 
+      for(\$j=0;\$j\<sizeof(map_indices(\$evidence));\$j++) \{ 
+        if(\$evidence[map_indices(\$evidence)[\$j]][0] == "witness_guilty") \{ 
+          \$int_for++; 
+        \} else if(\$evidence[map_indices(\$evidence)[\$j]][0] == "witness_innocent") \{ 
+          \$int_against++; 
+        \} 
+      \} 
+      if(\$int_for \> \$int_against) \{ 
+        current_value += 1; 
+      \} else if(\$int_against \> \$int_for) \{ 
+        current_value -= 1; 
+      \} 
+    \} 
+    if(charge["influence"]) 
+     current_value += Int(charge["influence"]["guilty"]) - Int(charge["influence"]["innocent"]); 
+ 
+    total_value_collected += current_value; 
+ 
+    if(charge["influence"]) 
+     additional_punishment = Int(charge["influence"]["punishment"]); 
+ 
+    /* replaced show_evidence script */ 
+    if(current_value \>= needed_value \&\& total_value_needed \> 0) \{ 
+      ch_output += "\<font color='red'\>"; 
+    \} else \{ 
+      arrestable = FALSE; 
+    \} 
+    ch_output += "\<strong class=\\"clickable\\" onclick=\\"show_crimes('"+name(\$crim)+"', '"+\$indices[\$i]+"');\\"\>"+capitalize(\$indices[\$i])+" ("; 
+ 
+    if(severity == 1) \{ 
+      ch_output += "Minor charge: "; 
+    \} else if(severity == 4) \{ 
+      ch_output += "Major charge: "; 
+    \} 
+    ch_output += Str(current_value)+"/"+Str(needed_value)+")\</strong\>"; 
+    if(current_value \>= needed_value) 
+      ch_output += "\</font\>"; 
+    ch_output += "\<br/\>\\n"; 
+    if(\$crime == \$indices[\$i]) \{ 
+      /* show full details about this crime */ 
+      output = ""; 
+      if(charge["evidence"] \&\& sizeof(charge["evidence"])) \{ 
+        output += "\<i\>Evidence:\</i\>\<br/\>\<hr/\>\\n"; 
+        for(\$j=0;\$j\<sizeof(charge["evidence"]);\$j++) \{ 
+          output += capitalize(Str(charge["evidence"][\$j][0]))+"\<br/\>\\n"; 
+          output += "\<strong\>Filed as "; 
+          \$tmp = charge["evidence"][\$j][1]; 
+          if(\$tmp == 0) \{ 
+            output += "invalid evidence"; 
+          \} else \{ 
+            if(\$tmp == 1 \|\| \$tmp == -1) \{ 
+              output += "circumstantial evidence"; 
+            \} else if(\$tmp == 2 \|\| \$tmp == -2) \{ 
+              output += "solid evidence"; 
+            \} else if(\$tmp == 3 \|\| \$tmp == -3) \{ 
+              output += "very solid evidence"; 
+            \} else if(\$tmp == 4 \|\| \$tmp == -4) \{ 
+              output += "indisputable evidence"; 
+            \} else if(\$tmp == 5 \|\| \$tmp == -5) \{ 
+              output += "maximum indisputable evidence"; 
+            \} 
+            if(\$tmp \>= 0) \{ 
+              output += " of guilt"; 
+            \} else \{ 
+              output += " of innocence"; 
+            \} 
+          \} 
+          output += " by "+Str(charge["evidence"][\$j][2])+" ("+Str(\$tmp)+")\</strong\>"; 
+          if(\$is_arrester) \{ 
+          output += " [\<u class=\\"clickable\\" onclick=\\"document.getElementById('evidence_options').style.display = \\'none\\'; document.getElementById('add_evidence').style.display = \\'block\\'; document.getElementById('evidence_index').value = \\'"+Str(\$j)+"\\';"; 
+            output += " document.getElementById('evidence_description').value = \\'"+replace_strings(Str(charge["evidence"][\$j][0]), "\\"", "\&quot;", ";", ":", "'", "^")+"\\';"; 
+            output += " document.getElementById('verify_description').value = \\'"+replace_strings(Str(charge["evidence"][\$j][0]), "\\"", "\&quot;", ";", ":", "'", "^")+"\\';"; 
+            if(!\$tmp \|\| \$tmp == 0) \{ 
+              output += " document.getElementById('evidence_strength').selectedIndex = \\'0\\';"; 
+            \} else if(\$tmp == 1 \|\| \$tmp == -1) \{ 
+              output += " document.getElementById('evidence_strength').selectedIndex = \\'1\\';"; 
+            \} else if(\$tmp == 2 \|\| \$tmp == -2) \{ 
+              output += " document.getElementById('evidence_strength').selectedIndex = \\'2\\';"; 
+            \} else if(\$tmp == 3 \|\| \$tmp == -3) \{ 
+              output += " document.getElementById('evidence_strength').selectedIndex = \\'3\\';"; 
+            \} else if(\$tmp == 4 \|\| \$tmp == -4) \{ 
+              output += " document.getElementById('evidence_strength').selectedIndex = \\'4\\';"; 
+            \} else if(\$tmp == 5 \|\| \$tmp == -5) \{ 
+              output += " document.getElementById('evidence_strength').selectedIndex = \\'5\\';"; 
+            \} 
+            if(\$tmp \>= 0) \{ 
+              output += " document.getElementById('evidence_direction').selectedIndex = \\'0\\';"; 
+            \} else \{ 
+              output += " document.getElementById('evidence_direction').selectedIndex = \\'1\\';"; 
+            \} 
+            output += "\\"\>Edit this evidence\</u\>]"; 
+          \} 
+          output += "\<br/\>\\n\<hr/\>\\n"; 
+        \} 
+      \} 
+      if(charge["testimony"] \&\& sizeof(map_indices(charge["testimony"]))) \{ 
+        output += "\<i\>Testimonies:\</i\>\<br/\>\\n"; 
+        for(\$j=0;\$j\<sizeof(map_indices(charge["testimony"]));\$j++) \{ 
+          output += "\<u\>"+charge["testimony"][map_indices(charge["testimony"])[\$j]][3]+"\</u\> - \<strong\>("; 
+          output += Str(charge["testimony"][map_indices(charge["testimony"])[\$j]][1])+")\</strong\>\<br/\>\\n"; 
+          output += charge["testimony"][map_indices(charge["testimony"])[\$j]][2]+"\<br/\>\\n"; 
+        \} 
+        output += "\<hr/\>"; 
+      \} 
+      if(charge["influence"] \&\& sizeof(map_indices(charge["influence"]))) \{ 
+       if(charge["influence"]["innocent"]) 
+        output += "Social influence has been used to secure an innocent verdict ("+Str(charge["influence"]["innocent"])+" points)\<br/\>\\n"; 
+       if(charge["influence"]["guilty"]) 
+        output += "Social influence has been used to secure a conviction ("+Str(charge["influence"]["guilty"])+" points)\<br/\>\\n"; 
+       if(charge["influence"]["punishment"]) 
+        output += "Social influence has been used to increase the punishment if found guilty ("+Str(charge["influence"]["punishment"])+" points)\<br/\>\\n"; 
+       output += "\<hr/\>"; 
+      \} 
+      if(output == "") \{ 
+        output += "There is no evidence or testimonies filed for this charge.\<br/\>"; 
+      \} 
+      ch_output += output; 
+ 
+      /* show the opinions */ 
+      ch_output += "\<div id='view_opinions' style='display:none'\>"; 
+      if(charge["opinion"] \&\& sizeof(map_indices(charge["opinion"]))) \{ 
+        \$int_for = 0; 
+        \$int_against = 0; 
+        output = ""; 
+        for(\$j=0;\$j\<sizeof(map_indices(charge["opinion"]));\$j++) \{ 
+          \$tmp = charge["opinion"][map_indices(charge["opinion"])[\$j]]; 
+          output += "\<br/\>\&nbsp;\<br/\>\\n\<em\>\<strong\>"+Str(\$tmp[2])+"\</strong\>"; 
+          if(\$tmp[0] == "witness_guilty") \{ 
+            output += " thinks that "+\$name+" should \<strong\>be punished\</strong\> and"; 
+            \$int_for++; 
+          \} else if(\$tmp[0] == "witness_innocent") \{ 
+            output += " thinks that "+\$name+" should \<strong\>not be punished\</strong\> and"; 
+            \$int_against++; 
+          \} 
+          output += " says:\</em\>\<br/\>\\n"; 
+          output += Str(\$tmp[1]); 
+        \} 
+        ch_output += "\<strong\>Opinions:\</strong\> "+Str(\$int_for)+" vs "+Str(\$int_against)+"\\n"; 
+        ch_output += output; 
+      \} else \{ 
+        ch_output += "\<strong\>Nobody has given their opinion on this charge yet\</strong\>\\n"; 
+      \} 
+      ch_output += "\<hr/\>\</div\>"; 
+ 
+      /* allow more evidence to be added */ 
+      ch_output += "\<div id='evidence_options'\>"; 
+      if(!\$locked) \{ 
+        if(charge["testimony"] \&\& charge["testimony"][name(\$char)]) \{ 
+        ch_output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('evidence_options').style.display = \\'none\\'; document.getElementById('add_testimony').style.display = \\'block\\';\\"\>Change your testimony\</u\>]\<br/\>\\n"; 
+        \} else \{ 
+        ch_output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('evidence_options').style.display = \\'none\\'; document.getElementById('add_testimony').style.display = \\'block\\';\\"\>Add your testimony\</u\>]\<br/\>\\n"; 
+        \} 
+        if(\$is_arrester) \{ 
+        ch_output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('evidence_options').style.display = \\'none\\'; document.getElementById('add_evidence').style.display = \\'block\\';\\"\>File evidence\</u\>]\<br/\>\\n"; 
+        \} 
+      \} 
+      if(charge["opinion"] \&\& sizeof(map_indices(charge["opinion"]))) 
+      ch_output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('view_opinions').style.display = \\'block\\';\\"\>View opinions\</u\>]\<br/\>\\n"; 
+      if(!\$locked) \{ 
+        if(charge["opinion"] \&\& charge["opinion"][name(\$char)]) \{ 
+         ch_output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('evidence_options').style.display = \\'none\\'; document.getElementById('add_opinion').style.display = \\'block\\';\\"\>Change your opinion\</u\>]\<br/\>\\n"; 
+        \} else \{ 
+         ch_output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('evidence_options').style.display = \\'none\\'; document.getElementById('add_opinion').style.display = \\'block\\';\\"\>Add your opinion\</u\>]\<br/\>\\n"; 
+        \} 
+        if(ironclaw::check_influencepoints()) \{ 
+         ch_output += "[\<u class=\\"clickable\\" onclick=\\"document.getElementById('evidence_options').style.display = \\'none\\'; document.getElementById('add_influence').style.display = \\'block\\';\\"\>Exert your influence ("+dump_value(ironclaw::check_influencepoints())+" points available)\</u\>]\<br/\>\\n"; 
+        \} 
+      \} 
+      ch_output += "\<hr/\>"; 
+      ch_output += "\</div\>"; 
+ 
+      /* input so they can add their testimony */ 
+      ch_output += "\<div id='add_testimony' style='display:none'\>\<strong\>Note:\</strong\> Please only write a testimony if you have information about this charge. If you are only giving your opinion then please use [Add your opinion] instead. It is acceptable for you to include IC lies in this testimony, but that may result in an IC charge of giving false testimony.\<br/\>\\n"; 
+      ch_output += "\<textarea cols='80' id='testimony_description' rows='10'\>"; 
+      if(charge["testimony"] \&\& charge["testimony"][name(\$char)]) 
+        ch_output += Str(charge["testimony"][name(\$char)][2]); 
+      ch_output += "\</textarea\>\<br/\>\\n"; 
+      ch_output += "\<select id='testimony_type'\>\\n"; 
+      ch_output += "\<option VALUE='witness_guilty'\>I was a witness, and think they are guilty of this charge\</option\>\\n"; 
+      ch_output += "\<option VALUE='witness_innocent'"; 
+      if(charge["testimony"] \&\& charge["testimony"][name(\$char)]) 
+        ch_output += (charge["testimony"][name(\$char)][1] \< 0 ? " selected" : "" ); 
+      ch_output += "\>I was a witness, and think they are innocent of this charge\</option\>\\n"; 
+      ch_output += "\<option VALUE='witness_undecided'"; 
+      if(charge["testimony"] \&\& charge["testimony"][name(\$char)]) 
+        ch_output += (charge["testimony"][name(\$char)][1] == 0 ? " selected" : "" ); 
+      ch_output += "\>I was a witness, but do not know if they are guilty or innocent\</option\>\\n"; 
+      ch_output += "\</select\>\\n"; 
+      ch_output += "\<select id='testimony_strength'\>\\n"; 
+      ch_output += "\<option VALUE='solid_evidence'\>This is solid evidence\</option\>\\n"; 
+      ch_output += "\<option VALUE='circumstantial_evidence'"; 
+      if(charge["testimony"] \&\& charge["testimony"][name(\$char)]) 
+        ch_output += (charge["testimony"][name(\$char)][1] \< 2 \&\&  charge["testimony"][name(\$char)][1] \> -2 ? " selected" : "" ); 
+      ch_output += "\>This is circumstantial or unclear evidence\</option\>\\n"; 
+      ch_output += "\</select\>\<br/\>\\n"; 
+      ch_output += "\<input onclick=\\"add_testimony('"+\$crime+"', '"+\$index+"', document.getElementById('testimony_description').value, document.getElementById('testimony_type').value, document.getElementById('testimony_strength').value);\\" type='button' value='Add my testimony'/\>\<hr/\>\</div\>\\n"; 
+ 
+      /* input so they can add evidence */ 
+      if(\$is_arrester) \{ 
+        ch_output += "\<div id='add_evidence' style='display:none'\>\<strong\>Note:\</strong\> Please include evidence here. It should be more than just a witness saying \\"I saw it happen\\" - but can be details that witnesses give. For example, if a witness says \\"He smelt of squirrel\\" then that could be included as evidence in an assault on a squirrel. Also include evidence that the person *didn't* commit the crimes. If the murder weapon was found to be a knife, and the accused is known to use swords, then that could be included as evidence of innocence.\<br/\>As only constables can enter evidence, please enter any evidence given to you WITHOUT IC bias or influence.\<br/\>\\n"; 
+        ch_output += "\<textarea cols='80' id='evidence_description' rows='10'\>\</textarea\>\<br/\>\\n"; 
+        ch_output += "\<textarea cols='80' id='verify_description' rows='10' style='display:none'\>\</textarea\>\\n"; 
+        ch_output += "\<select id='evidence_strength'\>\\n"; 
+        ch_output += "\<option VALUE='0'\>This is not valid evidence\</option\>\\n"; 
+        ch_output += "\<option VALUE='1'\>This is circumstantial or unclear evidence\</option\>\\n"; 
+        ch_output += "\<option VALUE='2'\>This is solid evidence\</option\>\\n"; 
+        ch_output += "\<option VALUE='3'\>This is very solid evidence\</option\>\\n"; 
+        ch_output += "\<option VALUE='4'\>This is indisputable evidence\</option\>\\n"; 
+        ch_output += "\<option VALUE='5'\>This is indisputable evidence and proves innocence or guilt\</option\>\\n"; 
+        ch_output += "\</select\>\\n"; 
+        ch_output += "\<select id='evidence_direction'\>\\n"; 
+        ch_output += "\<option VALUE='guilt'\>and proves guilt\</option\>\\n"; 
+        ch_output += "\<option VALUE='innocence'\>and proves innocence\</option\>\\n"; 
+        ch_output += "\</select\>\<br/\>\\n"; 
+        ch_output += "\<input id='evidence_index' type='text' style='display:none'/\>"; 
+ 
+        ch_output += "\<input onclick=\\"add_evidence('"+\$crime+"', '"+\$index+"', document.getElementById('evidence_description').value, document.getElementById('evidence_strength').value, document.getElementById('evidence_direction').value, document.getElementById('evidence_index').value, document.getElementById('verify_description').value);\\" type='button' value='File evidence'/\>\<hr/\>\</div\>\\n"; 
+      \} 
+ 
+      /* input so they can add their opinion */ 
+      ch_output += "\<div id='add_opinion' style='display:none'\>\<strong\>Note:\</strong\> This is your characters in-character opinion (if you choose to give it.) Please include what your character believes, and if your character thinks there should be a punishment for this charge, regardless of what you OOC know about the innocence or guilt of the character.\<br/\>\\n"; 
+      ch_output += "It is acceptable for you to include IC lies in this testimony, but that may result in an IC charge of giving false testimony.\<br/\>\\n"; 
+      ch_output += "\<textarea cols='80' id='opinion_description' rows='10'\>"; 
+      if(charge["opinion"] \&\& charge["opinion"][name(\$char)]) 
+        ch_output += Str(charge["opinion"][name(\$char)][1]); 
+      ch_output += "\</textarea\>\<br/\>\\n"; 
+      ch_output += "\<select id='opinion_type'\>\\n"; 
+      ch_output += "\<option VALUE='witness_undecided'\>I don't know if they should be punished or not\</option\>\\n"; 
+      ch_output += "\<option VALUE='witness_guilty'"; 
+      if(charge["opinion"] \&\& charge["opinion"][name(\$char)]) 
+        ch_output += (charge["opinion"][name(\$char)][0] == "witness_guilty" ? " selected" : "" ); 
+      ch_output += "\>From what I hear, they should be punished\</option\>\\n"; 
+      ch_output += "\<option VALUE='witness_innocent'"; 
+      if(charge["opinion"] \&\& charge["opinion"][name(\$char)]) 
+        ch_output += (charge["opinion"][name(\$char)][0] == "witness_innocent" ? " selected" : "" ); 
+      ch_output += "\>From what I hear, they should NOT be punished\</option\>\\n"; 
+      ch_output += "\</select\>\\n"; 
+      ch_output += "\<input onclick=\\"add_opinion('"+\$crime+"', '"+\$index+"', document.getElementById('opinion_description').value, document.getElementById('opinion_type').value);\\" type='button' value='Add my opinion'/\>\<hr/\>\</div\>\\n"; 
+ 
+      /* input so they can spend/exert their influence */ 
+      ch_output += "\<div id='add_influence' style='display:none'\>\<strong\>Note:\</strong\> Spending points of influence represents your character using their social clout to help get someone convicted, let off, or given a stronger punishment. Any points spent will return after two months.\<br/\>\\n"; 
+      ch_output += "You have "+dump_value(ironclaw::check_influencepoints())+" points available to spent.\<br/\>\\n"; 
+      ch_output += "\<select id='influence_type'\>\\n"; 
+      ch_output += "\<option VALUE='guilty'\>I want them convicted\</option\>\\n"; 
+      ch_output += "\<option VALUE='innocent'\>I want them freed\</option\>\\n"; 
+      ch_output += "\<option VALUE='punishment'\>I want them given a harsher punishment (if convicted)\</option\>\\n"; 
+      ch_output += "\</select\>\\n"; 
+      ch_output += " and I want to spend "; 
+      ch_output += "\<select id='influence_strength'\>\\n"; 
+      \{ 
+      int influencecount, influencetarget; 
+      influencetarget = ironclaw::check_influencepoints(); 
+      for(influencecount=1;influencecount\<=influencetarget;influencecount++) 
+       ch_output += "\<option VALUE='"+influencecount+"'\>"+influencecount+"\</option\>\\n"; 
+      \} 
+      ch_output += "\</select\> point(s) exerting my influence.\<br/\>\\n"; 
+      ch_output += "\<input onclick=\\"add_influence('"+\$crime+"', '"+\$index+"', document.getElementById('influence_type').value, document.getElementById('influence_strength').value);\\" type='button' value='Exert my influence'/\>\<hr/\>\</div\>\\n"; 
+ 
+ 
+ 
+    \} 
+ 
+  \} 
+  output = ""; 
+  if(!\$crim."crimes:arrestable") \$crim."crimes:arrestable" = (\{ \}); 
+  if(arrestable \&\& total_value_needed \> 0 \&\& !\$crimes["locked"]) \{ 
+    output += "\<font color='red'\>"; 
+    /* Check that they are marked as arrestable */ 
+    \$crimes["arrestable"] = TRUE; 
+    \$crim."crimes:arrestable" \|= (\{ \$index \}); 
+  \} else \{ 
+    /* Check that they are NOT marked as arrestable */ 
+    \$crimes["arrestable"] = nil; 
+    \$crim."crimes:arrestable" -= (\{ \$index \}); 
+  \} 
+ 
+  output += "\<h3\>Criminal charges for "+\$name+" ("+Str(total_value_collected)+"/"+Str(total_value_needed); 
+  if(additional_punishment) 
+   output += "+"+Str(additional_punishment); 
+  output += ")\</h3\>\\n"; 
+  if(arrestable) 
+    output += "\</font\>\\n"; 
+  output += "\<p\>\<em\>Click on the charges listed below to see more information.\</em\>\<br/\>\\n"; 
+  output += "\<div\>\</div\>\\n"; 
+  output += ch_output; 
+  output += "\</p\>\<hr/\>"; 
+  if(\$crim == \$char) \{ 
+    output += "\<p\>The charges against "+\$name+" are listed above. The ones colored red are the charges with enough evidence to convict "+\$name+" for. When the charges are all red (or if you think enough evidence will be found for them) you can click \\"Accept these charges\\" and select the punishments that you want the NPC judge to assign.\<br/\>It may be worthwhile talking with a constable first, as they can offer offer additional punishment options to cooperative prisoners.\<br/\>"; 
+    output += "\<input onclick=\\"window.location.href='accept_charges?char="+name(\$char)+"\\\&item_index="+\$index+"'\\" type=\\"button\\" value=\\"Accept these charges\\"/\>\</p\>"; 
+ 
+/*    output += "\<input onclick=\\"file_crime(document.getElementById('crime_name').value, document.getElementById('crime_description').value);\\" type=\\"button\\" value=\\"Accept these charges\\"/\>\</p\>";*/ 
+/*    output += "\<p\>\<input onclick=/"file_crime(document.getElementById('crime_name').value, document.getElementById('crime_description').value);/" type=/"button/" value=/"Accept these charges/"/\>\</p\>";*/ 
+    output += "\<hr/\>"; 
+  \} 
+ 
+  return output;
+      </Core:Property>
+      <Core:Property property="merry:lib:popup_initialize">
+         X[M] /* checks the player isn't trying anything funny, and that we have all the information we need */ 
+/* returns the page we should look up */ 
+object *inventory; 
+int i, sz; 
+ 
+/* first basic sanity checks -- these should never happen */ 
+if (\$dat == nil) \{ 
+  error("page reached without a udat"); 
+\} 
+if (\$name == nil) \{ 
+  error("page reached without a name"); 
+\} 
+ 
+/* what is the character? */ 
+if(\$actor \&\& typeof(\$actor) == 3) \{ 
+  /* \$actor is a string. make it an object */ 
+  if(Obj(\$actor)) \{ 
+    \$actor = Obj(\$actor); 
+  \} else \{ 
+    \$actor = lower_case(\$actor); 
+    \$actor = Obj("Chatters:AE:"+\$actor[0..1]+":"+\$actor); 
+  \} 
+\} 
+if(\$char \&\& typeof(\$char) == 3) \{ 
+  /* \$char is a string. make it an object */ 
+  if(Obj(\$char)) \{ 
+    \$char = Obj(\$char); 
+  \} else \{ 
+    \$char = lower_case(\$char); 
+    \$char = Obj("Chatters:AE:"+\$char[0..1]+":"+\$char); 
+  \} 
+\} 
+if(!\$char \&\& \$actor) 
+  \$char = \$actor; 
+if(!\$actor \&\& \$char) 
+  \$actor = \$char; 
+ 
+ 
+if (!\$char) \{ 
+  error("No character specified"); 
+\} 
+ 
+\$charname = name(\$char)[15..strlen(name(\$char))-1]; 
+ 
+/* Check the player isn't trying to access someone elses body */ 
+/* Check if the players roster of characters */ 
+\$bodies = Udat::query_bodies_in_roster(\$user: \$name); 
+
+for(\$i = 0; \$i \< sizeof(\$bodies);) 
+\{ 
+  if(\$bodies[\$i]."theatre:id" != "IC") 
+  \{ 
+    \$bodies -= (\{ \$bodies[\$i] \}); 
+  \} else \{ 
+    \$i++; 
+  \} 
+\} 
+ 
+\$bodies \&= (\{ \$char \}); 
+ 
+if(sizeof(\$bodies) \< 1) \{ 
+  error("Body not found in character roster"); 
+\} 
+ 
+/* Is this someone who can make arrests? */ 
+if(\$char.guild == \$\{Allegory:Guilds:cityguard\}) \{ 
+  \$canmakearrests = 1; 
+\} else \{ 
+  \$canmakearrests = nil; 
+\} 
+ 
+return TRUE;
+      </Core:Property>
+      <Core:Property property="merry:lib:verify_char">
+         X[M] /* is this a valid character? */ 
+if(!\$char) return nil; 
+ 
+/* \$char is a string. make it an object */ 
+if(Obj(\$char)) \{ 
+  \$char = Obj(\$char); 
+\} else \{ 
+  if(strlen(\$char) \< 2) return nil; 
+  \$char = lower_case(\$char); 
+  \$char = Obj("Chatters:AE:"+\$char[0..1]+":"+\$char); 
+\} 
+if(!\$char) return nil; 
+ 
+/* Is this someone who can make arrests? */ 
+if(\$arrester) \{ 
+  if(\$char.guild == \$\{Allegory:Guilds:cityguard\}) \{ 
+    return name(\$char); 
+  \} else \{ 
+    return nil; 
+  \} 
+\} 
+ 
+return name(\$char);
+      </Core:Property>
+      <Core:Property property="merry:witness:enter-from%arrestable">
+         X[M] /* when someone arrives, check if they have an arrest warrant */
+
+/* delay so they can arrive in the new room first */
+\$delay(1.5, TRUE, "c89b");
+
+/* check each PC in the room to see if they can be arrested */
+if(\$actor."crimes:arrestable" \&\& sizeof(\$actor."crimes:arrestable")) \{
+ EmitTo(this, TAG("There is an outstanding arrest warrant for "+Describe(\$actor)+". "+capitalize(\$actor."base:pronoun")+" is wanted for:", "IMP"));
+ \$db = \$\{Allegory:Lib:Law:OpenDB\};     
+ for(\$j=0;\$j\<sizeof(\$actor."crimes:arrestable");\$j++) \{
+  EmitTo(this, TAG("- "+Get(\$db, Str(\$actor."crimes:arrestable"[\$j]))["name"], "IMP"));
+ \}
+\}
+return TRUE;
+      </Core:Property>
+      <Core:Property property="revisions">
+         (\{ 1206760031, "tonyd", "E", 1218859577, "tonyd", "P", 1231424682, "missk", "X", 1242570518, "jominey", "E", 1242570560, "jominey", "E", 1242570920, "jominey", "E", 1242570992, "jominey", "E", 1242571182, "jominey", "E", 1242572366, "jominey", "E", 1242572642, "jominey", "E", 1242573660, "jominey", "E", 1242573791, "jominey", "E", 1242576623, "jominey", "E", 1242576879, "jominey", "E", 1242577249, "jominey", "E", 1242577815, "jominey", "E", 1242578023, "jominey", "E", 1242578241, "jominey", "E", 1242578375, "jominey", "E", 1242578422, "jominey", "E", 1242578534, "jominey", "E", 1242578594, "jominey", "E", 1242578639, "jominey", "E", 1242578943, "jominey", "E", 1242579249, "jominey", "E", 1242579351, "jominey", "E", 1242579411, "jominey", "E", 1242579480, "jominey", "E", 1242579634, "jominey", "E", 1242579702, "jominey", "E", 1242580027, "jominey", "E", 1242580488, "jominey", "E", 1242580648, "jominey", "E", 1242580692, "jominey", "E", 1242580958, "jominey", "E", 1242581030, "jominey", "E", 1242581092, "jominey", "E", 1250268221, "jominey", "E", 1250268305, "jominey", "E", 1250268506, "jominey", "E", 1250269611, "jominey", "E", 1250269719, "jominey", "E", 1250269944, "jominey", "E", 1250270072, "jominey", "E", 1250270167, "jominey", "E", 1250270310, "jominey", "E", 1250270405, "jominey", "E", 1250271214, "jominey", "E", 1250271265, "jominey", "E", 1250271416, "jominey", "E", 1250271592, "jominey", "E", 1250272253, "jominey", "E", 1250272415, "jominey", "E", 1250272516, "jominey", "E", 1250272669, "jominey", "E", 1250272927, "jominey", "E", 1250298923, "jominey", "E", 1250299526, "jominey", "E", 1250299618, "jominey", "E", 1250299761, "jominey", "E", 1271065045, "tonyd", "P", 1271065131, "tonyd", "P", 1271065219, "tonyd", "P", 1271065241, "tonyd", "P", 1271065313, "tonyd", "P", 1271065468, "tonyd", "P", 1271065498, "tonyd", "P", 1271065583, "tonyd", "P", 1271065633, "tonyd", "P", 1271066801, "tonyd", "P", 1271067719, "tonyd", "P", 1271067794, "tonyd", "P", 1271126980, "jominey", "E", 1271126995, "jominey", "E", 1271127057, "jominey", "E", 1271128813, "jominey", "E", 1271128990, "jominey", "E", 1271556035, "tonyd", "P", 1271556124, "tonyd", "P", 1275907092, "tonyd", "P", 1275907149, "tonyd", "P", 1275908690, "tonyd", "P", 1275908760, "tonyd", "P", 1275908796, "tonyd", "P", 1275909001, "tonyd", "P", 1275909113, "tonyd", "P", 1275909180, "tonyd", "P", 1275909384, "tonyd", "P", 1275909662, "tonyd", "P", 1275909689, "tonyd", "P", 1275909908, "tonyd", "P", 1275909999, "tonyd", "P", 1275910154, "tonyd", "P", 1275910228, "tonyd", "P", 1275910319, "tonyd", "P", 1275910374, "tonyd", "P", 1275910411, "tonyd", "P", 1275910523, "tonyd", "P", 1275910624, "tonyd", "P", 1275910701, "tonyd", "P", 1275910749, "tonyd", "P", 1275910812, "tonyd", "P", 1275910870, "tonyd", "P", 1275910981, "tonyd", "P", 1275911010, "tonyd", "P", 1275911423, "tonyd", "P", 1275912429, "tonyd", "P", 1275912598, "tonyd", "P", 1275912659, "tonyd", "P", 1275913292, "tonyd", "P", 1275913335, "tonyd", "P", 1275913439, "tonyd", "P", 1275913901, "tonyd", "P", 1275914110, "tonyd", "P", 1275914157, "tonyd", "P", 1275916041, "tonyd", "P", 1275916767, "tonyd", "P", 1275916936, "tonyd", "P", 1275917129, "tonyd", "P", 1275917213, "tonyd", "P", 1275918078, "tonyd", "P", 1294631743, "jominey", "E", 1297673391, "tunk_bodin", "X", 1297673482, "tunk_bodin", "X", 1297673565, "tunk_bodin", "X", 1297674422, "tunk_bodin", "X", 1297674438, "tunk_bodin", "X", 1305097261, "tonyd", "P", 1388809410, "tonyd", "P", 1388809444, "tonyd", "P", 1388809455, "tonyd", "P", 1388809481, "tonyd", "P", 1425707331, "jominey", "E", 1425707422, "jominey", "E", 1425707554, "jominey", "E", 1425876302, "jominey", "E", 1425876365, "jominey", "E", 1425955783, "jominey", "E", 1467940266, "jominey", "E", 1576683071, "jominey", "E", 1576683582, "jominey", "E", 1576683599, "jominey", "R", 1576683754, "jominey", "E", 1576684308, "jominey", "E", 1576684331, "jominey", "E", 1576684350, "jominey", "E", 1576684368, "jominey", "E", 1576684424, "jominey", "E", 1576684441, "jominey", "E" \})
+      </Core:Property>
+    </Core:PCProperties>
+    <Notes:Notes/>
+  </Core:PropertyContainer>
+</object>
