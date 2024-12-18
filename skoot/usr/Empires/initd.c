@@ -27,7 +27,7 @@ HTTP_loaded()
 string
 remap_http_request(string root, string url, mapping args)
 {
-   if (root == "gables") {
+   if (root == "empires") {
       return "/usr/Empires/data/www" + url;
    }
    error("Unknown URL root " + root);
