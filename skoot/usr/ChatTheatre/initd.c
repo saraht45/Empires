@@ -21,14 +21,14 @@ boot(int block)
 static void
 HTTP_loaded()
 {
-   HTTPD->register_root("Empires");
+   HTTPD->register_root("ChatTheatre");
 }
 
 string
 remap_http_request(string root, string url, mapping args)
 {
-   if (root == "empires") {
-      return "/usr/Empires/data/www" + url;
+   if (root == "chattheatre") {
+      return "/usr/ChatTheatre/data/www" + url;
    }
    error("Unknown URL root " + root);
 }
