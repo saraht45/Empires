@@ -1,7 +1,7 @@
 "use strict";
 // orchil/profiles.js
 var profiles = {
-        "portal_empires":{
+        "portal_game":{
                 "method":   "websocket",
                 "protocol": "ws",
                 "server":   "localhost", //"game.autonify.net",
